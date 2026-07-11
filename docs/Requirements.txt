@@ -1,0 +1,2500 @@
+01_PROJECT_OVERVIEW.md
+# Arena Hub
+## Sports Arena Booking and Management Platform
+
+Version: 1.0
+Status: Development Phase
+Methodology: Agile (Iterative & Incremental)
+
+---
+
+# 1. Project Overview
+
+Arena Hub is a centralized sports arena booking and management platform that connects players with sports facility owners through a mobile and web-based system. The platform aims to eliminate the traditional manual booking process, which often relies on phone calls, WhatsApp messages, and personal contacts.
+
+The system provides real-time arena discovery, slot booking, online payments, automated booking management, equipment rental, reviews and ratings, AI-powered arena recommendations, and administrative monitoring through a centralized platform.
+
+Arena Hub consists of three main stakeholders:
+
+1. Players (Mobile Application)
+2. Arena Owners (Web Dashboard)
+3. Administrators (Web Dashboard)
+
+The system will be accessible through React Native mobile applications for Android and iOS, while Arena Owners and Administrators will use a Next.js web dashboard. FastAPI will serve as the backend API layer, MongoDB Atlas will be used as the primary database, Redis will prevent double bookings through distributed locking, and WebSockets will provide real-time updates.
+
+---
+
+# 2. Problem Statement
+
+Sports activities are becoming increasingly popular, but sports facility booking remains largely manual. Players often have to call arena owners, send WhatsApp messages, or physically visit venues to check availability and make reservations.
+
+This manual approach creates several problems:
+
+- Difficulty finding suitable arenas
+- Lack of real-time slot availability
+- Double booking conflicts
+- Inefficient booking management
+- Limited payment options
+- Poor customer experience
+- Lack of centralized booking records
+- Inefficient arena management
+
+Arena owners face similar challenges when managing schedules, bookings, customer records, pricing, and payments manually.
+
+There is currently no unified platform that efficiently connects players and arena owners while providing real-time booking capabilities and digital payment solutions.
+
+---
+
+# 3. Proposed Solution
+
+Arena Hub provides a centralized platform where users can:
+
+- Search sports arenas
+- View arena details
+- Check real-time slot availability
+- Book slots instantly
+- Pay online
+- Receive booking confirmations
+- View booking history
+- Submit reviews and ratings
+
+Arena Owners can:
+
+- Register their facilities
+- Manage courts
+- Manage slots
+- Manage pricing
+- Manage equipment rentals
+- Track bookings
+- Monitor revenue
+
+Administrators can:
+
+- Verify arenas
+- Manage users
+- Monitor bookings
+- Handle complaints
+- Generate reports
+
+The system uses Redis locking to prevent double bookings and WebSockets to synchronize slot availability in real time.
+
+---
+
+# 4. Project Objectives
+
+The objectives of Arena Hub are:
+
+- To build a centralized sports arena booking platform.
+- To provide real-time slot availability information.
+- To prevent double bookings using distributed locking.
+- To enable secure online payments.
+- To simplify arena management for owners.
+- To provide AI-based arena recommendations.
+- To support equipment rental functionality.
+- To provide reviews and ratings.
+- To improve user experience for players and owners.
+- To provide administrative control and monitoring.
+
+---
+
+# 5. Project Scope
+
+## Included Features
+
+### Player Features
+
+- User Registration
+- User Authentication
+- Profile Management
+- Arena Search
+- NLP Search
+- Arena Filtering
+- View Arena Details
+- View Available Slots
+- Slot Booking
+- Online Payments
+- Booking Cancellation
+- Booking History
+- Equipment Rental
+- Reviews & Ratings
+- AI Recommendations
+- Push Notifications
+
+### Arena Owner Features
+
+- Owner Registration
+- Arena Registration
+- Arena Management
+- Court Management
+- Slot Management
+- Pricing Management
+- Equipment Management
+- Booking Monitoring
+- Revenue Reports
+
+### Administrator Features
+
+- User Management
+- Arena Verification
+- Booking Monitoring
+- Complaint Handling
+- Review Moderation
+- Reporting & Analytics
+
+---
+
+# 6. Future Enhancements
+
+The following features are outside the current project scope and may be implemented in future versions:
+
+- Matchmaking System
+- Team Management
+- Tournament Management
+- Team Challenges
+- Dynamic Pricing
+- Loyalty Programs
+- AI Chatbot Support
+- Multi-Language Support
+- Advanced Analytics
+
+---
+
+# 7. Stakeholders
+
+## Primary Stakeholders
+
+### Players
+
+Users who search, book, and pay for sports facilities.
+
+### Arena Owners
+
+Facility owners who manage sports arenas and bookings.
+
+### Administrators
+
+System managers responsible for platform monitoring and control.
+
+---
+
+## Secondary Stakeholders
+
+### Payment Providers
+
+- Stripe
+- JazzCash
+- EasyPaisa
+- Bank Transfer Services
+
+### Google Maps API
+
+Provides location-based arena services.
+
+### Firebase
+
+Provides push notification services.
+
+---
+
+# 8. Technology Stack
+
+## Frontend
+
+### Mobile Application
+
+- React Native
+- Android
+- iOS
+
+### Web Dashboard
+
+- Next.js
+
+---
+
+## Backend
+
+- FastAPI
+- Python
+
+---
+
+## Database
+
+- MongoDB Atlas
+
+---
+
+## Caching & Concurrency
+
+- Redis
+
+---
+
+## Real-Time Communication
+
+- WebSockets
+
+---
+
+## Notifications
+
+- Firebase Cloud Messaging (FCM)
+
+---
+
+## Payment Services
+
+- Stripe
+- JazzCash
+- EasyPaisa
+- Bank Transfer
+
+---
+
+## Maps & Location
+
+- Google Maps API
+
+---
+
+# 9. High-Level System Workflow
+
+1. User registers and logs into the mobile application.
+2. User searches for sports arenas.
+3. User selects an arena and available slot.
+4. System acquires a Redis lock.
+5. Slot availability is verified.
+6. User completes payment.
+7. Booking is confirmed.
+8. WebSocket updates slot availability.
+9. Notification is sent to the user.
+10. Arena Owner receives booking details.
+11. Administrator can monitor the booking through the admin dashboard.
+
+---
+
+# 10. Expected Outcomes
+
+The successful implementation of Arena Hub will:
+
+- Reduce manual booking processes.
+- Improve booking accuracy.
+- Eliminate double bookings.
+- Simplify sports facility management.
+- Improve user satisfaction.
+- Increase booking transparency.
+- Provide secure digital payments.
+- Enable efficient administration.
+
+---
+
+End of Document
+
+
+
+
+
+
+
+
+
+
+02_SYSTEM_ARCHITECTURE.md
+# Arena Hub
+## System Architecture Document
+
+Version: 1.0
+
+---
+
+# 1. Overview
+
+Arena Hub follows a modern three-tier architecture consisting of:
+
+1. Presentation Layer (Mobile App & Web Dashboard)
+2. Application Layer (FastAPI Backend)
+3. Data Layer (MongoDB Atlas + Redis)
+
+The architecture is designed to support real-time bookings, prevent double bookings, handle secure payments, and provide a scalable platform for players, arena owners, and administrators.
+
+---
+
+# 2. High-Level Architecture
+
+```text
+
++--------------------------------------------------+
+|                 CLIENT LAYER                     |
++--------------------------------------------------+
+
+  React Native Mobile App
+         (Players)
+
+              |
+
+              |
+
+  Next.js Web Dashboard
+ (Arena Owners & Admins)
+
+              |
+
+              v
+
++--------------------------------------------------+
+|                FASTAPI BACKEND                   |
++--------------------------------------------------+
+
+ Authentication Service
+ User Management Service
+ Arena Management Service
+ Booking Management Service
+ Payment Management Service
+ Review Management Service
+ Equipment Management Service
+ AI Recommendation Service
+ Notification Service
+ Admin Management Service
+
+              |
+
+              |
+
++--------------------------------------------------+
+|                DATA LAYER                        |
++--------------------------------------------------+
+
+ MongoDB Atlas
+ Redis Cache & Locking
+ WebSocket Server
+
+              |
+
+              |
+
++--------------------------------------------------+
+|            EXTERNAL SERVICES                     |
++--------------------------------------------------+
+
+ Stripe
+ JazzCash
+ EasyPaisa
+ Bank Transfer
+
+ Firebase Cloud Messaging
+
+ Google Maps API
+
+```
+
+---
+
+# 3. Architecture Components
+
+## 3.1 Mobile Application
+
+Technology:
+- React Native
+
+Users:
+- Players
+
+Responsibilities:
+- User Registration
+- Login
+- Search Arenas
+- Arena Booking
+- Payment Processing
+- Reviews & Ratings
+- Equipment Rental
+- Notifications
+
+Supported Platforms:
+- Android
+- iOS
+
+---
+
+## 3.2 Web Dashboard
+
+Technology:
+- Next.js
+
+Users:
+- Arena Owners
+- Administrators
+
+Responsibilities:
+
+### Arena Owner
+
+- Arena Registration
+- Court Management
+- Slot Management
+- Pricing Management
+- Equipment Management
+- Booking Monitoring
+- Revenue Reports
+
+### Administrator
+
+- User Management
+- Arena Verification
+- Complaint Handling
+- Reports & Analytics
+
+---
+
+# 4. Backend Architecture
+
+Technology:
+- FastAPI (Python)
+
+The backend acts as the central processing layer.
+
+---
+
+## Authentication Service
+
+Responsibilities:
+
+- Registration
+- Login
+- JWT Generation
+- Role Management
+- Password Reset
+
+Roles:
+
+- Player
+- Arena Owner
+- Administrator
+
+---
+
+## User Management Service
+
+Responsibilities:
+
+- Manage Profiles
+- Update User Data
+- User Search
+- User Suspension
+
+---
+
+## Arena Management Service
+
+Responsibilities:
+
+- Arena Registration
+- Arena Approval
+- Arena Updates
+- Arena Search
+
+---
+
+## Court Management Service
+
+Responsibilities:
+
+- Create Court
+- Update Court
+- Delete Court
+- Manage Availability
+
+---
+
+## Booking Management Service
+
+Responsibilities:
+
+- Create Booking
+- Cancel Booking
+- Booking History
+- Booking Validation
+
+---
+
+## Payment Management Service
+
+Responsibilities:
+
+- Stripe Payments
+- JazzCash Payments
+- EasyPaisa Payments
+- Bank Transfer Verification
+- Refund Processing
+
+---
+
+## Equipment Rental Service
+
+Responsibilities:
+
+- Equipment Listing
+- Equipment Availability
+- Rental Booking
+
+---
+
+## Review Management Service
+
+Responsibilities:
+
+- Ratings
+- Reviews
+- Moderation
+
+---
+
+## Notification Service
+
+Responsibilities:
+
+- Booking Confirmation
+- Payment Confirmation
+- Booking Reminder
+- Arena Updates
+
+Uses:
+- Firebase Cloud Messaging (FCM)
+
+---
+
+## AI Recommendation Service
+
+Responsibilities:
+
+- Process NLP Search Queries
+- Analyze User Preferences
+- Recommend Arenas
+
+Example Queries:
+
+- Best football ground near me
+- Cheap cricket arena
+- Indoor badminton court
+
+---
+
+# 5. Database Layer
+
+## MongoDB Atlas
+
+Purpose:
+- Primary Database
+
+Collections:
+
+- Users
+- Arenas
+- Courts
+- Slots
+- Bookings
+- Payments
+- Reviews
+- Equipment
+- Notifications
+
+Benefits:
+
+- Flexible Schema
+- Cloud Hosted
+- Scalable
+- High Availability
+
+---
+
+## Redis
+
+Purpose:
+- Distributed Locking
+- Caching
+
+Main Use Case:
+
+Prevent Double Booking
+
+Example:
+
+User A books Slot A
+User B books Slot A
+
+Redis lock ensures only one booking succeeds.
+
+---
+
+# 6. Real-Time Communication
+
+## WebSocket Server
+
+Purpose:
+
+Provide live updates.
+
+Responsibilities:
+
+- Real-Time Slot Updates
+- Live Booking Status
+- Instant Availability Updates
+
+Example:
+
+User A books a slot.
+
+Immediately:
+
+- Slot becomes unavailable.
+- All connected users see updated availability.
+
+---
+
+# 7. External Services
+
+## Stripe
+
+Used For:
+
+- Card Payments
+- International Transactions
+
+---
+
+## JazzCash
+
+Used For:
+
+- Local Mobile Payments
+
+---
+
+## EasyPaisa
+
+Used For:
+
+- Local Mobile Payments
+
+---
+
+## Bank Transfer
+
+Used For:
+
+- Direct Bank Payments
+
+---
+
+## Firebase Cloud Messaging
+
+Used For:
+
+- Push Notifications
+
+Examples:
+
+- Booking Confirmed
+- Payment Successful
+- Booking Reminder
+
+---
+
+## Google Maps API
+
+Used For:
+
+- Arena Location
+- Nearby Arena Search
+- Navigation Support
+
+---
+
+# 8. Booking Workflow
+
+Step 1:
+User selects arena slot.
+
+Step 2:
+Booking request sent to FastAPI.
+
+Step 3:
+Redis lock acquired.
+
+Step 4:
+Slot availability checked.
+
+Step 5:
+Booking record created.
+
+Step 6:
+Payment processed.
+
+Step 7:
+Booking confirmed.
+
+Step 8:
+WebSocket updates all clients.
+
+Step 9:
+Notification sent.
+
+---
+
+# 9. Security Architecture
+
+Authentication:
+- JWT Tokens
+
+Password Security:
+- BCrypt Hashing
+
+Communication:
+- HTTPS
+
+Authorization:
+- Role-Based Access Control (RBAC)
+
+Roles:
+- Player
+- Arena Owner
+- Administrator
+
+---
+
+# 10. Scalability Considerations
+
+The architecture is designed to support:
+
+- Thousands of users
+- Multiple arenas
+- Concurrent bookings
+- Real-time updates
+- Cloud deployment
+
+Future expansion:
+
+- Matchmaking
+- Tournament Management
+- Team Management
+- AI Chatbot
+
+---
+
+End of Document
+
+
+
+03_FUNCTIONAL_REQUIREMENTS.md
+# Arena Hub
+## Functional Requirements Specification (FRS)
+
+Version: 1.0
+
+---
+
+# 1. Introduction
+
+This document defines the functional requirements of Arena Hub. It describes the features and operations that the system must perform for Players, Arena Owners, and Administrators.
+
+---
+
+# 2. System Actors
+
+## Primary Actors
+
+### Player
+A user who searches, books, and pays for sports arenas.
+
+### Arena Owner
+A user who manages sports facilities and bookings.
+
+### Administrator
+A system manager responsible for platform monitoring and control.
+
+---
+
+# 3. Player Functional Requirements
+
+## FR-P-01 User Registration
+
+### Description
+The system shall allow users to create a new account.
+
+### Inputs
+- Full Name
+- Email
+- Phone Number
+- Password
+
+### Output
+- Successful account creation.
+
+### Validation
+- Email must be unique.
+- Password must meet security requirements.
+
+---
+
+## FR-P-02 User Login
+
+### Description
+The system shall allow registered users to authenticate.
+
+### Inputs
+- Email
+- Password
+
+### Output
+- Access token
+- User session
+
+---
+
+## FR-P-03 Profile Management
+
+### Description
+The system shall allow users to manage their profiles.
+
+### Features
+- Update Profile
+- Change Password
+- Upload Profile Picture
+- Update Preferences
+
+---
+
+## FR-P-04 Arena Search
+
+### Description
+The system shall allow users to search for sports arenas.
+
+### Search Parameters
+- Arena Name
+- Location
+- Sport Type
+- Price Range
+
+### Output
+- Matching arena list
+
+---
+
+## FR-P-05 NLP Search
+
+### Description
+The system shall process natural language search queries.
+
+### Example Queries
+- Best football ground near me
+- Cheap cricket arena
+- Indoor badminton court available tonight
+
+### Output
+- Relevant arena recommendations
+
+---
+
+## FR-P-06 Arena Filtering
+
+### Description
+The system shall allow users to filter search results.
+
+### Filters
+- Location
+- Sport Type
+- Price
+- Rating
+- Availability
+
+---
+
+## FR-P-07 View Arena Details
+
+### Description
+The system shall display complete arena information.
+
+### Information Displayed
+- Arena Name
+- Images
+- Location
+- Sports Available
+- Pricing
+- Ratings
+- Reviews
+- Available Slots
+
+---
+
+## FR-P-08 View Available Slots
+
+### Description
+The system shall display real-time slot availability.
+
+### Output
+- Available Slots
+- Reserved Slots
+- Disabled Slots
+
+---
+
+## FR-P-09 Book Slot
+
+### Description
+The system shall allow users to reserve available slots.
+
+### Process
+1. Select Arena
+2. Select Court
+3. Select Date
+4. Select Time Slot
+5. Verify Availability
+6. Process Payment
+7. Confirm Booking
+
+### Output
+- Booking Confirmation
+
+---
+
+## FR-P-10 Cancel Booking
+
+### Description
+The system shall allow users to cancel bookings.
+
+### Output
+- Booking Cancelled
+- Refund Initiated (if applicable)
+
+---
+
+## FR-P-11 Booking History
+
+### Description
+The system shall display previous bookings.
+
+### Information
+- Arena Name
+- Date
+- Time
+- Amount Paid
+- Booking Status
+
+---
+
+## FR-P-12 Online Payments
+
+### Description
+The system shall support online payments.
+
+### Payment Methods
+- Stripe
+- JazzCash
+- EasyPaisa
+- Bank Transfer
+
+### Output
+- Payment Confirmation
+
+---
+
+## FR-P-13 Equipment Rental
+
+### Description
+The system shall allow users to rent sports equipment.
+
+### Examples
+- Cricket Kit
+- Football
+- Badminton Rackets
+- Tennis Rackets
+
+---
+
+## FR-P-14 Reviews & Ratings
+
+### Description
+The system shall allow users to submit reviews.
+
+### Features
+- Rate Arena
+- Write Review
+- Edit Review
+
+---
+
+## FR-P-15 AI Recommendations
+
+### Description
+The system shall recommend arenas based on:
+
+- Location
+- Sport Type
+- Budget
+- Previous Bookings
+- User Preferences
+
+---
+
+## FR-P-16 Notifications
+
+### Description
+The system shall notify users regarding:
+
+- Booking Confirmation
+- Payment Confirmation
+- Booking Reminder
+- Cancellation Updates
+
+---
+
+# 4. Arena Owner Functional Requirements
+
+## FR-O-01 Owner Registration
+
+The system shall allow arena owners to create accounts.
+
+---
+
+## FR-O-02 Owner Login
+
+The system shall authenticate arena owners.
+
+---
+
+## FR-O-03 Arena Registration
+
+The system shall allow owners to register sports arenas.
+
+### Information Required
+
+- Arena Name
+- Location
+- Description
+- Sports Offered
+- Images
+
+---
+
+## FR-O-04 Arena Management
+
+The system shall allow owners to:
+
+- Update Arena Details
+- Update Images
+- Update Sports Categories
+- Manage Availability
+
+---
+
+## FR-O-05 Court Management
+
+The system shall allow owners to:
+
+- Add Courts
+- Update Courts
+- Remove Courts
+
+---
+
+## FR-O-06 Slot Management
+
+The system shall allow owners to:
+
+- Create Slots
+- Edit Slots
+- Delete Slots
+- Disable Slots
+
+---
+
+## FR-O-07 Pricing Management
+
+The system shall allow owners to:
+
+- Set Pricing
+- Modify Pricing
+- Create Discounts
+
+---
+
+## FR-O-08 Equipment Management
+
+The system shall allow owners to:
+
+- Add Equipment
+- Edit Equipment
+- Remove Equipment
+- Set Rental Prices
+
+---
+
+## FR-O-09 Booking Monitoring
+
+The system shall display:
+
+- Upcoming Bookings
+- Completed Bookings
+- Cancelled Bookings
+
+---
+
+## FR-O-10 Revenue Reports
+
+The system shall generate:
+
+- Daily Revenue
+- Weekly Revenue
+- Monthly Revenue
+- Annual Revenue
+
+---
+
+## FR-O-11 Notifications
+
+The system shall notify owners regarding:
+
+- New Bookings
+- Booking Cancellations
+- Payment Status
+
+---
+
+# 5. Administrator Functional Requirements
+
+## FR-A-01 Administrator Login
+
+The system shall authenticate administrators.
+
+---
+
+## FR-A-02 User Management
+
+The administrator shall be able to:
+
+- View Users
+- Search Users
+- Update Users
+- Suspend Users
+
+---
+
+## FR-A-03 Arena Verification
+
+The administrator shall be able to:
+
+- Review Arena Requests
+- Approve Arenas
+- Reject Arenas
+
+---
+
+## FR-A-04 Arena Owner Management
+
+The administrator shall be able to:
+
+- View Owners
+- Verify Owners
+- Suspend Owners
+
+---
+
+## FR-A-05 Booking Monitoring
+
+The administrator shall monitor all bookings.
+
+---
+
+## FR-A-06 Review Moderation
+
+The administrator shall:
+
+- View Reviews
+- Remove Inappropriate Reviews
+
+---
+
+## FR-A-07 Complaint Management
+
+The administrator shall:
+
+- Receive Complaints
+- Investigate Complaints
+- Resolve Complaints
+
+---
+
+## FR-A-08 Reporting & Analytics
+
+The administrator shall generate:
+
+- User Reports
+- Arena Reports
+- Booking Reports
+- Revenue Reports
+
+---
+
+## FR-A-09 Platform Monitoring
+
+The administrator shall monitor:
+
+- System Health
+- User Activity
+- Booking Activity
+- Payment Activity
+
+---
+
+# 6. System Functional Requirements
+
+## FR-S-01 Distributed Locking
+
+The system shall use Redis locking to prevent double bookings.
+
+---
+
+## FR-S-02 Real-Time Updates
+
+The system shall use WebSockets for live slot synchronization.
+
+---
+
+## FR-S-03 Push Notifications
+
+The system shall use Firebase Cloud Messaging (FCM) for notifications.
+
+---
+
+## FR-S-04 Secure Authentication
+
+The system shall use JWT-based authentication.
+
+---
+
+## FR-S-05 Payment Verification
+
+The system shall verify all successful payment transactions before confirming bookings.
+
+---
+
+## FR-S-06 Audit Logging
+
+The system shall maintain logs of:
+
+- User Activity
+- Booking Activity
+- Payment Activity
+- Administrative Actions
+
+---
+
+End of Document
+
+
+
+04_NON_FUNCTIONAL_REQUIREMENTS.md
+# Arena Hub
+## Non-Functional Requirements Specification (NFRS)
+
+Version: 1.0
+
+---
+
+# 1. Introduction
+
+This document defines the non-functional requirements of Arena Hub. These requirements describe the quality attributes, constraints, and standards that the system must satisfy to ensure reliability, performance, security, scalability, and usability.
+
+---
+
+# 2. Performance Requirements
+
+## NFR-P-01 Response Time
+
+The system shall respond to user requests within:
+
+- Login: < 2 seconds
+- Arena Search: < 3 seconds
+- Booking Confirmation: < 5 seconds
+- Payment Processing: < 10 seconds
+- Dashboard Loading: < 3 seconds
+
+---
+
+## NFR-P-02 Concurrent Users
+
+The system shall support:
+
+- 1,000+ active users simultaneously
+- Multiple concurrent booking requests
+- Real-time slot updates without noticeable delay
+
+---
+
+## NFR-P-03 Real-Time Updates
+
+WebSocket communication shall update slot availability within:
+
+- 1 second after booking confirmation
+- 1 second after booking cancellation
+
+---
+
+# 3. Scalability Requirements
+
+## NFR-S-01 Horizontal Scalability
+
+The backend architecture shall support scaling through:
+
+- Multiple FastAPI instances
+- Load balancing
+- Cloud deployment
+
+---
+
+## NFR-S-02 Database Scalability
+
+MongoDB Atlas shall support:
+
+- Growing user base
+- Increasing booking records
+- Large arena datasets
+
+---
+
+# 4. Security Requirements
+
+## NFR-SEC-01 Authentication
+
+The system shall use:
+
+- JWT Authentication
+- Secure Login Sessions
+- Token Expiration
+
+---
+
+## NFR-SEC-02 Password Security
+
+Passwords shall:
+
+- Be hashed using BCrypt
+- Never be stored in plain text
+
+---
+
+## NFR-SEC-03 Secure Communication
+
+All communication shall use:
+
+- HTTPS
+- SSL/TLS Encryption
+
+---
+
+## NFR-SEC-04 Role-Based Access Control
+
+Access shall be restricted based on:
+
+- Player Role
+- Arena Owner Role
+- Administrator Role
+
+---
+
+## NFR-SEC-05 Payment Security
+
+The system shall:
+
+- Never store card information
+- Use secure payment gateways
+- Verify all transactions
+
+---
+
+# 5. Reliability Requirements
+
+## NFR-R-01 System Availability
+
+The system shall maintain:
+
+- 99% uptime or higher
+
+---
+
+## NFR-R-02 Booking Reliability
+
+The booking system shall:
+
+- Prevent double bookings
+- Maintain transaction consistency
+- Handle concurrent requests safely
+
+---
+
+## NFR-R-03 Data Backup
+
+The database shall be backed up:
+
+- Daily backups
+- Automatic cloud recovery support
+
+---
+
+# 6. Usability Requirements
+
+## NFR-U-01 User-Friendly Interface
+
+The system shall provide:
+
+- Simple navigation
+- Clean user interface
+- Easy booking process
+
+---
+
+## NFR-U-02 Mobile Compatibility
+
+The mobile application shall support:
+
+- Android Devices
+- iOS Devices
+
+---
+
+## NFR-U-03 Accessibility
+
+The system shall provide:
+
+- Readable fonts
+- Responsive layouts
+- Clear error messages
+
+---
+
+# 7. Maintainability Requirements
+
+## NFR-M-01 Modular Architecture
+
+The system shall be developed using:
+
+- Independent modules
+- Service-based architecture
+- Reusable components
+
+---
+
+## NFR-M-02 Code Quality
+
+Development shall follow:
+
+- Coding standards
+- Documentation standards
+- Version control practices
+
+---
+
+# 8. Compatibility Requirements
+
+## NFR-C-01 Browser Compatibility
+
+Web Dashboard shall support:
+
+- Google Chrome
+- Microsoft Edge
+- Mozilla Firefox
+- Safari
+
+---
+
+## NFR-C-02 Device Compatibility
+
+Mobile App shall support:
+
+- Android 10+
+- iOS 15+
+
+---
+
+# 9. Availability Requirements
+
+The system shall be available:
+
+- 24/7 access
+- Cloud-hosted deployment
+- Automatic recovery mechanisms
+
+---
+
+# 10. Logging & Monitoring Requirements
+
+The system shall maintain logs for:
+
+- User Activity
+- Booking Activity
+- Payment Activity
+- System Errors
+- Administrative Actions
+
+---
+
+# 11. Notification Requirements
+
+Push notifications shall be delivered for:
+
+- Booking Confirmation
+- Payment Confirmation
+- Booking Cancellation
+- Booking Reminders
+
+using Firebase Cloud Messaging (FCM).
+
+---
+
+# 12. Future Expansion Requirements
+
+The architecture shall support future integration of:
+
+- Matchmaking System
+- Tournament Management
+- Team Management
+- AI Chatbot
+- Multi-Language Support
+- Advanced Analytics
+
+---
+
+End of Document
+
+
+
+
+05_USER_ROLES_AND_PERMISSIONS.md
+# Arena Hub
+## User Roles and Permissions
+
+Version: 1.0
+
+---
+
+# 1. Introduction
+
+This document defines all user roles within Arena Hub and specifies the permissions available to each role. The system follows a Role-Based Access Control (RBAC) model to ensure that users can only access features relevant to their responsibilities.
+
+---
+
+# 2. System Roles
+
+Arena Hub consists of three primary roles:
+
+1. Player
+2. Arena Owner
+3. Administrator
+
+---
+
+# 3. Role Hierarchy
+
+```text
+
+Administrator
+      |
+      |
+Arena Owner
+      |
+      |
+   Player
+
+```
+
+Administrator has the highest level of access.
+
+Arena Owners can only manage their own arenas and related data.
+
+Players can only manage their own accounts, bookings, and activities.
+
+---
+
+# 4. Player Permissions
+
+## Account Management
+
+| Permission | Access |
+|------------|---------|
+| Register Account | Yes |
+| Login | Yes |
+| Logout | Yes |
+| Reset Password | Yes |
+| Update Profile | Yes |
+| Delete Account | Yes |
+
+---
+
+## Arena Discovery
+
+| Permission | Access |
+|------------|---------|
+| Search Arenas | Yes |
+| NLP Search | Yes |
+| Filter Arenas | Yes |
+| View Arena Details | Yes |
+| View Available Slots | Yes |
+| View Arena Reviews | Yes |
+
+---
+
+## Booking Management
+
+| Permission | Access |
+|------------|---------|
+| Book Slot | Yes |
+| Cancel Booking | Yes |
+| View Booking History | Yes |
+| View Booking Status | Yes |
+
+---
+
+## Payment Management
+
+| Permission | Access |
+|------------|---------|
+| Make Payment | Yes |
+| View Payment History | Yes |
+| Download Receipt | Yes |
+
+---
+
+## Equipment Rental
+
+| Permission | Access |
+|------------|---------|
+| View Equipment | Yes |
+| Rent Equipment | Yes |
+| Cancel Equipment Rental | Yes |
+
+---
+
+## Reviews & Ratings
+
+| Permission | Access |
+|------------|---------|
+| Rate Arena | Yes |
+| Write Review | Yes |
+| Edit Review | Yes |
+| Delete Own Review | Yes |
+
+---
+
+## Notifications
+
+| Permission | Access |
+|------------|---------|
+| Receive Notifications | Yes |
+| Manage Notification Preferences | Yes |
+
+---
+
+## AI Features
+
+| Permission | Access |
+|------------|---------|
+| Receive Arena Recommendations | Yes |
+| NLP Search Queries | Yes |
+
+---
+
+# 5. Arena Owner Permissions
+
+## Account Management
+
+| Permission | Access |
+|------------|---------|
+| Register Owner Account | Yes |
+| Login | Yes |
+| Logout | Yes |
+| Update Profile | Yes |
+
+---
+
+## Arena Management
+
+| Permission | Access |
+|------------|---------|
+| Register Arena | Yes |
+| Edit Arena Details | Yes |
+| Upload Arena Images | Yes |
+| Update Arena Information | Yes |
+| Delete Arena | Yes |
+
+---
+
+## Court Management
+
+| Permission | Access |
+|------------|---------|
+| Add Court | Yes |
+| Update Court | Yes |
+| Delete Court | Yes |
+
+---
+
+## Slot Management
+
+| Permission | Access |
+|------------|---------|
+| Create Slots | Yes |
+| Update Slots | Yes |
+| Disable Slots | Yes |
+| Delete Slots | Yes |
+
+---
+
+## Pricing Management
+
+| Permission | Access |
+|------------|---------|
+| Set Pricing | Yes |
+| Update Pricing | Yes |
+| Create Discounts | Yes |
+
+---
+
+## Equipment Management
+
+| Permission | Access |
+|------------|---------|
+| Add Equipment | Yes |
+| Update Equipment | Yes |
+| Delete Equipment | Yes |
+| Set Rental Price | Yes |
+
+---
+
+## Booking Management
+
+| Permission | Access |
+|------------|---------|
+| View Bookings | Yes |
+| View Booking Details | Yes |
+| View Booking Status | Yes |
+
+---
+
+## Revenue Management
+
+| Permission | Access |
+|------------|---------|
+| View Revenue Reports | Yes |
+| View Payment Records | Yes |
+| View Earnings Analytics | Yes |
+
+---
+
+## Notifications
+
+| Permission | Access |
+|------------|---------|
+| Receive Booking Alerts | Yes |
+| Receive Cancellation Alerts | Yes |
+| Receive Payment Alerts | Yes |
+
+---
+
+# 6. Administrator Permissions
+
+## User Management
+
+| Permission | Access |
+|------------|---------|
+| View Users | Yes |
+| Search Users | Yes |
+| Update Users | Yes |
+| Suspend Users | Yes |
+| Reactivate Users | Yes |
+| Delete Users | Yes |
+
+---
+
+## Arena Owner Management
+
+| Permission | Access |
+|------------|---------|
+| View Arena Owners | Yes |
+| Verify Owners | Yes |
+| Suspend Owners | Yes |
+| Reactivate Owners | Yes |
+
+---
+
+## Arena Verification
+
+| Permission | Access |
+|------------|---------|
+| Review Arena Applications | Yes |
+| Approve Arena | Yes |
+| Reject Arena | Yes |
+
+---
+
+## Booking Administration
+
+| Permission | Access |
+|------------|---------|
+| View All Bookings | Yes |
+| Monitor Booking Activity | Yes |
+| Investigate Booking Issues | Yes |
+
+---
+
+## Review Moderation
+
+| Permission | Access |
+|------------|---------|
+| View Reviews | Yes |
+| Remove Reviews | Yes |
+| Moderate Content | Yes |
+
+---
+
+## Complaint Management
+
+| Permission | Access |
+|------------|---------|
+| Receive Complaints | Yes |
+| Investigate Complaints | Yes |
+| Resolve Complaints | Yes |
+
+---
+
+## Reporting & Analytics
+
+| Permission | Access |
+|------------|---------|
+| User Reports | Yes |
+| Booking Reports | Yes |
+| Revenue Reports | Yes |
+| Arena Reports | Yes |
+| System Reports | Yes |
+
+---
+
+## Platform Monitoring
+
+| Permission | Access |
+|------------|---------|
+| Monitor System Health | Yes |
+| Monitor User Activity | Yes |
+| Monitor Payment Activity | Yes |
+| Monitor Booking Activity | Yes |
+
+---
+
+# 7. Permission Matrix
+
+| Feature | Player | Arena Owner | Admin |
+|----------|---------|-------------|---------|
+| Register | ✓ | ✓ | ✗ |
+| Login | ✓ | ✓ | ✓ |
+| Search Arena | ✓ | ✗ | ✓ |
+| Book Slot | ✓ | ✗ | ✗ |
+| Make Payment | ✓ | ✗ | ✗ |
+| Rent Equipment | ✓ | ✗ | ✗ |
+| Write Review | ✓ | ✗ | ✗ |
+| Manage Arena | ✗ | ✓ | ✓ |
+| Manage Courts | ✗ | ✓ | ✓ |
+| Manage Slots | ✗ | ✓ | ✓ |
+| Manage Equipment | ✗ | ✓ | ✓ |
+| View Revenue | ✗ | ✓ | ✓ |
+| Verify Arena | ✗ | ✗ | ✓ |
+| Manage Users | ✗ | ✗ | ✓ |
+| Suspend Accounts | ✗ | ✗ | ✓ |
+| Generate Reports | ✗ | ✓ | ✓ |
+
+---
+
+# 8. Access Control Rules
+
+1. Players cannot access Owner or Admin dashboards.
+2. Arena Owners cannot access Administrator functions.
+3. Administrators have full system-level access.
+4. Owners can only manage their own arenas.
+5. Players can only access their own bookings and profiles.
+6. All API requests must validate user roles before processing.
+7. Unauthorized requests must return HTTP 403 (Forbidden).
+
+---
+
+End of Document
+
+
+
+06_PLAYER_MODULE.md
+# Arena Hub
+## Player Module Specification
+
+Version: 1.0
+
+---
+
+# 1. Module Overview
+
+The Player Module is the core module of Arena Hub. It is designed for players who want to discover sports arenas, check availability, make bookings, rent equipment, complete payments, receive notifications, and manage their sports activities through the mobile application.
+
+This module will be available through the React Native mobile application for Android and iOS devices.
+
+---
+
+# 2. Objectives
+
+The Player Module aims to:
+
+- Allow users to create and manage accounts.
+- Allow users to search and discover sports arenas.
+- Provide real-time slot availability.
+- Enable online booking and payment.
+- Prevent booking conflicts.
+- Support equipment rentals.
+- Provide AI-powered arena recommendations.
+- Allow users to rate and review arenas.
+- Provide booking notifications and reminders.
+
+---
+
+# 3. Player Registration
+
+## Description
+
+New users can create an account to access Arena Hub services.
+
+### Required Information
+
+- Full Name
+- Email Address
+- Phone Number
+- Password
+
+### Validation Rules
+
+- Email must be unique.
+- Phone number must be unique.
+- Password must meet security requirements.
+- All fields are mandatory.
+
+### Process Flow
+
+1. User enters registration details.
+2. System validates input.
+3. User record is created.
+4. Verification email/OTP is sent.
+5. Account is activated.
+
+---
+
+# 4. Authentication Module
+
+## Login
+
+### Inputs
+
+- Email
+- Password
+
+### Outputs
+
+- JWT Access Token
+- Refresh Token
+- User Session
+
+### Features
+
+- Login
+- Logout
+- Forgot Password
+- Reset Password
+- Session Management
+
+---
+
+# 5. User Profile Management
+
+## Description
+
+Users can manage personal information.
+
+### Editable Information
+
+- Profile Picture
+- Full Name
+- Phone Number
+- Bio
+- Preferred Sports
+- Preferred Locations
+
+### Features
+
+- View Profile
+- Edit Profile
+- Change Password
+- Delete Account
+
+---
+
+# 6. Arena Discovery Module
+
+## Purpose
+
+Allows users to discover sports facilities.
+
+### Search Filters
+
+- Arena Name
+- City
+- Area
+- Sport Type
+- Price Range
+- Rating
+- Availability
+
+### Supported Sports
+
+- Cricket
+- Football
+- Badminton
+- Tennis
+- Basketball
+- Volleyball
+- Futsal
+
+---
+
+# 7. NLP Search Module
+
+## Purpose
+
+Allows users to search using natural language.
+
+### Example Queries
+
+- Best football ground near me
+- Cheap cricket arena in Lahore
+- Indoor badminton court available tonight
+- Highest rated futsal arena
+
+### Process
+
+1. User enters query.
+2. NLP engine extracts keywords.
+3. Search criteria are generated.
+4. Arenas are ranked.
+5. Results are returned.
+
+---
+
+# 8. Arena Details Module
+
+## Information Displayed
+
+### Basic Information
+
+- Arena Name
+- Description
+- Address
+- Contact Information
+
+### Media
+
+- Images
+- Gallery
+
+### Sports Information
+
+- Supported Sports
+- Available Courts
+
+### Reviews
+
+- Average Rating
+- User Reviews
+
+### Pricing
+
+- Hourly Rates
+- Equipment Charges
+
+---
+
+# 9. Real-Time Slot Availability Module
+
+## Description
+
+Displays live booking status.
+
+### Slot Status Types
+
+- Available
+- Reserved
+- Unavailable
+- Under Maintenance
+
+### Technology
+
+- WebSockets
+
+### Benefits
+
+- Live Updates
+- No Page Refresh
+- Accurate Availability
+
+---
+
+# 10. Booking Module
+
+## Purpose
+
+Allows users to reserve sports arenas.
+
+### Booking Flow
+
+1. Select Arena
+2. Select Court
+3. Select Date
+4. Select Time Slot
+5. Verify Availability
+6. Acquire Redis Lock
+7. Complete Payment
+8. Confirm Booking
+
+### Booking Information Stored
+
+- Booking ID
+- User ID
+- Arena ID
+- Court ID
+- Date
+- Time
+- Amount Paid
+- Booking Status
+
+---
+
+# 11. Booking History Module
+
+## Features
+
+- View Upcoming Bookings
+- View Completed Bookings
+- View Cancelled Bookings
+- Download Receipts
+
+### Booking Details
+
+- Arena Name
+- Court
+- Date
+- Time
+- Amount
+- Status
+
+---
+
+# 12. Booking Cancellation Module
+
+## Features
+
+- Cancel Booking
+- Request Refund
+
+### Cancellation Rules
+
+- Cancellation allowed before booking start time.
+- Refund policy depends on arena settings.
+
+---
+
+# 13. Payment Module
+
+## Supported Methods
+
+### Stripe
+
+- Credit Card
+- Debit Card
+
+### JazzCash
+
+- Mobile Wallet
+
+### EasyPaisa
+
+- Mobile Wallet
+
+### Bank Transfer
+
+- Direct Bank Transfer
+
+---
+
+## Payment Flow
+
+1. User selects payment method.
+2. Payment gateway processes transaction.
+3. Transaction verified.
+4. Booking confirmed.
+5. Receipt generated.
+
+---
+
+# 14. Equipment Rental Module
+
+## Purpose
+
+Allows users to rent sports equipment.
+
+### Equipment Examples
+
+- Football
+- Cricket Bat
+- Cricket Kit
+- Tennis Racket
+- Badminton Racket
+- Volleyball
+
+### Features
+
+- View Equipment
+- Check Availability
+- Rent Equipment
+- Add Equipment to Booking
+
+---
+
+# 15. Reviews & Ratings Module
+
+## Features
+
+### Ratings
+
+- 1 Star
+- 2 Stars
+- 3 Stars
+- 4 Stars
+- 5 Stars
+
+### Reviews
+
+Users can:
+
+- Write Review
+- Edit Review
+- Delete Own Review
+
+---
+
+# 16. AI Recommendation Module
+
+## Purpose
+
+Provide personalized arena suggestions.
+
+### Recommendation Factors
+
+- User Location
+- Preferred Sports
+- Previous Bookings
+- Budget
+- Ratings
+
+### Outputs
+
+- Recommended Arenas
+- Suggested Time Slots
+- Nearby Alternatives
+
+---
+
+# 17. Notification Module
+
+## Technology
+
+Firebase Cloud Messaging (FCM)
+
+### Notification Types
+
+- Booking Confirmed
+- Payment Successful
+- Booking Reminder
+- Booking Cancelled
+- Arena Updates
+
+---
+
+# 18. Error Handling
+
+### Common Errors
+
+#### Arena Not Found
+
+Message:
+"Arena not available."
+
+#### Slot Already Booked
+
+Message:
+"Selected slot has already been reserved."
+
+#### Payment Failed
+
+Message:
+"Payment could not be processed."
+
+#### Network Error
+
+Message:
+"Please check your internet connection."
+
+---
+
+# 19. Security Requirements
+
+- JWT Authentication
+- HTTPS Communication
+- Secure Password Storage
+- Role-Based Access Control
+- Input Validation
+
+---
+
+# 20. Player Dashboard Summary
+
+### Home Screen
+
+- Search Bar
+- Recommended Arenas
+- Nearby Arenas
+- Recent Bookings
+
+### Booking Screen
+
+- Available Slots
+- Court Selection
+- Payment
+
+### Profile Screen
+
+- User Information
+- Booking History
+- Reviews
+- Settings
+
+---
+
+End of Document
+
+
+
+
+
+
+Yes, these are good real-world requirements and should be added to your payment and booking policy.
+
+Updated Payment Flow
+When a user books a slot, the system should provide two payment options:
+
+Option 1: Full Payment
+
+User pays 100% booking amount online.
+
+Booking is confirmed immediately.
+
+Receipt is generated automatically.
+
+Option 2: Advance Payment
+
+User pays only a predefined advance amount (e.g., 20%, 30%, or 50%).
+
+Remaining amount is paid at the arena on arrival.
+
+Booking is confirmed immediately after advance payment.
+
+Receipt shows:
+
+Total Amount
+
+Advance Paid
+
+Remaining Balance
+
+Payment Approval
+Similar to Daewoo and Faisal Movers:
+
+User completes payment through Stripe, JazzCash, EasyPaisa, or Bank Transfer.
+
+Payment gateway confirms transaction automatically.
+
+System automatically approves booking.
+
+Digital receipt is generated instantly.
+
+No manual approval is required.
+
+Arena Owner Payment Settings
+Arena owners should be able to configure:
+
+Advance Payment Percentage
+
+Full Payment Requirement (Optional)
+
+Refund Policy
+
+Cancellation Policy
+
+Example:
+
+Arena A
+Advance Required: 30%
+
+OR
+
+Full Payment Required: Yes
+Refund Policy
+I recommend making it configurable by the arena owner.
+
+Default Policy
+Cancellation > 6 hours before booking
+→ Refund Allowed
+
+Cancellation < 6 hours before booking
+→ No Refund
+Custom Policy
+Arena Owner can set:
+
+24 Hours Before = 100% Refund
+
+12 Hours Before = 50% Refund
+
+6 Hours Before = No Refund
+or
+
+No Refunds Allowed
+Additional Database Fields
+In Booking Collection:
+
+{
+  "paymentType": "FULL | ADVANCE",
+  "totalAmount": 5000,
+  "advanceAmount": 1500,
+  "remainingAmount": 3500,
+  "paymentStatus": "PAID | PARTIALLY_PAID",
+  "refundEligible": true
+}
+In Arena Collection:
+
+{
+  "advancePercentage": 30,
+  "refundPolicy": {
+    "refundBeforeHours": 6,
+    "refundPercentage": 100
+  }
+}
+This approach is practical for Pakistan's sports arenas because many owners prefer receiving a booking commitment through an advance payment while allowing the remaining amount to be paid on-site.

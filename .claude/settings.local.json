@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /d/ArenaHub status)",
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -Command \"irm https://astral.sh/uv/install.ps1 | iex\")",
+      "PowerShell($env:Path = \"C:\\\\Users\\\\HP\\\\.local\\\\bin;$env:Path\"; uv python install 3.12; uv python list --only-installed)"
+    ]
+  }
+}
