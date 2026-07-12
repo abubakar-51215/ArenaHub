@@ -24,7 +24,6 @@
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" height="42" alt="Tailwind CSS"/>
 </p>
 
-**🚧 Status: In active development — Sprint 2 (Authentication)**
 
 </div>
 
@@ -60,12 +59,6 @@ real-time digital system.
   equipment, and reports through a **Next.js web dashboard**.
 - **Administrators** verify arenas, monitor bookings and payments, handle
   complaints, and view platform-wide analytics through a dedicated dashboard.
-
-Developed as a two-person **Final Year Project** on an 18-week / 5-sprint plan.
-The full specification lives in [`docs/`](docs/); the authoritative rulebook is
-[`docs/PROJECT_GUIDELINES.md`](docs/PROJECT_GUIDELINES.md) (it wins on any
-conflict), and the execution plan is
-[`MASTER_DEVELOPMENT_PLAN.md`](MASTER_DEVELOPMENT_PLAN.md).
 
 ---
 
