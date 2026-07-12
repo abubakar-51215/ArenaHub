@@ -5,6 +5,49 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 1: Expo mobile scaffold + CI
+
+### Completed
+- **Master development plan** authored and frozen as the project's source of
+  truth at `MASTER_DEVELOPMENT_PLAN.md` (repo root) — full project, exec-level,
+  two-person tracks A/B; drives the remaining Sprint 1 items and Sprints 2-5.
+  Read-only from here on except for genuine requirement changes; progress is
+  tracked in this log.
+- **Expo mobile app** scaffolded at `frontend/mobile` — Expo SDK 54,
+  expo-router, TypeScript 5.9, React 19.1, RN 0.81. Added TanStack Query v5 +
+  Zustand v5. Typed API client (`lib/config.ts`, `lib/api.ts`) around the
+  standard response envelope; `QueryClientProvider` wired into
+  `app/_layout.tsx`.
+- **Health screen** (`app/health.tsx`) calls `GET /api/v1/health` via TanStack
+  Query and renders API/PostgreSQL/Redis statuses; linked from the home tab.
+  `EXPO_PUBLIC_API_URL` in `.env`(+`.env.example`); mobile `.gitignore` now
+  ignores `.env` but keeps `.env.example`. App renamed to ArenaHub
+  (`arenahub` slug/scheme).
+- **CI** added under `.github/workflows/`: `backend.yml` (uv sync → ruff →
+  black --check → mypy → alembic up→down→up against Postgres 18 + Redis 7
+  service containers → pytest) and `frontend.yml` (mobile job: npm ci → tsc →
+  lint → `expo export` web build). Path-filtered per area.
+- **Verified:** `tsc --noEmit` + `expo lint` clean; `expo export --platform
+  web` bundles all routes incl. `/health` (whole graph incl. TanStack Query
+  compiles).
+
+### Challenges
+- `create-expo-app@latest` installs **Expo SDK 57** (RN 0.86, TS 6, needs a
+  newer Node), but guidelines pin **SDK 54** for Node 20. Re-scaffolded from
+  the `expo-template-default@sdk-54` npm tag to hold the pin — no version bump,
+  no ADR needed.
+- The scaffolder's interactive "skip git init?" prompt left a nested `.git`
+  inside `frontend/mobile`; removed it. Also deleted the template's
+  `CLAUDE.md`/`AGENTS.md`/`.claude` (project no-CLAUDE.md rule).
+
+### Next
+- Umer: scaffold `frontend/web` (Next.js 15) and add its job to `frontend.yml`.
+- Open "Web Scaffold" / "Mobile Scaffold" GitHub Issues; PR `abubakar` → `main`;
+  tag **v0.1.0** "Scaffold".
+- Then Sprint 2: auth (registration + OTP, JWT refresh rotation, lockout).
+
+---
+
 ## 2026-07-12 — Sprint 1: Backend foundation + core database schema
 
 ### Completed
