@@ -283,7 +283,7 @@ main  ←  abubakar / umer  (personal dev branches)  ←  optional feature/*
 | **Abubakar Amir** | Backend &amp; Mobile — auth, booking engine, payments, mobile app |
 | **Muhammad Umer** | Web &amp; Management — dashboards, arena/court, admin, reports |
 
-Final Year Project — **Air University**.
+
 
 ---
 
