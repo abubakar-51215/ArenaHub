@@ -5,6 +5,94 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 1: Next.js web scaffold + integration (Umer)
+
+### Completed
+- **Next.js web app** scaffolded at `frontend/web` on the `umer` branch —
+  Next.js 15.5 App Router, React 19.1, TypeScript strict, Tailwind 4, ESLint +
+  Prettier (with `eslint-config-prettier`), shadcn/ui (radix base, nova
+  preset; button/card/badge), TanStack Query v5, Zustand v5 — all matching the
+  locked versions.
+- **Structure per guidelines:** route groups `(auth)/login`, `owner/`,
+  `admin/` (placeholder pages), `components/ui` + `components/features`,
+  `services/ hooks/ lib/ store/ types/ utils/ config/`, pass-through
+  `middleware.ts` scoped to `/owner` + `/admin` (role guards land in Sprint 2).
+- **Health page** (`app/health/page.tsx`) calls `GET /api/v1/health` through
+  the typed envelope API client (`services/api.ts`, `config/index.ts`) via
+  TanStack Query; linked from a minimal ArenaHub home page.
+  `NEXT_PUBLIC_API_URL` + `NEXT_PUBLIC_MAP_TILE_URL` in `.env`(+example).
+- **CI:** added the `web` job to `frontend.yml` (npm ci → typecheck → lint →
+  format:check → build).
+- **Integration flow (agreed):** `umer` → merge into `abubakar` (integration
+  branch) → test combined → PR `abubakar` → `main`. Web commit authored as
+  Umer (per-commit identity; repo config untouched).
+- **Verified live end-to-end:** backend `/api/v1/health` returned fully
+  healthy (API/DB/Redis ok) against real Postgres + Redis; `next dev` served
+  `/`, `/health`, `/login`, `/owner`, `/admin` all HTTP 200; `tsc`, eslint,
+  prettier, `next build` all clean.
+
+### Challenges
+- `create-next-app@latest` would install Next 16; pinned with
+  `create-next-app@15` (15.5.20) — same version-pin trap as Expo SDK 57.
+- New shadcn CLI changed flags: `-b` now means component library
+  (`radix`/`base`), themes are presets (`-p nova`); `-b neutral` no longer
+  valid.
+- The stale `umer` branch (at the old scaffold commit) was fast-forwarded onto
+  `main` before starting.
+
+### Next
+- Re-run the combined quality gates on `abubakar` (backend + web + mobile),
+  push both branches.
+- Open PR `abubakar` → `main` (**merge commit, not squash** — preserves
+  Umer's authorship); tag **v0.1.0** "Scaffold" after merge.
+- Then Sprint 2: auth (registration + OTP, JWT refresh rotation, lockout) on
+  Track A; arena/court/pricing + web auth UI on Track B.
+
+---
+
+## 2026-07-13 — Sprint 1: Expo mobile scaffold + CI
+
+### Completed
+- **Master development plan** authored and frozen as the project's source of
+  truth at `MASTER_DEVELOPMENT_PLAN.md` (repo root) — full project, exec-level,
+  two-person tracks A/B; drives the remaining Sprint 1 items and Sprints 2-5.
+  Read-only from here on except for genuine requirement changes; progress is
+  tracked in this log.
+- **Expo mobile app** scaffolded at `frontend/mobile` — Expo SDK 54,
+  expo-router, TypeScript 5.9, React 19.1, RN 0.81. Added TanStack Query v5 +
+  Zustand v5. Typed API client (`lib/config.ts`, `lib/api.ts`) around the
+  standard response envelope; `QueryClientProvider` wired into
+  `app/_layout.tsx`.
+- **Health screen** (`app/health.tsx`) calls `GET /api/v1/health` via TanStack
+  Query and renders API/PostgreSQL/Redis statuses; linked from the home tab.
+  `EXPO_PUBLIC_API_URL` in `.env`(+`.env.example`); mobile `.gitignore` now
+  ignores `.env` but keeps `.env.example`. App renamed to ArenaHub
+  (`arenahub` slug/scheme).
+- **CI** added under `.github/workflows/`: `backend.yml` (uv sync → ruff →
+  black --check → mypy → alembic up→down→up against Postgres 18 + Redis 7
+  service containers → pytest) and `frontend.yml` (mobile job: npm ci → tsc →
+  lint → `expo export` web build). Path-filtered per area.
+- **Verified:** `tsc --noEmit` + `expo lint` clean; `expo export --platform
+  web` bundles all routes incl. `/health` (whole graph incl. TanStack Query
+  compiles).
+
+### Challenges
+- `create-expo-app@latest` installs **Expo SDK 57** (RN 0.86, TS 6, needs a
+  newer Node), but guidelines pin **SDK 54** for Node 20. Re-scaffolded from
+  the `expo-template-default@sdk-54` npm tag to hold the pin — no version bump,
+  no ADR needed.
+- The scaffolder's interactive "skip git init?" prompt left a nested `.git`
+  inside `frontend/mobile`; removed it. Also deleted the template's
+  `CLAUDE.md`/`AGENTS.md`/`.claude` (project no-CLAUDE.md rule).
+
+### Next
+- Umer: scaffold `frontend/web` (Next.js 15) and add its job to `frontend.yml`.
+- Open "Web Scaffold" / "Mobile Scaffold" GitHub Issues; PR `abubakar` → `main`;
+  tag **v0.1.0** "Scaffold".
+- Then Sprint 2: auth (registration + OTP, JWT refresh rotation, lockout).
+
+---
+
 ## 2026-07-12 — Sprint 1: Backend foundation + core database schema
 
 ### Completed
