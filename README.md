@@ -7,8 +7,9 @@ Admins manage everything on a **Next.js** web dashboard. Backed by
 
 This is a two-person Final Year Project on an 18-week / 5-sprint plan. The full
 specification lives in [`docs/`](docs/) (15 files). Deliberate deviations from
-the spec and all project rules are recorded in [`CLAUDE.md`](CLAUDE.md) — read
-it first; when it conflicts with the docs, **CLAUDE.md wins**.
+the spec and all project rules are recorded in
+[`docs/PROJECT_GUIDELINES.md`](docs/PROJECT_GUIDELINES.md) — read it first;
+when it conflicts with the docs, **PROJECT_GUIDELINES.md wins**.
 
 Architecture decisions are documented as ADRs in
 [`docs/architecture-decisions/`](docs/architecture-decisions/).
@@ -31,7 +32,7 @@ Architecture decisions are documented as ADRs in
 
 > **No Docker until the final sprint.** Local dev runs against natively
 > installed PostgreSQL, Memurai, a uv-managed Python venv, and the JS dev
-> servers directly. See CLAUDE.md deviation #1.
+> servers directly. See PROJECT_GUIDELINES.md deviation #1.
 
 ---
 

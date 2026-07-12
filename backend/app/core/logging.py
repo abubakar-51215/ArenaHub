@@ -1,7 +1,8 @@
 """structlog configuration — pretty console in dev, JSON in prod.
 
 Configure once at startup via `configure_logging()`; every module then does
-`import structlog` and `structlog.get_logger()` (CLAUDE.md deviation #16).
+`import structlog` and `structlog.get_logger()` (docs/PROJECT_GUIDELINES.md
+deviation #16).
 """
 
 import logging

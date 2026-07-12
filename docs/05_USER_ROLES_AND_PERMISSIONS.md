@@ -2,7 +2,7 @@
 
 **Version:** 2.0
 
-> **Note:** Owner Staff sub-accounts (Manager, Staff, Viewer) are intentionally deferred to Sprint 5 as a stretch goal. The MVP supports a single Arena Owner account per arena; if the owner has hired staff to help, those staff use the owner account itself. See `CLAUDE.md` Deviation #10 for the authoritative project decision.
+> **Note:** Owner Staff sub-accounts (Manager, Staff, Viewer) are intentionally deferred to Sprint 5 as a stretch goal. The MVP supports a single Arena Owner account per arena; if the owner has hired staff to help, those staff use the owner account itself. See `PROJECT_GUIDELINES.md` Deviation #10 for the authoritative project decision.
 
 ---
 

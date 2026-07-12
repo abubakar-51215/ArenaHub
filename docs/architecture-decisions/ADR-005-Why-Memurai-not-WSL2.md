@@ -6,7 +6,7 @@
 ArenaHub needs Redis for distributed locking (booking concurrency), caching,
 rate limiting, and refresh-token replay tracking. Redis has no official native
 Windows build. The team develops on Windows 11. Options were: run Redis in
-WSL2, run it in Docker (deferred until the final sprint per CLAUDE.md
+WSL2, run it in Docker (deferred until the final sprint per PROJECT_GUIDELINES.md
 deviation #1), or use a Windows-native Redis-compatible server.
 
 ## Decision
