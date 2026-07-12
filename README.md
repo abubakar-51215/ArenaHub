@@ -121,9 +121,11 @@ is accepted.
 
 ### Branching during the FYP
 Each teammate works on their own branch (`abubakar`, `umer`), branched from
-`main`, and rebases on `main` frequently to stay in sync. Work merges into
-`main` (squash-merge preferred) once it's demo-ready and review + hooks pass,
-so `main` always reflects the last working milestone. Larger pieces can use a
+`main`, and rebases on `main` frequently to stay in sync. Completed, tested
+features reach `main` via a **GitHub Pull Request** (`abubakar → main` or
+`umer → main`, squash-merge preferred) — even when the author merges their
+own PR — so every feature has a reviewable, revertable history and `main`
+always reflects the last working milestone. Larger pieces can use a
 short-lived `feature/*` branch off a personal branch.
 
 ---
