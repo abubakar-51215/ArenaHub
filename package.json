@@ -13,7 +13,7 @@
     "makemigration": "cd backend && uv run alembic revision --autogenerate -m",
     "seed": "cd backend && uv run python -m scripts.seed",
     "test": "cd backend && uv run pytest",
-    "test:cov": "cd backend && uv run pytest --cov=app --cov-report=term-missing",
+    "test:cov": "cd backend && uv run coverage run -m pytest && uv run coverage report",
     "lint": "npm run lint:backend && npm run lint:web",
     "lint:backend": "cd backend && uv run ruff check .",
     "lint:web": "cd frontend/web && npm run lint",
