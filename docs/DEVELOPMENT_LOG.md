@@ -5,6 +5,51 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 1: Next.js web scaffold + integration (Umer)
+
+### Completed
+- **Next.js web app** scaffolded at `frontend/web` on the `umer` branch —
+  Next.js 15.5 App Router, React 19.1, TypeScript strict, Tailwind 4, ESLint +
+  Prettier (with `eslint-config-prettier`), shadcn/ui (radix base, nova
+  preset; button/card/badge), TanStack Query v5, Zustand v5 — all matching the
+  locked versions.
+- **Structure per guidelines:** route groups `(auth)/login`, `owner/`,
+  `admin/` (placeholder pages), `components/ui` + `components/features`,
+  `services/ hooks/ lib/ store/ types/ utils/ config/`, pass-through
+  `middleware.ts` scoped to `/owner` + `/admin` (role guards land in Sprint 2).
+- **Health page** (`app/health/page.tsx`) calls `GET /api/v1/health` through
+  the typed envelope API client (`services/api.ts`, `config/index.ts`) via
+  TanStack Query; linked from a minimal ArenaHub home page.
+  `NEXT_PUBLIC_API_URL` + `NEXT_PUBLIC_MAP_TILE_URL` in `.env`(+example).
+- **CI:** added the `web` job to `frontend.yml` (npm ci → typecheck → lint →
+  format:check → build).
+- **Integration flow (agreed):** `umer` → merge into `abubakar` (integration
+  branch) → test combined → PR `abubakar` → `main`. Web commit authored as
+  Umer (per-commit identity; repo config untouched).
+- **Verified live end-to-end:** backend `/api/v1/health` returned fully
+  healthy (API/DB/Redis ok) against real Postgres + Redis; `next dev` served
+  `/`, `/health`, `/login`, `/owner`, `/admin` all HTTP 200; `tsc`, eslint,
+  prettier, `next build` all clean.
+
+### Challenges
+- `create-next-app@latest` would install Next 16; pinned with
+  `create-next-app@15` (15.5.20) — same version-pin trap as Expo SDK 57.
+- New shadcn CLI changed flags: `-b` now means component library
+  (`radix`/`base`), themes are presets (`-p nova`); `-b neutral` no longer
+  valid.
+- The stale `umer` branch (at the old scaffold commit) was fast-forwarded onto
+  `main` before starting.
+
+### Next
+- Re-run the combined quality gates on `abubakar` (backend + web + mobile),
+  push both branches.
+- Open PR `abubakar` → `main` (**merge commit, not squash** — preserves
+  Umer's authorship); tag **v0.1.0** "Scaffold" after merge.
+- Then Sprint 2: auth (registration + OTP, JWT refresh rotation, lockout) on
+  Track A; arena/court/pricing + web auth UI on Track B.
+
+---
+
 ## 2026-07-13 — Sprint 1: Expo mobile scaffold + CI
 
 ### Completed
