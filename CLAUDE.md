@@ -372,13 +372,37 @@ Branches:
 Rules:
 - Each teammate works on their own branch (abubakar / umer). Don't
   commit each other's WIP.
-- Merge a personal branch into main only when the work is demo-ready
-  and pre-commit + a quick review pass. Keep main always runnable.
+- Features reach main through GitHub PULL REQUESTS, never local
+  merges — even when the author is the one merging. Flow: commit on
+  personal branch → push branch → open PR (abubakar → main or
+  umer → main) → review the diff → merge. This gives a complete
+  per-feature history, easy review, and easy reverts.
+- Merge a PR into main only when the work is demo-ready and
+  pre-commit + a review pass. Keep main always runnable.
 - Pull/rebase your branch on main frequently to stay in sync and keep
   conflicts between the two branches small.
-- Prefer squash-merge into main (keeps history readable).
+- Prefer squash-merge on the PR (keeps history readable).
 - Conventional commit messages (feat:/fix:/chore:/docs:/refactor:).
 - Pre-commit hooks must pass before a commit is allowed.
+- MILESTONE RELEASES: when a major milestone lands on main, tag it
+  and create a GitHub Release — v0.1.0 scaffold, v0.2.0 auth,
+  v0.3.0 booking engine, v0.4.0 payments, ... v1.0.0 final
+  submission. Clean milestone record for demos and the viva.
+- GITHUB ISSUES: one Issue per major feature (Backend Foundation,
+  Database Schema, Authentication, Web Scaffold, Mobile Scaffold,
+  Booking Engine, Arena Management, Payments, AI Assistant,
+  Notifications, ...). Reference the issue number in commits:
+  "feat(auth): implement JWT login (#3)". Gives the
+  Issue → Branch → Commit → PR → Merge chain for the viva.
+- FOCUSED PRs: one coherent piece of work per PR, never mixed
+  concerns — but don't create micro-PRs either; closely-related
+  steps can share a PR with clean per-step checkpoint commits
+  inside. Small, focused PRs = easy review, easy revert. The git
+  process exists to support development, not slow it down — if
+  process overhead starts dominating, simplify.
+- Commit messages use conventional-commit scopes: feat(auth):,
+  feat(db):, fix(api):, refactor(core):, docs:, test:, chore:.
+  Never "update files" / "fixed bugs".
 
 ## Definition of Done
 A task/feature is only complete when ALL of these are true. If any
