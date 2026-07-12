@@ -1,4 +1,5 @@
-"""Standard API response envelope (CLAUDE.md — Standard API response format).
+"""Standard API response envelope (docs/PROJECT_GUIDELINES.md — Standard API
+response format).
 
 Every /api/v1 endpoint returns one of these two shapes so the frontend never
 needs per-endpoint adapters. Paginated endpoints nest pagination metadata
