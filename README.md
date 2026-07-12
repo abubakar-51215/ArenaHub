@@ -130,7 +130,3 @@ short-lived `feature/*` branch off a personal branch.
 
 ---
 
-## Sprint status
-
-Currently in **Sprint 1** (environment setup — Docker deferred to Sprint 5).
-Roadmap: [`docs/15_DEVELOPMENT_ROADMAP.md`](docs/15_DEVELOPMENT_ROADMAP.md).
