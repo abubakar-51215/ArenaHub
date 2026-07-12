@@ -1,8 +1,8 @@
 """User model and role enum.
 
-Staff sub-tiers are deliberately NOT in the role enum (CLAUDE.md deviation
-#10); the model is shaped so a future arena_staff table can be added without
-reworking ownership.
+Staff sub-tiers are deliberately NOT in the role enum (docs/PROJECT_GUIDELINES.md
+deviation #10); the model is shaped so a future arena_staff table can be added
+without reworking ownership.
 """
 
 from datetime import datetime

@@ -1,4 +1,7 @@
-# ArenaHub — Project Instructions for Claude Code
+# ArenaHub — Project Guidelines
+
+Authoritative project rules, conventions, and deliberate deviations from
+the specification documents. Read this before implementing anything.
 
 ## What this project is
 ArenaHub: a sports arena booking platform for Pakistan. Three roles:
@@ -224,14 +227,15 @@ ArenaHub/
 │   │   ├── services/ hooks/ lib/ store/ types/ utils/ config/
 │   │   └── middleware.ts
 │   └── mobile/         # Expo RN
-├── docs/               # 15 spec files + architecture-decisions/
+├── docs/               # 15 spec files + PROJECT_GUIDELINES.md (this file)
+│                       # + DEVELOPMENT_LOG.md + architecture-decisions/
 ├── design/wireframes/
 ├── database/{diagrams,seeds}/
 ├── scripts/
 ├── .github/workflows/
 ├── .pre-commit-config.yaml
 ├── package.json        # npm scripts as task runner
-└── CLAUDE.md  README.md  .gitignore  LICENSE
+└── README.md  .gitignore  LICENSE
 
 ## Conventions
 - Git: conventional commits (feat:/fix:/chore:); branches

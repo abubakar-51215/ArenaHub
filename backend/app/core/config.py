@@ -1,7 +1,7 @@
 """Application configuration loaded from environment / .env.
 
 All secrets and connection strings come from the environment so the app is
-container-ready without code changes (see CLAUDE.md deviation #1).
+container-ready without code changes (see docs/PROJECT_GUIDELINES.md deviation #1).
 """
 
 from enum import StrEnum
