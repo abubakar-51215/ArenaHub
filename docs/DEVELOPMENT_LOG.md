@@ -5,6 +5,42 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 2 close-out: merged to main, both teammates signing off
+
+### Completed
+- **PR #6** (`umer` → `abubakar`) and **PR #7** (`abubakar` → `main`) both merged
+  (merge commits, preserving Umer's authorship) — Sprint 2 (Track A auth +
+  Track B arena/court/pricing/verification, backend + web) is now fully on
+  `main`. Verified: arena/court modules and the owner web dashboard present in
+  `origin/main`; all local branches (`main`, `abubakar`, `umer`) fast-forwarded
+  and in sync with `origin`; working tree clean.
+- Manual QA session over the owner dashboard surfaced and fixed two real bugs
+  (auth-store hydration deadlock leaving pages stuck on "Loading…" forever;
+  an app-wide broken font-variable reference) plus a login-page redesign to
+  match the wireframe and idempotent dev seed data
+  (`backend/scripts/seed_dummy_data.py` / `clear_dummy_data.py`) — see the
+  "Owner web dashboard" and "Arena/court/pricing backend" entries below for
+  detail; the fix/redesign/seed commit is `545a772`.
+- Progress checked against `MASTER_DEVELOPMENT_PLAN.md`'s own tracking table:
+  **Sprints 1-2 done (~40% overall)**; Sprints 3-5 (booking engine/payments,
+  mobile app + AI, admin panel/reports/deploy) not yet started.
+- Dev servers (backend `:8000`, web `:3000`) stopped cleanly at session end.
+
+### Challenges
+- No version tags exist on the repo yet, despite the plan calling for
+  `v0.1.0`/`v0.2.0` at each sprint boundary — flagged to the user; tagging
+  `v0.2.0` "Authentication" (and possibly a retroactive `v0.1.0`) is
+  outstanding, not yet done as of this entry.
+
+### Next
+- Tag `v0.2.0` "Authentication" on `main` (and decide on a retroactive
+  `v0.1.0`).
+- Sprint 3 (Track A: booking engine, Redis locking, payments; Track B:
+  equipment, reviews, owner booking views) — the biggest remaining sprint;
+  ends with an API freeze on `/api/v1`.
+
+---
+
 ## 2026-07-13 — Sprint 2: Owner web dashboard — auth + arena/court/pricing UI (Track B, Umer)
 
 ### Completed
