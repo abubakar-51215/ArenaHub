@@ -46,7 +46,14 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: s.refreshToken,
         user: s.user,
       }),
-      // setState (not direct mutation) so subscribers re-render once tokens load.
+      // Next.js prerenders "use client" pages once at build time in Node.js
+      // (no `window`/localStorage). Persist's default behavior auto-runs
+      // hydrate() the instant the store module is created, so that build-time
+      // pass consumes it in an environment with no storage — the store never
+      // gets a real client-side rehydration afterward, and `hydrated` stays
+      // false forever in the browser. skipHydration + an explicit rehydrate()
+      // call from a client-only effect (components/providers.tsx) avoids this.
+      skipHydration: true,
       onRehydrateStorage: () => () => {
         useAuthStore.setState({ hydrated: true });
       },

@@ -21,8 +21,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Already signed in as an owner → skip the form.
+  // Warm the dashboard route (compiles it ahead of time in dev) and skip the
+  // form if already signed in as an owner.
   useEffect(() => {
+    router.prefetch("/owner");
     if (hydrated && user?.role === "owner") router.replace("/owner");
   }, [hydrated, user, router]);
 
@@ -52,13 +54,13 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Left: form */}
-      <div className="flex flex-col justify-center px-6 py-10 sm:px-14 lg:px-20">
-        <div className="mx-auto w-full max-w-sm">
-          <Logo className="mb-10" />
+      <div className="flex items-center justify-center px-6 py-10 sm:px-14 lg:px-20">
+        <div className="w-full max-w-sm">
+          <Logo className="mb-8" />
           <h1 className="text-2xl font-bold text-foreground">Welcome Back!</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sign in to your Arena Hub account</p>
 
-          <form onSubmit={onSubmit} className="mt-8 space-y-5">
+          <form onSubmit={onSubmit} className="mt-7 space-y-4">
             <div>
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -129,17 +131,17 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right: branded panel */}
-      <div className="relative hidden overflow-hidden lg:block">
-        <div className="absolute inset-0 bg-linear-to-br from-emerald-900 via-slate-900 to-black" />
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 30% 20%, rgba(16,185,129,0.4), transparent 45%), radial-gradient(circle at 70% 80%, rgba(59,130,246,0.25), transparent 40%)",
-          }}
-        />
-        <div className="relative flex h-full flex-col justify-end p-14 text-white">
+      {/* Right: branded arena photo */}
+      <div
+        className="relative hidden overflow-hidden bg-slate-950 lg:block"
+        style={{
+          backgroundImage:
+            "linear-gradient(to top, rgba(2,6,23,0.9) 0%, rgba(2,6,23,0.15) 40%, rgba(2,6,23,0.2) 100%), url('/images/login-arena.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-x-0 top-[62%] flex flex-col items-center px-14 text-center text-white">
           <h2 className="text-3xl font-bold">Manage. Grow. Thrive.</h2>
           <p className="mt-2 max-w-sm text-sm text-white/70">
             All your arenas, bookings and analytics in one place.
