@@ -11,6 +11,7 @@ from app.database.base import Base
 from app.modules.arena import model as _arena  # noqa: F401
 from app.modules.auth import model as _auth  # noqa: F401
 from app.modules.court import model as _court  # noqa: F401
+from app.modules.slot import model as _slot  # noqa: F401
 from app.modules.user import model as _user  # noqa: F401
 
 target_metadata = Base.metadata
