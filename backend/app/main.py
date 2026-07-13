@@ -6,9 +6,11 @@ modules register their own routers here as they land.
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.cache.redis import redis_client
 from app.core.config import get_settings
@@ -17,8 +19,14 @@ from app.core.logging import configure_logging
 from app.database import metadata as _metadata  # noqa: F401 — registers all ORM mappers
 from app.database.session import engine
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.modules.admin.api import router as admin_router
+from app.modules.arena.api import owner_router as arena_owner_router
+from app.modules.arena.api import router as arena_router
 from app.modules.auth.api import router as auth_router
+from app.modules.court.api import owner_router as court_owner_router
+from app.modules.court.api import router as court_router
 from app.modules.health.api import router as health_router
+from app.modules.media.api import router as media_router
 from app.modules.user.api import router as user_router
 
 configure_logging()
@@ -59,6 +67,20 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix=API_V1_PREFIX)
     app.include_router(auth_router, prefix=API_V1_PREFIX)
     app.include_router(user_router, prefix=API_V1_PREFIX)
+    app.include_router(arena_router, prefix=API_V1_PREFIX)
+    app.include_router(arena_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(court_router, prefix=API_V1_PREFIX)
+    app.include_router(court_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(admin_router, prefix=API_V1_PREFIX)
+    app.include_router(media_router, prefix=API_V1_PREFIX)
+
+    # Serve locally-stored uploads in dev (Cloudinary serves them in prod).
+    Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+    app.mount(
+        settings.media_url_prefix,
+        StaticFiles(directory=settings.media_root),
+        name="media",
+    )
 
     return app
 
