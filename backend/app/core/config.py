@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="change-me", alias="JWT_SECRET")
     jwt_refresh_secret: str = Field(default="change-me-refresh", alias="JWT_REFRESH_SECRET")
 
+    # Media / image uploads. In dev, images are stored on the local filesystem
+    # under media_root (gitignored) and served from media_url_prefix; prod uses
+    # Cloudinary.
+    media_root: str = Field(default="uploads", alias="MEDIA_ROOT")
+    media_url_prefix: str = Field(default="/uploads", alias="MEDIA_URL_PREFIX")
+
     # Integrations (populated as modules land)
     cloudinary_url: str | None = Field(default=None, alias="CLOUDINARY_URL")
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")

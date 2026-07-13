@@ -1,0 +1,137 @@
+/**
+ * Shared API types — mirror the backend module response schemas
+ * (backend/app/modules/<name>/schema.py). Money/decimals arrive as strings.
+ */
+
+export type UserRole = "player" | "owner" | "admin";
+
+export interface User {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  is_verified: boolean;
+  is_active: boolean;
+  profile_picture: string | null;
+  created_at: string;
+}
+
+export interface Tokens {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
+
+export type ArenaStatus = "pending" | "approved" | "rejected";
+
+export interface DayHours {
+  open: string;
+  close: string;
+}
+export type OperatingHours = Record<string, DayHours>;
+
+export interface RefundTier {
+  hours_before: number;
+  refund_percentage: number;
+}
+
+export interface Amenity {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
+export interface Arena {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  address: string;
+  city: string;
+  area: string | null;
+  latitude: string;
+  longitude: string;
+  contact_phone: string | null;
+  contact_email: string | null;
+  operating_hours: OperatingHours;
+  sports_offered: string[];
+  images: string[];
+  status: ArenaStatus;
+  rejection_reason: string | null;
+  advance_percentage: number;
+  require_full_payment: boolean;
+  refund_policy: RefundTier[];
+  is_active: boolean;
+  amenities: Amenity[];
+  created_at: string;
+}
+
+export interface Court {
+  id: string;
+  arena_id: string;
+  name: string;
+  description: string | null;
+  sport_types: string[];
+  capacity: number | null;
+  base_price: string;
+  images: string[];
+  is_available: boolean;
+}
+
+export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export interface PricingRule {
+  id: string;
+  court_id: string;
+  name: string;
+  weekday: number | null;
+  start_time: string;
+  end_time: string;
+  price_multiplier: string;
+  is_active: boolean;
+}
+
+export type DiscountType = "percentage" | "fixed";
+
+export interface DiscountCode {
+  id: string;
+  arena_id: string;
+  code: string;
+  description: string | null;
+  discount_type: DiscountType;
+  discount_value: string;
+  min_booking_amount: string;
+  max_uses: number | null;
+  used_count: number;
+  valid_from: string | null;
+  valid_until: string | null;
+  is_active: boolean;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export const WEEKDAY_LABELS: Record<number, string> = {
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+  7: "Sunday",
+};
+
+export const WEEKDAY_NAMES = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
