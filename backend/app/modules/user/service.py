@@ -17,6 +17,9 @@ from app.modules.auth.service import enforce_password_reuse
 from app.modules.user.model import User
 from app.modules.user.schema import (
     ChangePasswordRequest,
+    ChangePasswordVerifyRequest,
+    EmailChangeRequest,
+    EmailChangeVerifyRequest,
     PhoneChangeRequest,
     PhoneChangeVerifyRequest,
     UpdateProfileRequest,
@@ -40,13 +43,42 @@ async def update_profile(db: AsyncSession, user: User, data: UpdateProfileReques
     return UserPublic.model_validate(user)
 
 
-async def change_password(db: AsyncSession, user: User, data: ChangePasswordRequest) -> None:
+async def request_password_change(db: AsyncSession, user: User, data: ChangePasswordRequest) -> None:
+    """Validate the new password and stage it; the change only applies once the
+    OTP sent to the user's current email is confirmed via ``verify_password_change``."""
     if not verify_password(data.current_password, user.password_hash):
         raise ValidationError("Current password is incorrect.")
     validate_password_strength(data.new_password)
     await enforce_password_reuse(db, user, data.new_password)
 
-    user.password_hash = hash_password(data.new_password)
+    user.pending_password_hash = hash_password(data.new_password)
+    code = generate_otp_code()
+    await auth_repo.create_otp(
+        db, user_id=user.id, code=code, channel="email", expires_at=_now() + OTP_TTL
+    )
+    await db.commit()
+    deliver_otp(user.email, code, purpose="password_change")
+
+
+async def verify_password_change(
+    db: AsyncSession, user: User, data: ChangePasswordVerifyRequest
+) -> None:
+    if user.pending_password_hash is None:
+        raise ValidationError("No password change is pending.")
+
+    otp = await auth_repo.get_latest_otp(db, user.id)
+    if otp is None or otp.expires_at < _now():
+        raise ValidationError("Invalid or expired verification code.")
+    if otp.attempts >= MAX_OTP_ATTEMPTS:
+        raise ValidationError("Too many incorrect attempts. Request a new code.")
+    if otp.code != data.code:
+        otp.attempts += 1
+        await db.commit()
+        raise ValidationError("Invalid or expired verification code.")
+
+    otp.is_used = True
+    user.password_hash = user.pending_password_hash
+    user.pending_password_hash = None
     await auth_repo.add_password_history(db, user.id, user.password_hash)
     await db.commit()
     # Changing the password logs out all existing sessions (incl. this one).
@@ -96,5 +128,43 @@ async def verify_phone_change(
     otp.is_used = True
     user.phone = user.pending_phone
     user.pending_phone = None
+    await db.commit()
+    return UserPublic.model_validate(user)
+
+
+async def request_email_change(db: AsyncSession, user: User, data: EmailChangeRequest) -> None:
+    if data.new_email == user.email:
+        raise ValidationError("That is already your email address.")
+    if await auth_repo.get_user_by_email(db, data.new_email):
+        raise ConflictError("Email address is already registered.")
+
+    user.pending_email = data.new_email
+    code = generate_otp_code()
+    await auth_repo.create_otp(
+        db, user_id=user.id, code=code, channel="email", expires_at=_now() + OTP_TTL
+    )
+    await db.commit()
+    deliver_otp(data.new_email, code, purpose="email_change")
+
+
+async def verify_email_change(
+    db: AsyncSession, user: User, data: EmailChangeVerifyRequest
+) -> UserPublic:
+    if user.pending_email is None:
+        raise ValidationError("No email change is pending.")
+
+    otp = await auth_repo.get_latest_otp(db, user.id)
+    if otp is None or otp.expires_at < _now():
+        raise ValidationError("Invalid or expired verification code.")
+    if otp.attempts >= MAX_OTP_ATTEMPTS:
+        raise ValidationError("Too many incorrect attempts. Request a new code.")
+    if otp.code != data.code:
+        otp.attempts += 1
+        await db.commit()
+        raise ValidationError("Invalid or expired verification code.")
+
+    otp.is_used = True
+    user.email = user.pending_email
+    user.pending_email = None
     await db.commit()
     return UserPublic.model_validate(user)

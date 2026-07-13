@@ -42,9 +42,21 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=72)
 
 
+class ChangePasswordVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
 class PhoneChangeRequest(BaseModel):
     new_phone: str = Field(min_length=10, max_length=20)
 
 
 class PhoneChangeVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
+class EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+
+
+class EmailChangeVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)

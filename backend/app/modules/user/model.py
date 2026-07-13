@@ -45,6 +45,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     notification_preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     # Set while a phone-change OTP is outstanding; promoted to `phone` on verify.
     pending_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Set while an email-change OTP is outstanding; promoted to `email` on verify.
+    pending_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Set while a password-change OTP is outstanding; promoted to `password_hash` on verify.
+    pending_password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

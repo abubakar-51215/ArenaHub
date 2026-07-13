@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from app.modules.arena.model import ArenaStatus, DiscountType
+from app.modules.arena.model import ArenaCity, ArenaStatus, DiscountType
 
 # ISO weekday keys accepted in operating_hours.
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
@@ -57,7 +57,7 @@ class ArenaCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
     address: str = Field(min_length=1)
-    city: str = Field(min_length=1, max_length=100)
+    city: ArenaCity
     area: str | None = Field(default=None, max_length=100)
     latitude: Latitude
     longitude: Longitude
@@ -83,7 +83,7 @@ class ArenaUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
     address: str | None = Field(default=None, min_length=1)
-    city: str | None = Field(default=None, min_length=1, max_length=100)
+    city: ArenaCity | None = None
     area: str | None = Field(default=None, max_length=100)
     latitude: Latitude | None = None
     longitude: Longitude | None = None
@@ -119,7 +119,7 @@ class ArenaResponse(BaseModel):
     name: str
     description: str | None = None
     address: str
-    city: str
+    city: ArenaCity
     area: str | None = None
     latitude: Decimal
     longitude: Decimal
@@ -208,6 +208,6 @@ class ArenaSearchParams(BaseModel):
     """Public arena search/filter (approved + active only)."""
 
     q: str | None = None
-    city: str | None = None
+    city: ArenaCity | None = None
     sport: str | None = None
     sort: Literal["newest", "name"] = "newest"
