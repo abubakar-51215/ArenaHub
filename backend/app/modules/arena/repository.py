@@ -15,6 +15,7 @@ from app.modules.arena.model import (
     Amenity,
     Arena,
     ArenaBlockedDate,
+    ArenaCity,
     ArenaStatus,
     DiscountCode,
 )
@@ -62,7 +63,7 @@ async def search_public_arenas(
     db: AsyncSession,
     *,
     q: str | None,
-    city: str | None,
+    city: ArenaCity | None,
     sport: str | None,
     sort: str,
     offset: int,
@@ -74,7 +75,7 @@ async def search_public_arenas(
         like = f"%{q.lower()}%"
         base = base.where(func.lower(Arena.name).like(like))
     if city:
-        base = base.where(func.lower(Arena.city) == city.lower())
+        base = base.where(Arena.city == city)
     if sport:
         # sports_offered is a JSONB array of strings.
         base = base.where(Arena.sports_offered.contains([sport]))

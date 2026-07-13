@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
 from app.modules.arena import service
+from app.modules.arena.model import ArenaCity
 from app.modules.arena.schema import (
     ArenaCreate,
     ArenaUpdate,
@@ -38,7 +39,7 @@ _owner = require_role("owner")
 @router.get("", summary="Search approved arenas")
 async def search_arenas(
     q: str | None = None,
-    city: str | None = None,
+    city: ArenaCity | None = None,
     sport: str | None = None,
     sort: str = "newest",
     params: PaginationParams = Depends(pagination_params),

@@ -1,12 +1,12 @@
 /** Owner arena management API calls (backend modules/arena). */
 import { api } from "@/services/api";
-import type { Arena, OperatingHours, Page, RefundTier } from "@/types";
+import type { Arena, ArenaCity, OperatingHours, Page, RefundTier } from "@/types";
 
 export interface ArenaInput {
   name: string;
   description?: string | null;
   address: string;
-  city: string;
+  city: ArenaCity;
   area?: string | null;
   latitude: string;
   longitude: string;

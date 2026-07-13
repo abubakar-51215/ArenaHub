@@ -14,12 +14,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/services/api";
 import type { ArenaInput } from "@/services/arenas";
 import { useCreateArena, useUpdateArena } from "@/hooks/useArenas";
-import { type Arena, type OperatingHours, type RefundTier, WEEKDAY_NAMES } from "@/types";
+import {
+  ARENA_CITIES,
+  type Arena,
+  type ArenaCity,
+  type OperatingHours,
+  type RefundTier,
+  WEEKDAY_NAMES,
+} from "@/types";
 
 interface DayRow {
   open: boolean;
@@ -55,7 +63,7 @@ export function ArenaForm({
   const [name, setName] = useState(arena?.name ?? "");
   const [description, setDescription] = useState(arena?.description ?? "");
   const [address, setAddress] = useState(arena?.address ?? "");
-  const [city, setCity] = useState(arena?.city ?? "");
+  const [city, setCity] = useState<ArenaCity>(arena?.city ?? ARENA_CITIES[0]);
   const [area, setArea] = useState(arena?.area ?? "");
   const [latitude, setLatitude] = useState(arena?.latitude ?? "");
   const [longitude, setLongitude] = useState(arena?.longitude ?? "");
@@ -168,7 +176,18 @@ export function ArenaForm({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="a-city">City</Label>
-              <Input id="a-city" value={city} onChange={(e) => setCity(e.target.value)} required />
+              <Select
+                id="a-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value as ArenaCity)}
+                required
+              >
+                {ARENA_CITIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <Label htmlFor="a-area">Area</Label>
