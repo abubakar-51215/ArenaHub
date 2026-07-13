@@ -43,7 +43,9 @@ async def update_profile(db: AsyncSession, user: User, data: UpdateProfileReques
     return UserPublic.model_validate(user)
 
 
-async def request_password_change(db: AsyncSession, user: User, data: ChangePasswordRequest) -> None:
+async def request_password_change(
+    db: AsyncSession, user: User, data: ChangePasswordRequest
+) -> None:
     """Validate the new password and stage it; the change only applies once the
     OTP sent to the user's current email is confirmed via ``verify_password_change``."""
     if not verify_password(data.current_password, user.password_hash):
