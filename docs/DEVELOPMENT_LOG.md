@@ -5,6 +5,61 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 2: Authentication & security backend (Track A, Abubakar)
+
+### Completed
+- **`core/security.py`** — bcrypt hashing (72-byte guard), password-strength
+  policy (FR-P-01: ≥8, upper, digit, special), and JWT issuance/decoding:
+  access 15 min + refresh 7 days, each carrying a `jti`; refresh tokens carry a
+  `family` id for rotation lineage.
+- **Refresh rotation + replay detection** (`modules/auth/tokens.py`, deviation
+  #17) in Redis: rotated (spent) refresh `jti`s are marked used; replaying one
+  revokes the whole family; plus an access-token denylist (logout) and a
+  per-user session epoch (bumped on password change/reset so older tokens go
+  stale). Fake Redis in tests, real Memurai verified live.
+- **`modules/auth/`** (schema/repository/service/api) — endpoints: register,
+  verify-otp, login, refresh, logout, forgot-password, reset-password. Account
+  lockout after 5 failed logins for 15 min (FR-P-02); last-3 password-reuse
+  block on reset. OTP real, **console-log delivery in dev** (deviation #7).
+- **Shared auth dependency** `get_current_user` + `require_role` in
+  `shared/auth.py` — the integration contract Track B imports for role guards
+  (returns 401 unauth / 403 cross-role).
+- **`modules/user/`** — profile get/update, password change (with reuse block +
+  session invalidation), soft-delete grace, and phone-change via OTP.
+- **Rate limiter** (`middleware/rate_limit.py`) — Redis fixed-window per IP,
+  stricter on `/auth/*` (20/min) than other API routes (100/min), fails open if
+  Redis is down; health/docs exempt.
+- **Migration `f3dc8c5b1963`** — `password_history` table + users
+  `notification_preferences`/`pending_phone`/`deleted_at`, and `locked_until`
+  made tz-aware; forward→backward→forward verified on the real DB (dump taken
+  first per backup policy).
+- **Verified end-to-end:** ruff + black + mypy clean (49 files); 11 pytest
+  (register→verify→login→refresh, lockout, replay-revokes-family, RBAC guard,
+  reuse block, dup-email, weak-password); live smoke against the running server
+  with real Postgres + Memurai — 10/10 checks incl. logout-denylist and the 429
+  rate-limit trip.
+
+### Challenges
+- `User.arenas` relationship needs `Arena` imported before the mapper
+  configures — latent since Sprint 1 (no code queried `User` yet). Fixed by
+  importing `app.database.metadata` (registers every model) at app startup.
+- `locked_until`/`deleted_at` were tz-naive columns but the service writes
+  aware UTC — asyncpg rejected the mix. Made both `timezone=True` (they're
+  expiry timestamps like `otp.expires_at`) via the migration.
+- Redis needed to be swappable for hermetic tests without touching the running
+  app's client: added `redis_cache.get_redis()` and call it by module attribute
+  so a `fakeredis` monkeypatch takes effect.
+
+### Next
+- **Hand off:** push `abubakar`; Track B (Umer) starts arena/court/pricing +
+  web auth/owner UI on `umer`, importing `get_current_user` / `require_role`.
+- Integration checkpoint: Track B swaps stubs to real guards; verify player
+  register/login + owner arena → admin approve.
+- On both tracks done + integrated → PR `abubakar` → `main` (merge commit),
+  tag **v0.2.0** "Authentication".
+
+---
+
 ## 2026-07-13 — Sprint 1: Next.js web scaffold + integration (Umer)
 
 ### Completed
