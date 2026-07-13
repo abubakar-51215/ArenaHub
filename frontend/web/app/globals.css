@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -121,10 +121,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The Geist font variable is scoped to <body> via next/font's `.variable`
+     class in layout.tsx; custom properties don't flow up to ancestors, so
+     font-sans must be applied here (not on <html>) or it can't resolve it. */
   body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
+    @apply bg-background font-sans text-foreground;
   }
 }
