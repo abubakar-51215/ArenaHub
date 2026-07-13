@@ -5,6 +5,69 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 2: Owner web dashboard — auth + arena/court/pricing UI (Track B, Umer)
+
+### Completed
+- **Auth flow (web):** login page rebuilt to match `ArenaOwners.PNG` screen 1
+  (two-column: form + branded panel, "Welcome Back!", "Manage. Grow. Thrive.").
+  Wired to `POST /auth/login` → `GET /users/me`; owner-only (non-owners are
+  rejected). JWT pair persisted via a Zustand store (`store/auth.ts`,
+  localStorage); logout hits `POST /auth/logout` then clears.
+- **Typed API client** (`services/api.ts`) — authed `apiRequest` attaching the
+  bearer token and **transparently refreshing once on 401** (`/auth/refresh`)
+  before failing; throws a typed `ApiError` carrying the envelope message. Per-
+  domain fetchers (`services/{auth,arenas,courts,pricing}.ts`) + TanStack Query
+  hooks (`hooks/use{Arenas,Courts,Pricing}.ts`) with cache invalidation.
+- **Owner shell** (`app/owner/layout.tsx`) — sidebar matching the wireframe
+  (Dashboard/Arenas/Courts/Bookings/Calendar/Pricing/Earnings/Reports/Reviews/
+  Settings/Logout); in-scope routes link, the Sprint 3+ ones render as disabled
+  placeholders (honest, not fake). Client-side role guard after store
+  rehydration (tokens are in localStorage, invisible to edge middleware — noted
+  in `middleware.ts`).
+- **Manage Arenas** (screen 3) — table (name/city/location/courts/status/
+  actions) + full **Add/Edit Arena** dialog: operating hours per weekday,
+  sports, payment config (advance %, full-payment, **refund tiers** editor),
+  image URLs; row actions Edit / Deactivate / Resubmit-when-rejected (shows the
+  rejection reason).
+- **Manage Courts** (screen 4) — arena selector (deep-links from the arenas
+  table via `?arena=`), court cards with image/sports/price + availability
+  toggle, and **Add/Edit Court** dialog.
+- **Pricing Management** (screen 7) — peak-pricing rules aggregated across the
+  selected arena's courts (Court/Rule/Day/Time/Multiplier/Status) + **Add
+  Pricing Rule** dialog (court, day, time window, multiplier).
+- **Dashboard** (`/owner`) — real portfolio summary (arena counts by status,
+  sports, recent arenas). Booking/revenue analytics are deferred to the booking
+  engine rather than mocked.
+- **UI primitives** added to match the scaffold's cva/cn style: input, label,
+  textarea, select, switch (radix), table, dialog (radix); brand `Logo`.
+- **Verified:** `tsc --noEmit`, `eslint`, `prettier --check`, and
+  `next build` (12 routes) all clean; `next start` serves `/login` +
+  all `/owner/*` at 200. **Live cross-origin flow** against the running backend
+  (web origin → :8000): register→verify(dev OTP)→login→`/users/me`(owner)→
+  create arena(pending)→listed in my-arenas→**excluded from public search while
+  pending**. Test data cleaned from the dev DB afterward.
+
+### Challenges
+- A `*/schema.py` glob inside a `/** … */` doc comment **closed the block
+  comment early** and broke the TS parse — reworded to `<name>/schema.py`.
+- Zustand persist: setting the `hydrated` flag by mutating state in
+  `onRehydrateStorage` doesn't notify subscribers; switched to
+  `useAuthStore.setState({ hydrated: true })` so the guard re-renders once
+  tokens load.
+- `useSearchParams` (courts deep-link) needs a Suspense boundary in Next 15 —
+  wrapped the page body.
+- Tailwind 4 renamed `bg-gradient-*` → `bg-linear-*` (lint caught it).
+
+### Next
+- Backend + web for Sprint 2 Track B are complete. Push `umer`; **Abubakar
+  reviews, then merges `abubakar` → `main`** (merge commit) and tags **v0.2.0**
+  "Authentication" once both tracks integrate.
+- Follow-ons (later sprints): real image upload UI (multipart → `/uploads/image`
+  seam already exists), and the booking-dependent owner screens (Bookings,
+  Calendar, Earnings, Reports, Reviews).
+
+---
+
 ## 2026-07-13 — Sprint 2: Arena / court / pricing / verification backend (Track B, Umer)
 
 ### Completed
