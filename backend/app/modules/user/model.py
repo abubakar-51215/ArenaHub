@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -40,10 +40,19 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     preferred_sports: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     preferred_locations: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
+    # Per-user notification channel toggles (email/sms/push); free-form so the
+    # notification module (Sprint 5) can add event types without a migration.
+    notification_preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Set while a phone-change OTP is outstanding; promoted to `phone` on verify.
+    pending_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    locked_until: Mapped[datetime | None] = mapped_column(nullable=True)
+    # tz-aware: compared against aware UTC "now" in the lockout check.
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Soft-delete grace: set on account deletion; a scheduled job purges later.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Arenas owned by this user (only meaningful for role=owner).
     arenas: Mapped[list["Arena"]] = relationship(
