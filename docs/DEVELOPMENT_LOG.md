@@ -5,6 +5,68 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-13 — Sprint 2: Arena / court / pricing / verification backend (Track B, Umer)
+
+### Completed
+- **`modules/arena/`** (schema/repository/service/api) — owner arena CRUD with
+  ownership guards, operating hours (per-weekday open/close, validated),
+  amenities linking, payment config (advance %, full-payment flag, cancellation
+  **refund tiers** JSONB), image URLs, and the owner-side status transitions
+  (create → `pending`; resubmit `rejected` → `pending`). Public discovery
+  (`GET /arenas`, `GET /arenas/{id}`) returns **approved + active only** with
+  city/sport/name filters + pagination (the FR search stub).
+- **`modules/court/`** (schema/repository/service/api) — court CRUD (ownership
+  derived from the parent arena), availability toggle, base pricing, court
+  images, and **peak-pricing rules** (`court_pricing_rules`: weekday + time
+  window → multiplier) for the Sprint 3 booking engine to resolve.
+- **Discount codes** (`discount_codes`, per-arena, unique code) — percentage or
+  fixed, optional usage cap / validity window / min-spend; codes normalised to
+  upper-case; over-100 % percentage rejected. **Blocked dates**
+  (`arena_blocked_dates`, unique per arena+date) for maintenance/closures.
+- **`modules/admin/`** verification slice — queue by status (FIFO), view any
+  arena, approve, and **reject-with-reason** (reason required); reuses
+  `arena.service.set_status` so the state machine has one implementation and
+  `require_role("admin")` for RBAC.
+- **Image upload seam** (`shared/storage.py` + `POST /uploads/image`) — dev
+  writes to a gitignored local `uploads/` dir served via a `/uploads` static
+  mount; Cloudinary is the prod seam. Type allow-list (JPEG/PNG/WebP), 5 MB cap,
+  folder allow-list (no path traversal). Mirrors the `shared/otp.py` pattern.
+- **Shared helpers** — `shared/pagination.py` (uniform `items/total/page/
+  page_size` inside the envelope) reused by every list endpoint.
+- **Migrations** `7c1e9a4b2d10` (pricing + discounts: arena `refund_policy`,
+  court `description`/`images`, `discount_codes` + `discount_type` enum,
+  `court_pricing_rules`) and `9f3a6b5c8e21` (`arena_blocked_dates`) — both
+  hand-written, reversible; **up → down → up verified** on the real DB (schema
+  dump taken first per backup policy), and `alembic check` reports **no drift**.
+- **Verified end-to-end:** ruff + black + mypy clean (56 files); **19 pytest**
+  (8 new: owner-registers→admin-approves→public-search, reject-needs-reason +
+  resubmit, player→403, cross-owner→403, blocked-date + discount conflicts,
+  court CRUD + availability, peak-rule lifecycle, public-courts-after-approval)
+  green against real Postgres; live server smoke — healthy `/health`, all 12
+  new routes in `/docs`, `/uploads` static mount 404s cleanly, unauth create
+  → 401, public search → 200.
+
+### Challenges
+- `DiscountCode.valid_from/valid_until` used a **string forward-ref**
+  (`Mapped["datetime | None"]`) with `datetime` imported only under
+  `TYPE_CHECKING`; SQLAlchemy evaluates mapped annotations at mapping time and
+  couldn't resolve it. Fixed by importing `datetime` at runtime.
+- `python-multipart` wasn't a dependency — `UploadFile` needs it; added it.
+- The `discount_type` enum needs an explicit lifecycle (`create(checkfirst)` /
+  `drop()`) in the migration, same reversibility trap as the Sprint 1 ENUMs —
+  `create_table`/`drop_table` alone would leak the type on downgrade.
+- Aligned the upload dir to the pre-existing `backend/uploads/` gitignore entry
+  (`MEDIA_ROOT=uploads`) instead of adding a new `media/` ignore.
+
+### Next
+- **Web (Track B remaining):** login + protected owner shell + arena/court/
+  pricing forms per `design/wireframes/ArenaOwners.PNG` — consumes these
+  endpoints. (Backend for Sprint 2 Track B is complete.)
+- Merge `umer` → `abubakar`, run the combined gate, then PR `abubakar` → `main`
+  (merge commit) and tag **v0.2.0** "Authentication" once both tracks integrate.
+
+---
+
 ## 2026-07-13 — Sprint 2: Authentication & security backend (Track A, Abubakar)
 
 ### Completed

@@ -1,10 +1,12 @@
-"""Arena, Amenity, and the arena_amenities association.
+"""Arena, Amenity, the arena_amenities association, and the arena-scoped
+pricing/verification satellites (blocked dates, discount codes).
 
 Owner approval status lives here (pending → approved/rejected) and is set by
 the admin verification workflow in Sprint 2.
 """
 
 import uuid
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -12,6 +14,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
+    DateTime,
     Enum,
     ForeignKey,
     Index,
@@ -20,6 +24,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -30,6 +35,11 @@ from app.database.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 if TYPE_CHECKING:
     from app.modules.court.model import Court
     from app.modules.user.model import User
+
+
+class DiscountType(StrEnum):
+    percentage = "percentage"
+    fixed = "fixed"
 
 
 class ArenaStatus(StrEnum):
@@ -90,6 +100,10 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     advance_percentage: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     require_full_payment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Cancellation refund tiers: ordered list of {hours_before, refund_percentage}.
+    # Free-form JSONB so the booking module (Sprint 3) can evolve tiers without a
+    # migration; the arena service validates the shape on write.
+    refund_policy: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     owner: Mapped["User"] = relationship(back_populates="arenas")
@@ -100,6 +114,14 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     amenities: Mapped[list["Amenity"]] = relationship(
         secondary=arena_amenities,
         back_populates="arenas",
+    )
+    blocked_dates: Mapped[list["ArenaBlockedDate"]] = relationship(
+        back_populates="arena",
+        cascade="all, delete-orphan",
+    )
+    discount_codes: Mapped[list["DiscountCode"]] = relationship(
+        back_populates="arena",
+        cascade="all, delete-orphan",
     )
 
 
@@ -113,3 +135,55 @@ class Amenity(UUIDPrimaryKeyMixin, Base):
         secondary=arena_amenities,
         back_populates="amenities",
     )
+
+
+class ArenaBlockedDate(UUIDPrimaryKeyMixin, Base):
+    """A single calendar day on which an arena takes no bookings (maintenance,
+    private event). Unique per (arena, date) so a day can't be double-blocked."""
+
+    __tablename__ = "arena_blocked_dates"
+    __table_args__ = (
+        UniqueConstraint("arena_id", "blocked_date", name="uq_arena_blocked_dates_arena_id_date"),
+    )
+
+    arena_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("arenas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    blocked_date: Mapped[date] = mapped_column(Date, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    arena: Mapped["Arena"] = relationship(back_populates="blocked_dates")
+
+
+class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """An owner-defined promo code scoped to one arena. Percentage or fixed
+    amount, optional usage cap + validity window + minimum-spend threshold."""
+
+    __tablename__ = "discount_codes"
+    __table_args__ = (UniqueConstraint("arena_id", "code", name="uq_discount_codes_arena_id_code"),)
+
+    arena_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("arenas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    code: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    discount_type: Mapped[DiscountType] = mapped_column(
+        Enum(DiscountType, name="discount_type"), nullable=False
+    )
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    min_booking_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0")
+    )
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    arena: Mapped["Arena"] = relationship(back_populates="discount_codes")
