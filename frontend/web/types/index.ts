@@ -25,6 +25,10 @@ export interface Tokens {
 
 export type ArenaStatus = "pending" | "approved" | "rejected";
 
+// Cities ArenaHub currently operates in (single country: Pakistan, PKR).
+export const ARENA_CITIES = ["Lahore", "Islamabad", "Karachi", "Multan"] as const;
+export type ArenaCity = (typeof ARENA_CITIES)[number];
+
 export interface DayHours {
   open: string;
   close: string;
@@ -48,7 +52,7 @@ export interface Arena {
   name: string;
   description: string | null;
   address: string;
-  city: string;
+  city: ArenaCity;
   area: string | null;
   latitude: string;
   longitude: string;

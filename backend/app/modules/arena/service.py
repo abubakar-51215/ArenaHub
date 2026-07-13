@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as repo
-from app.modules.arena.model import Arena, ArenaBlockedDate, ArenaStatus, DiscountCode
+from app.modules.arena.model import Arena, ArenaBlockedDate, ArenaCity, ArenaStatus, DiscountCode
 from app.modules.arena.schema import (
     ArenaCreate,
     ArenaResponse,
@@ -169,7 +169,7 @@ async def search_arenas(
     db: AsyncSession,
     *,
     q: str | None,
-    city: str | None,
+    city: ArenaCity | None,
     sport: str | None,
     sort: str,
     params: PaginationParams,

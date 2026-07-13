@@ -48,6 +48,15 @@ class ArenaStatus(StrEnum):
     rejected = "rejected"
 
 
+class ArenaCity(StrEnum):
+    """Cities ArenaHub currently operates in (single country: Pakistan, PKR)."""
+
+    lahore = "Lahore"
+    islamabad = "Islamabad"
+    karachi = "Karachi"
+    multan = "Multan"
+
+
 # Many-to-many association between arenas and amenities.
 arena_amenities = Table(
     "arena_amenities",
@@ -80,7 +89,11 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     address: Mapped[str] = mapped_column(Text, nullable=False)
-    city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    city: Mapped[ArenaCity] = mapped_column(
+        Enum(ArenaCity, name="arena_city", values_callable=lambda enum: [e.value for e in enum]),
+        nullable=False,
+        index=True,
+    )
     area: Mapped[str | None] = mapped_column(String(100), nullable=True)
     latitude: Mapped[Decimal] = mapped_column(Numeric(10, 7), nullable=False)
     longitude: Mapped[Decimal] = mapped_column(Numeric(10, 7), nullable=False)
