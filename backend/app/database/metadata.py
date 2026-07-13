@@ -10,6 +10,7 @@ from app.database.base import Base
 # Import for side effects: registers tables/mappers on Base.metadata.
 from app.modules.arena import model as _arena  # noqa: F401
 from app.modules.auth import model as _auth  # noqa: F401
+from app.modules.booking import model as _booking  # noqa: F401
 from app.modules.court import model as _court  # noqa: F401
 from app.modules.slot import model as _slot  # noqa: F401
 from app.modules.user import model as _user  # noqa: F401

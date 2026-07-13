@@ -154,12 +154,15 @@ async def _owned_slot(
     return slot
 
 
+_HAS_BOOKING_STATUSES = (SlotStatus.booked, SlotStatus.reserved)
+
+
 async def update_slot(
     db: AsyncSession, user: User, court_id: uuid.UUID, slot_id: uuid.UUID, data: SlotUpdate
 ) -> SlotResponse:
     slot = await _owned_slot(db, user, court_id, slot_id)
-    if slot.status == SlotStatus.booked:
-        raise ValidationError("Cannot edit a booked slot.")
+    if slot.status in _HAS_BOOKING_STATUSES:
+        raise ValidationError("Cannot edit a slot that has an active booking.")
     fields = data.model_dump(exclude_unset=True)
     for field, value in fields.items():
         setattr(slot, field, value)
@@ -171,7 +174,7 @@ async def delete_slot(
     db: AsyncSession, user: User, court_id: uuid.UUID, slot_id: uuid.UUID
 ) -> None:
     slot = await _owned_slot(db, user, court_id, slot_id)
-    if slot.status == SlotStatus.booked:
-        raise ValidationError("Cannot delete a booked slot.")
+    if slot.status in _HAS_BOOKING_STATUSES:
+        raise ValidationError("Cannot delete a slot that has an active booking.")
     await db.delete(slot)
     await db.commit()
