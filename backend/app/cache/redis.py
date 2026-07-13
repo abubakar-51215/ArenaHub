@@ -20,3 +20,13 @@ redis_client: redis.Redis = redis.from_url(
     decode_responses=True,
     protocol=2,
 )
+
+
+def get_redis() -> redis.Redis:
+    """Return the shared Redis client.
+
+    Indirection (rather than importing ``redis_client`` directly) lets tests
+    swap in a fake by patching this function — call it as
+    ``redis_cache.get_redis()`` so the lookup happens at call time.
+    """
+    return redis_client

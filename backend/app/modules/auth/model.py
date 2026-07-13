@@ -49,3 +49,19 @@ class PasswordResetToken(UUIDPrimaryKeyMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+
+class PasswordHistory(UUIDPrimaryKeyMixin, Base):
+    """Recent password hashes per user, so a change/reset can reject reuse of
+    the last N passwords (MASTER_DEVELOPMENT_PLAN.md — "last-3 reuse")."""
+
+    __tablename__ = "password_history"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
