@@ -8,20 +8,55 @@ Two flavours of test:
   connection inside a transaction that is rolled back after the test, and the
   autouse ``fake_redis`` fixture, which swaps a fresh in-memory Redis per test
   so token/rate-limit state never leaks between tests.
+
+Per-test rollback only isolates tests *from each other* — it does nothing if
+the suite points at the same database a running dev server (or its
+APScheduler jobs) is concurrently reading/writing, or one seeded with dev
+fixture data. So before anything imports ``app.main`` (which builds the
+``Settings`` singleton at module scope), this file repoints ``DATABASE_URL``
+at a dedicated ``<db>_test`` database, read from ``.env`` directly rather
+than via the app's cached settings (which would already be too late). Create
+it once with:
+    createdb -U postgres arenahub_test
+    DATABASE_URL=postgresql+asyncpg://.../arenahub_test uv run alembic upgrade head
 """
 
-from collections.abc import AsyncIterator
+import os
+from pathlib import Path
 
-import fakeredis.aioredis
-import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from dotenv import dotenv_values
 
-from app.cache import redis as redis_cache
-from app.core.config import get_settings
-from app.database.session import get_db
-from app.main import app
+
+def _test_database_url() -> str:
+    override = os.environ.get("TEST_DATABASE_URL")
+    if override:
+        return override
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    dev_url = os.environ.get("DATABASE_URL") or dotenv_values(env_path).get("DATABASE_URL")
+    if not dev_url:
+        raise RuntimeError("DATABASE_URL not set in the environment or backend/.env")
+    root, _, dbname = dev_url.rpartition("/")
+    if not dbname.endswith("_test"):
+        dev_url = f"{root}/{dbname}_test"
+    return dev_url
+
+
+# Must run before `app.main` (or anything importing it) is ever imported —
+# Settings() is built at module scope there and cached for the process.
+os.environ["DATABASE_URL"] = _test_database_url()
+
+from collections.abc import AsyncIterator  # noqa: E402
+
+import fakeredis.aioredis  # noqa: E402
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # noqa: E402
+
+from app.cache import redis as redis_cache  # noqa: E402
+from app.core.config import get_settings  # noqa: E402
+from app.database.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 
 @pytest_asyncio.fixture
