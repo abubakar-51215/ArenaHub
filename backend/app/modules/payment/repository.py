@@ -3,7 +3,7 @@ inserts only. Callers own the transaction.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import Select, func, select
@@ -75,7 +75,12 @@ def _completed_revenue_query(
         .subquery()
     )
     stmt = (
-        select(Payment.amount, group_arena.c.arena_id, group_arena.c.court_id)
+        select(
+            Payment.amount,
+            Payment.created_at.label("created_at"),
+            group_arena.c.arena_id,
+            group_arena.c.court_id,
+        )
         .select_from(Payment)
         .join(group_arena, group_arena.c.booking_group_id == Payment.booking_group_id)
         .where(Payment.status == PaymentStatus.completed, group_arena.c.arena_id.in_(arena_ids))
@@ -131,3 +136,20 @@ async def revenue_by_court(
         select(inner.c.court_id, func.sum(inner.c.amount)).group_by(inner.c.court_id)
     )
     return [(court_id, Decimal(amount)) for court_id, amount in result.all()]
+
+
+async def revenue_by_day(
+    db: AsyncSession,
+    arena_ids: list[uuid.UUID],
+    *,
+    date_from: datetime,
+    date_to: datetime,
+) -> list[tuple[date, Decimal]]:
+    """Completed-payment revenue summed per calendar day of payment, for the
+    dashboard's revenue-trend chart."""
+    if not arena_ids:
+        return []
+    inner = _completed_revenue_query(arena_ids, date_from, date_to).subquery()
+    day = func.date(inner.c.created_at).label("day")
+    result = await db.execute(select(day, func.sum(inner.c.amount)).group_by(day).order_by(day))
+    return [(row_day, Decimal(amount)) for row_day, amount in result.all()]

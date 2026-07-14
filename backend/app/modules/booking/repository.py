@@ -7,10 +7,13 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.arena.model import Arena
 from app.modules.booking.model import Booking, BookingStatus
+from app.modules.court.model import Court
+from app.modules.user.model import User
 
 
 async def get_booking(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None:
@@ -182,6 +185,89 @@ async def list_pending_approval_for_arenas(
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
     result = await db.execute(base.order_by(Booking.created_at.asc()).offset(offset).limit(limit))
     return list(result.scalars().all()), total
+
+
+async def bookings_by_hour(
+    db: AsyncSession, arena_ids: list[uuid.UUID], start: date, end: date
+) -> list[tuple[int, int]]:
+    """(start hour, booking count) pairs in a date range — cancelled/rejected
+    excluded. Feeds the dashboard's bookings-by-time-of-day chart."""
+    if not arena_ids:
+        return []
+    hour = func.cast(func.extract("hour", Booking.start_time), Integer).label("hour")
+    result = await db.execute(
+        select(hour, func.count())
+        .where(
+            Booking.arena_id.in_(arena_ids),
+            Booking.booking_date >= start,
+            Booking.booking_date <= end,
+            Booking.status.notin_([BookingStatus.cancelled, BookingStatus.rejected]),
+        )
+        .group_by(hour)
+        .order_by(hour)
+    )
+    return [(h, count) for h, count in result.all()]
+
+
+async def list_recent_bookings_with_names(
+    db: AsyncSession, arena_ids: list[uuid.UUID], *, limit: int
+) -> list[tuple[Booking, str, str]]:
+    """Latest bookings across arenas joined to (court name, arena name)."""
+    if not arena_ids:
+        return []
+    result = await db.execute(
+        select(Booking, Court.name, Arena.name)
+        .join(Court, Court.id == Booking.court_id)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .where(Booking.arena_id.in_(arena_ids))
+        .order_by(Booking.created_at.desc())
+        .limit(limit)
+    )
+    return [(booking, court_name, arena_name) for booking, court_name, arena_name in result.all()]
+
+
+async def list_owner_bookings_with_names(
+    db: AsyncSession,
+    arena_ids: list[uuid.UUID],
+    *,
+    court_id: uuid.UUID | None,
+    status: BookingStatus | None,
+    date_from: date | None,
+    date_to: date | None,
+    offset: int,
+    limit: int,
+) -> tuple[list[tuple[Booking, str, str, str]], int]:
+    """Cross-arena booking rows joined to (court name, arena name, player
+    name) with the booking-management screen's filters. Callers narrow
+    ``arena_ids`` first for the arena filter."""
+    if not arena_ids:
+        return [], 0
+    conditions: list[ColumnElement[bool]] = [Booking.arena_id.in_(arena_ids)]
+    if court_id is not None:
+        conditions.append(Booking.court_id == court_id)
+    if status is not None:
+        conditions.append(Booking.status == status)
+    if date_from is not None:
+        conditions.append(Booking.booking_date >= date_from)
+    if date_to is not None:
+        conditions.append(Booking.booking_date <= date_to)
+
+    total = (await db.scalar(select(func.count()).select_from(Booking).where(*conditions))) or 0
+    result = await db.execute(
+        select(Booking, Court.name, Arena.name, User.full_name)
+        .join(Court, Court.id == Booking.court_id)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .join(User, User.id == Booking.player_id)
+        .where(*conditions)
+        .order_by(Booking.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = [
+        (booking, court_name, arena_name, player_name)
+        for booking, court_name, arena_name, player_name in result.all()
+    ]
+    return rows, total
 
 
 async def sum_pending_settlement_for_arenas(

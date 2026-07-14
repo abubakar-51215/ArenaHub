@@ -174,6 +174,67 @@ export interface CalendarBooking {
   total_amount: string;
 }
 
+export interface RevenueTrendPoint {
+  date: string;
+  amount: string;
+}
+
+export interface BookingsByHourPoint {
+  hour: number;
+  count: number;
+}
+
+export interface PeakHours {
+  start_hour: number;
+  end_hour: number;
+}
+
+export interface TopArenaItem {
+  arena_id: string;
+  name: string;
+  revenue: string;
+}
+
+export interface RecentBookingItem {
+  booking_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  court_name: string;
+  arena_name: string;
+  status: BookingStatus;
+}
+
+export interface DashboardAnalytics {
+  total_revenue: string;
+  revenue_change_pct: number | null;
+  total_bookings: number;
+  bookings_change_pct: number | null;
+  peak_hours: PeakHours | null;
+  occupancy_rate: number | null;
+  occupancy_change_pts: number | null;
+  revenue_trend: RevenueTrendPoint[];
+  bookings_by_time: BookingsByHourPoint[];
+  top_arenas: TopArenaItem[];
+  recent_bookings: RecentBookingItem[];
+}
+
+export interface OwnerBookingRow {
+  booking_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  arena_id: string;
+  arena_name: string;
+  court_id: string;
+  court_name: string;
+  player_name: string;
+  total_amount: string;
+  status: BookingStatus;
+  payment_id: string | null;
+  receipt_proof_url: string | null;
+}
+
 export interface RevenueBreakdownItem {
   id: string;
   amount: string;

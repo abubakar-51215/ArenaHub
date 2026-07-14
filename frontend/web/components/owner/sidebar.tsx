@@ -37,8 +37,8 @@ const NAV: NavItem[] = [
   { label: "Calendar", href: "/owner/calendar", icon: CalendarDays },
   { label: "Pricing", href: "/owner/pricing", icon: Tag },
   { label: "Earnings", href: "/owner/revenue", icon: Wallet },
-  { label: "Reviews", href: "/owner/reviews", icon: Star },
   { label: "Reports", icon: BarChart3 },
+  { label: "Reviews", href: "/owner/reviews", icon: Star },
   { label: "Settings", icon: Settings },
 ];
 
