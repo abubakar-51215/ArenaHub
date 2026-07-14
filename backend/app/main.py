@@ -32,6 +32,7 @@ from app.modules.dashboard.api import owner_router as dashboard_owner_router
 from app.modules.equipment.api import owner_router as equipment_owner_router
 from app.modules.equipment.api import router as equipment_router
 from app.modules.health.api import router as health_router
+from app.modules.match.api import router as match_router
 from app.modules.media.api import router as media_router
 from app.modules.payment.api import admin_router as payment_admin_router
 from app.modules.payment.api import owner_router as payment_owner_router
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     app.include_router(payment_webhook_router, prefix=API_V1_PREFIX)
     app.include_router(dashboard_owner_router, prefix=API_V1_PREFIX)
     app.include_router(ai_router, prefix=API_V1_PREFIX)
+    app.include_router(match_router, prefix=API_V1_PREFIX)
     app.include_router(websocket_router)
 
     # Serve locally-stored uploads in dev (Cloudinary serves them in prod).
