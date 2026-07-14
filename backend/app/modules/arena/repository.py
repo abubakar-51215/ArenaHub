@@ -59,8 +59,13 @@ async def list_owner_arenas(
     return list(result.scalars().all()), total
 
 
-async def list_owner_arena_ids(db: AsyncSession, owner_id: uuid.UUID) -> list[uuid.UUID]:
-    result = await db.execute(select(Arena.id).where(Arena.owner_id == owner_id))
+async def list_owner_arena_ids(
+    db: AsyncSession, owner_id: uuid.UUID, *, city: ArenaCity | None = None
+) -> list[uuid.UUID]:
+    stmt = select(Arena.id).where(Arena.owner_id == owner_id)
+    if city is not None:
+        stmt = stmt.where(Arena.city == city)
+    result = await db.execute(stmt)
     return list(result.scalars().all())
 
 

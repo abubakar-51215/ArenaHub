@@ -6,10 +6,11 @@ Callers own the transaction.
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.slot.model import TimeSlot
+from app.modules.court.model import Court
+from app.modules.slot.model import SlotStatus, TimeSlot
 
 
 async def get_slot(db: AsyncSession, slot_id: uuid.UUID) -> TimeSlot | None:
@@ -37,3 +38,28 @@ async def existing_start_times(db: AsyncSession, court_id: uuid.UUID, target_dat
 async def add_slot(db: AsyncSession, slot: TimeSlot) -> TimeSlot:
     db.add(slot)
     return slot
+
+
+async def occupancy_counts(
+    db: AsyncSession, arena_ids: list[uuid.UUID], *, date_from: date, date_to: date
+) -> tuple[int, int]:
+    """(sellable slot count, booked count) across the arenas' courts in a date
+    range — maintenance slots excluded from the denominator. Feeds the
+    dashboard's occupancy-rate widget."""
+    if not arena_ids:
+        return 0, 0
+    result = await db.execute(
+        select(
+            func.count().filter(TimeSlot.status != SlotStatus.maintenance),
+            func.count().filter(TimeSlot.status == SlotStatus.booked),
+        )
+        .select_from(TimeSlot)
+        .join(Court, Court.id == TimeSlot.court_id)
+        .where(
+            Court.arena_id.in_(arena_ids),
+            TimeSlot.date >= date_from,
+            TimeSlot.date <= date_to,
+        )
+    )
+    total, booked = result.one()
+    return int(total or 0), int(booked or 0)

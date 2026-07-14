@@ -2,17 +2,50 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  type AnalyticsParams,
   approvePayment,
   getCalendar,
+  getDashboardAnalytics,
   getDashboardSummary,
   getRevenue,
+  listOwnerBookings,
   listPendingApprovals,
+  type OwnerBookingsParams,
   rejectPayment,
   type RevenueParams,
 } from "@/services/dashboard";
 
 export function useDashboardSummary() {
   return useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
+}
+
+export function useDashboardAnalytics(params: AnalyticsParams) {
+  return useQuery({
+    queryKey: [
+      "dashboard-analytics",
+      params.dateFrom ?? "",
+      params.dateTo ?? "",
+      params.city ?? "",
+      params.arenaId ?? "",
+    ],
+    queryFn: () => getDashboardAnalytics(params),
+  });
+}
+
+export function useOwnerBookings(params: OwnerBookingsParams) {
+  return useQuery({
+    queryKey: [
+      "owner-bookings",
+      params.arenaId ?? "",
+      params.courtId ?? "",
+      params.status ?? "",
+      params.dateFrom ?? "",
+      params.dateTo ?? "",
+      params.page ?? 1,
+      params.pageSize ?? 20,
+    ],
+    queryFn: () => listOwnerBookings(params),
+  });
 }
 
 export function usePendingApprovals(page = 1, pageSize = 20) {
@@ -40,6 +73,8 @@ export function useRevenue(params: RevenueParams) {
 function invalidateApprovals(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["pending-approvals"] });
   qc.invalidateQueries({ queryKey: ["dashboard-summary"] });
+  qc.invalidateQueries({ queryKey: ["dashboard-analytics"] });
+  qc.invalidateQueries({ queryKey: ["owner-bookings"] });
 }
 
 export function useApprovePayment() {

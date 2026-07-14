@@ -7,13 +7,15 @@ approval queue, the calendar, and revenue widgets around it
 """
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.modules.arena.model import ArenaCity
+from app.modules.booking.model import BookingStatus
 from app.modules.dashboard import service
 from app.modules.user.model import User
 from app.shared.auth import require_role
@@ -32,6 +34,48 @@ async def get_summary(
 ) -> dict[str, Any]:
     data = await service.get_summary(db, user)
     return success(data=data, message="Dashboard summary retrieved.")
+
+
+@owner_router.get("/dashboard/analytics", summary="Dashboard analytics (charts + stat cards)")
+async def get_analytics(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    city: ArenaCity | None = None,
+    arena_id: uuid.UUID | None = None,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    # Default to the last 7 days, matching the wireframe's week-long range.
+    resolved_to = date_to or date.today()
+    resolved_from = date_from or resolved_to - timedelta(days=6)
+    data = await service.get_analytics(
+        db, user, date_from=resolved_from, date_to=resolved_to, city=city, arena_id=arena_id
+    )
+    return success(data=data, message="Dashboard analytics retrieved.")
+
+
+@owner_router.get("/dashboard/bookings", summary="Booking management table (all my arenas)")
+async def list_owner_bookings(
+    arena_id: uuid.UUID | None = None,
+    court_id: uuid.UUID | None = None,
+    booking_status: BookingStatus | None = Query(default=None, alias="status"),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_owner_bookings(
+        db,
+        user,
+        arena_id=arena_id,
+        court_id=court_id,
+        status=booking_status,
+        date_from=date_from,
+        date_to=date_to,
+        params=params,
+    )
+    return success(data=data, message="Bookings retrieved.")
 
 
 @owner_router.get("/dashboard/pending-approvals", summary="Booking-approval panel (all my arenas)")
