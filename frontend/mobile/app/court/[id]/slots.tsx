@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArenaCard } from '@/components/arena-card';
 import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/theme';
-import { useArena } from '@/hooks/useArenas';
+import { useArena, useArenaCourts } from '@/hooks/useArenas';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
 import { getRecommendations } from '@/services/ai';
 import type { TimeSlot } from '@/types';
@@ -63,6 +63,10 @@ export default function SlotSelectionScreen() {
   }
 
   const arena = useArena(arenaId);
+  const courts = useArenaCourts(arenaId);
+  // A slot is peak-priced when its snapshot price exceeds the court's base
+  // rate (the peak multiplier is baked in at slot-generation time).
+  const basePrice = Number(courts.data?.find((c) => c.id === courtId)?.base_price ?? 0);
   const isFullyBooked = !!slots?.length && !slots.some((s) => s.status === 'available');
   const alternatives = useQuery({
     queryKey: ['alternatives', arenaId, arena.data?.city],
@@ -114,11 +118,13 @@ export default function SlotSelectionScreen() {
           renderItem={({ item }) => {
             const bookable = item.status === 'available';
             const active = selectedSlotIds.includes(item.id);
+            const isPeak = basePrice > 0 && Number(item.price) > basePrice;
             return (
               <Pressable
                 disabled={!bookable}
                 style={[
                   styles.slot,
+                  isPeak && styles.slotPeak,
                   !bookable && styles.slotDisabled,
                   active && styles.slotActive,
                 ]}
@@ -126,9 +132,23 @@ export default function SlotSelectionScreen() {
                 <Text style={[styles.slotText, active && styles.slotTextActive]}>
                   {item.start_time.slice(0, 5)}
                 </Text>
-                {!bookable ? (
+                {bookable ? (
+                  <View style={styles.slotPriceRow}>
+                    {isPeak ? (
+                      <Ionicons name="flash" size={9} color={active ? '#fff' : Colors.light.warning} />
+                    ) : null}
+                    <Text
+                      style={[
+                        styles.slotPrice,
+                        isPeak && !active && styles.slotPricePeak,
+                        active && styles.slotTextActive,
+                      ]}>
+                      Rs. {Number(item.price)}
+                    </Text>
+                  </View>
+                ) : (
                   <Text style={styles.slotStatus}>{STATUS_LABEL[item.status]}</Text>
-                ) : null}
+                )}
               </Pressable>
             );
           }}
@@ -222,9 +242,13 @@ const styles = StyleSheet.create({
   },
   slotDisabled: { backgroundColor: Colors.light.card, borderColor: Colors.light.border },
   slotActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  slotPeak: { borderColor: Colors.light.warning },
   slotText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   slotTextActive: { color: '#fff' },
   slotStatus: { fontSize: 9, color: Colors.light.muted, marginTop: 2 },
+  slotPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 },
+  slotPrice: { fontSize: 9, color: Colors.light.muted },
+  slotPricePeak: { color: Colors.light.warning, fontWeight: '600' },
   empty: { textAlign: 'center', color: Colors.light.muted, marginTop: 24 },
   alternatives: { marginTop: 20 },
   alternativesTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text, marginBottom: 10 },

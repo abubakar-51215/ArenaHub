@@ -2,13 +2,52 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ArenaCard } from '@/components/arena-card';
+import { StaticMap } from '@/components/static-map';
 import { Colors } from '@/constants/theme';
 import { useArena, useArenaCourts, useArenaRating } from '@/hooks/useArenas';
 import { getRecommendations } from '@/services/ai';
+import { listPricingRules } from '@/services/courts';
+
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** "Sat 18:00–23:00 ×1.5" / "Daily 18:00–23:00 ×1.5" peak-window lines. */
+function PeakPricingLines({ courtId }: { courtId: string }) {
+  const rules = useQuery({
+    queryKey: ['pricing-rules', courtId],
+    queryFn: () => listPricingRules(courtId),
+  });
+  if (!rules.data?.length) return null;
+  return (
+    <View style={styles.peakLines}>
+      {rules.data.map((r) => (
+        <View key={r.id} style={styles.peakLine}>
+          <Ionicons name="flash" size={11} color={Colors.light.warning} />
+          <Text style={styles.peakLineText}>
+            Peak: {r.weekday ? WEEKDAYS[r.weekday - 1] : 'Daily'} {r.start_time.slice(0, 5)}–
+            {r.end_time.slice(0, 5)} ×{Number(r.price_multiplier)}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function openDirections(lat: number, lng: number, name: string) {
+  const label = encodeURIComponent(name);
+  const url = Platform.select({
+    ios: `http://maps.apple.com/?ll=${lat},${lng}&q=${label}`,
+    android: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
+    default: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`,
+  });
+  Linking.openURL(url).catch(() => {
+    // Fall back to the OSM website if no maps app handles the URI.
+    Linking.openURL(`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`);
+  });
+}
 
 export default function ArenaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -101,6 +140,16 @@ export default function ArenaDetailScreen() {
             </>
           ) : null}
 
+          <Text style={styles.sectionTitle}>Location</Text>
+          <Text style={styles.address}>{a.address}</Text>
+          <StaticMap latitude={Number(a.latitude)} longitude={Number(a.longitude)} />
+          <Pressable
+            style={styles.directionsButton}
+            onPress={() => openDirections(Number(a.latitude), Number(a.longitude), a.name)}>
+            <Ionicons name="navigate-outline" size={16} color={Colors.light.tint} />
+            <Text style={styles.directionsText}>Get Directions</Text>
+          </Pressable>
+
           <Text style={styles.sectionTitle}>Courts</Text>
           {courts.isLoading ? (
             <ActivityIndicator color={Colors.light.tint} style={{ marginTop: 8 }} />
@@ -119,6 +168,7 @@ export default function ArenaDetailScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.courtName}>{court.name}</Text>
                   <Text style={styles.courtSports}>{court.sport_types.join(' · ')}</Text>
+                  <PeakPricingLines courtId={court.id} />
                 </View>
                 <Text style={styles.courtPrice}>Rs. {court.base_price} / hr</Text>
                 {!court.is_available ? (
@@ -189,4 +239,20 @@ const styles = StyleSheet.create({
   courtPrice: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   unavailable: { fontSize: 11, color: Colors.light.destructive },
   similarRow: { gap: 12, paddingBottom: 8 },
+  address: { fontSize: 13, color: Colors.light.muted, marginBottom: 10 },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  directionsText: { fontSize: 13, fontWeight: '600', color: Colors.light.tint },
+  peakLines: { marginTop: 3, gap: 1 },
+  peakLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  peakLineText: { fontSize: 11, color: Colors.light.warning, fontWeight: '600' },
 });

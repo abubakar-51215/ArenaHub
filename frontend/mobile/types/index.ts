@@ -90,6 +90,18 @@ export interface Court {
   is_available: boolean;
 }
 
+/** Active peak-pricing window. `weekday` is ISO 1 (Mon) – 7 (Sun); null = every day. */
+export interface PricingRule {
+  id: string;
+  court_id: string;
+  name: string;
+  weekday: number | null;
+  start_time: string;
+  end_time: string;
+  price_multiplier: string;
+  is_active: boolean;
+}
+
 export type SlotStatus = 'available' | 'reserved' | 'booked' | 'maintenance';
 
 export interface TimeSlot {
