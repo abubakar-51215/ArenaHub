@@ -42,6 +42,9 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="arena/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="court/[id]/slots" options={{ headerShown: false }} />
+        <Stack.Screen name="booking/[courtId]" options={{ headerShown: false }} />
+        <Stack.Screen name="payment/[groupId]" options={{ headerShown: false }} />
+        <Stack.Screen name="booking/confirmation/[bookingId]" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       <Stack.Screen name="health" options={{ title: 'Backend Health' }} />
