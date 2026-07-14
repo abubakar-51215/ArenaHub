@@ -98,6 +98,59 @@ async def test_peak_pricing_rule_lifecycle(client: AsyncClient, db_session: Asyn
     assert deleted.status_code == 200
 
 
+async def test_public_pricing_rules_show_active_only_after_approval(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "cowner4@example.com", "owner")
+    arena_id = await _make_arena(client, owner)
+    h = auth_header(owner)
+    court_id = (
+        await client.post(
+            f"/api/v1/owner/arenas/{arena_id}/courts",
+            headers=h,
+            json={"name": "Court D", "sport_types": ["futsal"], "base_price": "2000"},
+        )
+    ).json()["data"]["id"]
+
+    await client.post(
+        f"/api/v1/owner/courts/{court_id}/pricing-rules",
+        headers=h,
+        json={
+            "name": "Weekend evenings",
+            "weekday": 6,
+            "start_time": "18:00:00",
+            "end_time": "23:00:00",
+            "price_multiplier": "1.50",
+        },
+    )
+    inactive = await client.post(
+        f"/api/v1/owner/courts/{court_id}/pricing-rules",
+        headers=h,
+        json={
+            "name": "Disabled rule",
+            "start_time": "06:00:00",
+            "end_time": "08:00:00",
+            "price_multiplier": "1.25",
+            "is_active": False,
+        },
+    )
+    assert inactive.status_code == 201
+
+    # Arena still pending → public pricing rules 404.
+    pending = await client.get(f"/api/v1/courts/{court_id}/pricing-rules")
+    assert pending.status_code == 404
+
+    admin = await make_admin(client, db_session, "cadmin4@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+
+    public = await client.get(f"/api/v1/courts/{court_id}/pricing-rules")
+    assert public.status_code == 200
+    rules = public.json()["data"]
+    assert len(rules) == 1
+    assert rules[0]["name"] == "Weekend evenings"
+    assert rules[0]["price_multiplier"] == "1.50"
+
+
 async def test_public_courts_only_after_approval(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

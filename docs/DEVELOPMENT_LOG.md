@@ -5,6 +5,202 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-15 — Matchmaking (backend + Play tab), booking/profile gap-closing, peak-pricing visibility + map (Track A, Abubakar)
+
+### Completed
+- **Matchmaking backend** (`modules/match/`): `Match`/`MatchParticipant`
+  models + `add_matches` migration, endpoints for create / list-open (city,
+  sport, date filters) / mine (created vs joined) / detail / join / leave /
+  cancel. A match is a lightweight social listing — it does not reserve the
+  court (no slot FK, no payment). Creator auto-joins; hitting `max_players`
+  flips status to `full`; creator leaving cancels for everyone. Full test
+  file added (`tests/modules/test_match.py`).
+- **Scope change recorded**: matchmaking was listed under "Excluded Features"
+  in docs 01/Requirements — moved into scope as PROJECT_GUIDELINES deviation
+  #20 (team decision), and both spec docs updated.
+- **Mobile Play tab**: replaced the "Coming Soon" placeholder with the full
+  wireframe-10 flow — Open Matches (sport filter, join) / My Matches
+  (created + joined, status badges), match detail with participants and
+  join/leave/cancel, and a Create Match flow (arena search → court → sport →
+  date strip → hour chips → max-players stepper).
+- **Booking-flow gaps** (all four had complete backends, zero mobile UI):
+  discount-code field at checkout; multi-slot selection (toggle, 8-slot cap
+  matching `MAX_SLOTS_PER_BOOKING`); reschedule (button on eligible booking
+  cards + same-court slot-picker screen); receipt-PDF download via the
+  native share sheet (`expo-file-system` + `expo-sharing` added). One small
+  additive endpoint: `GET /payments/by-group/{id}` to resolve a payment from
+  a booking group.
+- **Profile gaps**: change-password screen driving the OTP-gated two-step
+  backend flow (forces re-login since the backend revokes all sessions);
+  avatar upload (players' upload allow-list widened to `avatars`, picker in
+  Personal Information, real photo shown on the profile tab); payment
+  history — built the spec'd-but-missing `GET /payments/my` (repo + schema +
+  route + tests) and a new mobile screen with per-payment receipt download.
+- **Peak-pricing visibility**: new public `GET /courts/{id}/pricing-rules`
+  (active rules only, approval-gated); arena detail court cards list peak
+  windows ("Peak: Sat 18:00–23:00 ×1.5"); slot chips now show each slot's
+  actual price with an amber flash marker on peak-priced slots.
+- **Arena Detail map**: new Location section — full street address, a static
+  OpenStreetMap tile-mosaic map with pin (`components/static-map.tsx`, pure
+  JS slippy-map math, works in Expo Go), and a Get Directions deep link into
+  the device's maps app.
+- **Verified**: backend 86 tests green + ruff/black/mypy clean; mobile
+  `tsc --noEmit`, `expo lint`, and full `expo export` bundle builds clean.
+
+### Challenges
+- The pre-existing match module code had three real bugs that only surfaced
+  once tests existed: a stale identity-map read after join (fixed with
+  `populate_existing`), SQLAlchemy auto-correlating away the participant-count
+  subquery in `/matches/mine` (fixed with an alias), and an async lazy-load
+  crash on `Match.creator` (fixed with `selectinload`). Reinforces the
+  write-tests-before-trusting rule.
+- `react-native-maps` is a native module that can't run in Expo Go — adopting
+  it would have forced the whole team onto custom dev builds. Decision:
+  static OSM raster tiles + directions deep link instead; deviation #8
+  updated to record it.
+- Players were hard-blocked from uploading anything but `receipts`, so avatar
+  upload 403'd until the media allow-list gained an `avatars` folder.
+- Two endpoints the API spec promises simply didn't exist (`GET /payments/my`,
+  player-visible pricing rules) — both built additively; the frozen `/api/v1`
+  contract only gained routes/fields, nothing changed shape.
+
+### Next
+- Umer (Track B): admin backend (players/owners/arenas/bookings/payments/
+  analytics/audit log), admin web dashboard, and the owner web Profile page.
+- Merge `abubakar` → `main` after review (merge commit, per team convention).
+
+---
+
+## 2026-07-14 — Web auth pages + owner dashboard UI, ahead of schedule (Track B, Umer)
+
+### Completed
+- **Web auth pages**: `/register` (owner sign-up with OTP verification, then
+  auto-login), `/forgot-password`, `/reset-password` (token from a `?token=`
+  link or pasted manually, since no email provider exists yet) — the login
+  page's "Sign up"/"Forgot Password?" links were dead `href="#"` placeholders
+  with no pages behind them at all; both are now real, working flows.
+  Factored the shared two-column branded shell into `AuthShell` so all four
+  auth pages (login included) stay visually consistent.
+- **Owner dashboard web UI** — pulled forward from Sprint 4 since last
+  session's backend (`modules/dashboard/`, `modules/review/`) was already
+  done and idle. Dashboard home now shows live summary widgets instead of
+  the Sprint 1 placeholder cards; new `/owner/bookings` (cross-arena
+  booking-approval queue with approve/reject), `/owner/calendar`,
+  `/owner/revenue` (by-arena/by-court breakdown), and `/owner/reviews`
+  (respond to a review) pages. Sidebar's disabled Bookings/Calendar/
+  Earnings/Reviews entries are now working links.
+- **Verified against the live backend, not just typecheck** — built a real
+  fixture (arena → admin-approve → court → today's slots → one card booking,
+  one bank_transfer booking) and drove every new endpoint (summary,
+  pending-approvals, calendar, revenue, approve) through curl exactly as the
+  new pages call them, confirming the data shapes and mutation
+  side-effects (approving a payment correctly dropped `pending_approvals`
+  and bumped `monthly_revenue`) before committing.
+
+### Challenges
+- Repeated confusion this session about "why isn't the OTP showing in my
+  terminal" — root cause was that whichever backend process happened to be
+  serving port 8000 kept switching between a hidden background instance
+  (started for quick verification, output only visible in a log file) and
+  the user's own visible terminal instance, with no indication of which one
+  was live at any given moment. Settled on: the user runs their own
+  `uv run uvicorn app.main:app --reload` in a visible terminal for anything
+  they need to watch live; hidden background instances are only for
+  Claude's own pre-commit verification, and get torn down afterward.
+- Clarified the web/mobile split for anyone testing going forward: web is
+  owner + admin only, by design — booking/payment/review-*submission* will
+  never have a web page, only Swagger (now) or the mobile app's booking flow
+  (Sprint 4, not yet scaffolded) can drive those. Owner-side review
+  *responses* and the dashboard, by contrast, are legitimately web, which is
+  why they got pulled forward this session instead of waiting.
+
+### Next
+- Update docs/06 §14 to match the implemented review behavior (still
+  outstanding from last session).
+- Sprint 4 mobile: none of the player-facing flow (auth, search, booking,
+  payment, review submission) has any mobile screens yet beyond the Sprint 1
+  health check — that's real, unscaffolded work, not something pulled
+  forward like the web dashboard was.
+
+---
+
+## 2026-07-14 — Sprint 3 close-out: reviews + owner dashboard (Track B, Umer)
+
+### Completed
+- **`modules/review/`** — submit (completed-booking gated, one per booking via
+  a unique `booking_id` constraint), edit (30-day window)/delete (own review,
+  or admin), owner response, report/flag (idempotent — a second report is a
+  no-op, not an error), and a live rating-recompute aggregate (`AVG`/`COUNT`
+  over `reviews`, not a cached column — `arenas` has no rating field, matches
+  docs/09 exactly). `rating` is a plain `Integer` + `CHECK(1-5)`, not a
+  SQLAlchemy `Enum` — sidesteps the ENUM-downgrade trap that hit Sprint 1-3
+  migrations repeatedly. Migration `add_reviews`. The 30-day window, owner
+  response, and report/flag aren't in docs/06 at all, only in
+  MASTER_DEVELOPMENT_PLAN.md's Track B scope — built to the master plan per
+  its source-of-truth precedence.
+- **Owner dashboard** (`modules/dashboard/`, no new tables — pure read-side
+  composition over bookings/payments/arenas): summary widgets (arenas owned,
+  bookings today/this month, monthly revenue, pending approvals), a
+  cross-arena booking-approval queue (`GET /owner/dashboard/pending-approvals`
+  — the approve/reject *action* already existed in `payment.service` from
+  Sprint 3; nothing previously listed the queue across more than one arena at
+  a time), a per-arena calendar (`GET /owner/arenas/{id}/bookings/calendar`),
+  and revenue widgets (total, pending settlements = unsettled advance
+  balances, breakdown by arena/court). Revenue joins `payments` to `bookings`
+  via `booking_group_id` since `Payment` carries neither `arena_id` nor
+  `court_id` directly.
+- **`booking_service.complete_finished_bookings`** — a fourth APScheduler job
+  (every 15 minutes, alongside auto-cancel/reminders/cleanup) that transitions
+  `confirmed` bookings whose slot end time has passed to `completed`. This
+  replaces the earlier same-day workaround (see Challenges) with the properly
+  layered fix: `booking.service` now owns the only path to `completed`, and
+  `review.service` just checks `booking.status == completed`, no mutation.
+  New repository query `list_confirmed_on_or_before`; `booking_date`/`end_time`
+  are separate columns, so the exact cutoff is still resolved in Python, same
+  pattern as the existing reminder-window query.
+- **Verified end-to-end:** ruff + black + mypy clean; **75 pytest** green
+  (test_review.py + test_dashboard.py new, plus one new scheduler-job test for
+  the completion sweep, everything else still passing) against fresh
+  Postgres 18 + Redis; `add_reviews` migration verified
+  upgrade → downgrade → upgrade cleanly.
+
+### Challenges
+- **No booking ever reached `completed`.** Nothing in `booking.service` (Track
+  A, Sprint 3) transitioned a booking past `confirmed` — reviews require
+  `completed` per docs/06 §14 and had no way to ever fire. Initially patched
+  narrowly inside `review.service` (complete-on-read when a `confirmed`
+  booking's slot end time had passed), flagged as a stopgap. Superseded later
+  the same session by the proper fix above — a dedicated scheduler job in
+  `booking.service`, so completion lives with the rest of the booking state
+  machine instead of leaking into the module that merely reads it.
+- **`MissingGreenlet` on edit/owner-response.** `ReviewResponse` exposes
+  `updated_at`, which uses `onupdate=func.now()`; after `db.commit()` on an
+  UPDATE (not an INSERT), the value isn't eagerly returned the way
+  server_default is on insert, so touching the attribute triggered an
+  implicit synchronous lazy-refresh outside of a greenlet context. No
+  existing module's response schema had hit this before (`BookingResponse`
+  doesn't expose `updated_at` at all). Fixed with an explicit
+  `await db.refresh(review)` after commit in both mutating paths.
+- Removed a stray, never-committed `backend/.gitignore` (`backups/`) — fully
+  redundant with the root `.gitignore`'s recursive `backups/` pattern.
+
+### Next
+- Update docs/06 §14 to match what's implemented (30-day edit window, owner
+  response, report/flag) — currently only in MASTER_DEVELOPMENT_PLAN.md, not
+  in the detailed player-module spec. Housekeeping before final submission,
+  not a code change.
+- Track B remaining for Sprint 4: mobile UI polish (onboarding, home, search,
+  filters and map, arena cards, responsive), notifications UI, profile and
+  settings screens, remaining owner dashboard polish (charts, equipment and
+  review-response UI, payment config) once the Next.js web scaffold catches
+  up.
+- Once Abubakar's PR #10 (Sprint 3 booking/payments) merges to `main` and
+  v0.3.0/v0.4.0 are tagged, the `/api/v1` freeze takes effect — this
+  session's new endpoints (reviews, dashboard) are additive-only, so no
+  conflict, but land them before the freeze to be safe.
+
+---
+
 ## 2026-07-14 — Sprint 3: Booking engine, Redis locking, payments &amp; live updates (Track A, Abubakar)
 
 ### Completed

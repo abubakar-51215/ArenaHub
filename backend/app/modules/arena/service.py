@@ -7,6 +7,7 @@ so the state machine has a single implementation.
 """
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -171,11 +172,21 @@ async def search_arenas(
     q: str | None,
     city: ArenaCity | None,
     sport: str | None,
-    sort: str,
+    price_min: Decimal | None = None,
+    price_max: Decimal | None = None,
+    sort: str = "newest",
     params: PaginationParams,
 ) -> dict:
     arenas, total = await repo.search_public_arenas(
-        db, q=q, city=city, sport=sport, sort=sort, offset=params.offset, limit=params.page_size
+        db,
+        q=q,
+        city=city,
+        sport=sport,
+        price_min=price_min,
+        price_max=price_max,
+        sort=sort,
+        offset=params.offset,
+        limit=params.page_size,
     )
     items = [ArenaResponse.model_validate(a) for a in arenas]
     return paginated(items, total, params)

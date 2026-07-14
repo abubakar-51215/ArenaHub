@@ -30,7 +30,7 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 # Folders images may be filed under — an allow-list so a caller-supplied folder
 # can never traverse outside media_root.
-ALLOWED_FOLDERS = frozenset({"arenas", "courts", "misc"})
+ALLOWED_FOLDERS = frozenset({"arenas", "courts", "misc", "receipts"})
 
 
 def _validate(content: bytes, content_type: str) -> str:
