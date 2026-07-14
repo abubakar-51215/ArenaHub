@@ -41,6 +41,17 @@ async def list_public_courts(
     return success(data=rows, message="Courts retrieved.")
 
 
+@router.get(
+    "/courts/{court_id}/pricing-rules",
+    summary="List a court's active peak-pricing windows",
+)
+async def list_public_pricing_rules(
+    court_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    rows = await service.list_public_pricing_rules(db, court_id)
+    return success(data=rows, message="Pricing rules retrieved.")
+
+
 # ---- owner: courts ------------------------------------------------------
 
 

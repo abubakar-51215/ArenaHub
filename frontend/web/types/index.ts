@@ -17,6 +17,12 @@ export interface User {
   created_at: string;
 }
 
+export interface RegisterResult {
+  user: User;
+  /** OTP delivery channel used, so the client can prompt correctly. */
+  otp_sent_to: string;
+}
+
 export interface Tokens {
   access_token: string;
   refresh_token: string;
@@ -83,6 +89,17 @@ export interface Court {
   is_available: boolean;
 }
 
+export interface Equipment {
+  id: string;
+  arena_id: string;
+  name: string;
+  description: string | null;
+  rental_price: string;
+  quantity_total: number;
+  quantity_available: number;
+  is_active: boolean;
+}
+
 export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface PricingRule {
@@ -129,6 +146,137 @@ export const WEEKDAY_LABELS: Record<number, string> = {
   6: "Saturday",
   7: "Sunday",
 };
+
+export type BookingStatus =
+  "pending_payment" | "pending_approval" | "confirmed" | "completed" | "cancelled" | "rejected";
+
+export interface DashboardSummary {
+  total_arenas: number;
+  bookings_today: number;
+  bookings_this_month: number;
+  monthly_revenue: string;
+  pending_approvals: number;
+}
+
+export interface PendingApproval {
+  booking_id: string;
+  arena_id: string;
+  arena_name: string;
+  court_id: string;
+  player_id: string;
+  player_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  total_amount: string;
+  payment_id: string | null;
+  payment_method: string | null;
+  receipt_proof_url: string | null;
+}
+
+export interface CalendarBooking {
+  id: string;
+  court_id: string;
+  player_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: BookingStatus;
+  total_amount: string;
+}
+
+export interface RevenueTrendPoint {
+  date: string;
+  amount: string;
+}
+
+export interface BookingsByHourPoint {
+  hour: number;
+  count: number;
+}
+
+export interface PeakHours {
+  start_hour: number;
+  end_hour: number;
+}
+
+export interface TopArenaItem {
+  arena_id: string;
+  name: string;
+  revenue: string;
+}
+
+export interface RecentBookingItem {
+  booking_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  court_name: string;
+  arena_name: string;
+  status: BookingStatus;
+}
+
+export interface DashboardAnalytics {
+  total_revenue: string;
+  revenue_change_pct: number | null;
+  total_bookings: number;
+  bookings_change_pct: number | null;
+  peak_hours: PeakHours | null;
+  occupancy_rate: number | null;
+  occupancy_change_pts: number | null;
+  revenue_trend: RevenueTrendPoint[];
+  bookings_by_time: BookingsByHourPoint[];
+  top_arenas: TopArenaItem[];
+  recent_bookings: RecentBookingItem[];
+}
+
+export interface OwnerBookingRow {
+  booking_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  arena_id: string;
+  arena_name: string;
+  court_id: string;
+  court_name: string;
+  player_name: string;
+  total_amount: string;
+  status: BookingStatus;
+  payment_id: string | null;
+  receipt_proof_url: string | null;
+}
+
+export interface RevenueBreakdownItem {
+  id: string;
+  amount: string;
+}
+
+export interface RevenueSummary {
+  total_revenue: string;
+  pending_settlements: string;
+  breakdown_by_arena: RevenueBreakdownItem[];
+  breakdown_by_court: RevenueBreakdownItem[];
+}
+
+export interface Review {
+  id: string;
+  player_id: string;
+  reviewer_name: string;
+  arena_id: string;
+  booking_id: string;
+  rating: number;
+  review_text: string | null;
+  owner_response: string | null;
+  owner_response_at: string | null;
+  is_flagged: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RatingSummary {
+  average_rating: number | null;
+  review_count: number;
+}
 
 export const WEEKDAY_NAMES = [
   "monday",

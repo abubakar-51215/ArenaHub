@@ -30,9 +30,9 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-x-hidden">{children}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
     </div>
   );
 }

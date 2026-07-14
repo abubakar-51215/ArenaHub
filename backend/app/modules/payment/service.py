@@ -20,10 +20,12 @@ from app.integrations.payments import get_provider
 from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
+from app.modules.equipment import service as equipment_service
 from app.modules.payment import repository as repo
 from app.modules.payment.model import Payment, PaymentMethod, Refund, RefundStatus
 from app.modules.payment.receipt import build_receipt_pdf
 from app.modules.payment.schema import (
+    PaymentHistoryItem,
     PaymentInitiateRequest,
     PaymentInitiateResponse,
     PaymentResponse,
@@ -33,6 +35,7 @@ from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_user
+from app.shared.pagination import PaginationParams, paginated
 from app.shared.qr import generate_booking_qr
 from app.websocket.manager import broadcast_slot_status
 
@@ -53,6 +56,34 @@ async def _group_bookings_for_player(
     if any(b.player_id != user.id for b in bookings):
         raise ForbiddenError("You do not own this booking.")
     return bookings
+
+
+async def list_my_payments(db: AsyncSession, user: User, params: PaginationParams) -> dict:
+    rows, total = await repo.list_payments_for_player(
+        db, user.id, offset=params.offset, limit=params.page_size
+    )
+    items = [
+        PaymentHistoryItem(
+            **PaymentResponse.model_validate(payment).model_dump(),
+            arena_name=arena_name,
+            booking_date=booking_date,
+        )
+        for payment, arena_name, booking_date in rows
+    ]
+    return paginated(items, total, params)
+
+
+async def get_payment_by_group(
+    db: AsyncSession, user: User, booking_group_id: uuid.UUID
+) -> PaymentResponse:
+    """Resolve the payment for a booking group — lets the client fetch a
+    receipt from a booking it already has, without threading payment_id
+    through every screen that only knows the booking/group id."""
+    await _group_bookings_for_player(db, user, booking_group_id)
+    payment = await repo.get_payment_by_group(db, booking_group_id)
+    if payment is None:
+        raise NotFoundError("No payment found for this booking group.")
+    return PaymentResponse.model_validate(payment)
 
 
 async def initiate_payment(
@@ -131,6 +162,7 @@ async def _fail_group(db: AsyncSession, payment: Payment, *, rejected: bool) -> 
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
+        await equipment_service.release_for_booking(db, booking.id)
         notify_user(booking.player_id, "booking_payment_failed", booking_id=str(booking.id))
 
 
@@ -297,6 +329,7 @@ async def force_refund(db: AsyncSession, admin: User, booking_id: uuid.UUID) -> 
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
+        await equipment_service.release_for_booking(db, booking.id)
 
     refund = await create_refund_for_cancelled_booking(db, booking)
     await db.commit()

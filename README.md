@@ -75,6 +75,7 @@ real-time digital system.
 - 💻 **Next.js Web Dashboards** — Owner &amp; Admin
 - 🎟️ **Equipment Rental &amp; QR Check-in**
 - ⭐ **Reviews &amp; Ratings**
+- 🎮 **Matchmaking ("Play")** — post an open match, find players, join games
 - 📊 **Downloadable Reports &amp; Analytics** (PDF / CSV)
 - 🤖 **AI Recommendations** — content-based arena suggestions
 
@@ -91,7 +92,7 @@ real-time digital system.
 | 🗄️ Database | **PostgreSQL 18** |
 | ⚡ Cache / Locking | **Redis** (Memurai on Windows) |
 | 🧠 State | Zustand + TanStack Query |
-| 🗺️ Maps | OpenStreetMap + Leaflet / react-native-maps |
+| 🗺️ Maps | OpenStreetMap — static tile map + directions deep link (mobile), Leaflet (web) |
 | 🔄 Migrations | Alembic |
 | ⏱️ Background Jobs | FastAPI BackgroundTasks + APScheduler |
 | 📦 Package Managers | **uv** (backend) · npm (frontend) |

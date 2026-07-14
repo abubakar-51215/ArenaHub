@@ -1,104 +1,133 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+
+import { ArenaCard } from '@/components/arena-card';
+import { Colors } from '@/constants/theme';
+import { useArenaSearch } from '@/hooks/useArenas';
+import { getRecommendations } from '@/services/ai';
+import { useAuthStore } from '@/store/auth';
+
+const SPORTS = ['All', 'futsal', 'cricket', 'padel', 'badminton', 'tennis'];
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">ArenaHub</ThemedText>
-        <Link href="/health">
-          <ThemedText type="link">Check backend health →</ThemedText>
-        </Link>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const user = useAuthStore((s) => s.user);
+  const popular = useArenaSearch({ sort: 'rating_desc', page_size: 10 });
+  const recommended = useQuery({
+    queryKey: ['recommendations'],
+    queryFn: () => getRecommendations({ limit: 8 }),
+  });
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <FlatList
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <View style={styles.headerTopRow}>
+                <View>
+                  <Text style={styles.greeting}>Hi {user?.full_name?.split(' ')[0] ?? 'there'} 👋</Text>
+                  <Text style={styles.subtitle}>Find your arena, book and play!</Text>
+                </View>
+                <Pressable onPress={() => router.push('/notifications')}>
+                  <Ionicons name="notifications-outline" size={24} color={Colors.light.text} />
+                </Pressable>
+              </View>
+
+              <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
+                <Ionicons name="search" size={18} color={Colors.light.muted} />
+                <Text style={styles.searchPlaceholder}>Search arenas or locations</Text>
+              </Pressable>
+
+              <FlatList
+                data={SPORTS}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(s) => s}
+                contentContainerStyle={styles.sportsRow}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.sportChip}
+                    onPress={() =>
+                      router.push({ pathname: '/(tabs)/search', params: item === 'All' ? {} : { sport: item } })
+                    }>
+                    <Text style={styles.sportChipText}>{item}</Text>
+                  </Pressable>
+                )}
+              />
+
+              {recommended.data?.items.length ? (
+                <>
+                  <Text style={styles.sectionTitle}>Recommended for You</Text>
+                  <FlatList
+                    data={recommended.data.items}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(a) => a.id}
+                    contentContainerStyle={styles.recommendedRow}
+                    renderItem={({ item }) => <ArenaCard arena={item} width={160} />}
+                  />
+                </>
+              ) : null}
+
+              <Text style={styles.sectionTitle}>Popular Arenas</Text>
+            </View>
+          </>
+        }
+        data={popular.data?.items ?? []}
+        keyExtractor={(a) => a.id}
+        numColumns={2}
+        columnWrapperStyle={styles.column}
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => (
+          <View style={styles.cardWrap}>
+            <ArenaCard arena={item} />
+          </View>
+        )}
+        ListEmptyComponent={
+          popular.isLoading ? (
+            <ActivityIndicator style={{ marginTop: 24 }} color={Colors.light.tint} />
+          ) : (
+            <Text style={styles.empty}>No arenas yet — check back soon.</Text>
+          )
+        }
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  greeting: { fontSize: 22, fontWeight: '700', color: Colors.light.text },
+  subtitle: { fontSize: 14, color: Colors.light.muted, marginTop: 4, marginBottom: 16 },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    backgroundColor: Colors.light.card,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 46,
+    marginBottom: 14,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  searchPlaceholder: { color: Colors.light.muted, fontSize: 14 },
+  sportsRow: { gap: 8, paddingBottom: 16 },
+  sportChip: {
+    backgroundColor: Colors.light.card,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  sportChipText: { fontSize: 13, fontWeight: '600', color: Colors.light.text, textTransform: 'capitalize' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text, marginBottom: 12, marginTop: 8 },
+  recommendedRow: { gap: 12, paddingBottom: 20 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
+  column: { gap: 12 },
+  cardWrap: { flex: 1, marginBottom: 12 },
+  empty: { color: Colors.light.muted, textAlign: 'center', marginTop: 24 },
 });

@@ -147,7 +147,6 @@ The objectives of Arena Hub are:
 
 The following features are outside the current project scope and may be implemented in future versions:
 
-- Matchmaking System
 - Team Management
 - Tournament Management
 - Team Challenges
@@ -774,7 +773,6 @@ The architecture is designed to support:
 
 Future expansion:
 
-- Matchmaking
 - Tournament Management
 - Team Management
 - AI Chatbot
@@ -1555,7 +1553,6 @@ using Firebase Cloud Messaging (FCM).
 
 The architecture shall support future integration of:
 
-- Matchmaking System
 - Tournament Management
 - Team Management
 - AI Chatbot

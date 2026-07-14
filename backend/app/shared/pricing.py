@@ -5,6 +5,7 @@ at booking-creation time. Equipment addons are added after discount by the
 booking module once modules/equipment exists (deviation #12).
 """
 
+from collections.abc import Sequence
 from datetime import time
 from decimal import Decimal
 
@@ -13,7 +14,7 @@ from app.modules.court.model import CourtPricingRule
 
 
 def resolve_peak_price(
-    base_price: Decimal, pricing_rules: list[CourtPricingRule], weekday: int, start_time: time
+    base_price: Decimal, pricing_rules: Sequence[CourtPricingRule], weekday: int, start_time: time
 ) -> Decimal:
     """Return ``base_price`` with the best-matching active peak rule applied.
 

@@ -7,6 +7,7 @@ Two routers:
 """
 
 import uuid
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, status
@@ -41,11 +42,22 @@ async def search_arenas(
     q: str | None = None,
     city: ArenaCity | None = None,
     sport: str | None = None,
+    price_min: Decimal | None = None,
+    price_max: Decimal | None = None,
     sort: str = "newest",
     params: PaginationParams = Depends(pagination_params),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.search_arenas(db, q=q, city=city, sport=sport, sort=sort, params=params)
+    data = await service.search_arenas(
+        db,
+        q=q,
+        city=city,
+        sport=sport,
+        price_min=price_min,
+        price_max=price_max,
+        sort=sort,
+        params=params,
+    )
     return success(data=data, message="Arenas retrieved.")
 
 

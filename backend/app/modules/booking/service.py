@@ -1,10 +1,13 @@
 """Booking business logic: create (lock -> re-check -> price -> pending_payment),
 reschedule, cancel-with-refund-eligibility, and the stale-booking sweep that
-the APScheduler task (added later this sprint) will call periodically.
+the APScheduler task calls periodically.
 
 Payment processing itself (webhook auto-confirm, bank_transfer owner
-approval, actual refund execution) belongs to modules/payment/, built next —
-this module only gets a booking to ``pending_payment`` and back out again.
+approval, actual refund execution) belongs to modules/payment/. Equipment
+addons (docs/11 section 8) are reserved at create time against the first
+booking row in the group and released on cancellation/auto-cancel — see
+``modules/equipment/service.py``'s ``reserve_for_booking``/
+``release_for_booking``, the integration checkpoint between the two modules.
 """
 
 import uuid
@@ -25,6 +28,7 @@ from app.modules.booking.schema import (
     BookingResponse,
 )
 from app.modules.court import repository as court_repo
+from app.modules.equipment import service as equipment_service
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus, TimeSlot
 from app.modules.user.model import User, UserRole
@@ -152,6 +156,25 @@ async def create_booking(
         if discount is not None:
             discount.used_count += 1
 
+        if data.equipment:
+            # Attached to the first row — one payment covers the whole
+            # group, so the addon cost only needs to land once.
+            equipment_total = await equipment_service.reserve_for_booking(
+                db,
+                bookings[0].id,
+                arena.id,
+                [(item.equipment_id, item.quantity) for item in data.equipment],
+            )
+            primary = bookings[0]
+            primary.total_amount += equipment_total
+            if primary.payment_type == PaymentPlan.advance:
+                primary.advance_amount = (
+                    primary.total_amount * Decimal(arena.advance_percentage) / Decimal(100)
+                ).quantize(Decimal("0.01"))
+            else:
+                primary.advance_amount = primary.total_amount
+            primary.remaining_amount = primary.total_amount - primary.advance_amount
+
         await db.commit()
         for slot in fresh_slots:
             await broadcast_slot_status(
@@ -256,6 +279,10 @@ async def cancel_booking(
     booking.refund_percentage = refund_percentage
     booking.refund_eligible = refund_percentage > 0
 
+    # No-op if this booking has no equipment lines (only the group's first
+    # row ever does — see create_booking).
+    await equipment_service.release_for_booking(db, booking.id)
+
     # Payment module owns refund execution; it only does anything if money
     # was actually captured for this booking (no-op for pending_payment
     # cancellations, where refund_percentage is always 0 above).
@@ -340,12 +367,29 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
             freed_slots.append(slot)
         booking.status = BookingStatus.cancelled
         booking.cancellation_reason = "Auto-cancelled: payment not completed within 24 hours."
+        await equipment_service.release_for_booking(db, booking.id)
     await db.commit()
     for slot in freed_slots:
         await broadcast_slot_status(
             slot.court_id, slot.id, slot.date, slot.start_time, slot.status.value
         )
     return len(stale)
+
+
+async def complete_finished_bookings(db: AsyncSession, now: datetime | None = None) -> int:
+    """Transition confirmed bookings whose slot end time has passed to
+    ``completed`` (docs/06 section 14: reviews require ``status ==
+    completed``). Called by the APScheduler job in ``app/tasks/`` — this is
+    the only place a booking is ever promoted to ``completed``.
+    """
+    current = now or datetime.now()
+    candidates = await repo.list_confirmed_on_or_before(db, current.date())
+    finished = [b for b in candidates if datetime.combine(b.booking_date, b.end_time) <= current]
+    for booking in finished:
+        booking.status = BookingStatus.completed
+    if finished:
+        await db.commit()
+    return len(finished)
 
 
 async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None) -> int:

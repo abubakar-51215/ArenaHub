@@ -398,3 +398,71 @@ async def test_receipt_pdf_downloads_for_completed_payment(
         f"/api/v1/payments/{payment_id}/receipt.pdf", headers=auth_header(other_player)
     )
     assert forbidden.status_code == 403
+
+
+async def test_get_payment_by_group_resolves_id_for_receipt_lookup(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "payowner11@example.com", "owner")
+    player, _ = await make_user(client, db_session, "payplayer11@example.com", "player")
+    _, court_id, monday = await _make_bookable_court(client, db_session, owner, "payowner11")
+    slots = await _slots(client, court_id, monday)
+    group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
+
+    initiated = await client.post(
+        "/api/v1/payments/initiate",
+        headers=auth_header(player),
+        json={"booking_group_id": group_id, "payment_method": "card"},
+    )
+    payment_id = initiated.json()["data"]["payment"]["id"]
+
+    resolved = await client.get(
+        f"/api/v1/payments/by-group/{group_id}", headers=auth_header(player)
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["data"]["id"] == payment_id
+    assert resolved.json()["data"]["booking_group_id"] == group_id
+
+    other_player, _ = await make_user(client, db_session, "payplayer11b@example.com", "player")
+    forbidden = await client.get(
+        f"/api/v1/payments/by-group/{group_id}", headers=auth_header(other_player)
+    )
+    assert forbidden.status_code == 403
+
+
+async def test_payment_history_lists_own_payments_only(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "payowner12@example.com", "owner")
+    player, _ = await make_user(client, db_session, "payplayer12@example.com", "player")
+    _, court_id, monday = await _make_bookable_court(client, db_session, owner, "payowner12")
+    slots = await _slots(client, court_id, monday)
+    group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
+
+    initiated = await client.post(
+        "/api/v1/payments/initiate",
+        headers=auth_header(player),
+        json={"booking_group_id": group_id, "payment_method": "card"},
+    )
+    payment_id = initiated.json()["data"]["payment"]["id"]
+    await client.post(
+        f"/api/v1/payments/{payment_id}/simulate-confirm",
+        headers=auth_header(player),
+        params={"success": True},
+    )
+
+    history = await client.get("/api/v1/payments/my", headers=auth_header(player))
+    assert history.status_code == 200
+    data = history.json()["data"]
+    assert data["total"] == 1
+    item = data["items"][0]
+    assert item["id"] == payment_id
+    assert item["status"] == "completed"
+    assert item["arena_name"] == "Downtown Futsal Arena"
+    assert item["booking_date"] == monday.isoformat()
+    assert item["created_at"] is not None
+
+    # Another player's history is empty — payments don't leak across users.
+    other_player, _ = await make_user(client, db_session, "payplayer12b@example.com", "player")
+    other_history = await client.get("/api/v1/payments/my", headers=auth_header(other_player))
+    assert other_history.json()["data"]["total"] == 0
