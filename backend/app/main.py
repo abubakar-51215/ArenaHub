@@ -27,6 +27,7 @@ from app.modules.booking.api import owner_router as booking_owner_router
 from app.modules.booking.api import router as booking_router
 from app.modules.court.api import owner_router as court_owner_router
 from app.modules.court.api import router as court_router
+from app.modules.dashboard.api import owner_router as dashboard_owner_router
 from app.modules.equipment.api import owner_router as equipment_owner_router
 from app.modules.equipment.api import router as equipment_router
 from app.modules.health.api import router as health_router
@@ -35,6 +36,8 @@ from app.modules.payment.api import admin_router as payment_admin_router
 from app.modules.payment.api import owner_router as payment_owner_router
 from app.modules.payment.api import router as payment_router
 from app.modules.payment.api import webhook_router as payment_webhook_router
+from app.modules.review.api import owner_router as review_owner_router
+from app.modules.review.api import router as review_router
 from app.modules.slot.api import owner_router as slot_owner_router
 from app.modules.slot.api import router as slot_router
 from app.modules.user.api import router as user_router
@@ -88,6 +91,8 @@ def create_app() -> FastAPI:
     app.include_router(court_owner_router, prefix=API_V1_PREFIX)
     app.include_router(equipment_router, prefix=API_V1_PREFIX)
     app.include_router(equipment_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(review_router, prefix=API_V1_PREFIX)
+    app.include_router(review_owner_router, prefix=API_V1_PREFIX)
     app.include_router(slot_router, prefix=API_V1_PREFIX)
     app.include_router(slot_owner_router, prefix=API_V1_PREFIX)
     app.include_router(booking_router, prefix=API_V1_PREFIX)
@@ -98,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(payment_owner_router, prefix=API_V1_PREFIX)
     app.include_router(payment_admin_router, prefix=API_V1_PREFIX)
     app.include_router(payment_webhook_router, prefix=API_V1_PREFIX)
+    app.include_router(dashboard_owner_router, prefix=API_V1_PREFIX)
     app.include_router(websocket_router)
 
     # Serve locally-stored uploads in dev (Cloudinary serves them in prod).

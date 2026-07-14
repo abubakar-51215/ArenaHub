@@ -59,6 +59,11 @@ async def list_owner_arenas(
     return list(result.scalars().all()), total
 
 
+async def list_owner_arena_ids(db: AsyncSession, owner_id: uuid.UUID) -> list[uuid.UUID]:
+    result = await db.execute(select(Arena.id).where(Arena.owner_id == owner_id))
+    return list(result.scalars().all())
+
+
 async def search_public_arenas(
     db: AsyncSession,
     *,

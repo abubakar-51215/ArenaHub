@@ -5,6 +5,72 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-14 — Sprint 3 close-out: reviews + owner dashboard (Track B, Umer)
+
+### Completed
+- **`modules/review/`** — submit (completed-booking gated, one per booking via
+  a unique `booking_id` constraint), edit (30-day window)/delete (own review,
+  or admin), owner response, report/flag (idempotent — a second report is a
+  no-op, not an error), and a live rating-recompute aggregate (`AVG`/`COUNT`
+  over `reviews`, not a cached column — `arenas` has no rating field, matches
+  docs/09 exactly). `rating` is a plain `Integer` + `CHECK(1-5)`, not a
+  SQLAlchemy `Enum` — sidesteps the ENUM-downgrade trap that hit Sprint 1-3
+  migrations repeatedly. Migration `add_reviews`. The 30-day window, owner
+  response, and report/flag aren't in docs/06 at all, only in
+  MASTER_DEVELOPMENT_PLAN.md's Track B scope — built to the master plan per
+  its source-of-truth precedence.
+- **Owner dashboard** (`modules/dashboard/`, no new tables — pure read-side
+  composition over bookings/payments/arenas): summary widgets (arenas owned,
+  bookings today/this month, monthly revenue, pending approvals), a
+  cross-arena booking-approval queue (`GET /owner/dashboard/pending-approvals`
+  — the approve/reject *action* already existed in `payment.service` from
+  Sprint 3; nothing previously listed the queue across more than one arena at
+  a time), a per-arena calendar (`GET /owner/arenas/{id}/bookings/calendar`),
+  and revenue widgets (total, pending settlements = unsettled advance
+  balances, breakdown by arena/court). Revenue joins `payments` to `bookings`
+  via `booking_group_id` since `Payment` carries neither `arena_id` nor
+  `court_id` directly.
+- **Verified end-to-end:** ruff + black + mypy clean; **74 pytest** green
+  (test_review.py + test_dashboard.py new, everything else still passing)
+  against fresh Postgres 18 + Redis; `add_reviews` migration verified
+  upgrade → downgrade → upgrade cleanly.
+
+### Challenges
+- **No booking ever reaches `completed`.** Nothing in `booking.service` (Track
+  A, Sprint 3) transitions a booking past `confirmed` — reviews require
+  `completed` per docs/06 §14 and had no way to ever fire. Fixed narrowly
+  inside `review.service._completed_own_booking`: a `confirmed` booking whose
+  slot end time has already passed is completed on read, the same
+  lazy-reconciliation pattern already used elsewhere (e.g. stale
+  `pending_payment` cleanup) — doesn't touch `booking.service`, only the row
+  this module already loads. Real fix (a scheduler job) is Track A's, flagged
+  for them.
+- **`MissingGreenlet` on edit/owner-response.** `ReviewResponse` exposes
+  `updated_at`, which uses `onupdate=func.now()`; after `db.commit()` on an
+  UPDATE (not an INSERT), the value isn't eagerly returned the way
+  server_default is on insert, so touching the attribute triggered an
+  implicit synchronous lazy-refresh outside of a greenlet context. No
+  existing module's response schema had hit this before (`BookingResponse`
+  doesn't expose `updated_at` at all). Fixed with an explicit
+  `await db.refresh(review)` after commit in both mutating paths.
+- Removed a stray, never-committed `backend/.gitignore` (`backups/`) — fully
+  redundant with the root `.gitignore`'s recursive `backups/` pattern.
+
+### Next
+- Ping Abubakar re: the booking-completion gap — his scheduler is the right
+  long-term home for it; my auto-complete-on-read is a stopgap, not a fix.
+- Track B remaining for Sprint 4: mobile UI polish (onboarding, home, search,
+  filters and map, arena cards, responsive), notifications UI, profile and
+  settings screens, remaining owner dashboard polish (charts, equipment and
+  review-response UI, payment config) once the Next.js web scaffold catches
+  up.
+- Once Abubakar's PR #10 (Sprint 3 booking/payments) merges to `main` and
+  v0.3.0/v0.4.0 are tagged, the `/api/v1` freeze takes effect — this
+  session's new endpoints (reviews, dashboard) are additive-only, so no
+  conflict, but land them before the freeze to be safe.
+
+---
+
 ## 2026-07-14 — Sprint 3: Booking engine, Redis locking, payments &amp; live updates (Track A, Abubakar)
 
 ### Completed
