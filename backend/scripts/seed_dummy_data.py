@@ -28,9 +28,11 @@ Usage (from backend/):
 import asyncio
 import json
 import uuid
+from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -330,7 +332,7 @@ BILAL_ARENAS = [
 # entry is the original demo owner (kept exactly as-is for backward
 # compatibility with already-documented credentials); the rest exist purely
 # to demonstrate multi-owner, multi-city support for the FYP demo.
-OWNERS = [
+OWNERS: list[dict[str, Any]] = [
     {
         "full_name": "Demo Owner",
         "email": OWNER_EMAIL,
@@ -524,9 +526,23 @@ PLAYER_PASSWORD = "Player@1234"
 EQUIPMENT = {
     "Arena Hub DHA Lahore": [
         ("Football", "Standard size 5 match football", Decimal("200.00"), 10, 8, True),
-        ("Bibs (Set of 10)", "Coloured training bibs for team scrimmage", Decimal("300.00"), 5, 5, True),
+        (
+            "Bibs (Set of 10)",
+            "Coloured training bibs for team scrimmage",
+            Decimal("300.00"),
+            5,
+            5,
+            True,
+        ),
         ("Cricket Kit", "Bat, pads, gloves, and helmet", Decimal("500.00"), 4, 3, True),
-        ("Floodlight Extension", "Extra portable floodlight for late games", Decimal("150.00"), 2, 0, False),
+        (
+            "Floodlight Extension",
+            "Extra portable floodlight for late games",
+            Decimal("150.00"),
+            2,
+            0,
+            False,
+        ),
     ],
     "Arena Hub Gulberg Lahore": [
         ("Football", "Standard size 5 match football", Decimal("200.00"), 8, 6, True),
@@ -662,8 +678,8 @@ async def _seed_arenas(
                     )
                 updated = True
             existing_courts = (
-                await db.execute(select(Court).where(Court.arena_id == arena.id))
-            ).scalars().all()
+                (await db.execute(select(Court).where(Court.arena_id == arena.id))).scalars().all()
+            )
             courts_by_name = {c.name: c for c in existing_courts}
             for court_name, sport_types, _capacity, _base_price, _is_available in courts:
                 court = courts_by_name.get(court_name)
@@ -672,7 +688,10 @@ async def _seed_arenas(
                     if court.images != new_court_images:
                         court.images = new_court_images
                         updated = True
-            print(f"skip (already exists): {name}" + (" — refreshed sport photos/amenities" if updated else ""))
+            print(
+                f"skip (already exists): {name}"
+                + (" — refreshed sport photos/amenities" if updated else "")
+            )
             continue
 
         arena = Arena(
@@ -812,7 +831,11 @@ def _slots_for_day(open_time: time, close_time: time) -> list[time]:
 
 
 async def _generate_slots_for_court(
-    db: AsyncSession, court: Court, pricing_rules: list[CourtPricingRule], days_back: int, days_fwd: int
+    db: AsyncSession,
+    court: Court,
+    pricing_rules: Sequence[CourtPricingRule],
+    days_back: int,
+    days_fwd: int,
 ) -> dict[tuple, TimeSlot]:
     """Generate one week back through two weeks forward of hourly slots for a
     court, mirroring the real slot-generation service. Returns a lookup of
@@ -828,7 +851,9 @@ async def _generate_slots_for_court(
             close_time = datetime.strptime(hours["close"], "%H:%M").time()
             for start in _slots_for_day(open_time, close_time):
                 end = (datetime.combine(date.min, start) + timedelta(hours=1)).time()
-                price = resolve_peak_price(court.base_price, pricing_rules, cursor.isoweekday(), start)
+                price = resolve_peak_price(
+                    court.base_price, pricing_rules, cursor.isoweekday(), start
+                )
                 slot = TimeSlot(
                     court_id=court.id,
                     date=cursor,
@@ -895,7 +920,9 @@ def _make_booking(
     return booking, group_id
 
 
-async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], manifest: dict) -> None:
+async def _seed_player_flow(
+    db: AsyncSession, arenas_by_name: dict[str, Arena], manifest: dict
+) -> None:
     dha = arenas_by_name["Arena Hub DHA Lahore"]
     gulberg = arenas_by_name["Arena Hub Gulberg Lahore"]
 
@@ -903,26 +930,46 @@ async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], 
     ahmed, sara, bilal, hina, usman, ayesha = players
 
     dha_courts = (await db.execute(select(Court).where(Court.arena_id == dha.id))).scalars().all()
-    gulberg_courts = (await db.execute(select(Court).where(Court.arena_id == gulberg.id))).scalars().all()
+    gulberg_courts = (
+        (await db.execute(select(Court).where(Court.arena_id == gulberg.id))).scalars().all()
+    )
     dha_courts_by_name = {c.name: c for c in dha_courts}
     gulberg_courts_by_name = {c.name: c for c in gulberg_courts}
 
     dha_pricing = (
-        await db.execute(select(CourtPricingRule).where(CourtPricingRule.court_id == dha_courts_by_name["Court 1"].id))
-    ).scalars().all()
-    gulberg_pricing = (
-        await db.execute(
-            select(CourtPricingRule).where(CourtPricingRule.court_id == gulberg_courts_by_name["Court 1"].id)
+        (
+            await db.execute(
+                select(CourtPricingRule).where(
+                    CourtPricingRule.court_id == dha_courts_by_name["Court 1"].id
+                )
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
+    gulberg_pricing = (
+        (
+            await db.execute(
+                select(CourtPricingRule).where(
+                    CourtPricingRule.court_id == gulberg_courts_by_name["Court 1"].id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     slots_by_court: dict[str, dict[tuple, TimeSlot]] = {}
     for court in dha_courts:
         rules = dha_pricing if court.name == "Court 1" else []
-        slots_by_court[str(court.id)] = await _generate_slots_for_court(db, court, rules, days_back=10, days_fwd=14)
+        slots_by_court[str(court.id)] = await _generate_slots_for_court(
+            db, court, rules, days_back=10, days_fwd=14
+        )
     for court in gulberg_courts:
         rules = gulberg_pricing if court.name == "Court 1" else []
-        slots_by_court[str(court.id)] = await _generate_slots_for_court(db, court, rules, days_back=10, days_fwd=14)
+        slots_by_court[str(court.id)] = await _generate_slots_for_court(
+            db, court, rules, days_back=10, days_fwd=14
+        )
 
     equipment_by_arena: dict[str, list[Equipment]] = {}
     for arena_name, items in EQUIPMENT.items():
@@ -952,7 +999,7 @@ async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], 
     equipment_ids: list[str] = [str(e.id) for rows in equipment_by_arena.values() for e in rows]
     review_ids: list[str] = []
 
-    def make_booking(**kwargs) -> tuple[Booking, uuid.UUID]:
+    def make_booking(**kwargs: Any) -> tuple[Booking, uuid.UUID]:
         return _make_booking(db, **kwargs)
 
     # 1. Completed, full payment, card, reviewed with owner response.
@@ -1017,7 +1064,9 @@ async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], 
         payment_type=PaymentPlan.full,
     )
     db.add(p2)
-    cricket_kit = next(e for e in equipment_by_arena["Arena Hub DHA Lahore"] if e.name == "Cricket Kit")
+    cricket_kit = next(
+        e for e in equipment_by_arena["Arena Hub DHA Lahore"] if e.name == "Cricket Kit"
+    )
     db.add(
         BookingEquipment(
             booking_id=b2.id,
@@ -1100,7 +1149,9 @@ async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], 
         payment_type=PaymentPlan.advance,
     )
     db.add(p4)
-    football = next(e for e in equipment_by_arena["Arena Hub Gulberg Lahore"] if e.name == "Football")
+    football = next(
+        e for e in equipment_by_arena["Arena Hub Gulberg Lahore"] if e.name == "Football"
+    )
     db.add(
         BookingEquipment(
             booking_id=b4.id,
@@ -1334,7 +1385,20 @@ async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], 
 
     await db.flush()
 
-    for b, g in [(b1, g1), (b2, g2), (b3, g3), (b4, g4), (b5, g5), (b6, g6), (b7, g7), (b8, g8), (b9, g9), (b10, g10), (b11, g11), (b12, g12)]:
+    for b, g in [
+        (b1, g1),
+        (b2, g2),
+        (b3, g3),
+        (b4, g4),
+        (b5, g5),
+        (b6, g6),
+        (b7, g7),
+        (b8, g8),
+        (b9, g9),
+        (b10, g10),
+        (b11, g11),
+        (b12, g12),
+    ]:
         booking_ids.append(str(b.id))
         payment_ids.append(str(g))
     for r in [r1, r2, r3]:
@@ -1346,7 +1410,10 @@ async def _seed_player_flow(db: AsyncSession, arenas_by_name: dict[str, Arena], 
     manifest["equipment"] = equipment_ids
     manifest["reviews"] = review_ids
     manifest["flow_seeded"] = True
-    print(f"created: {len(players)} players, 12 bookings across every status, 3 reviews, equipment + refunds")
+    print(
+        f"created: {len(players)} players, 12 bookings across every status, "
+        "3 reviews, equipment + refunds"
+    )
 
 
 _V2_NEW_ARENA_NAMES = [
@@ -1359,7 +1426,9 @@ _V2_NEW_ARENA_NAMES = [
 ]
 
 
-async def _seed_player_flow_v2(db: AsyncSession, arenas_by_name: dict[str, Arena], manifest: dict) -> None:
+async def _seed_player_flow_v2(
+    db: AsyncSession, arenas_by_name: dict[str, Arena], manifest: dict
+) -> None:
     """Bookings/payments/reviews for the second-wave multi-owner arenas
     (Multan/Lahore/Karachi/Islamabad) — gives each new owner's dashboard
     real booking history too, not just an empty arena/court shell."""
@@ -1409,7 +1478,7 @@ async def _seed_player_flow_v2(db: AsyncSession, arenas_by_name: dict[str, Arena
         d = TODAY + timedelta(days=day_offset)
         return slots_by_court[str(court.id)][(d, time(hour, 0))]
 
-    def make_booking(**kwargs) -> tuple[Booking, uuid.UUID]:
+    def make_booking(**kwargs: Any) -> tuple[Booking, uuid.UUID]:
         return _make_booking(db, **kwargs)
 
     booking_ids: list[str] = []
@@ -1684,7 +1753,11 @@ async def _seed_player_flow_v2(db: AsyncSession, arenas_by_name: dict[str, Arena
             payment_type=PaymentPlan.full,
         )
     )
-    balls = next(e for e in equipment_by_arena["Karachi Indoor Arena"] if e.name == "Tennis Balls (Tube of 3)")
+    balls = next(
+        e
+        for e in equipment_by_arena["Karachi Indoor Arena"]
+        if e.name == "Tennis Balls (Tube of 3)"
+    )
     db.add(
         BookingEquipment(
             booking_id=b9.id,
@@ -1812,8 +1885,18 @@ async def _seed_player_flow_v2(db: AsyncSession, arenas_by_name: dict[str, Arena
     await db.flush()
 
     for b, g in [
-        (b1, g1), (b2, g2), (b3, None), (b4, g4), (b5, g5), (b6, g6),
-        (b7, g7), (b8, g8), (b9, g9), (b10, g10), (b11, g11), (b12, g12),
+        (b1, g1),
+        (b2, g2),
+        (b3, None),
+        (b4, g4),
+        (b5, g5),
+        (b6, g6),
+        (b7, g7),
+        (b8, g8),
+        (b9, g9),
+        (b10, g10),
+        (b11, g11),
+        (b12, g12),
     ]:
         booking_ids.append(str(b.id))
         if g is not None:
@@ -1897,11 +1980,17 @@ async def seed() -> None:
         # Always recomputed so the manifest reflects the full current player
         # roster (v2 adds players to PLAYERS that v1's skip-branch above
         # wouldn't otherwise pick up).
-        all_players = (await db.execute(select(User).where(User.role == UserRole.player))).scalars().all()
+        all_players = (
+            (await db.execute(select(User).where(User.role == UserRole.player))).scalars().all()
+        )
         seeded_emails = {p[1] for p in PLAYERS}
         manifest["players"] = [str(p.id) for p in all_players if p.email in seeded_emails]
 
-    if not manifest["arenas"] and not manifest.get("flow_seeded") and not manifest.get("flow_seeded_v2"):
+    if (
+        not manifest["arenas"]
+        and not manifest.get("flow_seeded")
+        and not manifest.get("flow_seeded_v2")
+    ):
         print("\nNothing new to seed — all demo data already exists.")
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, default=str))
     print(f"\nWrote manifest: {MANIFEST_PATH}")

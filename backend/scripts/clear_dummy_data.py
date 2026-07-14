@@ -15,8 +15,9 @@ import asyncio
 import json
 import uuid
 from pathlib import Path
+from typing import Any, cast
 
-from sqlalchemy import delete
+from sqlalchemy import CursorResult, delete
 
 from app.database.session import SessionFactory
 from app.modules.arena.model import Arena
@@ -47,7 +48,8 @@ async def clear() -> None:
     ]
     payment_groups = [
         uuid.UUID(g)
-        for g in manifest.get("payment_booking_groups", []) + manifest.get("payment_booking_groups_v2", [])
+        for g in manifest.get("payment_booking_groups", [])
+        + manifest.get("payment_booking_groups_v2", [])
     ]
 
     async with SessionFactory() as db:
@@ -57,17 +59,28 @@ async def clear() -> None:
             await db.execute(
                 delete(BookingEquipment).where(BookingEquipment.booking_id.in_(booking_ids))
             )
-            result = await db.execute(delete(Booking).where(Booking.id.in_(booking_ids)))
-            print(f"deleted {result.rowcount} booking(s) and their reviews/refunds/rented-equipment")
+            result = cast(
+                "CursorResult[Any]",
+                await db.execute(delete(Booking).where(Booking.id.in_(booking_ids))),
+            )
+            print(
+                f"deleted {result.rowcount} booking(s) and their reviews/refunds/rented-equipment"
+            )
 
         if payment_groups:
-            result = await db.execute(
-                delete(Payment).where(Payment.booking_group_id.in_(payment_groups))
+            result = cast(
+                "CursorResult[Any]",
+                await db.execute(
+                    delete(Payment).where(Payment.booking_group_id.in_(payment_groups))
+                ),
             )
             print(f"deleted {result.rowcount} payment(s)")
 
         if equipment_ids:
-            result = await db.execute(delete(Equipment).where(Equipment.id.in_(equipment_ids)))
+            result = cast(
+                "CursorResult[Any]",
+                await db.execute(delete(Equipment).where(Equipment.id.in_(equipment_ids))),
+            )
             print(f"deleted {result.rowcount} equipment item(s)")
 
         removed = 0
@@ -80,13 +93,18 @@ async def clear() -> None:
             removed += 1
 
         if player_ids:
-            result = await db.execute(delete(User).where(User.id.in_(player_ids)))
+            result = cast(
+                "CursorResult[Any]", await db.execute(delete(User).where(User.id.in_(player_ids)))
+            )
             print(f"deleted {result.rowcount} demo player account(s)")
 
         await db.commit()
 
     MANIFEST_PATH.unlink()
-    print(f"\nRemoved {removed} demo arena(s) (courts/pricing/discounts/blocked-dates/slots cascaded).")
+    print(
+        f"\nRemoved {removed} demo arena(s) "
+        "(courts/pricing/discounts/blocked-dates/slots cascaded)."
+    )
     print("Manifest deleted.")
 
 
