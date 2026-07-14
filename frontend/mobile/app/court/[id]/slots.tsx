@@ -35,14 +35,32 @@ const STATUS_LABEL: Record<TimeSlot['status'], string> = {
   maintenance: 'Blocked',
 };
 
+// Mirrors backend/app/modules/booking/schema.py's MAX_SLOTS_PER_BOOKING.
+const MAX_SLOTS_PER_BOOKING = 8;
+
 export default function SlotSelectionScreen() {
   const { id: courtId, arenaId } = useLocalSearchParams<{ id: string; arenaId: string }>();
   const days = useMemo(() => nextDays(14), []);
   const [selectedDate, setSelectedDate] = useState(days[0].date);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
 
   const { data: slots, isLoading } = useCourtSlots(courtId, selectedDate);
-  const selectedSlot = slots?.find((s) => s.id === selectedSlotId) ?? null;
+  const selectedSlots = useMemo(
+    () =>
+      (slots ?? [])
+        .filter((s) => selectedSlotIds.includes(s.id))
+        .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [slots, selectedSlotIds],
+  );
+  const totalPrice = selectedSlots.reduce((sum, s) => sum + Number(s.price), 0);
+
+  function toggleSlot(slotId: string) {
+    setSelectedSlotIds((ids) => {
+      if (ids.includes(slotId)) return ids.filter((id) => id !== slotId);
+      if (ids.length >= MAX_SLOTS_PER_BOOKING) return ids;
+      return [...ids, slotId];
+    });
+  }
 
   const arena = useArena(arenaId);
   const isFullyBooked = !!slots?.length && !slots.some((s) => s.status === 'available');
@@ -75,7 +93,7 @@ export default function SlotSelectionScreen() {
               style={[styles.dateChip, active && styles.dateChipActive]}
               onPress={() => {
                 setSelectedDate(item.date);
-                setSelectedSlotId(null);
+                setSelectedSlotIds([]);
               }}>
               <Text style={[styles.dateChipDay, active && styles.dateChipTextActive]}>{item.label}</Text>
               <Text style={[styles.dateChipNum, active && styles.dateChipTextActive]}>{item.dayNum}</Text>
@@ -95,7 +113,7 @@ export default function SlotSelectionScreen() {
           contentContainerStyle={styles.slotGrid}
           renderItem={({ item }) => {
             const bookable = item.status === 'available';
-            const active = item.id === selectedSlotId;
+            const active = selectedSlotIds.includes(item.id);
             return (
               <Pressable
                 disabled={!bookable}
@@ -104,7 +122,7 @@ export default function SlotSelectionScreen() {
                   !bookable && styles.slotDisabled,
                   active && styles.slotActive,
                 ]}
-                onPress={() => setSelectedSlotId(item.id)}>
+                onPress={() => toggleSlot(item.id)}>
                 <Text style={[styles.slotText, active && styles.slotTextActive]}>
                   {item.start_time.slice(0, 5)}
                 </Text>
@@ -133,13 +151,13 @@ export default function SlotSelectionScreen() {
         />
       )}
 
-      {selectedSlot ? (
+      {selectedSlots.length > 0 ? (
         <View style={styles.footer}>
           <View>
             <Text style={styles.footerLabel}>
-              Selected: {selectedSlot.start_time.slice(0, 5)} – {selectedSlot.end_time.slice(0, 5)}
+              {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
             </Text>
-            <Text style={styles.footerPrice}>Rs. {selectedSlot.price}</Text>
+            <Text style={styles.footerPrice}>Rs. {totalPrice}</Text>
           </View>
           <Button
             title="Continue"
@@ -148,12 +166,16 @@ export default function SlotSelectionScreen() {
                 pathname: '/booking/[courtId]',
                 params: {
                   courtId: courtId as string,
-                  slotIds: selectedSlot.id,
                   arenaId: arenaId as string,
-                  date: selectedSlot.date,
-                  startTime: selectedSlot.start_time,
-                  endTime: selectedSlot.end_time,
-                  price: selectedSlot.price,
+                  slots: JSON.stringify(
+                    selectedSlots.map((s) => ({
+                      id: s.id,
+                      date: s.date,
+                      start_time: s.start_time,
+                      end_time: s.end_time,
+                      price: s.price,
+                    })),
+                  ),
                 },
               })
             }

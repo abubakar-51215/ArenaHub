@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { useArena, useArenaCourts } from '@/hooks/useArenas';
 import { ApiError } from '@/lib/api';
@@ -13,15 +14,19 @@ import { createBooking } from '@/services/bookings';
 import { listArenaEquipment } from '@/services/equipment';
 import type { PaymentPlan } from '@/types';
 
+interface SelectedSlot {
+  id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  price: string;
+}
+
 export default function BookingSummaryScreen() {
-  const { courtId, slotIds, arenaId, date, startTime, endTime, price } = useLocalSearchParams<{
+  const { courtId, slots: slotsParam, arenaId } = useLocalSearchParams<{
     courtId: string;
-    slotIds: string;
+    slots: string;
     arenaId: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    price: string;
   }>();
 
   const arena = useArena(arenaId);
@@ -29,9 +34,15 @@ export default function BookingSummaryScreen() {
   const court = courts.data?.find((c) => c.id === courtId);
 
   // Passed straight from the slot-selection screen (which already has the
-  // full slot object) rather than re-queried here — avoids re-fetching a
+  // full slot objects) rather than re-queried here — avoids re-fetching a
   // slot list for a date this screen doesn't otherwise know.
-  const slot = date && startTime && endTime && price ? { date, start_time: startTime, end_time: endTime, price } : undefined;
+  const slots: SelectedSlot[] = useMemo(() => {
+    try {
+      return JSON.parse(slotsParam ?? '[]');
+    } catch {
+      return [];
+    }
+  }, [slotsParam]);
 
   const equipment = useQuery({
     queryKey: ['arena-equipment', arenaId],
@@ -41,6 +52,7 @@ export default function BookingSummaryScreen() {
 
   const [selectedEquipment, setSelectedEquipment] = useState<Record<string, number>>({});
   const [paymentType, setPaymentType] = useState<PaymentPlan>('full');
+  const [discountCode, setDiscountCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const equipmentTotal = useMemo(() => {
@@ -51,26 +63,28 @@ export default function BookingSummaryScreen() {
     }, 0);
   }, [equipment.data, selectedEquipment]);
 
-  const slotPrice = slot ? Number(slot.price) : 0;
-  const total = slotPrice + equipmentTotal;
+  const slotsTotal = slots.reduce((sum, s) => sum + Number(s.price), 0);
+  const estimatedTotal = slotsTotal + equipmentTotal;
   const allowAdvance = arena.data ? !arena.data.require_full_payment : false;
 
   const mutation = useMutation({
     mutationFn: () =>
       createBooking({
         court_id: courtId,
-        slot_ids: [slotIds],
+        slot_ids: slots.map((s) => s.id),
         payment_type: paymentType,
+        discount_code: discountCode.trim() || undefined,
         equipment: Object.entries(selectedEquipment)
           .filter(([, qty]) => qty > 0)
           .map(([equipment_id, quantity]) => ({ equipment_id, quantity })),
       }),
     onSuccess: (group) => {
+      const actualTotal = group.bookings.reduce((sum, b) => sum + Number(b.total_amount), 0);
       router.replace({
         pathname: '/payment/[groupId]',
         params: {
           groupId: group.booking_group_id,
-          amount: String(total),
+          amount: String(actualTotal),
           bookingId: group.bookings[0]?.id ?? '',
         },
       });
@@ -109,18 +123,20 @@ export default function BookingSummaryScreen() {
           <Text style={styles.detailLabel}>Court</Text>
           <Text style={styles.detailValue}>{court?.name ?? '—'}</Text>
         </View>
-        {slot ? (
+        {slots.length > 0 ? (
           <>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{slot.date}</Text>
+              <Text style={styles.detailValue}>{slots[0].date}</Text>
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Time</Text>
-              <Text style={styles.detailValue}>
-                {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
-              </Text>
-            </View>
+            {slots.map((s) => (
+              <View key={s.id} style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Time</Text>
+                <Text style={styles.detailValue}>
+                  {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)} (Rs. {s.price})
+                </Text>
+              </View>
+            ))}
           </>
         ) : (
           <Text style={styles.detailValue}>Slot details unavailable — go back and reselect.</Text>
@@ -184,10 +200,20 @@ export default function BookingSummaryScreen() {
         ) : null}
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Discount Code</Text>
+          <TextField
+            placeholder="Enter code (optional)"
+            autoCapitalize="characters"
+            value={discountCode}
+            onChangeText={setDiscountCode}
+          />
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Price Details</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Court booking</Text>
-            <Text style={styles.detailValue}>Rs. {slotPrice}</Text>
+            <Text style={styles.detailValue}>Rs. {slotsTotal}</Text>
           </View>
           {equipmentTotal > 0 ? (
             <View style={styles.detailRow}>
@@ -196,9 +222,12 @@ export default function BookingSummaryScreen() {
             </View>
           ) : null}
           <View style={styles.detailRow}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalValue}>Rs. {total}</Text>
+            <Text style={styles.totalLabel}>Estimated Total</Text>
+            <Text style={styles.totalValue}>Rs. {estimatedTotal}</Text>
           </View>
+          {discountCode.trim() ? (
+            <Text style={styles.discountHint}>Discount code is applied at checkout.</Text>
+          ) : null}
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -208,7 +237,7 @@ export default function BookingSummaryScreen() {
         <Button
           title="Continue to Payment"
           loading={mutation.isPending}
-          disabled={!slot}
+          disabled={slots.length === 0}
           onPress={() => {
             setError(null);
             mutation.mutate();
@@ -261,6 +290,7 @@ const styles = StyleSheet.create({
   stepperValue: { fontSize: 14, fontWeight: '600', minWidth: 16, textAlign: 'center' },
   totalLabel: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   totalValue: { fontSize: 16, fontWeight: '700', color: Colors.light.tint },
+  discountHint: { fontSize: 11, color: Colors.light.muted, marginTop: 6 },
   errorText: { color: Colors.light.destructive, fontSize: 13, marginTop: 12 },
   footer: { padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.light.border },
 });
