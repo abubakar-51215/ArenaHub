@@ -1,16 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ArenaCard } from '@/components/arena-card';
 import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/theme';
-import { useArena } from '@/hooks/useArenas';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
-import { getRecommendations } from '@/services/ai';
+import { ApiError } from '@/lib/api';
+import { getBooking, rescheduleBooking } from '@/services/bookings';
 import type { TimeSlot } from '@/types';
 
 function nextDays(n: number): { date: string; label: string; dayNum: string }[] {
@@ -35,40 +34,40 @@ const STATUS_LABEL: Record<TimeSlot['status'], string> = {
   maintenance: 'Blocked',
 };
 
-// Mirrors backend/app/modules/booking/schema.py's MAX_SLOTS_PER_BOOKING.
-const MAX_SLOTS_PER_BOOKING = 8;
-
-export default function SlotSelectionScreen() {
-  const { id: courtId, arenaId } = useLocalSearchParams<{ id: string; arenaId: string }>();
+export default function RescheduleScreen() {
+  const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const queryClient = useQueryClient();
   const days = useMemo(() => nextDays(14), []);
   const [selectedDate, setSelectedDate] = useState(days[0].date);
-  const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: slots, isLoading } = useCourtSlots(courtId, selectedDate);
-  const selectedSlots = useMemo(
-    () =>
-      (slots ?? [])
-        .filter((s) => selectedSlotIds.includes(s.id))
-        .sort((a, b) => a.start_time.localeCompare(b.start_time)),
-    [slots, selectedSlotIds],
-  );
-  const totalPrice = selectedSlots.reduce((sum, s) => sum + Number(s.price), 0);
-
-  function toggleSlot(slotId: string) {
-    setSelectedSlotIds((ids) => {
-      if (ids.includes(slotId)) return ids.filter((id) => id !== slotId);
-      if (ids.length >= MAX_SLOTS_PER_BOOKING) return ids;
-      return [...ids, slotId];
-    });
-  }
-
-  const arena = useArena(arenaId);
-  const isFullyBooked = !!slots?.length && !slots.some((s) => s.status === 'available');
-  const alternatives = useQuery({
-    queryKey: ['alternatives', arenaId, arena.data?.city],
-    queryFn: () => getRecommendations({ city: arena.data?.city, limit: 6 }),
-    enabled: isFullyBooked && !!arena.data,
+  const booking = useQuery({
+    queryKey: ['booking', bookingId],
+    queryFn: () => getBooking(bookingId),
+    enabled: !!bookingId,
   });
+
+  const { data: slots, isLoading } = useCourtSlots(booking.data?.court_id, selectedDate);
+  const selectedSlot = slots?.find((s) => s.id === selectedSlotId) ?? null;
+
+  const mutation = useMutation({
+    mutationFn: () => rescheduleBooking(bookingId, selectedSlotId as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      router.back();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not reschedule.'),
+  });
+
+  if (booking.isLoading || !booking.data) {
+    return (
+      <SafeAreaView style={styles.loading} edges={['top']}>
+        <ActivityIndicator color={Colors.light.tint} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -76,9 +75,14 @@ export default function SlotSelectionScreen() {
         <Pressable onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
         </Pressable>
-        <Text style={styles.title}>Select Date & Time</Text>
+        <Text style={styles.title}>Reschedule Booking</Text>
         <View style={{ width: 22 }} />
       </View>
+
+      <Text style={styles.currentSlot}>
+        Currently: {booking.data.booking_date} · {booking.data.start_time.slice(0, 5)}–
+        {booking.data.end_time.slice(0, 5)}
+      </Text>
 
       <FlatList
         data={days}
@@ -93,7 +97,7 @@ export default function SlotSelectionScreen() {
               style={[styles.dateChip, active && styles.dateChipActive]}
               onPress={() => {
                 setSelectedDate(item.date);
-                setSelectedSlotIds([]);
+                setSelectedSlotId(null);
               }}>
               <Text style={[styles.dateChipDay, active && styles.dateChipTextActive]}>{item.label}</Text>
               <Text style={[styles.dateChipNum, active && styles.dateChipTextActive]}>{item.dayNum}</Text>
@@ -112,73 +116,45 @@ export default function SlotSelectionScreen() {
           columnWrapperStyle={styles.slotRow}
           contentContainerStyle={styles.slotGrid}
           renderItem={({ item }) => {
-            const bookable = item.status === 'available';
-            const active = selectedSlotIds.includes(item.id);
+            const bookable = item.status === 'available' && item.id !== booking.data.slot_id;
+            const active = item.id === selectedSlotId;
             return (
               <Pressable
                 disabled={!bookable}
-                style={[
-                  styles.slot,
-                  !bookable && styles.slotDisabled,
-                  active && styles.slotActive,
-                ]}
-                onPress={() => toggleSlot(item.id)}>
+                style={[styles.slot, !bookable && styles.slotDisabled, active && styles.slotActive]}
+                onPress={() => setSelectedSlotId(item.id)}>
                 <Text style={[styles.slotText, active && styles.slotTextActive]}>
                   {item.start_time.slice(0, 5)}
                 </Text>
                 {!bookable ? (
-                  <Text style={styles.slotStatus}>{STATUS_LABEL[item.status]}</Text>
+                  <Text style={styles.slotStatus}>
+                    {item.id === booking.data.slot_id ? 'Current' : STATUS_LABEL[item.status]}
+                  </Text>
                 ) : null}
               </Pressable>
             );
           }}
           ListEmptyComponent={<Text style={styles.empty}>No slots generated for this date yet.</Text>}
-          ListFooterComponent={
-            isFullyBooked && alternatives.data?.items.length ? (
-              <View style={styles.alternatives}>
-                <Text style={styles.alternativesTitle}>Fully booked — try these nearby</Text>
-                <FlatList
-                  data={alternatives.data.items.filter((a) => a.id !== arenaId)}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(a) => a.id}
-                  contentContainerStyle={{ gap: 12 }}
-                  renderItem={({ item }) => <ArenaCard arena={item} width={160} />}
-                />
-              </View>
-            ) : null
-          }
         />
       )}
 
-      {selectedSlots.length > 0 ? (
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {selectedSlot ? (
         <View style={styles.footer}>
           <View>
             <Text style={styles.footerLabel}>
-              {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
+              New: {selectedSlot.start_time.slice(0, 5)} – {selectedSlot.end_time.slice(0, 5)}
             </Text>
-            <Text style={styles.footerPrice}>Rs. {totalPrice}</Text>
+            <Text style={styles.footerHint}>Price stays the same.</Text>
           </View>
           <Button
-            title="Continue"
-            onPress={() =>
-              router.push({
-                pathname: '/booking/[courtId]',
-                params: {
-                  courtId: courtId as string,
-                  arenaId: arenaId as string,
-                  slots: JSON.stringify(
-                    selectedSlots.map((s) => ({
-                      id: s.id,
-                      date: s.date,
-                      start_time: s.start_time,
-                      end_time: s.end_time,
-                      price: s.price,
-                    })),
-                  ),
-                },
-              })
-            }
+            title="Confirm"
+            loading={mutation.isPending}
+            onPress={() => {
+              setError(null);
+              mutation.mutate();
+            }}
           />
         </View>
       ) : null}
@@ -188,6 +164,7 @@ export default function SlotSelectionScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -196,6 +173,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
+  currentSlot: { fontSize: 12, color: Colors.light.muted, paddingHorizontal: 16, paddingBottom: 8 },
   dateStrip: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
   dateChip: {
     width: 52,
@@ -226,8 +204,7 @@ const styles = StyleSheet.create({
   slotTextActive: { color: '#fff' },
   slotStatus: { fontSize: 9, color: Colors.light.muted, marginTop: 2 },
   empty: { textAlign: 'center', color: Colors.light.muted, marginTop: 24 },
-  alternatives: { marginTop: 20 },
-  alternativesTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text, marginBottom: 10 },
+  errorText: { color: Colors.light.destructive, fontSize: 13, marginHorizontal: 16, marginTop: 8 },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -241,6 +218,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.light.border,
   },
-  footerLabel: { fontSize: 12, color: Colors.light.muted },
-  footerPrice: { fontSize: 18, fontWeight: '700', color: Colors.light.text },
+  footerLabel: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  footerHint: { fontSize: 11, color: Colors.light.muted, marginTop: 2 },
 });

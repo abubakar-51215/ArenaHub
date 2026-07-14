@@ -398,3 +398,33 @@ async def test_receipt_pdf_downloads_for_completed_payment(
         f"/api/v1/payments/{payment_id}/receipt.pdf", headers=auth_header(other_player)
     )
     assert forbidden.status_code == 403
+
+
+async def test_get_payment_by_group_resolves_id_for_receipt_lookup(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "payowner11@example.com", "owner")
+    player, _ = await make_user(client, db_session, "payplayer11@example.com", "player")
+    _, court_id, monday = await _make_bookable_court(client, db_session, owner, "payowner11")
+    slots = await _slots(client, court_id, monday)
+    group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
+
+    initiated = await client.post(
+        "/api/v1/payments/initiate",
+        headers=auth_header(player),
+        json={"booking_group_id": group_id, "payment_method": "card"},
+    )
+    payment_id = initiated.json()["data"]["payment"]["id"]
+
+    resolved = await client.get(
+        f"/api/v1/payments/by-group/{group_id}", headers=auth_header(player)
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["data"]["id"] == payment_id
+    assert resolved.json()["data"]["booking_group_id"] == group_id
+
+    other_player, _ = await make_user(client, db_session, "payplayer11b@example.com", "player")
+    forbidden = await client.get(
+        f"/api/v1/payments/by-group/{group_id}", headers=auth_header(other_player)
+    )
+    assert forbidden.status_code == 403

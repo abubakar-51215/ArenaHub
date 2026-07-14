@@ -17,15 +17,25 @@ const STATUS_COLORS: Record<Booking['status'], string> = {
 };
 
 const CANCELLABLE: Booking['status'][] = ['pending_payment', 'pending_approval', 'confirmed'];
+const RESCHEDULABLE: Booking['status'][] = ['pending_approval', 'confirmed'];
+const HAS_RECEIPT: Booking['status'][] = ['confirmed', 'completed'];
+
+function hasStarted(booking: Booking): boolean {
+  return new Date(`${booking.booking_date}T${booking.start_time}`) <= new Date();
+}
 
 export function BookingCard({
   booking,
   onCancel,
   cancelling,
+  onDownloadReceipt,
+  downloadingReceipt,
 }: {
   booking: Booking;
   onCancel: (booking: Booking) => void;
   cancelling: boolean;
+  onDownloadReceipt?: (booking: Booking) => void;
+  downloadingReceipt?: boolean;
 }) {
   const arena = useArena(booking.arena_id);
 
@@ -51,12 +61,32 @@ export function BookingCard({
           {booking.booking_date} · {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)}
         </Text>
         <Text style={styles.amount}>Rs. {booking.total_amount}</Text>
+        {RESCHEDULABLE.includes(booking.status) && !hasStarted(booking) ? (
+          <Button
+            title="Reschedule"
+            variant="outline"
+            onPress={() =>
+              router.push({
+                pathname: '/booking/reschedule/[bookingId]',
+                params: { bookingId: booking.id },
+              })
+            }
+          />
+        ) : null}
         {CANCELLABLE.includes(booking.status) ? (
           <Button
             title="Cancel"
             variant="outline"
             loading={cancelling}
             onPress={() => onCancel(booking)}
+          />
+        ) : null}
+        {HAS_RECEIPT.includes(booking.status) && onDownloadReceipt ? (
+          <Button
+            title="Download Receipt"
+            variant="outline"
+            loading={downloadingReceipt}
+            onPress={() => onDownloadReceipt(booking)}
           />
         ) : null}
         {booking.status === 'completed' ? (

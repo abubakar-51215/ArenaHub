@@ -29,6 +29,16 @@ _owner = require_role("owner")
 _admin = require_role("admin")
 
 
+@router.get("/by-group/{booking_group_id}", summary="Resolve the payment for a booking group")
+async def get_payment_by_group(
+    booking_group_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    payment = await service.get_payment_by_group(db, user, booking_group_id)
+    return success(data=payment, message="Payment retrieved.")
+
+
 @router.post("/initiate", summary="Start paying for a booking group")
 async def initiate_payment(
     data: PaymentInitiateRequest,

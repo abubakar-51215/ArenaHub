@@ -56,6 +56,19 @@ async def _group_bookings_for_player(
     return bookings
 
 
+async def get_payment_by_group(
+    db: AsyncSession, user: User, booking_group_id: uuid.UUID
+) -> PaymentResponse:
+    """Resolve the payment for a booking group — lets the client fetch a
+    receipt from a booking it already has, without threading payment_id
+    through every screen that only knows the booking/group id."""
+    await _group_bookings_for_player(db, user, booking_group_id)
+    payment = await repo.get_payment_by_group(db, booking_group_id)
+    if payment is None:
+        raise NotFoundError("No payment found for this booking group.")
+    return PaymentResponse.model_validate(payment)
+
+
 async def initiate_payment(
     db: AsyncSession, user: User, data: PaymentInitiateRequest
 ) -> PaymentInitiateResponse:

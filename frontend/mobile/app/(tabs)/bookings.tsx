@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookingCard } from '@/components/booking-card';
 import { Colors } from '@/constants/theme';
 import { cancelBooking, listMyBookings } from '@/services/bookings';
+import { fetchReceiptPdf, getPaymentByGroup } from '@/services/payments';
 import type { Booking } from '@/types';
 
 const UPCOMING_STATUSES: Booking['status'][] = ['pending_payment', 'pending_approval', 'confirmed'];
@@ -23,6 +26,21 @@ export default function BookingsScreen() {
     mutationFn: (bookingId: string) => cancelBooking(bookingId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
     onError: () => Alert.alert('Could not cancel', 'Please try again.'),
+  });
+
+  const receiptMutation = useMutation({
+    mutationFn: async (booking: Booking) => {
+      const payment = await getPaymentByGroup(booking.booking_group_id);
+      const bytes = await fetchReceiptPdf(payment.id);
+      const file = new File(Paths.cache, `receipt-${payment.id}.pdf`);
+      if (file.exists) file.delete();
+      file.create();
+      file.write(bytes);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf' });
+      }
+    },
+    onError: () => Alert.alert('Could not download receipt', 'Please try again.'),
   });
 
   const items = (data?.items ?? []).filter((b) =>
@@ -63,6 +81,10 @@ export default function BookingsScreen() {
                     onPress: () => cancelMutation.mutate(booking.id),
                   },
                 ])
+              }
+              onDownloadReceipt={(booking) => receiptMutation.mutate(booking)}
+              downloadingReceipt={
+                receiptMutation.isPending && receiptMutation.variables?.id === item.id
               }
             />
           )}
