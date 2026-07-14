@@ -1,12 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ArenaCard } from '@/components/arena-card';
 import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/theme';
+import { useArena } from '@/hooks/useArenas';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
+import { getRecommendations } from '@/services/ai';
 import type { TimeSlot } from '@/types';
 
 function nextDays(n: number): { date: string; label: string; dayNum: string }[] {
@@ -39,6 +43,14 @@ export default function SlotSelectionScreen() {
 
   const { data: slots, isLoading } = useCourtSlots(courtId, selectedDate);
   const selectedSlot = slots?.find((s) => s.id === selectedSlotId) ?? null;
+
+  const arena = useArena(arenaId);
+  const isFullyBooked = !!slots?.length && !slots.some((s) => s.status === 'available');
+  const alternatives = useQuery({
+    queryKey: ['alternatives', arenaId, arena.data?.city],
+    queryFn: () => getRecommendations({ city: arena.data?.city, limit: 6 }),
+    enabled: isFullyBooked && !!arena.data,
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -103,6 +115,21 @@ export default function SlotSelectionScreen() {
             );
           }}
           ListEmptyComponent={<Text style={styles.empty}>No slots generated for this date yet.</Text>}
+          ListFooterComponent={
+            isFullyBooked && alternatives.data?.items.length ? (
+              <View style={styles.alternatives}>
+                <Text style={styles.alternativesTitle}>Fully booked — try these nearby</Text>
+                <FlatList
+                  data={alternatives.data.items.filter((a) => a.id !== arenaId)}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(a) => a.id}
+                  contentContainerStyle={{ gap: 12 }}
+                  renderItem={({ item }) => <ArenaCard arena={item} width={160} />}
+                />
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -177,6 +204,8 @@ const styles = StyleSheet.create({
   slotTextActive: { color: '#fff' },
   slotStatus: { fontSize: 9, color: Colors.light.muted, marginTop: 2 },
   empty: { textAlign: 'center', color: Colors.light.muted, marginTop: 24 },
+  alternatives: { marginTop: 20 },
+  alternativesTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text, marginBottom: 10 },
   footer: {
     position: 'absolute',
     bottom: 0,

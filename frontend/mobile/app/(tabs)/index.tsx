@@ -3,9 +3,12 @@ import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useQuery } from '@tanstack/react-query';
+
 import { ArenaCard } from '@/components/arena-card';
 import { Colors } from '@/constants/theme';
 import { useArenaSearch } from '@/hooks/useArenas';
+import { getRecommendations } from '@/services/ai';
 import { useAuthStore } from '@/store/auth';
 
 const SPORTS = ['All', 'futsal', 'cricket', 'padel', 'badminton', 'tennis'];
@@ -13,6 +16,10 @@ const SPORTS = ['All', 'futsal', 'cricket', 'padel', 'badminton', 'tennis'];
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const popular = useArenaSearch({ sort: 'rating_desc', page_size: 10 });
+  const recommended = useQuery({
+    queryKey: ['recommendations'],
+    queryFn: () => getRecommendations({ limit: 8 }),
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -51,6 +58,20 @@ export default function HomeScreen() {
                   </Pressable>
                 )}
               />
+
+              {recommended.data?.items.length ? (
+                <>
+                  <Text style={styles.sectionTitle}>Recommended for You</Text>
+                  <FlatList
+                    data={recommended.data.items}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(a) => a.id}
+                    contentContainerStyle={styles.recommendedRow}
+                    renderItem={({ item }) => <ArenaCard arena={item} width={160} />}
+                  />
+                </>
+              ) : null}
 
               <Text style={styles.sectionTitle}>Popular Arenas</Text>
             </View>
@@ -103,7 +124,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   sportChipText: { fontSize: 13, fontWeight: '600', color: Colors.light.text, textTransform: 'capitalize' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text, marginBottom: 12, marginTop: 8 },
+  recommendedRow: { gap: 12, paddingBottom: 20 },
   listContent: { paddingHorizontal: 20, paddingBottom: 24 },
   column: { gap: 12 },
   cardWrap: { flex: 1, marginBottom: 12 },

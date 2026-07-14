@@ -8,7 +8,7 @@ serialization never triggers a lazy load on the async session.
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, UnaryExpression, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -116,6 +116,7 @@ async def search_public_arenas(
 
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
 
+    order: tuple[UnaryExpression]
     if sort == "name":
         order = (Arena.name.asc(),)
     elif sort == "price_asc":

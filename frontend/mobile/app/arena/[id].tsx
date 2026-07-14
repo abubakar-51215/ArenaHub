@@ -1,17 +1,25 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ArenaCard } from '@/components/arena-card';
 import { Colors } from '@/constants/theme';
 import { useArena, useArenaCourts, useArenaRating } from '@/hooks/useArenas';
+import { getRecommendations } from '@/services/ai';
 
 export default function ArenaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const arena = useArena(id);
   const courts = useArenaCourts(id);
   const rating = useArenaRating(id);
+  const similar = useQuery({
+    queryKey: ['similar-arenas', id, arena.data?.city, arena.data?.sports_offered],
+    queryFn: () => getRecommendations({ city: arena.data?.city, limit: 8 }),
+    enabled: !!arena.data,
+  });
 
   if (arena.isLoading || !arena.data) {
     return (
@@ -121,6 +129,20 @@ export default function ArenaDetailScreen() {
               </Pressable>
             ))
           )}
+
+          {similar.data?.items.filter((s) => s.id !== a.id).length ? (
+            <>
+              <Text style={styles.sectionTitle}>You Might Also Like</Text>
+              <FlatList
+                data={similar.data.items.filter((s) => s.id !== a.id)}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.similarRow}
+                renderItem={({ item }) => <ArenaCard arena={item} width={160} />}
+              />
+            </>
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -166,4 +188,5 @@ const styles = StyleSheet.create({
   courtSports: { fontSize: 12, color: Colors.light.muted, textTransform: 'capitalize' },
   courtPrice: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   unavailable: { fontSize: 11, color: Colors.light.destructive },
+  similarRow: { gap: 12, paddingBottom: 8 },
 });
