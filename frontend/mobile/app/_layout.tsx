@@ -40,6 +40,8 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={!!accessToken}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="arena/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="court/[id]/slots" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       <Stack.Screen name="health" options={{ title: 'Backend Health' }} />

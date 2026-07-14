@@ -6,6 +6,7 @@ serialization never triggers a lazy load on the async session.
 """
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,8 @@ from app.modules.arena.model import (
     ArenaStatus,
     DiscountCode,
 )
+from app.modules.court.model import Court
+from app.modules.review.model import Review
 
 # ---- arenas -------------------------------------------------------------
 
@@ -69,17 +72,34 @@ async def list_owner_arena_ids(
     return list(result.scalars().all())
 
 
+_MIN_PRICE_SUBQ = (
+    select(func.min(Court.base_price)).where(Court.arena_id == Arena.id).scalar_subquery()
+)
+_AVG_RATING_SUBQ = (
+    select(func.avg(Review.rating)).where(Review.arena_id == Arena.id).scalar_subquery()
+)
+
+
 async def search_public_arenas(
     db: AsyncSession,
     *,
     q: str | None,
     city: ArenaCity | None,
     sport: str | None,
-    sort: str,
+    price_min: Decimal | None = None,
+    price_max: Decimal | None = None,
+    sort: str = "newest",
     offset: int,
     limit: int,
 ) -> tuple[list[Arena], int]:
-    """Approved + active arenas only — the public discovery query (search stub)."""
+    """Approved + active arenas only — the public discovery query.
+
+    ``price_min``/``price_max`` filter on each arena's cheapest court (a
+    price-range slider filters "arenas with something in this range", not
+    "every court is in this range"). ``sort`` supports ``newest`` (default),
+    ``name``, ``price_asc``/``price_desc`` (by cheapest court), and
+    ``rating_desc`` (by average review rating, unrated arenas sort last).
+    """
     base = select(Arena).where(Arena.status == ArenaStatus.approved, Arena.is_active.is_(True))
     if q:
         like = f"%{q.lower()}%"
@@ -89,10 +109,27 @@ async def search_public_arenas(
     if sport:
         # sports_offered is a JSONB array of strings.
         base = base.where(Arena.sports_offered.contains([sport]))
+    if price_min is not None:
+        base = base.where(price_min <= _MIN_PRICE_SUBQ)
+    if price_max is not None:
+        base = base.where(price_max >= _MIN_PRICE_SUBQ)
 
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
-    order = Arena.name.asc() if sort == "name" else Arena.created_at.desc()
-    result = await db.execute(_with_amenities(base).order_by(order).offset(offset).limit(limit))
+
+    if sort == "name":
+        order = (Arena.name.asc(),)
+    elif sort == "price_asc":
+        order = (_MIN_PRICE_SUBQ.asc().nulls_last(),)
+    elif sort == "price_desc":
+        order = (_MIN_PRICE_SUBQ.desc().nulls_last(),)
+    elif sort == "rating_desc":
+        order = (_AVG_RATING_SUBQ.desc().nulls_last(),)
+    else:
+        order = (Arena.created_at.desc(),)
+
+    result = await db.execute(
+        _with_amenities(base).order_by(*order).offset(offset).limit(limit)
+    )
     return list(result.scalars().all()), total
 
 
