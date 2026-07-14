@@ -5,8 +5,11 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Matches the web owner dashboard's primary blue (bg-blue-600) so the brand
+// reads consistently across web and mobile even though there's no shared
+// design-token package yet.
+const tintColorLight = '#2563EB';
+const tintColorDark = '#60A5FA';
 
 export const Colors = {
   light: {
@@ -16,6 +19,12 @@ export const Colors = {
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    muted: '#6B7280',
+    border: '#E5E7EB',
+    card: '#F9FAFB',
+    destructive: '#DC2626',
+    success: '#16A34A',
+    warning: '#D97706',
   },
   dark: {
     text: '#ECEDEE',
@@ -24,6 +33,12 @@ export const Colors = {
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    muted: '#9CA3AF',
+    border: '#2A2D2E',
+    card: '#1C1F20',
+    destructive: '#F87171',
+    success: '#4ADE80',
+    warning: '#FBBF24',
   },
 };
 
