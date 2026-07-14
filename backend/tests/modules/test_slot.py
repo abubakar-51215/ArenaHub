@@ -21,7 +21,9 @@ def _next_weekday(target_iso_weekday: int) -> date:
     return today + timedelta(days=days_ahead)
 
 
-async def _make_owned_court(client: AsyncClient, owner: dict, **arena_overrides) -> tuple[str, str]:
+async def _make_owned_court(
+    client: AsyncClient, owner: dict, **arena_overrides: object
+) -> tuple[str, str]:
     h = auth_header(owner)
     arena = await client.post(
         "/api/v1/owner/arenas", headers=h, json=arena_payload(**arena_overrides)
