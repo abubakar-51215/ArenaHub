@@ -17,6 +17,12 @@ export interface User {
   created_at: string;
 }
 
+export interface RegisterResult {
+  user: User;
+  /** OTP delivery channel used, so the client can prompt correctly. */
+  otp_sent_to: string;
+}
+
 export interface Tokens {
   access_token: string;
   refresh_token: string;
