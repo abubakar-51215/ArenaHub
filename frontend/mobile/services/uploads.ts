@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/auth';
 
 export async function uploadImage(
   uri: string,
-  folder: 'receipts' = 'receipts',
+  folder: 'receipts' | 'avatars' = 'receipts',
 ): Promise<string> {
   const token = useAuthStore.getState().accessToken;
   const form = new FormData();

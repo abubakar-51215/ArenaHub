@@ -9,6 +9,7 @@ from decimal import Decimal
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.arena.model import Arena
 from app.modules.booking.model import Booking, PaymentStatus
 from app.modules.payment.model import Payment, Refund
 
@@ -24,6 +25,33 @@ async def get_payment_by_group(db: AsyncSession, booking_group_id: uuid.UUID) ->
         .order_by(Payment.created_at.desc())
     )
     return result.scalars().first()
+
+
+async def list_payments_for_player(
+    db: AsyncSession, player_id: uuid.UUID, *, offset: int, limit: int
+) -> tuple[list[tuple[Payment, str | None, date | None]], int]:
+    """A player's payments, newest first, enriched with (arena name, booking
+    date) — both constant within a checkout group, so a limit-1 scalar
+    subquery per group is enough."""
+    arena_name = (
+        select(Arena.name)
+        .join(Booking, Booking.arena_id == Arena.id)
+        .where(Booking.booking_group_id == Payment.booking_group_id)
+        .limit(1)
+        .scalar_subquery()
+    )
+    booking_date = (
+        select(func.min(Booking.booking_date))
+        .where(Booking.booking_group_id == Payment.booking_group_id)
+        .scalar_subquery()
+    )
+
+    base = select(
+        Payment, arena_name.label("arena_name"), booking_date.label("booking_date")
+    ).where(Payment.player_id == player_id)
+    total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    result = await db.execute(base.order_by(Payment.created_at.desc()).offset(offset).limit(limit))
+    return [(p, an, bd) for p, an, bd in result.all()], total
 
 
 async def get_payment_by_gateway_transaction_id(

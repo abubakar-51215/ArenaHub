@@ -2,7 +2,7 @@
 import { api } from '../lib/api';
 import { API_BASE } from '../lib/config';
 import { useAuthStore } from '../store/auth';
-import type { Payment, PaymentInitiateResult, PaymentMethod } from '../types';
+import type { Page, Payment, PaymentHistoryItem, PaymentInitiateResult, PaymentMethod } from '../types';
 
 export function initiatePayment(
   bookingGroupId: string,
@@ -20,6 +20,10 @@ export function uploadReceipt(paymentId: string, receiptProofUrl: string): Promi
 
 export function getPaymentByGroup(bookingGroupId: string): Promise<Payment> {
   return api.get<Payment>(`/payments/by-group/${bookingGroupId}`);
+}
+
+export function listMyPayments(): Promise<Page<PaymentHistoryItem>> {
+  return api.get<Page<PaymentHistoryItem>>('/payments/my?page_size=50');
 }
 
 /** Fetches the receipt PDF bytes — a raw binary fetch since this endpoint

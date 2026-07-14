@@ -161,6 +161,12 @@ export interface Payment {
   status: PaymentStatus;
   payment_type: PaymentPlan;
   receipt_proof_url: string | null;
+  created_at: string;
+}
+
+export interface PaymentHistoryItem extends Payment {
+  arena_name: string | null;
+  booking_date: string | null;
 }
 
 export interface PaymentInitiateResult {
