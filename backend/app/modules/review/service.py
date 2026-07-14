@@ -2,15 +2,11 @@
 edit (30-day window)/delete, owner response, report/flag, and the live
 rating-recompute aggregate (MASTER_DEVELOPMENT_PLAN.md Track B scope).
 
-Booking completion: no code path anywhere yet transitions a ``Booking`` to
-``completed`` (Track A gap — flagged in docs/DEVELOPMENT_LOG.md as an open
-item, not something this module owns the fix for). Review submission can't
-function at all without it, so this module applies a narrow, idempotent
-auto-complete here: a ``confirmed`` booking whose slot end time has already
-passed is completed on read, the same way an expired-but-unprocessed state
-is normally reconciled lazily elsewhere in this codebase (e.g. stale
-pending_payment cleanup). This does not touch ``booking.service`` — it only
-mutates the row this module already needs to load.
+Booking completion is owned entirely by ``booking.service.
+complete_finished_bookings``, run every 15 minutes by the APScheduler job in
+``app/tasks/scheduler.py`` — it promotes ``confirmed`` bookings whose slot
+end time has passed to ``completed``. This module only ever reads that
+status; it does not mutate bookings.
 """
 
 import uuid
@@ -53,12 +49,6 @@ async def _completed_own_booking(db: AsyncSession, user: User, booking_id: uuid.
         raise NotFoundError("Booking not found.")
     if booking.player_id != user.id:
         raise ForbiddenError("You do not own this booking.")
-
-    if booking.status == BookingStatus.confirmed:
-        ends_at = datetime.combine(booking.booking_date, booking.end_time)
-        if ends_at <= datetime.now():
-            booking.status = BookingStatus.completed
-
     if booking.status != BookingStatus.completed:
         raise ConflictError("Only completed bookings can be reviewed.")
     return booking

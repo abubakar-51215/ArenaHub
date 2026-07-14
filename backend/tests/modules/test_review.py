@@ -2,12 +2,13 @@
 (30-day window)/delete, owner response, report/flag, rating summary."""
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.booking.model import Booking, BookingStatus
+from app.modules.booking import repository as booking_repo
+from app.modules.booking import service as booking_service
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
 
 
@@ -57,10 +58,11 @@ async def _slots(client: AsyncClient, court_id: str, target_date: date) -> list[
 async def _make_completed_booking(
     client: AsyncClient, db_session: AsyncSession, owner: dict, player: dict, owner_email: str
 ) -> tuple[str, str]:
-    """Confirm a card-paid booking, then fast-forward it straight to
-    ``completed`` (mirrors ``tests.helpers.make_admin``'s pattern of mutating
-    a row directly when the API has no endpoint to express the transition —
-    see review/service.py's docstring on the booking-completion gap)."""
+    """Confirm a card-paid booking, then run the real completion sweep
+    (``booking_service.complete_finished_bookings``, normally fired by the
+    APScheduler job every 15 minutes) with a ``now`` past the slot's end
+    time — exercises the actual completion path rather than faking the
+    status directly."""
     arena_id, court_id, monday = await _make_bookable_court(client, db_session, owner, owner_email)
     slots = await _slots(client, court_id, monday)
     created = await client.post(
@@ -85,10 +87,13 @@ async def _make_completed_booking(
     booking_id = (await client.get("/api/v1/bookings", headers=auth_header(player))).json()["data"][
         "items"
     ][0]["id"]
-    booking = await db_session.get(Booking, uuid.UUID(booking_id))
+    booking = await booking_repo.get_booking(db_session, uuid.UUID(booking_id))
     assert booking is not None
-    booking.status = BookingStatus.completed
-    await db_session.commit()
+    booking_end = datetime.combine(booking.booking_date, booking.end_time)
+    completed = await booking_service.complete_finished_bookings(
+        db_session, now=booking_end + timedelta(minutes=1)
+    )
+    assert completed == 1
     return arena_id, booking_id
 
 
