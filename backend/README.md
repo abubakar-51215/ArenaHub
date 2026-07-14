@@ -19,6 +19,22 @@ uv run uvicorn app.main:app --reload
 
 API docs: http://localhost:8000/docs — health check: http://localhost:8000/api/v1/health
 
+## Running tests
+
+Tests need their own database, separate from the one the dev server uses —
+`tests/conftest.py` derives it automatically as `<your db>_test` from
+`DATABASE_URL` in `.env` (override with `TEST_DATABASE_URL` if you want a
+different name/host). Create it once and keep it migrated:
+```bash
+createdb -U postgres arenahub_test    # or: psql -U postgres -c "CREATE DATABASE arenahub_test"
+DATABASE_URL=postgresql+asyncpg://postgres:<password>@localhost:5432/arenahub_test uv run alembic upgrade head
+uv run pytest
+```
+Each test runs inside a transaction that's rolled back on teardown, so the
+test DB itself stays empty between runs — this only isolates the suite from
+the dev server (and its scheduler jobs) and from any dev/seed data, it
+doesn't need re-seeding.
+
 ## Layout (feature-based)
 ```
 app/
