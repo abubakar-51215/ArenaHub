@@ -20,6 +20,7 @@ from app.integrations.payments import get_provider
 from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
+from app.modules.equipment import service as equipment_service
 from app.modules.payment import repository as repo
 from app.modules.payment.model import Payment, PaymentMethod, Refund, RefundStatus
 from app.modules.payment.receipt import build_receipt_pdf
@@ -131,6 +132,7 @@ async def _fail_group(db: AsyncSession, payment: Payment, *, rejected: bool) -> 
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
+        await equipment_service.release_for_booking(db, booking.id)
         notify_user(booking.player_id, "booking_payment_failed", booking_id=str(booking.id))
 
 
@@ -297,6 +299,7 @@ async def force_refund(db: AsyncSession, admin: User, booking_id: uuid.UUID) -> 
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
+        await equipment_service.release_for_booking(db, booking.id)
 
     refund = await create_refund_for_cancelled_booking(db, booking)
     await db.commit()

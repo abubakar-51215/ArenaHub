@@ -11,11 +11,19 @@ from app.modules.booking.model import BookingStatus, PaymentPlan, PaymentStatus
 MAX_SLOTS_PER_BOOKING = 8
 
 
+class EquipmentAddonRequest(BaseModel):
+    equipment_id: uuid.UUID
+    quantity: int = Field(ge=1)
+
+
 class BookingCreateRequest(BaseModel):
     court_id: uuid.UUID
     slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
     payment_type: PaymentPlan
     discount_code: str | None = Field(default=None, max_length=50)
+    # Attached to the first booking row in the group — see
+    # modules/booking/service.py's create_booking docstring for why.
+    equipment: list[EquipmentAddonRequest] = Field(default_factory=list)
 
 
 class RescheduleRequest(BaseModel):
