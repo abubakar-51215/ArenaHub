@@ -20,8 +20,15 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.header}>
-              <Text style={styles.greeting}>Hi {user?.full_name?.split(' ')[0] ?? 'there'} 👋</Text>
-              <Text style={styles.subtitle}>Find your arena, book and play!</Text>
+              <View style={styles.headerTopRow}>
+                <View>
+                  <Text style={styles.greeting}>Hi {user?.full_name?.split(' ')[0] ?? 'there'} 👋</Text>
+                  <Text style={styles.subtitle}>Find your arena, book and play!</Text>
+                </View>
+                <Pressable onPress={() => router.push('/notifications')}>
+                  <Ionicons name="notifications-outline" size={24} color={Colors.light.text} />
+                </Pressable>
+              </View>
 
               <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
                 <Ionicons name="search" size={18} color={Colors.light.muted} />
@@ -74,6 +81,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   greeting: { fontSize: 22, fontWeight: '700', color: Colors.light.text },
   subtitle: { fontSize: 14, color: Colors.light.muted, marginTop: 4, marginBottom: 16 },
   searchBar: {

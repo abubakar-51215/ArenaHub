@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,18 @@ export function BookingCard({
             variant="outline"
             loading={cancelling}
             onPress={() => onCancel(booking)}
+          />
+        ) : null}
+        {booking.status === 'completed' ? (
+          <Button
+            title="Write a Review"
+            variant="outline"
+            onPress={() =>
+              router.push({
+                pathname: '/arena/[id]/reviews',
+                params: { id: booking.arena_id, bookingId: booking.id },
+              })
+            }
           />
         ) : null}
       </View>

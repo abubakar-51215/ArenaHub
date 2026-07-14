@@ -8,7 +8,7 @@ import { logout } from '@/services/auth';
 import { useAuthStore } from '@/store/auth';
 
 const MENU_ITEMS = [
-  { label: 'Personal Information', icon: 'person-outline' as const },
+  { label: 'Personal Information', icon: 'person-outline' as const, href: '/profile/edit' as const },
   { label: 'Payment Methods', icon: 'card-outline' as const },
   { label: 'My Addresses', icon: 'location-outline' as const },
   { label: 'Settings', icon: 'settings-outline' as const },
@@ -47,7 +47,7 @@ export default function ProfileScreen() {
           <Pressable
             key={item.label}
             style={styles.menuItem}
-            onPress={() => Alert.alert(item.label, 'Coming soon.')}>
+            onPress={() => (item.href ? router.push(item.href) : Alert.alert(item.label, 'Coming soon.'))}>
             <Ionicons name={item.icon} size={20} color={Colors.light.text} />
             <Text style={styles.menuLabel}>{item.label}</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.light.muted} />
