@@ -48,12 +48,15 @@ export default function ArenaDetailScreen() {
 
         <View style={styles.body}>
           <Text style={styles.name}>{a.name}</Text>
-          <View style={styles.metaRow}>
+          <Pressable
+            style={styles.metaRow}
+            onPress={() => router.push({ pathname: '/arena/[id]/reviews', params: { id: a.id } })}>
             <Ionicons name="star" size={14} color="#F59E0B" />
             <Text style={styles.meta}>
               {rating.data?.average_rating?.toFixed(1) ?? '—'} ({rating.data?.review_count ?? 0} reviews)
             </Text>
-          </View>
+            <Ionicons name="chevron-forward" size={14} color={Colors.light.muted} />
+          </Pressable>
           <View style={styles.metaRow}>
             <Ionicons name="location-outline" size={14} color={Colors.light.muted} />
             <Text style={styles.meta}>
