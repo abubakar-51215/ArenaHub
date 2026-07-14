@@ -232,7 +232,7 @@ Confirmed → Cancelled (refund per policy)
 ## 14. Reviews and Ratings
 
 ### Submit Review
-- Available only for completed bookings
+- Available only for completed bookings (`booking.status == completed`)
 - Star rating: 1 to 5
 - Text review: optional but encouraged
 - One review per booking
@@ -242,7 +242,24 @@ Confirmed → Cancelled (refund per policy)
 - Shows: reviewer name, rating, text, date
 
 ### Edit/Delete
-- Player can edit or delete their own reviews
+- Player can edit their own review within 30 days of posting it
+- Player can delete their own review at any time
+
+### Owner Response
+- Arena owner can post one public response per review, visible alongside it
+
+### Report/Flag
+- Any player can report a review as inappropriate; flagged reviews are
+  queued for admin moderation (review moderation is Sprint 5 scope, per
+  MASTER_DEVELOPMENT_PLAN.md)
+
+### Rating Recalculation
+- The arena's average rating and review count are recalculated automatically
+  whenever a review is created, edited, deleted, or removed via moderation
+
+These features ensure authentic reviews, allow arena owners to respond
+publicly to feedback, and provide moderation tools to maintain content
+quality.
 
 ---
 
