@@ -233,3 +233,15 @@ async def enforce_password_reuse(db: AsyncSession, user: User, new_password: str
     recent = await repo.get_recent_password_hashes(db, user.id, PASSWORD_HISTORY_DEPTH)
     if any(verify_password(new_password, old) for old in recent):
         raise ValidationError("You cannot reuse one of your last 3 passwords.")
+
+
+async def cleanup_expired(db: AsyncSession, now: datetime | None = None) -> tuple[int, int]:
+    """Purge expired OTPs and password-reset tokens. Called by the
+    APScheduler job in ``app/tasks/`` (docs/PROJECT_GUIDELINES.md deviation
+    #14). Refresh-token replay entries need no cleanup here — they live in
+    Redis with a TTL matching the refresh lifetime and expire on their own."""
+    cutoff = now or datetime.now(UTC)
+    otps = await repo.delete_expired_otps(db, cutoff)
+    tokens_deleted = await repo.delete_expired_reset_tokens(db, cutoff)
+    await db.commit()
+    return otps, tokens_deleted

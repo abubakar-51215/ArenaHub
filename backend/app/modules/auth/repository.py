@@ -8,7 +8,7 @@ populated on the returned instance.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.model import OtpVerification, PasswordHistory, PasswordResetToken
@@ -108,3 +108,19 @@ async def get_recent_password_hashes(db: AsyncSession, user_id: uuid.UUID, limit
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def delete_expired_otps(db: AsyncSession, now: datetime) -> int:
+    ids = await db.scalars(select(OtpVerification.id).where(OtpVerification.expires_at < now))
+    id_list = list(ids)
+    if id_list:
+        await db.execute(delete(OtpVerification).where(OtpVerification.id.in_(id_list)))
+    return len(id_list)
+
+
+async def delete_expired_reset_tokens(db: AsyncSession, now: datetime) -> int:
+    ids = await db.scalars(select(PasswordResetToken.id).where(PasswordResetToken.expires_at < now))
+    id_list = list(ids)
+    if id_list:
+        await db.execute(delete(PasswordResetToken).where(PasswordResetToken.id.in_(id_list)))
+    return len(id_list)
