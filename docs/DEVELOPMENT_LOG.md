@@ -5,6 +5,59 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-14 — Web auth pages + owner dashboard UI, ahead of schedule (Track B, Umer)
+
+### Completed
+- **Web auth pages**: `/register` (owner sign-up with OTP verification, then
+  auto-login), `/forgot-password`, `/reset-password` (token from a `?token=`
+  link or pasted manually, since no email provider exists yet) — the login
+  page's "Sign up"/"Forgot Password?" links were dead `href="#"` placeholders
+  with no pages behind them at all; both are now real, working flows.
+  Factored the shared two-column branded shell into `AuthShell` so all four
+  auth pages (login included) stay visually consistent.
+- **Owner dashboard web UI** — pulled forward from Sprint 4 since last
+  session's backend (`modules/dashboard/`, `modules/review/`) was already
+  done and idle. Dashboard home now shows live summary widgets instead of
+  the Sprint 1 placeholder cards; new `/owner/bookings` (cross-arena
+  booking-approval queue with approve/reject), `/owner/calendar`,
+  `/owner/revenue` (by-arena/by-court breakdown), and `/owner/reviews`
+  (respond to a review) pages. Sidebar's disabled Bookings/Calendar/
+  Earnings/Reviews entries are now working links.
+- **Verified against the live backend, not just typecheck** — built a real
+  fixture (arena → admin-approve → court → today's slots → one card booking,
+  one bank_transfer booking) and drove every new endpoint (summary,
+  pending-approvals, calendar, revenue, approve) through curl exactly as the
+  new pages call them, confirming the data shapes and mutation
+  side-effects (approving a payment correctly dropped `pending_approvals`
+  and bumped `monthly_revenue`) before committing.
+
+### Challenges
+- Repeated confusion this session about "why isn't the OTP showing in my
+  terminal" — root cause was that whichever backend process happened to be
+  serving port 8000 kept switching between a hidden background instance
+  (started for quick verification, output only visible in a log file) and
+  the user's own visible terminal instance, with no indication of which one
+  was live at any given moment. Settled on: the user runs their own
+  `uv run uvicorn app.main:app --reload` in a visible terminal for anything
+  they need to watch live; hidden background instances are only for
+  Claude's own pre-commit verification, and get torn down afterward.
+- Clarified the web/mobile split for anyone testing going forward: web is
+  owner + admin only, by design — booking/payment/review-*submission* will
+  never have a web page, only Swagger (now) or the mobile app's booking flow
+  (Sprint 4, not yet scaffolded) can drive those. Owner-side review
+  *responses* and the dashboard, by contrast, are legitimately web, which is
+  why they got pulled forward this session instead of waiting.
+
+### Next
+- Update docs/06 §14 to match the implemented review behavior (still
+  outstanding from last session).
+- Sprint 4 mobile: none of the player-facing flow (auth, search, booking,
+  payment, review submission) has any mobile screens yet beyond the Sprint 1
+  health check — that's real, unscaffolded work, not something pulled
+  forward like the web dashboard was.
+
+---
+
 ## 2026-07-14 — Sprint 3 close-out: reviews + owner dashboard (Track B, Umer)
 
 ### Completed
