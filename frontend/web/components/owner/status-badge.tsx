@@ -1,12 +1,19 @@
 import { cn } from "@/lib/utils";
-import type { ArenaStatus } from "@/types";
+import type { ArenaStatus, BookingStatus } from "@/types";
 
-const STYLES: Record<ArenaStatus | "active" | "inactive", string> = {
+type Status = ArenaStatus | BookingStatus | "active" | "inactive";
+
+const STYLES: Record<Status, string> = {
   approved: "bg-emerald-100 text-emerald-700",
   pending: "bg-amber-100 text-amber-700",
   rejected: "bg-red-100 text-red-700",
   active: "bg-emerald-100 text-emerald-700",
   inactive: "bg-slate-100 text-slate-600",
+  pending_payment: "bg-amber-100 text-amber-700",
+  pending_approval: "bg-amber-100 text-amber-700",
+  confirmed: "bg-blue-100 text-blue-700",
+  completed: "bg-emerald-100 text-emerald-700",
+  cancelled: "bg-slate-100 text-slate-600",
 };
 
 const LABELS: Record<string, string> = {
@@ -15,9 +22,14 @@ const LABELS: Record<string, string> = {
   rejected: "Rejected",
   active: "Active",
   inactive: "Inactive",
+  pending_payment: "Pending Payment",
+  pending_approval: "Pending Approval",
+  confirmed: "Confirmed",
+  completed: "Completed",
+  cancelled: "Cancelled",
 };
 
-export function StatusBadge({ status }: { status: ArenaStatus | "active" | "inactive" }) {
+export function StatusBadge({ status }: { status: Status }) {
   return (
     <span
       className={cn(

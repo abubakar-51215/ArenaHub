@@ -33,12 +33,12 @@ const NAV: NavItem[] = [
   { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
   { label: "Arenas", href: "/owner/arenas", icon: Building2 },
   { label: "Courts", href: "/owner/courts", icon: LayoutGrid },
-  { label: "Bookings", icon: CalendarCheck },
-  { label: "Calendar", icon: CalendarDays },
+  { label: "Bookings", href: "/owner/bookings", icon: CalendarCheck },
+  { label: "Calendar", href: "/owner/calendar", icon: CalendarDays },
   { label: "Pricing", href: "/owner/pricing", icon: Tag },
-  { label: "Earnings", icon: Wallet },
+  { label: "Earnings", href: "/owner/revenue", icon: Wallet },
+  { label: "Reviews", href: "/owner/reviews", icon: Star },
   { label: "Reports", icon: BarChart3 },
-  { label: "Reviews", icon: Star },
   { label: "Settings", icon: Settings },
 ];
 

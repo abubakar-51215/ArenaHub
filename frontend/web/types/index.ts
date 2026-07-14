@@ -136,6 +136,76 @@ export const WEEKDAY_LABELS: Record<number, string> = {
   7: "Sunday",
 };
 
+export type BookingStatus =
+  "pending_payment" | "pending_approval" | "confirmed" | "completed" | "cancelled" | "rejected";
+
+export interface DashboardSummary {
+  total_arenas: number;
+  bookings_today: number;
+  bookings_this_month: number;
+  monthly_revenue: string;
+  pending_approvals: number;
+}
+
+export interface PendingApproval {
+  booking_id: string;
+  arena_id: string;
+  arena_name: string;
+  court_id: string;
+  player_id: string;
+  player_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  total_amount: string;
+  payment_id: string | null;
+  payment_method: string | null;
+  receipt_proof_url: string | null;
+}
+
+export interface CalendarBooking {
+  id: string;
+  court_id: string;
+  player_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: BookingStatus;
+  total_amount: string;
+}
+
+export interface RevenueBreakdownItem {
+  id: string;
+  amount: string;
+}
+
+export interface RevenueSummary {
+  total_revenue: string;
+  pending_settlements: string;
+  breakdown_by_arena: RevenueBreakdownItem[];
+  breakdown_by_court: RevenueBreakdownItem[];
+}
+
+export interface Review {
+  id: string;
+  player_id: string;
+  reviewer_name: string;
+  arena_id: string;
+  booking_id: string;
+  rating: number;
+  review_text: string | null;
+  owner_response: string | null;
+  owner_response_at: string | null;
+  is_flagged: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RatingSummary {
+  average_rating: number | null;
+  review_count: number;
+}
+
 export const WEEKDAY_NAMES = [
   "monday",
   "tuesday",
