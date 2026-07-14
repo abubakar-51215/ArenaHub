@@ -20,6 +20,7 @@ from app.database import metadata as _metadata  # noqa: F401 — registers all O
 from app.database.session import engine
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.modules.admin.api import router as admin_router
+from app.modules.ai.api import router as ai_router
 from app.modules.arena.api import owner_router as arena_owner_router
 from app.modules.arena.api import router as arena_router
 from app.modules.auth.api import router as auth_router
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(payment_admin_router, prefix=API_V1_PREFIX)
     app.include_router(payment_webhook_router, prefix=API_V1_PREFIX)
     app.include_router(dashboard_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(ai_router, prefix=API_V1_PREFIX)
     app.include_router(websocket_router)
 
     # Serve locally-stored uploads in dev (Cloudinary serves them in prod).

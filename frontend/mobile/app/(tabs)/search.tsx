@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +8,7 @@ import { ArenaCard } from '@/components/arena-card';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { useArenaSearch } from '@/hooks/useArenas';
+import { nlpSearch } from '@/services/ai';
 import { ARENA_CITIES, type ArenaCity } from '@/types';
 
 const SPORTS = ['futsal', 'cricket', 'padel', 'badminton', 'tennis'];
@@ -40,61 +42,86 @@ export default function SearchScreen() {
     [q, city, sport, priceMin, priceMax, sort],
   );
 
-  const results = useArenaSearch(searchParams);
+  const structuredResults = useArenaSearch(searchParams);
+  const nlpResults = useQuery({
+    queryKey: ['nlp-search', q],
+    queryFn: () => nlpSearch(q.trim()),
+    enabled: q.trim().length > 0,
+  });
+
+  const useNlp = q.trim().length > 0;
+  const items = useNlp ? nlpResults.data?.items : structuredResults.data?.items;
+  const total = useNlp ? nlpResults.data?.total : structuredResults.data?.total;
+  const isLoading = useNlp ? nlpResults.isLoading : structuredResults.isLoading;
+  const parsed = nlpResults.data?.parsed;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
         <TextField
-          placeholder="Search arenas or locations"
+          placeholder='Try "cheap futsal in Lahore"'
           value={q}
           onChangeText={setQ}
         />
+        {useNlp && parsed && !parsed.used_fallback_text_search ? (
+          <View style={styles.parsedRow}>
+            <Text style={styles.parsedLabel}>Understood:</Text>
+            {parsed.sport ? <Text style={styles.parsedChip}>{parsed.sport}</Text> : null}
+            {parsed.city ? <Text style={styles.parsedChip}>{parsed.city}</Text> : null}
+            {parsed.sort !== 'newest' ? (
+              <Text style={styles.parsedChip}>{SORTS.find((s) => s.value === parsed.sort)?.label}</Text>
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
-        <FilterGroup label="City">
-          {ARENA_CITIES.map((c) => (
-            <Chip key={c} label={c} active={city === c} onPress={() => setCity(city === c ? undefined : c)} />
-          ))}
-        </FilterGroup>
-      </ScrollView>
+      {!useNlp ? (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
+            <FilterGroup label="City">
+              {ARENA_CITIES.map((c) => (
+                <Chip key={c} label={c} active={city === c} onPress={() => setCity(city === c ? undefined : c)} />
+              ))}
+            </FilterGroup>
+          </ScrollView>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
-        <FilterGroup label="Sport">
-          {SPORTS.map((s) => (
-            <Chip key={s} label={s} active={sport === s} onPress={() => setSport(sport === s ? undefined : s)} />
-          ))}
-        </FilterGroup>
-      </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
+            <FilterGroup label="Sport">
+              {SPORTS.map((s) => (
+                <Chip key={s} label={s} active={sport === s} onPress={() => setSport(sport === s ? undefined : s)} />
+              ))}
+            </FilterGroup>
+          </ScrollView>
 
-      <View style={styles.priceRow}>
-        <TextField
-          style={styles.priceInput}
-          placeholder="Min price"
-          keyboardType="number-pad"
-          value={priceMin}
-          onChangeText={setPriceMin}
-        />
-        <Text style={styles.priceDash}>—</Text>
-        <TextField
-          style={styles.priceInput}
-          placeholder="Max price"
-          keyboardType="number-pad"
-          value={priceMax}
-          onChangeText={setPriceMax}
-        />
-      </View>
+          <View style={styles.priceRow}>
+            <TextField
+              style={styles.priceInput}
+              placeholder="Min price"
+              keyboardType="number-pad"
+              value={priceMin}
+              onChangeText={setPriceMin}
+            />
+            <Text style={styles.priceDash}>—</Text>
+            <TextField
+              style={styles.priceInput}
+              placeholder="Max price"
+              keyboardType="number-pad"
+              value={priceMax}
+              onChangeText={setPriceMax}
+            />
+          </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
-        {SORTS.map((s) => (
-          <Chip key={s.value} label={s.label} active={sort === s.value} onPress={() => setSort(s.value)} />
-        ))}
-      </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
+            {SORTS.map((s) => (
+              <Chip key={s.value} label={s.label} active={sort === s.value} onPress={() => setSort(s.value)} />
+            ))}
+          </ScrollView>
+        </>
+      ) : null}
 
       <FlatList
-        data={results.data?.items ?? []}
+        data={items ?? []}
         keyExtractor={(a) => a.id}
         numColumns={2}
         columnWrapperStyle={styles.column}
@@ -105,12 +132,10 @@ export default function SearchScreen() {
           </View>
         )}
         ListHeaderComponent={
-          results.data ? (
-            <Text style={styles.resultCount}>{results.data.total} results</Text>
-          ) : null
+          total !== undefined ? <Text style={styles.resultCount}>{total} results</Text> : null
         }
         ListEmptyComponent={
-          results.isLoading ? (
+          isLoading ? (
             <ActivityIndicator style={{ marginTop: 24 }} color={Colors.light.tint} />
           ) : (
             <Text style={styles.empty}>No arenas match your filters.</Text>
@@ -142,6 +167,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
   title: { fontSize: 20, fontWeight: '700', color: Colors.light.text },
+  parsedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  parsedLabel: { fontSize: 12, color: Colors.light.muted },
+  parsedChip: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.tint,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    textTransform: 'capitalize',
+  },
   filterBar: { flexGrow: 0, marginTop: 10 },
   filterBarContent: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
   filterGroup: { flexDirection: 'row', gap: 8, alignItems: 'center' },
