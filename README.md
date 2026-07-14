@@ -136,12 +136,16 @@ real-time digital system.
 ArenaHub/
 ├── backend/                 # FastAPI + async SQLAlchemy + Alembic
 │   ├── app/
-│   │   ├── modules/         # feature modules: auth, user, arena, court, health …
+│   │   ├── modules/         # feature modules: auth, user, arena, court, slot,
+│   │   │                    #   booking, payment, admin, health …
 │   │   │                    #   each owns api / service / repository / schema / model
 │   │   ├── core/            # config, logging, exceptions, handlers
 │   │   ├── database/        # engine, session, base, mixins
-│   │   ├── shared/          # response envelope, cross-cutting helpers
-│   │   ├── cache/           # Redis client
+│   │   ├── shared/          # response envelope, pricing/refund helpers, QR, notify
+│   │   ├── cache/           # Redis client + distributed slot locking
+│   │   ├── integrations/    # payment gateway providers (Stripe/JazzCash/EasyPaisa)
+│   │   ├── websocket/       # per-court live slot update channel
+│   │   ├── tasks/           # APScheduler jobs (auto-cancel, reminders, cleanup)
 │   │   └── main.py
 │   └── alembic/             # migrations
 ├── frontend/
@@ -244,8 +248,8 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | Sprint | Focus | Status |
 |---|---|:---:|
 | **Sprint 1** | Scaffold — backend, mobile, web, CI | ✅ Complete |
-| **Sprint 2** | Authentication &amp; core management | 🔄 In progress |
-| **Sprint 3** | Booking engine, locking &amp; payments | ⬜ Planned |
+| **Sprint 2** | Authentication &amp; core management | ✅ Complete |
+| **Sprint 3** | Booking engine, locking &amp; payments | 🔄 In progress (Track A done; Track B — equipment/reviews/owner booking views — pending) |
 | **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ⬜ Planned |
 | **Sprint 5** | Admin panel, reports, notifications, deployment | ⬜ Planned |
 
