@@ -5,6 +5,72 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-15 — Matchmaking (backend + Play tab), booking/profile gap-closing, peak-pricing visibility + map (Track A, Abubakar)
+
+### Completed
+- **Matchmaking backend** (`modules/match/`): `Match`/`MatchParticipant`
+  models + `add_matches` migration, endpoints for create / list-open (city,
+  sport, date filters) / mine (created vs joined) / detail / join / leave /
+  cancel. A match is a lightweight social listing — it does not reserve the
+  court (no slot FK, no payment). Creator auto-joins; hitting `max_players`
+  flips status to `full`; creator leaving cancels for everyone. Full test
+  file added (`tests/modules/test_match.py`).
+- **Scope change recorded**: matchmaking was listed under "Excluded Features"
+  in docs 01/Requirements — moved into scope as PROJECT_GUIDELINES deviation
+  #20 (team decision), and both spec docs updated.
+- **Mobile Play tab**: replaced the "Coming Soon" placeholder with the full
+  wireframe-10 flow — Open Matches (sport filter, join) / My Matches
+  (created + joined, status badges), match detail with participants and
+  join/leave/cancel, and a Create Match flow (arena search → court → sport →
+  date strip → hour chips → max-players stepper).
+- **Booking-flow gaps** (all four had complete backends, zero mobile UI):
+  discount-code field at checkout; multi-slot selection (toggle, 8-slot cap
+  matching `MAX_SLOTS_PER_BOOKING`); reschedule (button on eligible booking
+  cards + same-court slot-picker screen); receipt-PDF download via the
+  native share sheet (`expo-file-system` + `expo-sharing` added). One small
+  additive endpoint: `GET /payments/by-group/{id}` to resolve a payment from
+  a booking group.
+- **Profile gaps**: change-password screen driving the OTP-gated two-step
+  backend flow (forces re-login since the backend revokes all sessions);
+  avatar upload (players' upload allow-list widened to `avatars`, picker in
+  Personal Information, real photo shown on the profile tab); payment
+  history — built the spec'd-but-missing `GET /payments/my` (repo + schema +
+  route + tests) and a new mobile screen with per-payment receipt download.
+- **Peak-pricing visibility**: new public `GET /courts/{id}/pricing-rules`
+  (active rules only, approval-gated); arena detail court cards list peak
+  windows ("Peak: Sat 18:00–23:00 ×1.5"); slot chips now show each slot's
+  actual price with an amber flash marker on peak-priced slots.
+- **Arena Detail map**: new Location section — full street address, a static
+  OpenStreetMap tile-mosaic map with pin (`components/static-map.tsx`, pure
+  JS slippy-map math, works in Expo Go), and a Get Directions deep link into
+  the device's maps app.
+- **Verified**: backend 86 tests green + ruff/black/mypy clean; mobile
+  `tsc --noEmit`, `expo lint`, and full `expo export` bundle builds clean.
+
+### Challenges
+- The pre-existing match module code had three real bugs that only surfaced
+  once tests existed: a stale identity-map read after join (fixed with
+  `populate_existing`), SQLAlchemy auto-correlating away the participant-count
+  subquery in `/matches/mine` (fixed with an alias), and an async lazy-load
+  crash on `Match.creator` (fixed with `selectinload`). Reinforces the
+  write-tests-before-trusting rule.
+- `react-native-maps` is a native module that can't run in Expo Go — adopting
+  it would have forced the whole team onto custom dev builds. Decision:
+  static OSM raster tiles + directions deep link instead; deviation #8
+  updated to record it.
+- Players were hard-blocked from uploading anything but `receipts`, so avatar
+  upload 403'd until the media allow-list gained an `avatars` folder.
+- Two endpoints the API spec promises simply didn't exist (`GET /payments/my`,
+  player-visible pricing rules) — both built additively; the frozen `/api/v1`
+  contract only gained routes/fields, nothing changed shape.
+
+### Next
+- Umer (Track B): admin backend (players/owners/arenas/bookings/payments/
+  analytics/audit log), admin web dashboard, and the owner web Profile page.
+- Merge `abubakar` → `main` after review (merge commit, per team convention).
+
+---
+
 ## 2026-07-14 — Web auth pages + owner dashboard UI, ahead of schedule (Track B, Umer)
 
 ### Completed
