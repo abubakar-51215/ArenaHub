@@ -28,11 +28,20 @@ from app.modules.court import repository as court_repo
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus, TimeSlot
 from app.modules.user.model import User, UserRole
+from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams
 from app.shared.pricing import apply_discount
 from app.shared.refunds import resolve_refund_percentage
+from app.websocket.manager import broadcast_slot_status
 
 STALE_PENDING_PAYMENT_AFTER = timedelta(hours=24)
+# (lead time, tolerance either side, notification event name). Tolerance
+# must be >= half the scheduler's run interval so a booking starting exactly
+# on a lead time is never missed between two runs.
+REMINDER_WINDOWS = [
+    (timedelta(hours=24), timedelta(minutes=20), "booking_reminder_24h"),
+    (timedelta(hours=1), timedelta(minutes=20), "booking_reminder_1h"),
+]
 
 
 def _is_discount_usable(discount: DiscountCode, subtotal: Decimal, now: datetime) -> bool:
@@ -144,6 +153,10 @@ async def create_booking(
             discount.used_count += 1
 
         await db.commit()
+        for slot in fresh_slots:
+            await broadcast_slot_status(
+                court.id, slot.id, slot.date, slot.start_time, slot.status.value
+            )
     finally:
         for key, token in acquired:
             await release_slot_lock(key, token)
@@ -234,11 +247,22 @@ async def cancel_booking(
     slot = await slot_repo.get_slot(db, booking.slot_id)
     if slot is not None and slot.status != SlotStatus.available:
         slot.status = SlotStatus.available
+        await broadcast_slot_status(
+            booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
+        )
 
     booking.status = BookingStatus.cancelled
     booking.cancellation_reason = reason
     booking.refund_percentage = refund_percentage
     booking.refund_eligible = refund_percentage > 0
+
+    # Payment module owns refund execution; it only does anything if money
+    # was actually captured for this booking (no-op for pending_payment
+    # cancellations, where refund_percentage is always 0 above).
+    from app.modules.payment.service import create_refund_for_cancelled_booking
+
+    await create_refund_for_cancelled_booking(db, booking)
+
     await db.commit()
     return BookingResponse.model_validate(booking)
 
@@ -281,6 +305,21 @@ async def reschedule_booking(
         booking.start_time = fresh_new_slot.start_time
         booking.end_time = fresh_new_slot.end_time
         await db.commit()
+        if old_slot is not None:
+            await broadcast_slot_status(
+                booking.court_id,
+                old_slot.id,
+                old_slot.date,
+                old_slot.start_time,
+                old_slot.status.value,
+            )
+        await broadcast_slot_status(
+            booking.court_id,
+            fresh_new_slot.id,
+            fresh_new_slot.date,
+            fresh_new_slot.start_time,
+            fresh_new_slot.status.value,
+        )
     finally:
         await release_slot_lock(key, token)
 
@@ -293,11 +332,42 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
     alongside the payment module)."""
     cutoff = (now or datetime.now()) - STALE_PENDING_PAYMENT_AFTER
     stale = await repo.list_stale_pending_payment(db, cutoff)
+    freed_slots: list[TimeSlot] = []
     for booking in stale:
         slot = await slot_repo.get_slot(db, booking.slot_id)
         if slot is not None and slot.status == SlotStatus.reserved:
             slot.status = SlotStatus.available
+            freed_slots.append(slot)
         booking.status = BookingStatus.cancelled
         booking.cancellation_reason = "Auto-cancelled: payment not completed within 24 hours."
     await db.commit()
+    for slot in freed_slots:
+        await broadcast_slot_status(
+            slot.court_id, slot.id, slot.date, slot.start_time, slot.status.value
+        )
     return len(stale)
+
+
+async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None) -> int:
+    """Notify players of confirmed bookings starting in ~24h or ~1h (docs
+    Sprint 3: "reminders 24h/1h"). Called by the APScheduler job in
+    ``app/tasks/``. Console-logs via ``shared/notify`` until the real
+    notification module (Sprint 5) exists — see that module's docstring.
+
+    Simplification: there's no "reminder already sent" flag on Booking, so
+    correctness depends on the scheduler's run interval staying inside each
+    window's tolerance (no duplicate/missed reminders as long as it does);
+    the Sprint 5 notification module should add proper send-tracking.
+    """
+    current = now or datetime.now()
+    sent = 0
+    for lead_time, tolerance, event in REMINDER_WINDOWS:
+        window_start = current + lead_time - tolerance
+        window_end = current + lead_time + tolerance
+        candidate_dates = {window_start.date(), window_end.date()}
+        for booking in await repo.list_confirmed_bookings_on_dates(db, list(candidate_dates)):
+            start = _booking_start(booking)
+            if window_start <= start <= window_end:
+                notify_user(booking.player_id, event, booking_id=str(booking.id))
+                sent += 1
+    return sent

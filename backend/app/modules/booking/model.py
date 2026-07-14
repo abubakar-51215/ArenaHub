@@ -18,7 +18,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Index, Integer, Numeric, Text, Time
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, Index, Integer, Numeric, String, Text, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -103,6 +103,9 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         default=PaymentStatus.pending,
     )
+    # Set once the payment module confirms the booking (payment webhook or
+    # owner bank_transfer approval); not in doc 09.
+    qr_code_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     refund_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

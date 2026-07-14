@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     cloudinary_url: str | None = Field(default=None, alias="CLOUDINARY_URL")
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+    jazzcash_merchant_id: str | None = Field(default=None, alias="JAZZCASH_MERCHANT_ID")
+    jazzcash_password: str | None = Field(default=None, alias="JAZZCASH_PASSWORD")
+    easypaisa_merchant_id: str | None = Field(default=None, alias="EASYPAISA_MERCHANT_ID")
 
     @property
     def is_dev(self) -> bool:

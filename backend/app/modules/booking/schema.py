@@ -44,6 +44,7 @@ class BookingResponse(BaseModel):
     payment_type: PaymentPlan
     status: BookingStatus
     payment_status: PaymentStatus
+    qr_code_url: str | None = None
     cancellation_reason: str | None = None
     refund_eligible: bool
     refund_percentage: int | None = None

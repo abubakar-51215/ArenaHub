@@ -29,9 +29,15 @@ from app.modules.court.api import owner_router as court_owner_router
 from app.modules.court.api import router as court_router
 from app.modules.health.api import router as health_router
 from app.modules.media.api import router as media_router
+from app.modules.payment.api import admin_router as payment_admin_router
+from app.modules.payment.api import owner_router as payment_owner_router
+from app.modules.payment.api import router as payment_router
+from app.modules.payment.api import webhook_router as payment_webhook_router
 from app.modules.slot.api import owner_router as slot_owner_router
 from app.modules.slot.api import router as slot_router
 from app.modules.user.api import router as user_router
+from app.tasks.scheduler import create_scheduler
+from app.websocket.api import router as websocket_router
 
 configure_logging()
 settings = get_settings()
@@ -41,7 +47,10 @@ API_V1_PREFIX = "/api/v1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    scheduler = create_scheduler()
+    scheduler.start()
     yield
+    scheduler.shutdown(wait=False)
     # Clean shutdown of pooled connections.
     await engine.dispose()
     await redis_client.aclose()
@@ -81,6 +90,11 @@ def create_app() -> FastAPI:
     app.include_router(booking_owner_router, prefix=API_V1_PREFIX)
     app.include_router(admin_router, prefix=API_V1_PREFIX)
     app.include_router(media_router, prefix=API_V1_PREFIX)
+    app.include_router(payment_router, prefix=API_V1_PREFIX)
+    app.include_router(payment_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(payment_admin_router, prefix=API_V1_PREFIX)
+    app.include_router(payment_webhook_router, prefix=API_V1_PREFIX)
+    app.include_router(websocket_router)
 
     # Serve locally-stored uploads in dev (Cloudinary serves them in prod).
     Path(settings.media_root).mkdir(parents=True, exist_ok=True)
