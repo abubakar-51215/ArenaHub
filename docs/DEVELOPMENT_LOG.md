@@ -5,6 +5,88 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-14 — Sprint 3: Booking engine, Redis locking, payments &amp; live updates (Track A, Abubakar)
+
+### Completed
+- **`modules/slot/`** — auto-generate hourly slots from the arena's
+  `operating_hours` (skips closed weekdays + blocked dates, idempotent re-runs),
+  owner manual edit/block/delete (guarded once a slot has an active booking),
+  public per-court/date listing. Migration `add_time_slots`.
+- **`cache/locking.py`** — Redis distributed lock (`SET key token NX PX 30000`
+  per docs/11) with check-then-delete release (no Lua — fakeredis has no
+  scripting support without the optional `lupa` dep, not worth adding just for
+  a test double; the race window is self-healing via the 30s TTL).
+- **`modules/booking/`** — multi-slot checkout (one row per slot, grouped by
+  `booking_group_id` — keeps docs/09's direct `slot_id` FK per row while still
+  letting one payment cover several slots), pricing (base → peak → discount,
+  `shared/pricing.py`), advance/full payment split against arena config,
+  cancel-with-refund-tier resolution (`shared/refunds.py`), reschedule, and an
+  `auto_cancel_stale_bookings` sweep. Migration `add_bookings`.
+- **`modules/payment/`** — `PaymentProvider` interface
+  (`integrations/payments/`): Stripe runs the real API in test mode when
+  `STRIPE_SECRET_KEY` is set, else a deterministic dev simulation (same seam
+  pattern as `shared/otp.py`'s console OTP delivery); JazzCash/EasyPaisa are
+  documented simulators (FYP risk-register-sanctioned — no merchant sandbox
+  access). Webhook auto-confirm for card/JazzCash/EasyPaisa (idempotent —
+  retried webhooks no-op); bank_transfer receipt upload → owner
+  approve/reject; refunds (auto on cancel + admin force-refund); receipt PDF
+  (fpdf2). Migration `add_payments_and_refunds` (+ `bookings.qr_code_url`).
+- **QR codes** — generated on booking confirmation via `shared/qr.py`
+  (`qrcode` lib), reusing the existing image-storage seam.
+- **`websocket/`** — per-court channel (`/ws/courts/{court_id}/slots`);
+  booking/payment services broadcast on every slot status change.
+- **`tasks/scheduler.py`** — APScheduler jobs wired into the app lifespan:
+  auto-cancel stale `pending_payment` bookings (30 min), 24h/1h reminders (15
+  min, console-logged via a new `shared/notify.py` stand-in for the Sprint 5
+  notification module), expired OTP/reset-token cleanup (60 min).
+- **Verified end-to-end:** ruff + black + mypy clean (117 files, app + tests);
+  **53 pytest** (incl. the mandatory concurrency test — two simultaneous
+  booking attempts on one slot, exactly one succeeds — plus payment/webhook/
+  refund/QR/websocket-manager/scheduler-job coverage) green against a fully
+  fresh Postgres 18 + Redis, matching CI exactly; both new migrations verified
+  upgrade → downgrade → upgrade on a fresh DB (schema dumped first per backup
+  policy); live WebSocket connection smoke-tested.
+- **PR #10** (`abubakar` → `main`) opened.
+
+### Challenges
+- **Postgres ENUM reversibility** bit again (same trap as Sprint 1/2): both
+  new migrations' `create_table` calls implicitly create ENUM types that
+  `drop_table` doesn't drop; added explicit `sa.Enum(...).drop(checkfirst=True)`
+  calls to each `downgrade()` (4 enum types across the two migrations).
+- **structlog `event` kwarg collision** — `shared/notify.py`'s
+  `notify_user(user_id, event, **context)` passed `event=event` straight into
+  `log.info(...)`, colliding with structlog's own internal `event` kwarg
+  (the log message itself). Renamed to `notification_type` in the log call.
+  Caught by the new reminder/refund tests, not by manual smoke-testing.
+- **CI red after push, green locally** — `mypy app/` (what I'd been running)
+  passed, but CI runs `mypy .` (whole `backend/`, including `tests/`), which
+  failed on an untyped `**arena_overrides` kwarg in a Sprint 3 test helper
+  (`disallow_untyped_defs = true` applies repo-wide). Reproduced the exact CI
+  job locally (fresh DB, fresh Redis index, identical env vars and step
+  order) to confirm it was the *only* gap — lint/format/migrations/pytest were
+  already clean on a truly empty DB. Fixed the annotation, repushed.
+- Multi-slot booking's schema shape (one `Booking` row per slot vs. one row
+  spanning several slots) isn't specified in docs/09 — asked the user;
+  decided on one-row-per-slot + `booking_group_id`, since it keeps the direct
+  `slot_id` FK doc/09 already has and per-slot locking/availability simple.
+
+### Next
+- **You merge PR #10** (merge commit, preserving authorship) once CI is green,
+  then tag **v0.3.0** "Booking Engine" and **v0.4.0** "Payments" on `main`.
+- **⛔ API freeze** takes effect once v0.4.0 is tagged — `/api/v1` is frozen to
+  bug fixes / non-breaking additions from here (protects Sprint 4-5 frontend
+  work).
+- **Track B (Umer)** still open: `modules/equipment/`, `modules/review/`,
+  owner dashboard booking-approval panel + calendar + revenue widgets. The
+  booking module's equipment-addon slot is deliberately left unwired until
+  `modules/equipment/` exists — integration checkpoint once his side lands.
+- Flagged, not yet addressed: the reminder job has no send-tracking (a
+  booking starting exactly on a lead time could double-notify across two
+  scheduler runs) — the real Sprint 5 notification module should add it.
+  JazzCash/EasyPaisa remain simulators pending real merchant credentials.
+
+---
+
 ## 2026-07-13 — Sprint 2 close-out: merged to main, both teammates signing off
 
 ### Completed
