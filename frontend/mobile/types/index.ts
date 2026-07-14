@@ -199,3 +199,34 @@ export interface RatingSummary {
   average_rating: number | null;
   review_count: number;
 }
+
+export type MatchStatus = 'open' | 'full' | 'cancelled' | 'completed';
+
+export interface MatchParticipant {
+  player_id: string;
+  player_name: string;
+  joined_at: string;
+}
+
+export interface Match {
+  id: string;
+  creator_id: string;
+  creator_name: string;
+  arena_id: string;
+  arena_name: string;
+  city: ArenaCity;
+  court_id: string;
+  court_name: string;
+  sport: string;
+  match_date: string;
+  start_time: string;
+  end_time: string;
+  max_players: number;
+  players_joined: number;
+  status: MatchStatus;
+  created_at: string;
+}
+
+export interface MatchDetail extends Match {
+  participants: MatchParticipant[];
+}
