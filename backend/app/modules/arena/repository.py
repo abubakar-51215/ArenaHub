@@ -128,9 +128,7 @@ async def search_public_arenas(
     else:
         order = (Arena.created_at.desc(),)
 
-    result = await db.execute(
-        _with_amenities(base).order_by(*order).offset(offset).limit(limit)
-    )
+    result = await db.execute(_with_amenities(base).order_by(*order).offset(offset).limit(limit))
     return list(result.scalars().all()), total
 
 

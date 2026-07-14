@@ -13,9 +13,9 @@ async def _setup_arena_court(
     (owner tokens, arena_id, court_id)."""
     owner, _ = await make_user(client, db, owner_email, "owner")
     h = auth_header(owner)
-    arena_id = (
-        await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())
-    ).json()["data"]["id"]
+    arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
+        "data"
+    ]["id"]
     court_id = (
         await client.post(
             f"/api/v1/owner/arenas/{arena_id}/courts",
@@ -48,9 +48,9 @@ async def test_create_match_requires_approved_arena(
 ) -> None:
     owner, _ = await make_user(client, db_session, "mowner1@example.com", "owner")
     h = auth_header(owner)
-    arena_id = (
-        await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())
-    ).json()["data"]["id"]
+    arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
+        "data"
+    ]["id"]
     court_id = (
         await client.post(
             f"/api/v1/owner/arenas/{arena_id}/courts",
@@ -107,9 +107,7 @@ async def test_create_and_join_match_fills_up(
     assert any(m["id"] == match_id for m in listed.json()["data"]["items"])
 
     joiner, _ = await make_user(client, db_session, "mjoiner3@example.com", "player")
-    joined = await client.post(
-        f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner)
-    )
+    joined = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
     assert joined.status_code == 200
     joined_body = joined.json()["data"]
     assert joined_body["players_joined"] == 2
@@ -121,15 +119,11 @@ async def test_create_and_join_match_fills_up(
 
     # A third player can't join a full match.
     third, _ = await make_user(client, db_session, "mthird3@example.com", "player")
-    rejected = await client.post(
-        f"/api/v1/matches/{match_id}/join", headers=auth_header(third)
-    )
+    rejected = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(third))
     assert rejected.status_code == 409
 
     # Joining twice is rejected.
-    twice = await client.post(
-        f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner)
-    )
+    twice = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
     assert twice.status_code == 409
 
 
@@ -170,9 +164,7 @@ async def test_leave_match_reopens_slot_and_creator_leaving_cancels(
     assert cancelled["status"] == "cancelled"
 
 
-async def test_cancel_match_only_by_creator(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_cancel_match_only_by_creator(client: AsyncClient, db_session: AsyncSession) -> None:
     _, arena_id, court_id = await _setup_arena_court(
         client, db_session, "mowner5@example.com", "madmin5@example.com"
     )
@@ -186,14 +178,10 @@ async def test_cancel_match_only_by_creator(
     ).json()["data"]["id"]
 
     other, _ = await make_user(client, db_session, "mother5@example.com", "player")
-    forbidden = await client.delete(
-        f"/api/v1/matches/{match_id}", headers=auth_header(other)
-    )
+    forbidden = await client.delete(f"/api/v1/matches/{match_id}", headers=auth_header(other))
     assert forbidden.status_code == 403
 
-    cancelled = await client.delete(
-        f"/api/v1/matches/{match_id}", headers=auth_header(creator)
-    )
+    cancelled = await client.delete(f"/api/v1/matches/{match_id}", headers=auth_header(creator))
     assert cancelled.status_code == 200
 
 
@@ -215,14 +203,14 @@ async def test_my_matches_separates_created_and_joined(
     joiner, _ = await make_user(client, db_session, "mjoiner6@example.com", "player")
     await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
 
-    creator_mine = (
-        await client.get("/api/v1/matches/mine", headers=auth_header(creator))
-    ).json()["data"]
+    creator_mine = (await client.get("/api/v1/matches/mine", headers=auth_header(creator))).json()[
+        "data"
+    ]
     assert any(m["id"] == match_id for m in creator_mine["created"])
     assert not any(m["id"] == match_id for m in creator_mine["joined"])
 
-    joiner_mine = (
-        await client.get("/api/v1/matches/mine", headers=auth_header(joiner))
-    ).json()["data"]
+    joiner_mine = (await client.get("/api/v1/matches/mine", headers=auth_header(joiner))).json()[
+        "data"
+    ]
     assert any(m["id"] == match_id for m in joiner_mine["joined"])
     assert not any(m["id"] == match_id for m in joiner_mine["created"])

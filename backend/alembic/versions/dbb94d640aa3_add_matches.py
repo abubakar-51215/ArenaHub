@@ -101,4 +101,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_matches_creator_id"), table_name="matches")
     op.drop_index(op.f("ix_matches_arena_id"), table_name="matches")
     op.drop_table("matches")
+    # drop_table doesn't drop the ENUM type it auto-created; without this a
+    # re-upgrade fails on "type match_status already exists".
+    sa.Enum(name="match_status").drop(op.get_bind(), checkfirst=True)
     # ### end Alembic commands ###
