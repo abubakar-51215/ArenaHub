@@ -82,12 +82,15 @@ ask.
    by logging to the backend console instead of email/SMS. Real email
    delivery (SMTP/SendGrid) is wired in Sprint 2; SMS OTP only if a
    provider is decided later — email OTP is the baseline.
-8. MAPS: use OpenStreetMap + Leaflet (web) / react-native-maps with
-   OSM tiles (mobile) instead of Google Maps API. Doc 02 and doc 06
-   both name Google Maps; substitute wherever they appear. No billing
-   account required, and it's defensible for an FYP demo. Distance
-   calculations use the Haversine formula from lat/lng in the arenas
-   table.
+8. MAPS: use OpenStreetMap instead of Google Maps API. Doc 02 and
+   doc 06 both name Google Maps; substitute wherever they appear. No
+   billing account required, and it's defensible for an FYP demo.
+   Distance calculations use the Haversine formula from lat/lng in
+   the arenas table. Mobile renders a static OSM raster-tile mosaic
+   (components/static-map.tsx) plus a "Get Directions" deep link into
+   the device's maps app — NOT react-native-maps, which is a native
+   module that can't run in Expo Go and would force the team onto
+   custom dev builds. Web (if/when it needs a map) uses Leaflet.
 9. CLOUD IMAGE STORAGE: Cloudinary free tier (25GB / 25k transforms)
    for arena photos, profile pictures, and receipt uploads. Store
    Cloudinary URLs in the DB, never raw bytes. Dev may fall back to

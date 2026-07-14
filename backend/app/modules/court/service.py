@@ -111,6 +111,21 @@ async def list_public_courts(db: AsyncSession, arena_id: uuid.UUID) -> list[Cour
     return [CourtResponse.model_validate(c) for c in rows]
 
 
+async def list_public_pricing_rules(
+    db: AsyncSession, court_id: uuid.UUID
+) -> list[PricingRuleResponse]:
+    """Active peak-pricing windows for a court — players see when peak rates
+    apply (doc 06: pricing shows standard and peak-hour rates)."""
+    court = await repo.get_court(db, court_id)
+    if court is None:
+        raise NotFoundError("Court not found.")
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+        raise NotFoundError("Court not found.")
+    rows = await repo.list_pricing_rules(db, court_id)
+    return [PricingRuleResponse.model_validate(r) for r in rows if r.is_active]
+
+
 # ---- peak-pricing rules -------------------------------------------------
 
 
