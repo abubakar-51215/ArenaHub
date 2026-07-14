@@ -4,7 +4,7 @@ Callers own the transaction.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +67,20 @@ async def list_stale_pending_payment(db: AsyncSession, cutoff: datetime) -> list
     result = await db.execute(
         select(Booking).where(
             Booking.status == BookingStatus.pending_payment, Booking.created_at < cutoff
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_confirmed_bookings_on_dates(db: AsyncSession, dates: list[date]) -> list[Booking]:
+    """Confirmed bookings falling on any of ``dates`` — callers narrow to an
+    exact time window in Python (booking_date/start_time are separate
+    columns, so a precise datetime-range filter isn't a single SQL clause)."""
+    if not dates:
+        return []
+    result = await db.execute(
+        select(Booking).where(
+            Booking.status == BookingStatus.confirmed, Booking.booking_date.in_(dates)
         )
     )
     return list(result.scalars().all())
