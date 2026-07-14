@@ -1,7 +1,7 @@
 """Pydantic request/response models for the payment module."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -37,6 +37,14 @@ class PaymentResponse(BaseModel):
     status: PaymentStatus
     payment_type: PaymentPlan
     receipt_proof_url: str | None = None
+    created_at: datetime
+
+
+class PaymentHistoryItem(PaymentResponse):
+    """A payment plus display context for the player's history list."""
+
+    arena_name: str | None = None
+    booking_date: date | None = None
 
 
 class PaymentInitiateResponse(BaseModel):

@@ -46,3 +46,18 @@ export function updateProfile(data: {
 }): Promise<User> {
   return api.put<User>('/users/me', data);
 }
+
+/** Step 1 of the OTP-gated password change — sends a code to the current email. */
+export function requestPasswordChange(currentPassword: string, newPassword: string): Promise<null> {
+  return api.put<null>('/users/me/password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+}
+
+/** Step 2 — confirms with the emailed code. On success the backend revokes
+ * every session (including this one), so the app must send the user back to
+ * the login screen. */
+export function verifyPasswordChange(code: string): Promise<null> {
+  return api.post<null>('/users/me/password/verify', { code });
+}

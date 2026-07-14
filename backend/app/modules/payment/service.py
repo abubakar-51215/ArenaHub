@@ -25,6 +25,7 @@ from app.modules.payment import repository as repo
 from app.modules.payment.model import Payment, PaymentMethod, Refund, RefundStatus
 from app.modules.payment.receipt import build_receipt_pdf
 from app.modules.payment.schema import (
+    PaymentHistoryItem,
     PaymentInitiateRequest,
     PaymentInitiateResponse,
     PaymentResponse,
@@ -34,6 +35,7 @@ from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_user
+from app.shared.pagination import PaginationParams, paginated
 from app.shared.qr import generate_booking_qr
 from app.websocket.manager import broadcast_slot_status
 
@@ -54,6 +56,21 @@ async def _group_bookings_for_player(
     if any(b.player_id != user.id for b in bookings):
         raise ForbiddenError("You do not own this booking.")
     return bookings
+
+
+async def list_my_payments(db: AsyncSession, user: User, params: PaginationParams) -> dict:
+    rows, total = await repo.list_payments_for_player(
+        db, user.id, offset=params.offset, limit=params.page_size
+    )
+    items = [
+        PaymentHistoryItem(
+            **PaymentResponse.model_validate(payment).model_dump(),
+            arena_name=arena_name,
+            booking_date=booking_date,
+        )
+        for payment, arena_name, booking_date in rows
+    ]
+    return paginated(items, total, params)
 
 
 async def get_payment_by_group(

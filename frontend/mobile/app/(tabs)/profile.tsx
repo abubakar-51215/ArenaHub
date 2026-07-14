@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,7 +10,8 @@ import { useAuthStore } from '@/store/auth';
 
 const MENU_ITEMS = [
   { label: 'Personal Information', icon: 'person-outline' as const, href: '/profile/edit' as const },
-  { label: 'Payment Methods', icon: 'card-outline' as const },
+  { label: 'Payment History', icon: 'card-outline' as const, href: '/profile/payments' as const },
+  { label: 'Change Password', icon: 'lock-closed-outline' as const, href: '/profile/change-password' as const },
   { label: 'My Addresses', icon: 'location-outline' as const },
   { label: 'Settings', icon: 'settings-outline' as const },
   { label: 'Help & Support', icon: 'help-circle-outline' as const },
@@ -35,9 +37,13 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarInitial}>{user?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
-        </View>
+        {user?.profile_picture ? (
+          <Image source={{ uri: user.profile_picture }} style={styles.avatar} contentFit="cover" />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarInitial}>{user?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
+          </View>
+        )}
         <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
       </View>

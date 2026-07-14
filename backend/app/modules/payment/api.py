@@ -18,6 +18,7 @@ from app.modules.payment import service
 from app.modules.payment.schema import PaymentInitiateRequest, ReceiptUploadRequest, RejectRequest
 from app.modules.user.model import User
 from app.shared.auth import get_current_user, require_role
+from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -27,6 +28,16 @@ webhook_router = APIRouter(prefix="/webhooks", tags=["payments-webhooks"])
 
 _owner = require_role("owner")
 _admin = require_role("admin")
+
+
+@router.get("/my", summary="My payment history")
+async def list_my_payments(
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_my_payments(db, user, params)
+    return success(data=data, message="Payments retrieved.")
 
 
 @router.get("/by-group/{booking_group_id}", summary="Resolve the payment for a booking group")
