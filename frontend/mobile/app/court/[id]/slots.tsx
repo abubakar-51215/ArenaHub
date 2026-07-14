@@ -32,7 +32,7 @@ const STATUS_LABEL: Record<TimeSlot['status'], string> = {
 };
 
 export default function SlotSelectionScreen() {
-  const { id: courtId } = useLocalSearchParams<{ id: string }>();
+  const { id: courtId, arenaId } = useLocalSearchParams<{ id: string; arenaId: string }>();
   const days = useMemo(() => nextDays(14), []);
   const [selectedDate, setSelectedDate] = useState(days[0].date);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -119,7 +119,15 @@ export default function SlotSelectionScreen() {
             onPress={() =>
               router.push({
                 pathname: '/booking/[courtId]',
-                params: { courtId: courtId as string, slotIds: selectedSlot.id },
+                params: {
+                  courtId: courtId as string,
+                  slotIds: selectedSlot.id,
+                  arenaId: arenaId as string,
+                  date: selectedSlot.date,
+                  startTime: selectedSlot.start_time,
+                  endTime: selectedSlot.end_time,
+                  price: selectedSlot.price,
+                },
               })
             }
           />

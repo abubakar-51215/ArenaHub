@@ -99,7 +99,12 @@ export default function ArenaDetailScreen() {
                 key={court.id}
                 style={styles.courtRow}
                 disabled={!court.is_available}
-                onPress={() => router.push(`/court/${court.id}/slots`)}>
+                onPress={() =>
+                  router.push({
+                    pathname: '/court/[id]/slots',
+                    params: { id: court.id, arenaId: a.id },
+                  })
+                }>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.courtName}>{court.name}</Text>
                   <Text style={styles.courtSports}>{court.sport_types.join(' · ')}</Text>
