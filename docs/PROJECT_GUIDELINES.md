@@ -147,6 +147,16 @@ ask.
     eslint + prettier before every commit. Root-level package.json
     with npm scripts as task runner (dev / migrate / seed / test /
     lint / format) — cross-platform on Windows, no Makefile needed.
+20. MATCHMAKING IS NOW IN SCOPE (supersedes docs 01/Requirements.txt,
+    which list it under "Excluded Features / Future Scope"). Built as
+    a deliberately lightweight "Play" feature: a match is a social
+    listing (arena/court/date/time/sport/max-players) that helps
+    players find teammates — it does not reserve the court (no FK to
+    time_slots, no payment) and is not full matchmaking/team/
+    tournament management, which stay excluded. Backend:
+    `modules/match/` (Match/MatchParticipant model, CRUD + join/leave/
+    cancel endpoints). Mobile: the Play tab (previously a "Coming
+    Soon" placeholder) gets Open Matches / Create Match / My Matches.
 
 ## Standardized environment variables (write these into .env.example)
 Backend:
