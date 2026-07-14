@@ -376,6 +376,22 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
     return len(stale)
 
 
+async def complete_finished_bookings(db: AsyncSession, now: datetime | None = None) -> int:
+    """Transition confirmed bookings whose slot end time has passed to
+    ``completed`` (docs/06 section 14: reviews require ``status ==
+    completed``). Called by the APScheduler job in ``app/tasks/`` — this is
+    the only place a booking is ever promoted to ``completed``.
+    """
+    current = now or datetime.now()
+    candidates = await repo.list_confirmed_on_or_before(db, current.date())
+    finished = [b for b in candidates if datetime.combine(b.booking_date, b.end_time) <= current]
+    for booking in finished:
+        booking.status = BookingStatus.completed
+    if finished:
+        await db.commit()
+    return len(finished)
+
+
 async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None) -> int:
     """Notify players of confirmed bookings starting in ~24h or ~1h (docs
     Sprint 3: "reminders 24h/1h"). Called by the APScheduler job in

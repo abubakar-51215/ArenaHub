@@ -30,21 +30,30 @@ what got done, what was tricky, and what's next.
   balances, breakdown by arena/court). Revenue joins `payments` to `bookings`
   via `booking_group_id` since `Payment` carries neither `arena_id` nor
   `court_id` directly.
-- **Verified end-to-end:** ruff + black + mypy clean; **74 pytest** green
-  (test_review.py + test_dashboard.py new, everything else still passing)
-  against fresh Postgres 18 + Redis; `add_reviews` migration verified
+- **`booking_service.complete_finished_bookings`** — a fourth APScheduler job
+  (every 15 minutes, alongside auto-cancel/reminders/cleanup) that transitions
+  `confirmed` bookings whose slot end time has passed to `completed`. This
+  replaces the earlier same-day workaround (see Challenges) with the properly
+  layered fix: `booking.service` now owns the only path to `completed`, and
+  `review.service` just checks `booking.status == completed`, no mutation.
+  New repository query `list_confirmed_on_or_before`; `booking_date`/`end_time`
+  are separate columns, so the exact cutoff is still resolved in Python, same
+  pattern as the existing reminder-window query.
+- **Verified end-to-end:** ruff + black + mypy clean; **75 pytest** green
+  (test_review.py + test_dashboard.py new, plus one new scheduler-job test for
+  the completion sweep, everything else still passing) against fresh
+  Postgres 18 + Redis; `add_reviews` migration verified
   upgrade → downgrade → upgrade cleanly.
 
 ### Challenges
-- **No booking ever reaches `completed`.** Nothing in `booking.service` (Track
-  A, Sprint 3) transitions a booking past `confirmed` — reviews require
-  `completed` per docs/06 §14 and had no way to ever fire. Fixed narrowly
-  inside `review.service._completed_own_booking`: a `confirmed` booking whose
-  slot end time has already passed is completed on read, the same
-  lazy-reconciliation pattern already used elsewhere (e.g. stale
-  `pending_payment` cleanup) — doesn't touch `booking.service`, only the row
-  this module already loads. Real fix (a scheduler job) is Track A's, flagged
-  for them.
+- **No booking ever reached `completed`.** Nothing in `booking.service` (Track
+  A, Sprint 3) transitioned a booking past `confirmed` — reviews require
+  `completed` per docs/06 §14 and had no way to ever fire. Initially patched
+  narrowly inside `review.service` (complete-on-read when a `confirmed`
+  booking's slot end time had passed), flagged as a stopgap. Superseded later
+  the same session by the proper fix above — a dedicated scheduler job in
+  `booking.service`, so completion lives with the rest of the booking state
+  machine instead of leaking into the module that merely reads it.
 - **`MissingGreenlet` on edit/owner-response.** `ReviewResponse` exposes
   `updated_at`, which uses `onupdate=func.now()`; after `db.commit()` on an
   UPDATE (not an INSERT), the value isn't eagerly returned the way
@@ -57,8 +66,10 @@ what got done, what was tricky, and what's next.
   redundant with the root `.gitignore`'s recursive `backups/` pattern.
 
 ### Next
-- Ping Abubakar re: the booking-completion gap — his scheduler is the right
-  long-term home for it; my auto-complete-on-read is a stopgap, not a fix.
+- Update docs/06 §14 to match what's implemented (30-day edit window, owner
+  response, report/flag) — currently only in MASTER_DEVELOPMENT_PLAN.md, not
+  in the detailed player-module spec. Housekeeping before final submission,
+  not a code change.
 - Track B remaining for Sprint 4: mobile UI polish (onboarding, home, search,
   filters and map, arena cards, responsive), notifications UI, profile and
   settings screens, remaining owner dashboard polish (charts, equipment and

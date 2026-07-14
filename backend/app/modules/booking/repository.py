@@ -87,6 +87,19 @@ async def list_confirmed_bookings_on_dates(db: AsyncSession, dates: list[date]) 
     return list(result.scalars().all())
 
 
+async def list_confirmed_on_or_before(db: AsyncSession, cutoff_date: date) -> list[Booking]:
+    """Confirmed bookings whose ``booking_date`` is on or before ``cutoff_date``
+    — callers narrow to an exact end-of-slot cutoff in Python (booking_date/
+    end_time are separate columns, so a precise datetime comparison isn't a
+    single SQL clause). Used by the completion sweep."""
+    result = await db.execute(
+        select(Booking).where(
+            Booking.status == BookingStatus.confirmed, Booking.booking_date <= cutoff_date
+        )
+    )
+    return list(result.scalars().all())
+
+
 # ---- owner dashboard ------------------------------------------------------
 
 
