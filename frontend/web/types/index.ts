@@ -89,6 +89,17 @@ export interface Court {
   is_available: boolean;
 }
 
+export interface Equipment {
+  id: string;
+  arena_id: string;
+  name: string;
+  description: string | null;
+  rental_price: string;
+  quantity_total: number;
+  quantity_available: number;
+  is_active: boolean;
+}
+
 export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface PricingRule {
