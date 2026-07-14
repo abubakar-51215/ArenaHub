@@ -97,6 +97,9 @@ Arena Hub provides a unified digital platform with three interfaces:
 - Equipment rental alongside bookings
 - Reviews and ratings (1-5 stars + text)
 - AI-powered arena recommendations
+- Lightweight matchmaking ("Play"): post an open match on a booked/
+  available court and let other players join to fill it out — a
+  social listing, not court reservation or team/tournament management
 - Push notifications (FCM)
 - Liked arenas section (favorites)
 - Report generation and download
@@ -134,7 +137,6 @@ Arena Hub provides a unified digital platform with three interfaces:
 
 ### Excluded Features (Future Scope)
 
-- Matchmaking system
 - Team management and challenges
 - Tournament management
 - Dynamic AI pricing
