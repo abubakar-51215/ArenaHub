@@ -17,6 +17,7 @@ import { ArenaCard } from "@/components/arena-card";
 import { Colors } from "@/constants/theme";
 import { useArenaSearch } from "@/hooks/useArenas";
 import { getRecommendations } from "@/services/ai";
+import { getTrendingArenas } from "@/services/arenas";
 import { useAuthStore } from "@/store/auth";
 import { useLocationStore, type LocationStatus } from "@/store/location";
 
@@ -44,6 +45,12 @@ export default function HomeScreen() {
   const recommended = useQuery({
     queryKey: ["recommendations", city],
     queryFn: () => getRecommendations({ city: city ?? undefined, limit: 8 }),
+  });
+  // Ranked by booking volume in the last 7 days (server falls back to
+  // rating-ranked popular arenas when nothing was booked in the window).
+  const trending = useQuery({
+    queryKey: ["trending-arenas", city],
+    queryFn: () => getTrendingArenas({ days: 7, city: city ?? undefined, limit: 8 }),
   });
 
   return (
@@ -115,6 +122,25 @@ export default function HomeScreen() {
                   </Pressable>
                 )}
               />
+
+              {trending.data?.items.length ? (
+                <>
+                  <View style={styles.sectionTitleRow}>
+                    <Ionicons name="flame" size={16} color={Colors.light.warning} />
+                    <Text style={styles.sectionTitle}>Trending Now</Text>
+                  </View>
+                  <FlatList
+                    data={trending.data.items}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(a) => a.id}
+                    contentContainerStyle={styles.recommendedRow}
+                    renderItem={({ item }) => (
+                      <ArenaCard arena={item} width={160} />
+                    )}
+                  />
+                </>
+              ) : null}
 
               {recommended.data?.items.length ? (
                 <>
@@ -211,6 +237,13 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     marginBottom: 12,
     marginTop: 8,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    marginBottom: -4,
   },
   recommendedRow: { gap: 12, paddingBottom: 20 },
   listContent: { paddingHorizontal: 20, paddingBottom: 24 },

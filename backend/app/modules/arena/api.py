@@ -10,7 +10,7 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -59,6 +59,17 @@ async def search_arenas(
         params=params,
     )
     return success(data=data, message="Arenas retrieved.")
+
+
+@router.get("/trending", summary="Arenas trending by recent booking volume")
+async def get_trending_arenas(
+    days: int = Query(7, ge=1, le=90),
+    city: ArenaCity | None = None,
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    items = await service.get_trending_arenas(db, days=days, city=city, limit=limit)
+    return success(data={"items": items}, message="Trending arenas retrieved.")
 
 
 @router.get("/{arena_id}", summary="Get a public arena")

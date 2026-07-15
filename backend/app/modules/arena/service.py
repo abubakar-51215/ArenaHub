@@ -7,6 +7,7 @@ so the state machine has a single implementation.
 """
 
 import uuid
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -190,6 +191,22 @@ async def search_arenas(
     )
     items = [ArenaResponse.model_validate(a) for a in arenas]
     return paginated(items, total, params)
+
+
+async def get_trending_arenas(
+    db: AsyncSession, *, days: int, city: ArenaCity | None, limit: int
+) -> list[ArenaResponse]:
+    """Arenas ranked by booking volume over the last ``days`` days. Falls
+    back to the rating-ranked "popular" sort when the window has no bookings
+    at all (a cold-start dataset, or an unlucky city filter) — an empty
+    Trending section reads as broken, a popularity fallback doesn't."""
+    since = datetime.now() - timedelta(days=days)
+    arenas = await repo.list_trending_arenas(db, since=since, city=city, limit=limit)
+    if not arenas:
+        arenas, _ = await repo.search_public_arenas(
+            db, q=None, city=city, sport=None, sort="rating_desc", offset=0, limit=limit
+        )
+    return [ArenaResponse.model_validate(a) for a in arenas]
 
 
 async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
