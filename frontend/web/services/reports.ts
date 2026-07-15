@@ -3,6 +3,7 @@ import { downloadFile } from "@/services/api";
 
 export type ReportFormat = "csv" | "pdf";
 export type AdminReportType = "users" | "bookings" | "revenue" | "arenas" | "system";
+export type OwnerReportType = "bookings" | "occupancy";
 
 export interface DateRange {
   dateFrom?: string;
@@ -10,9 +11,9 @@ export interface DateRange {
 }
 
 export function downloadOwnerReport(
-  params: { format: ReportFormat; arenaId?: string } & DateRange,
+  params: { format: ReportFormat; type?: OwnerReportType; arenaId?: string } & DateRange,
 ): Promise<void> {
-  const qs = new URLSearchParams({ format: params.format });
+  const qs = new URLSearchParams({ format: params.format, type: params.type ?? "bookings" });
   if (params.arenaId) qs.set("arena_id", params.arenaId);
   if (params.dateFrom) qs.set("date_from", params.dateFrom);
   if (params.dateTo) qs.set("date_to", params.dateTo);
