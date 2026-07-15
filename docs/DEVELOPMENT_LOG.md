@@ -42,6 +42,28 @@ what got done, what was tricky, and what's next.
   multipart/alternative with the plain-text fallback — previously a bare
   one-line text email. Emails are always light-themed (email-client
   convention). 3 template tests.
+- **Polish batch — every remaining ⚠️ from the traceability matrix built**
+  (user call: close them all rather than leave them documented):
+  - *Suspension/reactivation notifications* (FR-A-02): suspend/reactivate now
+    notify the account holder — email is the channel that matters, since a
+    suspended account can't open the app to read the in-app copy.
+  - *Occupancy & peak-usage report* (FR-O-10): `GET /owner/reports?type=
+    occupancy` — per-court sellable vs booked slots, occupancy %, and
+    busiest booking hour; report-type select added to the Earnings page's
+    export controls.
+  - *Owner web notification center* (FR-O-11): `/owner/notifications` page
+    (event icons, unread dots, mark-all-read, relative timestamps) + a
+    sidebar bell with a polling unread badge — same backend endpoints the
+    mobile center uses.
+  - *CSP + security headers*: `next.config.ts` now sends
+    Content-Security-Policy (self + API origin + OSM tiles + Cloudinary),
+    X-Frame-Options DENY, nosniff, Referrer-Policy, and Permissions-Policy
+    on every route. `script-src` still allows unsafe-inline/eval (Next.js
+    runtime); nonce-based hardening noted for the deployment phase.
+  - *Recent search history* (FR-P-04): last 8 successful queries stored
+    on-device (AsyncStorage-backed Zustand), shown as tappable chips under
+    the search box with a clear control; only queries that actually
+    returned results are recorded, keeping typos out.
 - **Live smoke verification** against a running dev server + seeded data
   (per external review's manual-checklist): all 15 export downloads
   byte-verified (headers + `%PDF` magic), trending live, liked-arenas
