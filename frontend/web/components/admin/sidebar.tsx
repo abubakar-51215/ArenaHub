@@ -3,19 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  BarChart3,
   Building2,
-  CalendarDays,
   CalendarCheck,
-  CreditCard,
-  Dumbbell,
   LayoutDashboard,
-  LayoutGrid,
   LogOut,
+  MessageSquareWarning,
   Settings,
-  Star,
-  Tag,
+  UserCog,
+  Users,
   Wallet,
+  BarChart3,
 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
@@ -25,28 +22,23 @@ import { useAuthStore } from "@/store/auth";
 
 interface NavItem {
   label: string;
-  href?: string;
+  href: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
-// In-scope routes have an href; the rest render as disabled placeholders so the
-// shell matches the wireframe without implying features that aren't built yet.
 const NAV: NavItem[] = [
-  { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
-  { label: "Arenas", href: "/owner/arenas", icon: Building2 },
-  { label: "Courts", href: "/owner/courts", icon: LayoutGrid },
-  { label: "Equipment", href: "/owner/equipment", icon: Dumbbell },
-  { label: "Bookings", href: "/owner/bookings", icon: CalendarCheck },
-  { label: "Calendar", href: "/owner/calendar", icon: CalendarDays },
-  { label: "Pricing", href: "/owner/pricing", icon: Tag },
-  { label: "Payment Config", href: "/owner/payments", icon: CreditCard },
-  { label: "Earnings", href: "/owner/revenue", icon: Wallet },
-  { label: "Reports", icon: BarChart3 },
-  { label: "Reviews", href: "/owner/reviews", icon: Star },
-  { label: "Profile", href: "/owner/profile", icon: Settings },
+  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Arena Owners", href: "/admin/owners", icon: UserCog },
+  { label: "Arenas", href: "/admin/arenas", icon: Building2 },
+  { label: "Bookings", href: "/admin/bookings", icon: CalendarCheck },
+  { label: "Payments", href: "/admin/payments", icon: Wallet },
+  { label: "Complaints", href: "/admin/complaints", icon: MessageSquareWarning },
+  { label: "Reports", href: "/admin/reports", icon: BarChart3 },
+  { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { refreshToken, clear } = useAuthStore();
@@ -58,7 +50,7 @@ export function Sidebar() {
       // Ignore — clear the local session regardless.
     } finally {
       clear();
-      router.replace("/login");
+      router.replace("/admin/login");
     }
   }
 
@@ -70,21 +62,8 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {NAV.map((item) => {
           const active =
-            item.href &&
-            (item.href === "/owner" ? pathname === "/owner" : pathname.startsWith(item.href));
+            item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
           const Icon = item.icon;
-          if (!item.href) {
-            return (
-              <span
-                key={item.label}
-                title="Coming in a later sprint"
-                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground/50"
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </span>
-            );
-          }
           return (
             <Link
               key={item.label}
