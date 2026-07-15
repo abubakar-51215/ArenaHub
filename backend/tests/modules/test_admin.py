@@ -55,6 +55,16 @@ async def test_admin_suspend_and_reactivate_user(
     assert "user.suspend" in actions
     assert "user.reactivate" in actions
 
+    # The account holder is notified of both status changes (FR-A-02).
+    from app.modules.notification import repository as notif_repo
+
+    rows, _ = await notif_repo.list_for_user(db_session, user.id, limit=10, offset=0)
+    events = [n.event for n in rows]
+    assert "account_suspended" in events
+    assert "account_reactivated" in events
+    suspended = next(n for n in rows if n.event == "account_suspended")
+    assert "Reported for abusive behavior." in suspended.body
+
 
 async def test_admin_deletes_user_scrubs_pii_and_blocks_login(
     client: AsyncClient, db_session: AsyncSession
