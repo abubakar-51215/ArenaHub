@@ -13,7 +13,7 @@ const MENU_ITEMS = [
   { label: 'Payment History', icon: 'card-outline' as const, href: '/profile/payments' as const },
   { label: 'Change Password', icon: 'lock-closed-outline' as const, href: '/profile/change-password' as const },
   { label: 'My Addresses', icon: 'location-outline' as const },
-  { label: 'Settings', icon: 'settings-outline' as const },
+  { label: 'Settings', icon: 'settings-outline' as const, href: '/profile/settings' as const },
   { label: 'Help & Support', icon: 'help-circle-outline' as const },
   { label: 'Terms & Conditions', icon: 'document-text-outline' as const },
 ];

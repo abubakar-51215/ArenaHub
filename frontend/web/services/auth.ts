@@ -36,3 +36,38 @@ export function forgotPassword(email: string): Promise<null> {
 export function resetPassword(token: string, newPassword: string): Promise<null> {
   return api.post<null>("/auth/reset-password", { token, new_password: newPassword });
 }
+
+export function updateProfile(data: { full_name?: string }): Promise<User> {
+  return api.put<User>("/users/me", data);
+}
+
+/** Step 1 of the OTP-gated password change — sends a code to the current email. */
+export function requestPasswordChange(currentPassword: string, newPassword: string): Promise<null> {
+  return api.put<null>("/users/me/password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+}
+
+/** Step 2 — confirms with the emailed code. On success the backend revokes
+ * every session (including this one), so the app must send the owner back to
+ * the login page. */
+export function verifyPasswordChange(code: string): Promise<null> {
+  return api.post<null>("/users/me/password/verify", { code });
+}
+
+export function requestPhoneChange(newPhone: string): Promise<null> {
+  return api.post<null>("/users/me/phone", { new_phone: newPhone });
+}
+
+export function verifyPhoneChange(code: string): Promise<User> {
+  return api.post<User>("/users/me/phone/verify", { code });
+}
+
+export function requestEmailChange(newEmail: string): Promise<null> {
+  return api.post<null>("/users/me/email", { new_email: newEmail });
+}
+
+export function verifyEmailChange(code: string): Promise<User> {
+  return api.post<User>("/users/me/email/verify", { code });
+}
