@@ -1,6 +1,7 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +19,7 @@ import { Colors } from "@/constants/theme";
 import { useArenaSearch } from "@/hooks/useArenas";
 import { nlpSearch } from "@/services/ai";
 import { useLocationStore } from "@/store/location";
+import { useSearchHistory } from "@/store/search-history";
 import { ARENA_CITIES, type ArenaCity } from "@/types";
 
 const SPORTS = ["futsal", "cricket", "padel", "badminton", "tennis"];
@@ -72,6 +74,16 @@ export default function SearchScreen() {
   const isLoading = useNlp ? nlpResults.isLoading : structuredResults.isLoading;
   const parsed = nlpResults.data?.parsed;
 
+  const history = useSearchHistory();
+  useEffect(() => {
+    // Record a query once it has actually produced results — keeps typos
+    // and half-typed prefixes out of the recent list.
+    if (useNlp && nlpResults.data && nlpResults.data.total > 0) {
+      history.add(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nlpResults.data]);
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -98,6 +110,29 @@ export default function SearchScreen() {
           </View>
         ) : null}
       </View>
+
+      {!useNlp && history.recent.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterBar}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          <FilterGroup label="Recent">
+            {history.recent.map((recentQuery) => (
+              <Chip
+                key={recentQuery}
+                label={`🕐 ${recentQuery}`}
+                active={false}
+                onPress={() => setQ(recentQuery)}
+              />
+            ))}
+            <Pressable onPress={history.clear} hitSlop={8}>
+              <Ionicons name="close-circle-outline" size={18} color={Colors.light.muted} />
+            </Pressable>
+          </FilterGroup>
+        </ScrollView>
+      ) : null}
 
       {!useNlp ? (
         <>
