@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     jazzcash_password: str | None = Field(default=None, alias="JAZZCASH_PASSWORD")
     easypaisa_merchant_id: str | None = Field(default=None, alias="EASYPAISA_MERCHANT_ID")
 
+    # Email (OTP + notification delivery). Unset in dev -> console log instead
+    # of a real SMTP connection (same seam as deliver_otp).
+    email_host: str | None = Field(default=None, alias="EMAIL_HOST")
+    email_port: int = Field(default=587, alias="EMAIL_PORT")
+    email_username: str | None = Field(default=None, alias="EMAIL_USERNAME")
+    email_password: str | None = Field(default=None, alias="EMAIL_PASSWORD")
+    email_from: str = Field(default="ArenaHub <no-reply@arenahub.local>", alias="EMAIL_FROM")
+
     @property
     def is_dev(self) -> bool:
         return self.environment == Environment.dev

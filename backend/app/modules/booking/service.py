@@ -289,6 +289,7 @@ async def cancel_booking(
     from app.modules.payment.service import create_refund_for_cancelled_booking
 
     await create_refund_for_cancelled_booking(db, booking)
+    await notify_user(db, booking.player_id, "booking_cancelled", booking_id=str(booking.id))
 
     await db.commit()
     return BookingResponse.model_validate(booking)
@@ -412,6 +413,8 @@ async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None)
         for booking in await repo.list_confirmed_bookings_on_dates(db, list(candidate_dates)):
             start = _booking_start(booking)
             if window_start <= start <= window_end:
-                notify_user(booking.player_id, event, booking_id=str(booking.id))
+                await notify_user(db, booking.player_id, event, booking_id=str(booking.id))
                 sent += 1
+    if sent:
+        await db.commit()
     return sent
