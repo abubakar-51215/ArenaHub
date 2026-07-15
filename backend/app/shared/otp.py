@@ -17,6 +17,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.integrations.email import send_email
+from app.integrations.email.templates import otp_email, reset_email
 
 log = structlog.get_logger()
 
@@ -36,19 +37,15 @@ def generate_reset_token() -> str:
 
 
 def deliver_otp(destination: str, code: str, purpose: str = "verification") -> None:
-    """Deliver an OTP. Dev logs it to the console; elsewhere it's emailed."""
+    """Deliver an OTP. Dev logs it to the console; elsewhere it's emailed
+    with the branded HTML template (plain-text fallback included)."""
     settings = get_settings()
     if settings.is_dev:
         log.info("otp_dev_delivery", destination=destination, purpose=purpose, code=code)
         return
     log.info("otp_delivery_requested", destination=destination, purpose=purpose)
-    asyncio.create_task(
-        send_email(
-            destination,
-            "Your ArenaHub verification code",
-            f"Your {purpose} code is {code}. It expires in 10 minutes.",
-        )
-    )
+    subject, text, html = otp_email(code, purpose, ttl_minutes=int(OTP_TTL.total_seconds() // 60))
+    asyncio.create_task(send_email(destination, subject, text, html=html))
 
 
 def deliver_reset_link(destination: str, token: str) -> None:
@@ -58,10 +55,5 @@ def deliver_reset_link(destination: str, token: str) -> None:
         log.info("password_reset_dev_delivery", destination=destination, token=token)
         return
     log.info("password_reset_requested", destination=destination)
-    asyncio.create_task(
-        send_email(
-            destination,
-            "Reset your ArenaHub password",
-            f"Your password reset token is {token}. It expires in 30 minutes.",
-        )
-    )
+    subject, text, html = reset_email(token, ttl_minutes=int(RESET_TOKEN_TTL.total_seconds() // 60))
+    asyncio.create_task(send_email(destination, subject, text, html=html))

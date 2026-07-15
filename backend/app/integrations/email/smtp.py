@@ -27,12 +27,14 @@ def _send_sync(
         client.send_message(msg)
 
 
-async def send_email(to: str, subject: str, body: str) -> None:
-    """Send a plain-text email. Best-effort: dev logs it, prod raises on
-    SMTP failure so the caller can decide whether to swallow or surface it."""
+async def send_email(to: str, subject: str, body: str, html: str | None = None) -> None:
+    """Send an email — plain text, plus a branded HTML alternative when given
+    (multipart/alternative: clients render the HTML, text is the fallback).
+    Dev logs instead of connecting; prod raises on SMTP failure so the caller
+    can decide whether to swallow or surface it."""
     settings = get_settings()
     if not settings.email_host or not settings.email_password:
-        log.info("email_dev_delivery", to=to, subject=subject)
+        log.info("email_dev_delivery", to=to, subject=subject, html=html is not None)
         return
 
     msg = EmailMessage()
@@ -40,6 +42,8 @@ async def send_email(to: str, subject: str, body: str) -> None:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
+    if html is not None:
+        msg.add_alternative(html, subtype="html")
 
     await asyncio.to_thread(
         _send_sync,
