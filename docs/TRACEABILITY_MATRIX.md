@@ -15,7 +15,7 @@ web under `frontend/web/`, tests under `backend/tests/`.
 | FR-P-01 | Registration + OTP | `modules/auth` | `POST /auth/register`, `/auth/verify-otp`, `/auth/resend-otp` | `(auth)/register.tsx`, `verify-otp.tsx` (with resend) | `test_auth`: register/verify/duplicate/weak-password/resend | 🔀 email OTP only (deviation #7 — no SMS gateway) |
 | FR-P-02 | Login, JWT 15m/7d, rotation, lockout, reset | `modules/auth`, `core/security` | `/auth/login`, `/refresh`, `/logout`, `/forgot-password`, `/reset-password` | `login.tsx`, `forgot-password.tsx`; auto-refresh in `lib/api.ts` | `test_auth`: lockout-after-5, replay-revokes-family | ✅ (reset delivers a token, not a clickable link — dev logs it, prod emails it) |
 | FR-P-03 | Profile view/edit, prefs, delete | `modules/user` | `GET/PUT /users/me`, `DELETE /users/me` | `profile/edit.tsx`, `settings.tsx` | `test_user` | ✅ |
-| FR-P-04 | Search by name/city/sport/price, filters, sort, map | `modules/arena` | `GET /arenas` (q/city/sport/price/sort) | `(tabs)/search.tsx`, `static-map.tsx` | `test_arena` search assertions | 🔀 OSM not Google Maps (deviation #6); ⚠️ recent-search-history not stored |
+| FR-P-04 | Search by name/city/sport/price, filters, sort, map, recent searches | `modules/arena` | `GET /arenas` (q/city/sport/price/sort) | `(tabs)/search.tsx` (recent-search chips via `store/search-history`), `static-map.tsx` | `test_arena` search assertions | 🔀 OSM not Google Maps (deviation #6); recent searches stored on-device (AsyncStorage, last 8) |
 | FR-P-05 | NLP search | `modules/ai` | `GET /search/nlp` | `search.tsx` free-text mode with parsed chips | `test_ai::test_nlp_search_parses_sport_and_city` | ✅ |
 | FR-P-06 | Arena details (gallery/amenities/pricing/reviews/map) | `modules/arena`, `review`, `court` | `GET /arenas/{id}`, `/arenas/{id}/reviews`, `/courts` | `arena/[id].tsx` | `test_arena`, `test_review` | ✅ |
 | FR-P-07 | Real-time slots + peak pricing | `modules/slot`, `app/websocket` | `GET /courts/{id}/slots`, `WS /ws/courts/{id}/slots` | `court/[id]/slots.tsx` + `useCourtSlots` (reconnects) | `test_slot`, `test_websocket_manager` | ✅ |
@@ -43,15 +43,15 @@ web under `frontend/web/`, tests under `backend/tests/`.
 | FR-O-07 | Bookings list + calendar + cancel notifications | `modules/dashboard`, `booking` | `/owner/bookings`, `/owner/.../calendar` | web `/owner/bookings`, `/owner/calendar` | `test_dashboard` | ✅ |
 | FR-O-08 | Equipment CRUD + availability | `modules/equipment` | `/owner/.../equipment` | web `/owner/equipment` | `test_equipment` | ✅ |
 | FR-O-09 | Revenue: daily/weekly/monthly, settlements | `modules/dashboard` | `/owner/dashboard/*` | web `/owner/revenue` charts | `test_dashboard` | ✅ |
-| FR-O-10 | Owner reports (booking/revenue/payment), PDF | `modules/report` | `GET /owner/reports` (CSV+PDF) | Export buttons on `/owner/revenue` | `test_report` | ⚠️ occupancy/peak-usage as a *download* not built — peak-hours analytics shown live on the dashboard instead |
-| FR-O-11 | Owner notifications + dashboard notification center | `modules/notification` | `/notifications` | — | `test_notification` | ⚠️ owner events are persisted (new booking/cancellation/payment) but the web dashboard has no notification-center UI; mobile has one |
+| FR-O-10 | Owner reports (booking/revenue/payment/occupancy), PDF | `modules/report` | `GET /owner/reports?type=bookings\|occupancy` (CSV+PDF) | Report-type select + export buttons on `/owner/revenue` | `test_report` incl. occupancy | ✅ |
+| FR-O-11 | Owner notifications + dashboard notification center | `modules/notification` | `/notifications` | web `/owner/notifications` + sidebar bell with unread badge | `test_notification` | ✅ |
 
 ## Administrator (FR-A)
 
 | FR | Requirement | Backend module | API | UI | Tests | Status |
 |---|---|---|---|---|---|---|
 | FR-A-01 | Admin login, elevated RBAC | `modules/auth`, `shared/auth` | `/auth/login` + `require_role("admin")` | web `/admin/login` | RBAC 403 tests across 8 files | ✅ |
-| FR-A-02 | User/owner management | `modules/admin` | `/admin/users/*` (list/detail/suspend/reactivate/delete) | web `/admin/users`, `/admin/owners` | `test_admin` incl. delete + login-block | ✅ (⚠️ no notification to the account holder on suspension) |
+| FR-A-02 | User/owner management | `modules/admin` | `/admin/users/*` (list/detail/suspend/reactivate/delete) | web `/admin/users`, `/admin/owners` | `test_admin` incl. delete + login-block + suspension notification | ✅ (account holder notified on suspend/reactivate — email is the channel that matters, since a suspended account can't open the app) |
 | FR-A-03 | Arena verification with reasons | `modules/admin` + arena state machine | `/admin/arenas/*` | web `/admin/arenas` | `test_arena` reject-with-reason/resubmit | ✅ |
 | FR-A-04 | Booking monitoring | `modules/admin` | `/admin/bookings` | web `/admin/bookings` | `test_admin` | ✅ (⚠️ no admin ping on owner approvals — moot for auto-confirmed methods per deviation #2b) |
 | FR-A-05 | Payment monitoring w/ gateway IDs | `modules/admin` | `/admin/payments` | web `/admin/payments` | `test_admin` | ✅ |
@@ -70,15 +70,18 @@ web under `frontend/web/`, tests under `backend/tests/`.
 
 ## Known open items (tracked, not silent)
 
-- ⚠️ items above: recent-search history (P-04), owner business fields at
-  signup (O-01), admin new-arena-submission ping (O-02), occupancy report
-  download (O-10), owner web notification center (O-11), suspension
-  notification (A-02).
+- ⚠️ items above: owner business fields at signup (O-01), admin
+  new-arena-submission ping (O-02). Both cosmetic; everything else from the
+  original list has since been built (recent-search history, occupancy
+  report, owner web notification center, suspension notification, CSP
+  headers).
 - Excel (.xlsx) export — `finalCheckList.md` lists it beyond the spec's
   PDF/CSV; not built.
-- CSP/security headers on the web app — Sprint 5 security checklist item;
-  not yet configured in `next.config.ts`.
 - Malware scanning on uploads — type+size validation only; this line is the
   checklist-permitted documented gap (no AV integration at FYP scale).
+- CSP hardening — headers are configured in `next.config.ts`;
+  `script-src` still allows `'unsafe-inline'`/`'unsafe-eval'` (Next.js
+  runtime + dev fast-refresh). A nonce-based policy is the
+  deployment-phase follow-up.
 - Deployment phase (Docker, HTTPS, monitoring, APK/AAB, manuals) — deferred
   per deviation #1.
