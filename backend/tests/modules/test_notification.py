@@ -2,8 +2,8 @@
 plus the notification-center/device-registration endpoints."""
 
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from pytest import MonkeyPatch
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.notification import repository as notif_repo
 from app.modules.notification import service as notif_service
