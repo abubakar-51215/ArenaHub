@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  Bell,
   Building2,
   CalendarDays,
   CalendarCheck,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
+import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { logout } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
@@ -43,6 +45,7 @@ const NAV: NavItem[] = [
   { label: "Earnings", href: "/owner/revenue", icon: Wallet },
   { label: "Reports", icon: BarChart3 },
   { label: "Reviews", href: "/owner/reviews", icon: Star },
+  { label: "Notifications", href: "/owner/notifications", icon: Bell },
   { label: "Profile", href: "/owner/profile", icon: Settings },
 ];
 
@@ -50,6 +53,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { refreshToken, clear } = useAuthStore();
+  const { data: notifications } = useNotifications();
+  const unread = notifications?.unread_count ?? 0;
 
   async function onLogout() {
     try {
@@ -95,7 +100,17 @@ export function Sidebar() {
               )}
             >
               <Icon className="size-4" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.label === "Notifications" && unread > 0 && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                    active ? "bg-white text-blue-600" : "bg-blue-600 text-white",
+                  )}
+                >
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
             </Link>
           );
         })}
