@@ -250,9 +250,9 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 |---|---|:---:|
 | **Sprint 1** | Scaffold — backend, mobile, web, CI | ✅ Complete |
 | **Sprint 2** | Authentication &amp; core management | ✅ Complete |
-| **Sprint 3** | Booking engine, locking &amp; payments | 🔄 In progress (Track A done; Track B — equipment/reviews/owner booking views — pending) |
-| **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ⬜ Planned |
-| **Sprint 5** | Admin panel, reports, notifications, deployment | ⬜ Planned |
+| **Sprint 3** | Booking engine, locking &amp; payments | ✅ Complete |
+| **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ✅ Complete |
+| **Sprint 5** | Admin panel, reports, notifications, deployment | 🔄 In progress (Track B — admin backend + panel, complaint module — done; Track A — notifications, reports, deployment — pending) |
 
 ---
 

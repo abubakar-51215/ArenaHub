@@ -43,7 +43,7 @@ const NAV: NavItem[] = [
   { label: "Earnings", href: "/owner/revenue", icon: Wallet },
   { label: "Reports", icon: BarChart3 },
   { label: "Reviews", href: "/owner/reviews", icon: Star },
-  { label: "Settings", icon: Settings },
+  { label: "Profile", href: "/owner/profile", icon: Settings },
 ];
 
 export function Sidebar() {
