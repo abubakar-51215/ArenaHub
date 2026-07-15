@@ -36,6 +36,20 @@ what got done, what was tricky, and what's next.
 - Also fixed while in the PDF path: `_admin_revenue_rows` used an em dash
   for a missing arena name — fpdf's core Helvetica is latin-1, so the first
   orphan payment row would have crashed PDF rendering.
+- **Branded HTML emails** (`integrations/email/templates.py`): OTP,
+  password-reset, and notification emails now send a styled, inline-CSS
+  HTML card (ArenaHub header, dashed code box, expiry note, footer) as a
+  multipart/alternative with the plain-text fallback — previously a bare
+  one-line text email. Emails are always light-themed (email-client
+  convention). 3 template tests.
+- **Live smoke verification** against a running dev server + seeded data
+  (per external review's manual-checklist): all 15 export downloads
+  byte-verified (headers + `%PDF` magic), trending live, liked-arenas
+  persisting across a fresh login, resend cooldown + anti-enumeration —
+  and a two-WebSocket-client test proving both connections receive the
+  `slot_update` instantly when a third party books. 23/23 checks passed.
+  Remaining for physical-device testing: push delivery, real inbox email,
+  GPS permission dialog.
 
 ### Challenges
 - Expo typed routes for the new `/profile/liked` screen wouldn't regenerate:

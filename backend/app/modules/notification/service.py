@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
 from app.integrations.email import send_email
+from app.integrations.email.templates import notification_email
 from app.integrations.push import send_push
 from app.modules.notification import repository as repo
 from app.modules.notification.model import Notification
@@ -105,7 +106,8 @@ async def notify(
         await send_push(tokens, title, body, {k: str(v) for k, v in context.items()})
 
     if _channel_enabled(user, "email", category):
-        await send_email(user.email, title, body)
+        subject, text, html = notification_email(title, body)
+        await send_email(user.email, subject, text, html=html)
 
     return notification
 
