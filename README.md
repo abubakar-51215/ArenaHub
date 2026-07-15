@@ -99,10 +99,6 @@ real-time digital system.
 | 📦 Package Managers | **uv** (backend) · npm (frontend) |
 | 🪵 Logging | structlog |
 
-> **No Docker until the final sprint** — local dev runs against natively
-> installed PostgreSQL, Memurai, a uv-managed Python venv, and the JS dev
-> servers directly (see PROJECT_GUIDELINES.md deviation #1).
-
 ---
 
 ## 🧱 Architecture
