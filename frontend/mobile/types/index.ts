@@ -19,6 +19,7 @@ export interface User {
   preferred_sports: string[];
   preferred_locations: string[];
   profile_picture: string | null;
+  notification_preferences: Record<string, boolean>;
   created_at: string;
 }
 
