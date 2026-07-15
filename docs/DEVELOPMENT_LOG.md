@@ -5,6 +5,56 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-16 — Traceability review: liked arenas, OTP resend, System Report (Track A, Abubakar)
+
+### Completed
+- **Traceability matrix** (`docs/TRACEABILITY_MATRIX.md`): every FR in
+  docs/03 mapped to backend module → API → UI → test, with an honest
+  known-open-items list (recent-search history, owner business fields at
+  signup, owner web notification center, occupancy report download, admin
+  submission/suspension pings, Excel export, CSP headers, malware-scan
+  documented gap). The review immediately caught a whole requirement no
+  checklist had ever mentioned:
+- **Liked Arenas (FR-P-12)** — was 100% missing despite being in docs/03,
+  docs/06 §12, and the frozen API contract (doc 10). Built:
+  `ArenaLike` model + `add_arena_likes` migration, `POST/DELETE
+  /arenas/{id}/like` (idempotent — a double-tapped heart isn't a 409),
+  `GET /arenas/liked`; mobile heart toggle on the arena detail hero +
+  "Liked Arenas" screen under Profile. 3 new tests (like/unlike/list +
+  cross-player isolation, unapproved-arena 404, auth required).
+- **OTP resend** (functional gap flagged by external review): `POST
+  /auth/resend-otp` — anti-enumeration (same response either way), 60s
+  cooldown off the latest OTP's issue time, retires the outstanding code so
+  exactly one is valid; "Didn't get a code? Resend" on the mobile verify
+  screen. 2 new tests (fresh-code flow incl. old-code rejection, no-leak).
+- **System Report** (doc 08 §9's fifth report type, previously missing):
+  `type=system` on `/admin/reports` — active users, peak booking hours
+  (top-3 windows by confirmed/completed bookings), popular sports (fanned
+  out from courts' JSONB sport lists), plus platform totals. New platform
+  queries in the admin repository; web Reports page gained the option.
+  2 new tests (all-types loop now covers it + a content assertion).
+- Also fixed while in the PDF path: `_admin_revenue_rows` used an em dash
+  for a missing arena name — fpdf's core Helvetica is latin-1, so the first
+  orphan payment row would have crashed PDF rendering.
+
+### Challenges
+- Expo typed routes for the new `/profile/liked` screen wouldn't regenerate:
+  `expo export` under `CI=1` skips typegen entirely, and even without CI the
+  export didn't refresh `.expo/types/router.d.ts` — only a (briefly started,
+  then killed) `expo start` dev server rewrote it.
+- The resend cooldown can't compare `OtpVerification.created_at` (naive,
+  server-set) against the service's aware UTC clock — derived issue time as
+  `expires_at - OTP_TTL` instead, which lives in the same tz convention the
+  verify path already compares against.
+
+### Next
+- Deployment phase (Docker Compose, production config, APK/AAB, manuals) —
+  the only remaining block, per the traceability matrix's open-items list.
+- Small polish candidates from the matrix's ⚠️ rows if time allows before
+  submission (owner web notification center is the most visible one).
+
+---
+
 ## 2026-07-15 — Notification module, report module, platform Settings tabs (Track A, Abubakar)
 
 ### Completed
