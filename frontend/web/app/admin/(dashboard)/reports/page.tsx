@@ -25,6 +25,7 @@ const REPORT_TYPES: { value: AdminReportType; label: string }[] = [
   { value: "bookings", label: "Bookings" },
   { value: "revenue", label: "Revenue" },
   { value: "arenas", label: "Arenas" },
+  { value: "system", label: "System (peak hours & popular sports)" },
 ];
 
 export default function AdminReportsPage() {
@@ -75,7 +76,7 @@ export default function AdminReportsPage() {
           <h3 className="font-semibold text-foreground">Downloadable reports</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Export a platform-wide report as CSV or PDF. Date range applies to bookings and revenue
-            only — users and arenas always export the full current list.
+            only — users, arenas, and the system summary always cover the full current data.
           </p>
           <div className="mt-4 grid grid-cols-3 gap-4">
             <div>

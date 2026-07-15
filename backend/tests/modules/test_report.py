@@ -127,7 +127,7 @@ async def test_admin_reports_all_types_and_formats(
     admin = await make_admin(client, db_session, "repadmin@example.com")
     h = auth_header(admin)
 
-    for report_type in ("users", "bookings", "revenue", "arenas"):
+    for report_type in ("users", "bookings", "revenue", "arenas", "system"):
         for fmt in ("csv", "pdf"):
             resp = await client.get(
                 "/api/v1/admin/reports",
@@ -147,3 +147,23 @@ async def test_admin_reports_forbidden_for_non_admin(
     owner, _ = await make_user(client, db_session, "repnotadmin@example.com", "owner")
     resp = await client.get("/api/v1/admin/reports", headers=auth_header(owner))
     assert resp.status_code == 403
+
+
+async def test_system_report_reflects_real_bookings(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, monday = await _make_confirmed_booking(client, db_session, "3")
+    admin = await make_admin(client, db_session, "repsysadmin@example.com")
+
+    resp = await client.get(
+        "/api/v1/admin/reports",
+        headers=auth_header(admin),
+        params={"type": "system", "format": "csv"},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    assert "Peak booking hours" in body
+    assert "Popular sports (by bookings)" in body
+    # The confirmed futsal booking must surface in the popularity ranking.
+    assert "futsal" in body
+    assert "No confirmed bookings yet" not in body.split("Popular sports")[1]
