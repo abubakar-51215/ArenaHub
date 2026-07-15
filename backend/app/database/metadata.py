@@ -8,9 +8,11 @@ they are added.
 from app.database.base import Base
 
 # Import for side effects: registers tables/mappers on Base.metadata.
+from app.modules.admin import model as _admin  # noqa: F401
 from app.modules.arena import model as _arena  # noqa: F401
 from app.modules.auth import model as _auth  # noqa: F401
 from app.modules.booking import model as _booking  # noqa: F401
+from app.modules.complaint import model as _complaint  # noqa: F401
 from app.modules.court import model as _court  # noqa: F401
 from app.modules.equipment import model as _equipment  # noqa: F401
 from app.modules.match import model as _match  # noqa: F401

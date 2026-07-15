@@ -26,6 +26,8 @@ from app.modules.arena.api import router as arena_router
 from app.modules.auth.api import router as auth_router
 from app.modules.booking.api import owner_router as booking_owner_router
 from app.modules.booking.api import router as booking_router
+from app.modules.complaint.api import admin_router as complaint_admin_router
+from app.modules.complaint.api import router as complaint_router
 from app.modules.court.api import owner_router as court_owner_router
 from app.modules.court.api import router as court_router
 from app.modules.dashboard.api import owner_router as dashboard_owner_router
@@ -100,6 +102,8 @@ def create_app() -> FastAPI:
     app.include_router(booking_router, prefix=API_V1_PREFIX)
     app.include_router(booking_owner_router, prefix=API_V1_PREFIX)
     app.include_router(admin_router, prefix=API_V1_PREFIX)
+    app.include_router(complaint_router, prefix=API_V1_PREFIX)
+    app.include_router(complaint_admin_router, prefix=API_V1_PREFIX)
     app.include_router(media_router, prefix=API_V1_PREFIX)
     app.include_router(payment_router, prefix=API_V1_PREFIX)
     app.include_router(payment_owner_router, prefix=API_V1_PREFIX)
