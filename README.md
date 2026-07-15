@@ -254,7 +254,7 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | **Sprint 2** | Authentication &amp; core management | ✅ Complete |
 | **Sprint 3** | Booking engine, locking &amp; payments | ✅ Complete |
 | **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ✅ Complete |
-| **Sprint 5** | Admin panel, reports, notifications, deployment | 🔄 In progress (admin panel, complaints, notifications — in-app / push / email — and PDF/CSV reports done; deployment pending) |
+| **Sprint 5** | Admin panel, reports, notifications, deployment |✅ Complete |
 
 ---
 
