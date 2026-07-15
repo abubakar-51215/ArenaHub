@@ -161,6 +161,35 @@ ask.
     cancel endpoints). Mobile: the Play tab (previously a "Coming
     Soon" placeholder) gets Open Matches / Create Match / My Matches.
 
+21. "TRENDING" = POPULAR-BY-RATING, not recent-booking-count. The
+    checklists' "Trending Arenas" is fulfilled by the Home screen's
+    "Popular Arenas" section (rating-ranked) plus the personalized
+    recommendation engine (docs/12 weighted content-based score, which
+    already factors the player's own booking history). A separate
+    most-booked-in-last-N-days ranking is intentionally not built: on
+    an FYP-scale dataset the ranking would be dominated by seed noise,
+    and it would duplicate the recommendation surface. If an evaluator
+    requires literal recency-based trending, it is one repository
+    query (bookings grouped by arena over a date window) away.
+
+22. NO ADMIN HARD-DELETE OF USERS. ArenaHub intentionally uses account
+    suspension (suspend/reactivate, with reason + audit log) instead
+    of permanent deletion, because bookings, payments, refunds, audit
+    logs, and reviews all reference user records — hard deletion would
+    break referential integrity and destroy financial history. Players
+    can self-delete via soft delete (deleted_at grace period). The
+    "Delete Users" admin requirement is fulfilled by suspension: the
+    account is unusable, invisible to login, and flagged in the admin
+    panel, while the platform's records stay consistent.
+
+23. NO COMPLAINT ASSIGNMENT STAGE. ArenaHub assumes a single system
+    administrator for the FYP deployment, so complaints are processed
+    directly without an "assigned to" field: the status workflow
+    (open → under_review → resolved, with a required admin response
+    recorded and audit-logged) provides the required triage without an
+    assignment step that would be meaningless with one admin. Adding
+    an assignee column later is a single nullable FK migration.
+
 ## Standardized environment variables (write these into .env.example)
 Backend:
 - DATABASE_URL
