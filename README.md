@@ -76,6 +76,7 @@ real-time digital system.
 - 🎟️ **Equipment Rental &amp; QR Check-in**
 - ⭐ **Reviews &amp; Ratings**
 - 🎮 **Matchmaking ("Play")** — post an open match, find players, join games
+- 🔔 **Notifications** — in-app center, push (Expo), and email with per-user preferences
 - 📊 **Downloadable Reports &amp; Analytics** (PDF / CSV)
 - 🤖 **AI Recommendations** — content-based arena suggestions
 
@@ -138,13 +139,13 @@ ArenaHub/
 ├── backend/                 # FastAPI + async SQLAlchemy + Alembic
 │   ├── app/
 │   │   ├── modules/         # feature modules: auth, user, arena, court, slot,
-│   │   │                    #   booking, payment, admin, health …
+│   │   │                    #   booking, payment, notification, report, admin …
 │   │   │                    #   each owns api / service / repository / schema / model
 │   │   ├── core/            # config, logging, exceptions, handlers
 │   │   ├── database/        # engine, session, base, mixins
 │   │   ├── shared/          # response envelope, pricing/refund helpers, QR, notify
 │   │   ├── cache/           # Redis client + distributed slot locking
-│   │   ├── integrations/    # payment gateway providers (Stripe/JazzCash/EasyPaisa)
+│   │   ├── integrations/    # payment gateways (Stripe/JazzCash/EasyPaisa), email (SMTP), push (Expo)
 │   │   ├── websocket/       # per-court live slot update channel
 │   │   ├── tasks/           # APScheduler jobs (auto-cancel, reminders, cleanup)
 │   │   └── main.py
@@ -252,7 +253,7 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | **Sprint 2** | Authentication &amp; core management | ✅ Complete |
 | **Sprint 3** | Booking engine, locking &amp; payments | ✅ Complete |
 | **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ✅ Complete |
-| **Sprint 5** | Admin panel, reports, notifications, deployment | 🔄 In progress (Track B — admin backend + panel, complaint module — done; Track A — notifications, reports, deployment — pending) |
+| **Sprint 5** | Admin panel, reports, notifications, deployment | 🔄 In progress (admin panel, complaints, notifications — in-app / push / email — and PDF/CSV reports done; deployment pending) |
 
 ---
 
