@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   approveArena,
+  deleteUser,
   fetchDashboardMetrics,
   fetchPlatformSettings,
   getUserDetail,
@@ -75,7 +76,8 @@ export function useUserActions() {
     onSuccess: invalidate,
   });
   const reactivate = useMutation({ mutationFn: reactivateUser, onSuccess: invalidate });
-  return { suspend, reactivate };
+  const remove = useMutation({ mutationFn: deleteUser, onSuccess: invalidate });
+  return { suspend, reactivate, remove };
 }
 
 export function useAllBookings(params: { status?: BookingStatus; page: number }) {

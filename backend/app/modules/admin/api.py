@@ -140,6 +140,16 @@ async def reactivate_user(
     return success(data=result, message="Account reactivated.")
 
 
+@router.delete("/users/{user_id}", summary="Delete a user account")
+async def delete_user(
+    user_id: uuid.UUID,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.delete_user(db, user, user_id)
+    return success(message="User deleted.")
+
+
 # ---- platform-wide monitoring --------------------------------------------------
 
 

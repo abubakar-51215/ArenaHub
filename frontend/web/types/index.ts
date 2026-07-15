@@ -371,6 +371,8 @@ export interface Complaint {
   description: string;
   status: ComplaintStatus;
   admin_response: string | null;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
   resolved_at: string | null;
   created_at: string;
 }
