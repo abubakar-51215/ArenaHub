@@ -16,6 +16,7 @@ from app.modules.complaint import model as _complaint  # noqa: F401
 from app.modules.court import model as _court  # noqa: F401
 from app.modules.equipment import model as _equipment  # noqa: F401
 from app.modules.match import model as _match  # noqa: F401
+from app.modules.notification import model as _notification  # noqa: F401
 from app.modules.payment import model as _payment  # noqa: F401
 from app.modules.review import model as _review  # noqa: F401
 from app.modules.slot import model as _slot  # noqa: F401
