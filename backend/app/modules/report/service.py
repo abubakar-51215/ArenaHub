@@ -67,8 +67,11 @@ async def player_bookings_report(
         ]
         for b in bookings
     ]
-    body = _render("My Bookings", headers, rows, fmt)
-    return body, _media_type(fmt), _filename("my-bookings", fmt)
+    return (
+        _render("My Bookings", headers, rows, fmt),
+        _media_type(fmt),
+        _filename("my-bookings", fmt),
+    )
 
 
 async def owner_report(
@@ -133,9 +136,7 @@ async def _owner_occupancy_rows(
     per_court = await slot_repo.occupancy_by_court(
         db, arena_ids, date_from=date_from, date_to=date_to
     )
-    peaks = await booking_repo.busiest_hour_by_court(
-        db, arena_ids, start=date_from, end=date_to
-    )
+    peaks = await booking_repo.busiest_hour_by_court(db, arena_ids, start=date_from, end=date_to)
     headers = ["Arena", "Court", "Sellable Slots", "Booked", "Occupancy %", "Busiest Hour"]
     rows = []
     for court_id, arena_name, court_name, sellable, booked in per_court:

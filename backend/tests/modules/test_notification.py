@@ -3,6 +3,7 @@ plus the notification-center/device-registration endpoints."""
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from pytest import MonkeyPatch
 
 from app.modules.notification import repository as notif_repo
 from app.modules.notification import service as notif_service
@@ -38,7 +39,7 @@ async def test_notify_unknown_event_falls_back_to_default(
 
 
 async def test_notify_respects_disabled_push_preference(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: MonkeyPatch
 ) -> None:
     _, user = await make_user(client, db_session, "notifyplayer3@example.com")
     user.notification_preferences = {"push": {"booking": False}}
@@ -46,7 +47,9 @@ async def test_notify_respects_disabled_push_preference(
 
     sent: list[str] = []
 
-    async def _fake_send_push(tokens, title, body, data):
+    async def _fake_send_push(
+        tokens: list[str], title: str, body: str, data: dict[str, str]
+    ) -> None:
         sent.append(title)
 
     monkeypatch.setattr("app.modules.notification.service.send_push", _fake_send_push)
