@@ -49,7 +49,9 @@ function Section({
 function ErrorText({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{message}</p>
+    <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+      {message}
+    </p>
   );
 }
 
@@ -103,7 +105,12 @@ function OtpDialog({
         </div>
         <ErrorText message={error} />
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
             Cancel
           </Button>
           <Button
@@ -211,13 +218,15 @@ export default function OwnerProfilePage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="full-name">Full name</Label>
-              <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <Input
+                id="full-name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
             </div>
             <ErrorText message={nameMutation.isError ? errMessage(nameMutation.error) : null} />
             <div className="flex items-center justify-between">
-              {nameMutation.isSuccess && (
-                <span className="text-sm text-emerald-600">Saved.</span>
-              )}
+              {nameMutation.isSuccess && <span className="text-sm text-emerald-600">Saved.</span>}
               <Button
                 className="ml-auto bg-blue-600 text-white hover:bg-blue-700"
                 disabled={
@@ -303,9 +312,7 @@ export default function OwnerProfilePage() {
             <div className="flex justify-end">
               <Button
                 className="bg-blue-600 text-white hover:bg-blue-700"
-                disabled={
-                  requestPasswordMutation.isPending || !currentPassword || !passwordsMatch
-                }
+                disabled={requestPasswordMutation.isPending || !currentPassword || !passwordsMatch}
                 onClick={() => requestPasswordMutation.mutate()}
               >
                 {requestPasswordMutation.isPending ? "Sending…" : "Send verification code"}

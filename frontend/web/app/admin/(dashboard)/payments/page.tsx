@@ -128,7 +128,12 @@ export default function AdminPaymentsPage() {
               {Math.min(page * data.page_size, data.total)} of {data.total}
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
               <Button

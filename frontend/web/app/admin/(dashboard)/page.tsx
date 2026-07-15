@@ -44,7 +44,10 @@ export default function AdminDashboardPage() {
             label="Total Bookings"
             value={isLoading ? "—" : String(data?.bookings_all_time ?? 0)}
           />
-          <StatCard label="Total Revenue" value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)} />
+          <StatCard
+            label="Total Revenue"
+            value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)}
+          />
           <StatCard
             label="Active Arenas"
             value={isLoading ? "—" : String(data?.approved_arenas ?? 0)}
@@ -88,7 +91,9 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-1 font-semibold text-foreground">Arenas (Pending / Approved / Rejected)</h3>
+            <h3 className="mb-1 font-semibold text-foreground">
+              Arenas (Pending / Approved / Rejected)
+            </h3>
             <p className="text-2xl font-bold text-foreground">
               {isLoading
                 ? "—"

@@ -19,14 +19,23 @@ import { useAuditLogs, usePlatformSettings } from "@/hooks/useAdmin";
 import { formatDate } from "@/lib/format";
 import type { PlatformSettings } from "@/types";
 
-const TABS = ["General", "Email", "SMS", "Payment Gateways", "Booking Settings", "Notifications", "Security"] as const;
+const TABS = [
+  "General",
+  "Email",
+  "SMS",
+  "Payment Gateways",
+  "Booking Settings",
+  "Notifications",
+  "Security",
+] as const;
 type Tab = (typeof TABS)[number];
 
 const NOT_WIRED_TABS: Record<Exclude<Tab, "General" | "Security">, string> = {
   Email: "SMTP/SendGrid configuration lands with the notification module.",
   SMS: "SMS provider configuration lands with the notification module.",
   "Payment Gateways": "Gateway credentials are managed via server-side .env, not this panel.",
-  "Booking Settings": "Platform-wide booking policy defaults aren't scoped yet — per-arena rules already live on the owner dashboard.",
+  "Booking Settings":
+    "Platform-wide booking policy defaults aren't scoped yet — per-arena rules already live on the owner dashboard.",
   Notifications: "Notification event toggles land with the notification module.",
 };
 
@@ -50,7 +59,11 @@ function GeneralTab() {
     <div className="max-w-2xl space-y-4">
       <div>
         <Label htmlFor="site-name">Site name</Label>
-        <Input id="site-name" value={form.site_name} onChange={(e) => set("site_name", e.target.value)} />
+        <Input
+          id="site-name"
+          value={form.site_name}
+          onChange={(e) => set("site_name", e.target.value)}
+        />
       </div>
       <div>
         <Label htmlFor="site-description">Site description</Label>
@@ -73,7 +86,11 @@ function GeneralTab() {
         </div>
         <div>
           <Label htmlFor="site-phone">Site phone</Label>
-          <Input id="site-phone" value={form.site_phone} onChange={(e) => set("site_phone", e.target.value)} />
+          <Input
+            id="site-phone"
+            value={form.site_phone}
+            onChange={(e) => set("site_phone", e.target.value)}
+          />
         </div>
       </div>
       <div>
@@ -91,7 +108,11 @@ function GeneralTab() {
         </div>
         <div>
           <Label htmlFor="timezone">Timezone</Label>
-          <Input id="timezone" value={form.timezone} onChange={(e) => set("timezone", e.target.value)} />
+          <Input
+            id="timezone"
+            value={form.timezone}
+            onChange={(e) => set("timezone", e.target.value)}
+          />
         </div>
       </div>
 
@@ -161,11 +182,16 @@ function SecurityTab() {
       {data && data.total > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Showing {(page - 1) * data.page_size + 1}–{Math.min(page * data.page_size, data.total)} of{" "}
-            {data.total}
+            Showing {(page - 1) * data.page_size + 1}–{Math.min(page * data.page_size, data.total)}{" "}
+            of {data.total}
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
               Previous
             </Button>
             <Button
