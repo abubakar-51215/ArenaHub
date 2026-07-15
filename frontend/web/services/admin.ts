@@ -25,9 +25,7 @@ export function fetchDashboardMetrics(): Promise<DashboardMetrics> {
 // ---- arena verification ----
 
 export function listArenaQueue(status: ArenaStatus, page = 1, pageSize = 20): Promise<Page<Arena>> {
-  return api.get<Page<Arena>>(
-    `/admin/arenas?status=${status}&page=${page}&page_size=${pageSize}`,
-  );
+  return api.get<Page<Arena>>(`/admin/arenas?status=${status}&page=${page}&page_size=${pageSize}`);
 }
 
 export function approveArena(arenaId: string): Promise<Arena> {
