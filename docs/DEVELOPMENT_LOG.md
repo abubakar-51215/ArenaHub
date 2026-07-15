@@ -5,6 +5,72 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-15 — Owner Profile page, mobile Settings, complaint module, admin backend + panel (Track B, Umer)
+
+### Completed
+- **Owner web Profile page** (`/owner/profile`): basic-info edit, OTP-gated
+  email/phone change, OTP-gated password change (forces re-login after, same
+  contract mobile already uses). Sidebar's disabled "Settings" placeholder now
+  points here.
+- **Mobile Settings screen**: notification-preference toggles (push/email/
+  match-invites, stored in the existing free-form `notification_preferences`
+  JSONB), OTP-gated email/phone change reusing the same backend flow as
+  Personal Information, and delete-account. Wired to the profile tab's
+  previously-dead "Settings" menu item.
+- **`modules/complaint/`** (new): `Complaint` model + migration, categories
+  per docs/08 (booking/payment/arena-quality/owner-behavior/technical/other),
+  player submit + list-own, admin list-all (status/category filters) +
+  respond (sets status + `resolved_at`).
+- **Admin backend expansion** (`modules/admin/`): user management (list with
+  role/status/search filters, detail with booking count, suspend/reactivate
+  with reason), platform-wide booking + payment monitoring with filters,
+  dashboard metrics endpoint (users/arenas/bookings/revenue/open complaints),
+  an audit log (every admin action — arena approve/reject, suspend/
+  reactivate, complaint respond, settings update — recorded with actor +
+  free-form details) with a browse endpoint, and a minimal platform-settings
+  singleton (General tab fields only — email/SMS/gateway/booking-policy tabs
+  aren't backed by endpoints yet, called out explicitly in the UI rather than
+  faked).
+- **Admin web panel** (`/admin`, own route group + login page + sidebar,
+  matching `design/wireframes/Admin.PNG`): Dashboard, Users, Arena Owners
+  (same view, role-filtered), Arenas (verification queue moved off the old
+  bare API), Bookings, Payments, Complaints (respond dialog with status +
+  category filters), Reports & Analytics (live metrics; download buttons wait
+  on the report module), Settings (General tab live, Security tab shows the
+  audit log, other tabs marked not-yet-wired instead of faking a save).
+- **Verified**: backend 92 tests green (9 new for complaint + admin) +
+  ruff/black/mypy clean; both new migrations forward→backward→forward on
+  both dev and test databases; web `tsc --noEmit` and `eslint` clean against
+  freshly-regenerated route types; every admin route smoke-tested at 200 via
+  a local dev server; mobile `tsc --noEmit`, `expo lint`, and `expo export`
+  clean.
+
+### Challenges
+- `umer` didn't have `abubakar`'s mobile app at all (auth/booking/profile
+  screens) — the mobile Settings screen needs a profile screen to live next
+  to. Fast-forward merged `abubakar` → `umer` first (no conflicts) so the
+  branch has a real base to extend, before doing any of today's work.
+- `next build` (production) fails in this sandbox: `next/font` can't reach
+  Google Fonts (no outbound network here). Not a code defect — `next dev`
+  compiles and serves every new route at 200, and `tsc`/`eslint` are clean.
+  Flagging so it isn't mistaken for a real build break in an environment with
+  normal internet access.
+- Settings' non-General tabs (Email/SMS/Payment Gateways/Booking Settings/
+  Notifications) are in the wireframe but not in the frozen API spec or
+  master plan detail — built the General tab + audit log for real, left the
+  rest as explicit "not wired yet" notices rather than inventing endpoints or
+  shipping dead Save buttons.
+
+### Next
+- Merge `umer` → `abubakar` (integration branch), run the combined gate
+  (backend tests + web build) since the admin panel touches shared web code,
+  then hand off `abubakar` → `main` PR text (Umer's batch).
+- Abubakar (Track A): `modules/notification/` (FCM push, email, in-app
+  center), `modules/report/` (PDF/CSV report sets), and confirming the
+  AI→mobile wiring (home recommendations, search).
+
+---
+
 ## 2026-07-15 — Matchmaking (backend + Play tab), booking/profile gap-closing, peak-pricing visibility + map (Track A, Abubakar)
 
 ### Completed
