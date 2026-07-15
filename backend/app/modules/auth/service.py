@@ -126,6 +126,33 @@ async def verify_otp(db: AsyncSession, data: OtpVerifyRequest) -> TokenResponse:
     return _issue_tokens(user)
 
 
+OTP_RESEND_COOLDOWN = timedelta(seconds=60)
+
+
+async def resend_otp(db: AsyncSession, email: str) -> str | None:
+    """Re-issue the registration OTP (expired code, lost email). Returns the
+    masked destination, or None when there is nothing to send — the endpoint
+    answers identically either way so this can't be used to probe which
+    emails are registered. A 60s cooldown (measured off the latest OTP's
+    creation time) stops a hammered resend button from queueing a pile of
+    codes; the auth rate limiter still applies on top."""
+    user = await repo.get_user_by_email(db, email)
+    if user is None or user.is_verified:
+        return None
+
+    latest = await repo.get_latest_otp(db, user.id)
+    if latest is not None:
+        issued_at = latest.expires_at - OTP_TTL  # same tz handling as expires_at
+        if _now() - issued_at < OTP_RESEND_COOLDOWN:
+            raise ValidationError("Please wait a minute before requesting another code.")
+        # Retire the outstanding code so exactly one code is valid at a time.
+        latest.is_used = True
+
+    await _send_registration_otp(db, user)
+    await db.commit()
+    return _mask_email(user.email)
+
+
 async def _register_failed_login(db: AsyncSession, user: User) -> None:
     user.failed_login_attempts += 1
     if user.failed_login_attempts >= LOGIN_MAX_ATTEMPTS:

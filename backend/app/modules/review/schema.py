@@ -45,3 +45,19 @@ class ReviewResponse(BaseModel):
 class RatingSummaryResponse(BaseModel):
     average_rating: float | None = None
     review_count: int
+
+
+class ModerationReviewResponse(BaseModel):
+    """One row in the admin moderation queue: the flagged review plus the
+    names an admin needs to judge it without opening three other screens."""
+
+    id: uuid.UUID
+    arena_id: uuid.UUID
+    arena_name: str
+    reviewer_name: str
+    rating: int
+    review_text: str | None = None
+    flag_reason: str | None = None
+    reporter_name: str | None = None
+    flagged_at: datetime | None = None
+    created_at: datetime

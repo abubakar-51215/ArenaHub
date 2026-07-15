@@ -66,6 +66,10 @@ export function reactivateUser(userId: string): Promise<AdminUser> {
   return api.patch<AdminUser>(`/admin/users/${userId}/reactivate`);
 }
 
+export function deleteUser(userId: string): Promise<null> {
+  return api.del<null>(`/admin/users/${userId}`);
+}
+
 // ---- platform-wide monitoring ----
 
 export function listAllBookings(params: {

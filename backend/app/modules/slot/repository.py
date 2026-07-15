@@ -63,3 +63,44 @@ async def occupancy_counts(
     )
     total, booked = result.one()
     return int(total or 0), int(booked or 0)
+
+
+async def occupancy_by_court(
+    db: AsyncSession,
+    arena_ids: list[uuid.UUID],
+    *,
+    date_from: date | None,
+    date_to: date | None,
+) -> list[tuple[uuid.UUID, str, str, int, int]]:
+    """Per-court ``(court_id, arena_name, court_name, sellable, booked)``
+    over an optional date range — the owner occupancy report's row source
+    (FR-O-10). Maintenance slots stay out of the denominator, matching
+    ``occupancy_counts``."""
+    if not arena_ids:
+        return []
+    from app.modules.arena.model import Arena  # local: avoid cycle at import time
+
+    stmt = (
+        select(
+            Court.id,
+            Arena.name,
+            Court.name,
+            func.count().filter(TimeSlot.status != SlotStatus.maintenance),
+            func.count().filter(TimeSlot.status == SlotStatus.booked),
+        )
+        .select_from(TimeSlot)
+        .join(Court, Court.id == TimeSlot.court_id)
+        .join(Arena, Arena.id == Court.arena_id)
+        .where(Court.arena_id.in_(arena_ids))
+        .group_by(Court.id, Arena.name, Court.name)
+        .order_by(Arena.name, Court.name)
+    )
+    if date_from is not None:
+        stmt = stmt.where(TimeSlot.date >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(TimeSlot.date <= date_to)
+    result = await db.execute(stmt)
+    return [
+        (cid, an, cn, int(total or 0), int(booked or 0))
+        for cid, an, cn, total, booked in result.all()
+    ]

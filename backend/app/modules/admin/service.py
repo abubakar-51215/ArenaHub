@@ -7,12 +7,13 @@ metrics, audit log) is read/administrative logic that doesn't belong to any
 single feature module, so it lives here instead.
 """
 
+import secrets
 import uuid
 from datetime import date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.modules.admin import repository as repo
 from app.modules.admin.model import AuditLog, PlatformSettings
 from app.modules.admin.schema import (
@@ -29,11 +30,13 @@ from app.modules.arena import repository as arena_repo
 from app.modules.arena import service as arena_service
 from app.modules.arena.model import ArenaStatus
 from app.modules.arena.schema import ArenaResponse
+from app.modules.auth import tokens
 from app.modules.booking.model import BookingStatus
 from app.modules.complaint import service as complaint_service
 from app.modules.payment.model import PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import User, UserRole
+from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
 
@@ -142,10 +145,42 @@ async def suspend_user(
         raise NotFoundError("User not found.")
     user.is_active = False
     await record_audit(db, actor, "user.suspend", "user", str(user_id), {"reason": reason})
+    # The email is the channel that matters here — a suspended account can't
+    # open the app to read the in-app copy until it's reactivated.
+    await notify_user(db, user_id, "account_suspended", reason=reason)
     await db.commit()
     refreshed = await repo.get_user(db, user_id)
     assert refreshed is not None
     return AdminUserResponse.model_validate(refreshed)
+
+
+async def delete_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> None:
+    """Admin-facing "delete": scrub PII, deactivate, and lock the account out
+    of login — but keep the row so bookings/payments/refunds/reviews/audit
+    logs (which FK to it) stay intact. To anyone using the product this
+    reads as a real delete: the account disappears from the active user
+    list, can no longer sign in, and its profile is gone."""
+    user = await repo.get_user(db, user_id)
+    if user is None:
+        raise NotFoundError("User not found.")
+    if user.deleted_at is not None:
+        raise ValidationError("This user is already deleted.")
+    if user.role == UserRole.admin:
+        raise ForbiddenError("Admin accounts cannot be deleted.")
+
+    suffix = secrets.token_hex(8)  # 16 hex chars, plenty of entropy for email
+    user.deleted_at = datetime.now()
+    user.is_active = False
+    user.full_name = "Deleted User"
+    user.email = f"deleted-{suffix}@arenahub.local"
+    # phone is String(20): "del-" (4) + 16 hex chars = 20 exactly.
+    user.phone = f"del-{suffix}"
+    user.profile_picture = None
+    user.bio = None
+
+    await record_audit(db, actor, "user.delete", "user", str(user_id))
+    await db.commit()
+    await tokens.bump_session_epoch(str(user_id))
 
 
 async def reactivate_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> AdminUserResponse:
@@ -154,6 +189,7 @@ async def reactivate_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> 
         raise NotFoundError("User not found.")
     user.is_active = True
     await record_audit(db, actor, "user.reactivate", "user", str(user_id))
+    await notify_user(db, user_id, "account_reactivated")
     await db.commit()
     refreshed = await repo.get_user(db, user_id)
     assert refreshed is not None

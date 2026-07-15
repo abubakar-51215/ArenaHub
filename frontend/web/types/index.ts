@@ -273,6 +273,19 @@ export interface Review {
   updated_at: string;
 }
 
+export interface ModerationReview {
+  id: string;
+  arena_id: string;
+  arena_name: string;
+  reviewer_name: string;
+  rating: number;
+  review_text: string | null;
+  flag_reason: string | null;
+  reporter_name: string | null;
+  flagged_at: string | null;
+  created_at: string;
+}
+
 export interface RatingSummary {
   average_rating: number | null;
   review_count: number;
@@ -358,6 +371,8 @@ export interface Complaint {
   description: string;
   status: ComplaintStatus;
   admin_response: string | null;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
   resolved_at: string | null;
   created_at: string;
 }
@@ -373,6 +388,36 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export interface EmailSettings {
+  enabled: boolean;
+  from_name: string;
+}
+
+export interface SmsSettings {
+  enabled: boolean;
+  provider: string;
+}
+
+export interface PaymentGatewaySettings {
+  card_enabled: boolean;
+  jazzcash_enabled: boolean;
+  easypaisa_enabled: boolean;
+  bank_transfer_enabled: boolean;
+}
+
+export interface BookingPolicySettings {
+  default_advance_percentage: number;
+  min_advance_hours: number;
+  max_advance_days: number;
+  auto_cancel_hours: number;
+}
+
+export interface NotificationSettings {
+  booking_enabled: boolean;
+  payment_enabled: boolean;
+  reminder_enabled: boolean;
+}
+
 export interface PlatformSettings {
   site_name: string;
   site_description: string;
@@ -381,6 +426,11 @@ export interface PlatformSettings {
   address: string;
   default_currency: string;
   timezone: string;
+  email: EmailSettings;
+  sms: SmsSettings;
+  payment_gateways: PaymentGatewaySettings;
+  booking_policy: BookingPolicySettings;
+  notifications: NotificationSettings;
 }
 
 export const WEEKDAY_NAMES = [

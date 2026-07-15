@@ -1,10 +1,12 @@
 """Complaint — player-submitted support tickets (docs/08_ADMIN_MODULE.md §8,
 docs/09_DATABASE_DESIGN.md ``complaints``).
 
-A deliberately simple ticket: category + free-text description, an admin
-response, and a three-state status. No assignment/priority fields — the
-wireframe shows a priority column but doc 09's schema doesn't define one, and
-inventing a field the API spec doesn't cover would outrun the frozen contract.
+Category + free-text description, an admin response, a three-state status,
+and ``assigned_to`` (PROJECT_GUIDELINES deviation #23) — auto-set to whichever
+admin first responds, since this is a single-admin deployment with no
+routing/priority logic to build. No separate priority field — the wireframe
+shows one but doc 09's schema doesn't define it, and inventing a field the API
+spec doesn't cover would outrun the frozen contract.
 """
 
 import uuid
@@ -56,5 +58,9 @@ class Complaint(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     admin_response: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
-    player: Mapped["User"] = relationship()
+    player: Mapped["User"] = relationship(foreign_keys=[player_id])
+    assigned_admin: Mapped["User | None"] = relationship(foreign_keys=[assigned_to])

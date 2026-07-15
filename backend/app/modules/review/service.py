@@ -20,7 +20,12 @@ from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus
 from app.modules.review import repository as repo
 from app.modules.review.model import Review
-from app.modules.review.schema import ReviewCreate, ReviewResponse, ReviewUpdate
+from app.modules.review.schema import (
+    ModerationReviewResponse,
+    ReviewCreate,
+    ReviewResponse,
+    ReviewUpdate,
+)
 from app.modules.user.model import User, UserRole
 
 EDIT_WINDOW = timedelta(days=30)
@@ -114,6 +119,13 @@ async def delete_review(db: AsyncSession, user: User, review_id: uuid.UUID) -> N
         raise NotFoundError("Review not found.")
     if review.player_id != user.id and user.role != UserRole.admin:
         raise ForbiddenError("You do not have permission to delete this review.")
+    if user.role == UserRole.admin and review.player_id != user.id:
+        # A moderation action, not self-service — leave an audit trail.
+        from app.modules.admin.service import record_audit
+
+        await record_audit(
+            db, user, "review.delete", "review", str(review_id), {"arena_id": str(review.arena_id)}
+        )
     await db.delete(review)
     await db.commit()
 
@@ -128,6 +140,53 @@ async def report_review(db: AsyncSession, user: User, review_id: uuid.UUID, reas
     review.flag_reason = reason
     review.flagged_by = user.id
     review.flagged_at = datetime.now()
+    await db.commit()
+
+
+# ---- admin moderation ------------------------------------------------------
+
+
+def _to_moderation_row(
+    review: Review, reviewer_name: str, arena_name: str, reporter_name: str | None
+) -> ModerationReviewResponse:
+    return ModerationReviewResponse(
+        id=review.id,
+        arena_id=review.arena_id,
+        arena_name=arena_name,
+        reviewer_name=reviewer_name,
+        rating=review.rating,
+        review_text=review.review_text,
+        flag_reason=review.flag_reason,
+        reporter_name=reporter_name,
+        flagged_at=review.flagged_at,
+        created_at=review.created_at,
+    )
+
+
+async def list_flagged_reviews(
+    db: AsyncSession, *, offset: int, limit: int
+) -> tuple[list[ModerationReviewResponse], int]:
+    rows, total = await repo.list_flagged_reviews(db, offset=offset, limit=limit)
+    return [_to_moderation_row(*row) for row in rows], total
+
+
+async def dismiss_flag(db: AsyncSession, admin: User, review_id: uuid.UUID) -> None:
+    """Admin judged the report unfounded: clear the flag, keep the review."""
+    review = await repo.get_review(db, review_id)
+    if review is None:
+        raise NotFoundError("Review not found.")
+    if not review.is_flagged:
+        raise ValidationError("This review is not flagged.")
+    review.is_flagged = False
+    review.flag_reason = None
+    review.flagged_by = None
+    review.flagged_at = None
+
+    # Local import: admin.service imports arena.service, which sits upstream
+    # of reviews — importing it at module scope here would risk a cycle.
+    from app.modules.admin.service import record_audit
+
+    await record_audit(db, admin, "review.dismiss_flag", "review", str(review_id))
     await db.commit()
 
 

@@ -7,6 +7,7 @@ so the state machine has a single implementation.
 """
 
 import uuid
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -192,11 +193,56 @@ async def search_arenas(
     return paginated(items, total, params)
 
 
+async def get_trending_arenas(
+    db: AsyncSession, *, days: int, city: ArenaCity | None, limit: int
+) -> list[ArenaResponse]:
+    """Arenas ranked by booking volume over the last ``days`` days. Falls
+    back to the rating-ranked "popular" sort when the window has no bookings
+    at all (a cold-start dataset, or an unlucky city filter) — an empty
+    Trending section reads as broken, a popularity fallback doesn't."""
+    since = datetime.now() - timedelta(days=days)
+    arenas = await repo.list_trending_arenas(db, since=since, city=city, limit=limit)
+    if not arenas:
+        arenas, _ = await repo.search_public_arenas(
+            db, q=None, city=city, sport=None, sort="rating_desc", offset=0, limit=limit
+        )
+    return [ArenaResponse.model_validate(a) for a in arenas]
+
+
 async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
     arena = await repo.get_arena(db, arena_id)
     if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
         raise NotFoundError("Arena not found.")
     return ArenaResponse.model_validate(arena)
+
+
+# ---- liked arenas (FR-P-12) ----------------------------------------------
+
+
+async def like_arena(db: AsyncSession, user: User, arena_id: uuid.UUID) -> None:
+    """Idempotent: liking an already-liked arena is a no-op, not an error —
+    a double-tapped heart shouldn't surface a 409."""
+    arena = await repo.get_arena(db, arena_id)
+    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+        raise NotFoundError("Arena not found.")
+    if await repo.get_like(db, user.id, arena_id) is None:
+        await repo.add_like(db, user.id, arena_id)
+        await db.commit()
+
+
+async def unlike_arena(db: AsyncSession, user: User, arena_id: uuid.UUID) -> None:
+    like = await repo.get_like(db, user.id, arena_id)
+    if like is not None:
+        await db.delete(like)
+        await db.commit()
+
+
+async def list_liked_arenas(db: AsyncSession, user: User, params: PaginationParams) -> dict:
+    arenas, total = await repo.list_liked_arenas(
+        db, user.id, offset=params.offset, limit=params.page_size
+    )
+    items = [ArenaResponse.model_validate(a) for a in arenas]
+    return paginated(items, total, params)
 
 
 # ---- blocked dates ------------------------------------------------------

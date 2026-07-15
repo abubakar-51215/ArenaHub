@@ -109,6 +109,30 @@ export const api = {
   del: <T>(path: string) => apiRequest<T>("DELETE", path),
 };
 
+/** Fetch a binary report export and trigger a browser download. Raw fetch
+ * since these endpoints return CSV/PDF bytes, not the JSON envelope. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const token = useAuthStore.getState().accessToken;
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) throw new ApiError("Could not download the report.", res.status);
+
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? fallbackName;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // ---- unauthenticated helpers (health page) ----
 
 export async function apiGet<T>(path: string): Promise<ApiEnvelope<T>> {

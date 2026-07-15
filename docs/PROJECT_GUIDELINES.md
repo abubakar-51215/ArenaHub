@@ -161,6 +161,39 @@ ask.
     cancel endpoints). Mobile: the Play tab (previously a "Coming
     Soon" placeholder) gets Open Matches / Create Match / My Matches.
 
+21. TRENDING = RECENT-BOOKING-COUNT, with a popularity fallback.
+    `GET /arenas/trending?days=&city=&limit=` ranks approved/active
+    arenas by non-cancelled/rejected booking count within the window
+    (default 7 days) — real demand, not a proxy. If the window has
+    zero bookings (cold-start data, or an unlucky city filter), it
+    falls back to the rating-ranked "popular" sort rather than
+    returning an empty section. Mobile: a "Trending Now" carousel on
+    Home, above "Recommended for You" and "Popular Arenas" — all three
+    stay distinct (recency vs. personalization vs. all-time rating).
+
+22. ADMIN "DELETE USER" IS A SCRUBBING SOFT-DELETE, not a row DELETE.
+    `DELETE /admin/users/{id}` sets `deleted_at`/`is_active=false` (already
+    enforced at login and `get_current_user`) and overwrites full_name/
+    email/phone/avatar/bio with anonymized placeholders — bookings,
+    payments, refunds, reviews, and audit logs that FK to the user stay
+    intact, since a real row delete would break referential integrity
+    and destroy financial history. To an admin using the panel this
+    reads as a real delete: a Delete button, a confirmation dialog, the
+    account vanishes from the active list and can never log in again.
+    Admin accounts cannot be deleted this way (403). Distinct from
+    player self-service soft delete (`deleted_at` only, no scrubbing —
+    a grace-period undo a scrubbed delete doesn't offer).
+
+23. COMPLAINT ASSIGNMENT IS AUTO-ON-FIRST-RESPONSE, not a picker.
+    `complaints.assigned_to` (nullable FK to users, `SET NULL`) is set
+    to whichever admin's `PUT /admin/complaints/{id}` response is the
+    first one — there is no assignment UI/endpoint, because with a
+    single admin deployment there is nothing to route between. A
+    second admin responding later does not reassign it. The frozen
+    schema (doc 09) has no `assigned_to` column; this is an additive
+    field the same way review flagging/owner-response are additive
+    beyond doc 09 (see the review module's docstring).
+
 ## Standardized environment variables (write these into .env.example)
 Backend:
 - DATABASE_URL

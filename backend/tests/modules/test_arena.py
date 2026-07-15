@@ -2,13 +2,102 @@
 
 Covers the Sprint 2 exit criterion: owner registers an arena (pending) → admin
 approves/rejects → approved arenas surface in public search; RBAC + ownership
-guards; blocked dates and discount codes.
+guards; blocked dates and discount codes; trending-by-recent-bookings.
 """
+
+from datetime import date, timedelta
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
+
+
+def _next_weekday(target_iso_weekday: int) -> date:
+    today = date.today()
+    days_ahead = (target_iso_weekday - today.isoweekday()) % 7
+    days_ahead = days_ahead or 7
+    return today + timedelta(days=days_ahead)
+
+
+async def _make_approved_arena_with_slots(
+    client: AsyncClient, db_session: AsyncSession, owner_email: str, arena_name: str
+) -> tuple[dict, str]:
+    """Register + approve an arena, add a court, and generate a week of
+    slots. Returns (owner tokens, court_id)."""
+    owner, _ = await make_user(client, db_session, f"{owner_email}@example.com", "owner")
+    h = auth_header(owner)
+    arena = await client.post(
+        "/api/v1/owner/arenas", headers=h, json=arena_payload(name=arena_name)
+    )
+    arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db_session, f"admin-{owner_email}@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+
+    court = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/courts",
+        headers=h,
+        json={"name": "Court A", "sport_types": ["futsal"], "base_price": "2000.00"},
+    )
+    court_id = court.json()["data"]["id"]
+    monday = _next_weekday(1)
+    await client.post(
+        f"/api/v1/owner/courts/{court_id}/slots/generate",
+        headers=h,
+        json={"start_date": monday.isoformat(), "end_date": monday.isoformat()},
+    )
+    return owner, court_id
+
+
+async def test_trending_ranks_arenas_by_recent_booking_count(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, court_a = await _make_approved_arena_with_slots(
+        client, db_session, "trendowner-a", "Trending Futsal A"
+    )
+    _, court_b = await _make_approved_arena_with_slots(
+        client, db_session, "trendowner-b", "Trending Futsal B"
+    )
+    player, _ = await make_user(client, db_session, "trendplayer@example.com")
+    h = auth_header(player)
+
+    monday = _next_weekday(1)
+    slots_a = (
+        await client.get(f"/api/v1/courts/{court_a}/slots", params={"date": monday.isoformat()})
+    ).json()["data"]
+    slots_b = (
+        await client.get(f"/api/v1/courts/{court_b}/slots", params={"date": monday.isoformat()})
+    ).json()["data"]
+
+    # Arena A gets 3 bookings, Arena B gets 1 -> A must rank first.
+    for slot in slots_a[:3]:
+        await client.post(
+            "/api/v1/bookings",
+            headers=h,
+            json={"court_id": court_a, "slot_ids": [slot["id"]], "payment_type": "full"},
+        )
+    await client.post(
+        "/api/v1/bookings",
+        headers=h,
+        json={"court_id": court_b, "slot_ids": [slots_b[0]["id"]], "payment_type": "full"},
+    )
+
+    resp = await client.get("/api/v1/arenas/trending", params={"days": 7})
+    assert resp.status_code == 200
+    names = [a["name"] for a in resp.json()["data"]["items"]]
+    assert names.index("Trending Futsal A") < names.index("Trending Futsal B")
+
+
+async def test_trending_falls_back_to_popular_when_no_recent_bookings(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _make_approved_arena_with_slots(client, db_session, "trendowner-c", "Trending Futsal C")
+
+    # A 0-day window guarantees nothing qualifies as "recent" -> fallback.
+    resp = await client.get("/api/v1/arenas/trending", params={"days": 1})
+    assert resp.status_code == 200
+    names = [a["name"] for a in resp.json()["data"]["items"]]
+    assert "Trending Futsal C" in names
 
 
 async def test_owner_registers_arena_pending_then_admin_approves(
@@ -143,3 +232,57 @@ async def test_blocked_dates_and_discounts(client: AsyncClient, db_session: Asyn
         json={"code": "TOOBIG", "discount_type": "percentage", "discount_value": "150"},
     )
     assert bad.status_code == 422
+
+
+async def test_like_unlike_and_list_liked_arenas(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "likeowner1@example.com", "owner")
+    h = auth_header(owner)
+    arena = await client.post(
+        "/api/v1/owner/arenas", headers=h, json=arena_payload(name="Likeable Arena")
+    )
+    arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "admin-likeowner1@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+
+    player, _ = await make_user(client, db_session, "likeplayer1@example.com")
+    ph = auth_header(player)
+
+    liked = await client.post(f"/api/v1/arenas/{arena_id}/like", headers=ph)
+    assert liked.status_code == 200
+    # Idempotent: a double-tapped heart is a no-op, not a 409.
+    again = await client.post(f"/api/v1/arenas/{arena_id}/like", headers=ph)
+    assert again.status_code == 200
+
+    listed = await client.get("/api/v1/arenas/liked", headers=ph)
+    assert listed.status_code == 200
+    items = listed.json()["data"]["items"]
+    assert [a["name"] for a in items].count("Likeable Arena") == 1
+
+    unliked = await client.delete(f"/api/v1/arenas/{arena_id}/like", headers=ph)
+    assert unliked.status_code == 200
+    after = await client.get("/api/v1/arenas/liked", headers=ph)
+    assert all(a["id"] != arena_id for a in after.json()["data"]["items"])
+
+    # Another player's liked list is unaffected territory — empty for them.
+    other, _ = await make_user(client, db_session, "likeplayer2@example.com")
+    theirs = await client.get("/api/v1/arenas/liked", headers=auth_header(other))
+    assert theirs.json()["data"]["total"] == 0
+
+
+async def test_liking_unapproved_arena_404s(client: AsyncClient, db_session: AsyncSession) -> None:
+    owner, _ = await make_user(client, db_session, "likeowner2@example.com", "owner")
+    arena = await client.post(
+        "/api/v1/owner/arenas", headers=auth_header(owner), json=arena_payload(name="Pending Arena")
+    )
+    arena_id = arena.json()["data"]["id"]  # still pending — never approved
+
+    player, _ = await make_user(client, db_session, "likeplayer3@example.com")
+    resp = await client.post(f"/api/v1/arenas/{arena_id}/like", headers=auth_header(player))
+    assert resp.status_code == 404
+
+
+async def test_liked_list_requires_auth(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/arenas/liked")
+    assert resp.status_code == 401

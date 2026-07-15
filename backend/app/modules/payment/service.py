@@ -143,10 +143,10 @@ async def _confirm_group(db: AsyncSession, payment: Payment) -> None:
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
-        notify_user(booking.player_id, "booking_confirmed", booking_id=str(booking.id))
+        await notify_user(db, booking.player_id, "booking_confirmed", booking_id=str(booking.id))
     arena = await arena_repo.get_arena(db, bookings[0].arena_id)
     if arena is not None:
-        notify_user(arena.owner_id, "new_confirmed_booking", count=len(bookings))
+        await notify_user(db, arena.owner_id, "new_confirmed_booking", count=len(bookings))
 
 
 async def _fail_group(db: AsyncSession, payment: Payment, *, rejected: bool) -> None:
@@ -163,7 +163,9 @@ async def _fail_group(db: AsyncSession, payment: Payment, *, rejected: bool) -> 
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
         await equipment_service.release_for_booking(db, booking.id)
-        notify_user(booking.player_id, "booking_payment_failed", booking_id=str(booking.id))
+        await notify_user(
+            db, booking.player_id, "booking_payment_failed", booking_id=str(booking.id)
+        )
 
 
 async def handle_webhook(
@@ -303,8 +305,8 @@ async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking
     refund.status = RefundStatus.processed if result.status == "processed" else RefundStatus.pending
     if refund.status == RefundStatus.processed:
         refund.processed_at = datetime.now()
-    notify_user(
-        booking.player_id, "refund_initiated", booking_id=str(booking.id), amount=str(amount)
+    await notify_user(
+        db, booking.player_id, "refund_initiated", booking_id=str(booking.id), amount=str(amount)
     )
     return refund
 

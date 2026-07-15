@@ -10,7 +10,7 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -24,7 +24,7 @@ from app.modules.arena.schema import (
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User
-from app.shared.auth import require_role
+from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
 
@@ -61,10 +61,51 @@ async def search_arenas(
     return success(data=data, message="Arenas retrieved.")
 
 
+@router.get("/trending", summary="Arenas trending by recent booking volume")
+async def get_trending_arenas(
+    days: int = Query(7, ge=1, le=90),
+    city: ArenaCity | None = None,
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    items = await service.get_trending_arenas(db, days=days, city=city, limit=limit)
+    return success(data={"items": items}, message="Trending arenas retrieved.")
+
+
+@router.get("/liked", summary="My liked arenas")
+async def list_liked_arenas(
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_liked_arenas(db, user, params)
+    return success(data=data, message="Liked arenas retrieved.")
+
+
 @router.get("/{arena_id}", summary="Get a public arena")
 async def get_arena(arena_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     data = await service.get_public_arena(db, arena_id)
     return success(data=data, message="Arena retrieved.")
+
+
+@router.post("/{arena_id}/like", summary="Add an arena to my liked list")
+async def like_arena(
+    arena_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.like_arena(db, user, arena_id)
+    return success(message="Arena liked.")
+
+
+@router.delete("/{arena_id}/like", summary="Remove an arena from my liked list")
+async def unlike_arena(
+    arena_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.unlike_arena(db, user, arena_id)
+    return success(message="Arena unliked.")
 
 
 # ---- owner management ----------------------------------------------------

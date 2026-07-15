@@ -76,8 +76,9 @@ real-time digital system.
 - 🎟️ **Equipment Rental &amp; QR Check-in**
 - ⭐ **Reviews &amp; Ratings**
 - 🎮 **Matchmaking ("Play")** — post an open match, find players, join games
+- 🔔 **Notifications** — in-app center, push (Expo), and email with per-user preferences
 - 📊 **Downloadable Reports &amp; Analytics** (PDF / CSV)
-- 🤖 **AI Recommendations** — content-based arena suggestions
+- 🤖 **AI Recommendations** — content-based arena suggestions + trending-by-recent-bookings
 
 ---
 
@@ -138,13 +139,13 @@ ArenaHub/
 ├── backend/                 # FastAPI + async SQLAlchemy + Alembic
 │   ├── app/
 │   │   ├── modules/         # feature modules: auth, user, arena, court, slot,
-│   │   │                    #   booking, payment, admin, health …
+│   │   │                    #   booking, payment, notification, report, admin …
 │   │   │                    #   each owns api / service / repository / schema / model
 │   │   ├── core/            # config, logging, exceptions, handlers
 │   │   ├── database/        # engine, session, base, mixins
 │   │   ├── shared/          # response envelope, pricing/refund helpers, QR, notify
 │   │   ├── cache/           # Redis client + distributed slot locking
-│   │   ├── integrations/    # payment gateway providers (Stripe/JazzCash/EasyPaisa)
+│   │   ├── integrations/    # payment gateways (Stripe/JazzCash/EasyPaisa), email (SMTP), push (Expo)
 │   │   ├── websocket/       # per-court live slot update channel
 │   │   ├── tasks/           # APScheduler jobs (auto-cancel, reminders, cleanup)
 │   │   └── main.py
@@ -235,9 +236,10 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | `npm run dev:backend` | Backend only (`uv run uvicorn … --reload`) |
 | `npm run dev:web` | Next.js dev server |
 | `npm run dev:mobile` | Expo dev server |
-| `npm run migrate` | `alembic upgrade head` |
+| `npm run migrate` | Back up the DB (pg_dump → `backend/backups/`), then `alembic upgrade head` |
+| `npm run db:backup` | Snapshot the database on its own (`SKIP_DB_BACKUP=1` bypasses it in `migrate`) |
 | `npm run makemigration` | Create a new Alembic revision (autogenerate) |
-| `npm run seed` | Seed reference data (amenities, etc.) |
+| `npm run seed` | Seed demo data (owners, arenas, bookings, reviews) |
 | `npm run test` | Backend pytest suite |
 | `npm run lint` | ruff + eslint |
 | `npm run format` | black + prettier |
@@ -252,7 +254,7 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | **Sprint 2** | Authentication &amp; core management | ✅ Complete |
 | **Sprint 3** | Booking engine, locking &amp; payments | ✅ Complete |
 | **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ✅ Complete |
-| **Sprint 5** | Admin panel, reports, notifications, deployment | 🔄 In progress (Track B — admin backend + panel, complaint module — done; Track A — notifications, reports, deployment — pending) |
+| **Sprint 5** | Admin panel, reports, notifications, deployment | 🔄 In progress (admin panel, complaints, notifications — in-app / push / email — and PDF/CSV reports done; deployment pending) |
 
 ---
 
