@@ -91,7 +91,9 @@ export default function AdminBookingsPage() {
                   <TableCell className="text-muted-foreground">
                     {formatDate(b.booking_date)}, {formatTime(b.start_time)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{formatRs(b.total_amount)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatRs(b.total_amount)}
+                  </TableCell>
                   <TableCell>
                     <StatusBadge status={b.status} />
                   </TableCell>
@@ -108,7 +110,12 @@ export default function AdminBookingsPage() {
               {Math.min(page * data.page_size, data.total)} of {data.total}
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
               <Button

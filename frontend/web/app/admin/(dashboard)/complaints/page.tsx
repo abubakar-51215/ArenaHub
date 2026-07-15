@@ -181,7 +181,12 @@ export default function AdminComplaintsPage() {
               {Math.min(page * data.page_size, data.total)} of {data.total}
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
               <Button
@@ -206,7 +211,10 @@ export default function AdminComplaintsPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">Status</label>
-            <Select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}>
+            <Select
+              value={nextStatus}
+              onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}
+            >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s.replace(/_/g, " ")}
@@ -223,11 +231,17 @@ export default function AdminComplaintsPage() {
           />
 
           {error && (
-            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResponding(null)} disabled={respond.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setResponding(null)}
+              disabled={respond.isPending}
+            >
               Cancel
             </Button>
             <Button

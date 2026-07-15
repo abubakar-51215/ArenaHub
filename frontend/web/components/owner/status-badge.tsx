@@ -1,13 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { ArenaStatus, BookingStatus, ComplaintStatus, PaymentStatus } from "@/types";
 
-type Status =
-  | ArenaStatus
-  | BookingStatus
-  | PaymentStatus
-  | ComplaintStatus
-  | "active"
-  | "inactive";
+type Status = ArenaStatus | BookingStatus | PaymentStatus | ComplaintStatus | "active" | "inactive";
 
 const STYLES: Record<Status, string> = {
   approved: "bg-emerald-100 text-emerald-700",
