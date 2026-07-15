@@ -22,6 +22,8 @@ def _to_response(complaint: Complaint) -> ComplaintResponse:
         description=complaint.description,
         status=complaint.status,
         admin_response=complaint.admin_response,
+        assigned_to=complaint.assigned_to,
+        assigned_to_name=complaint.assigned_admin.full_name if complaint.assigned_admin else None,
         resolved_at=complaint.resolved_at,
         created_at=complaint.created_at,
     )
@@ -72,6 +74,7 @@ async def get_complaint(db: AsyncSession, complaint_id: uuid.UUID) -> ComplaintR
 
 async def respond_to_complaint(
     db: AsyncSession,
+    admin: User,
     complaint_id: uuid.UUID,
     admin_response: str,
     status: ComplaintStatus,
@@ -82,6 +85,13 @@ async def respond_to_complaint(
     complaint.admin_response = admin_response
     complaint.status = status
     complaint.resolved_at = datetime.now() if status == ComplaintStatus.resolved else None
+    # Assign on first response — single-admin deployment, so there's no
+    # routing decision to make, just a record of who's handling it. Setting
+    # the relationship (not just the raw FK) keeps `assigned_admin` in sync
+    # for the response we build from this same in-memory object.
+    if complaint.assigned_to is None:
+        complaint.assigned_admin = admin
+        complaint.assigned_to = admin.id
     await db.commit()
     saved = await repo.get_complaint(db, complaint_id)
     assert saved is not None

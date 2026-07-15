@@ -13,7 +13,7 @@ from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintS
 
 
 def _with_player(stmt):  # type: ignore[no-untyped-def]
-    return stmt.options(selectinload(Complaint.player))
+    return stmt.options(selectinload(Complaint.player), selectinload(Complaint.assigned_admin))
 
 
 async def get_complaint(db: AsyncSession, complaint_id: uuid.UUID) -> Complaint | None:
