@@ -24,16 +24,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useUserActions, useUsers } from "@/hooks/useAdmin";
 import { formatDate } from "@/lib/format";
+import { ApiError } from "@/services/api";
 import type { AdminUser, UserRole } from "@/types";
 
 export function UsersView({ role, title }: { role?: UserRole; title: string }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const { data, isLoading } = useUsers({ role, search: search || undefined, page });
-  const { suspend, reactivate } = useUserActions();
+  const { suspend, reactivate, remove } = useUserActions();
 
   const [suspending, setSuspending] = useState<AdminUser | null>(null);
   const [reason, setReason] = useState("");
+  const [deleting, setDeleting] = useState<AdminUser | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const users = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
@@ -93,7 +96,7 @@ export function UsersView({ role, title }: { role?: UserRole; title: string }) {
                     {formatDate(u.created_at.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-1">
                       {u.is_active ? (
                         <Button variant="ghost" size="sm" onClick={() => setSuspending(u)}>
                           Suspend
@@ -106,6 +109,19 @@ export function UsersView({ role, title }: { role?: UserRole; title: string }) {
                           onClick={() => reactivate.mutate(u.id)}
                         >
                           Reactivate
+                        </Button>
+                      )}
+                      {u.role !== "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setDeleting(u);
+                            setDeleteError(null);
+                          }}
+                        >
+                          Delete
                         </Button>
                       )}
                     </div>
@@ -189,6 +205,54 @@ export function UsersView({ role, title }: { role?: UserRole; title: string }) {
               }}
             >
               {suspend.isPending ? "Suspending…" : "Suspend"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deleting}
+        onOpenChange={(v) => {
+          if (!v) {
+            setDeleting(null);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleting?.full_name}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes the account from the active user list and permanently blocks it from
+            logging in. Their bookings, payments, and reviews are kept for record-keeping, but
+            personal details are scrubbed. This cannot be undone.
+          </p>
+          {deleteError && (
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)} disabled={remove.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={remove.isPending}
+              onClick={() => {
+                if (!deleting) return;
+                setDeleteError(null);
+                remove.mutate(deleting.id, {
+                  onSuccess: () => setDeleting(null),
+                  onError: (err) =>
+                    setDeleteError(
+                      err instanceof ApiError ? err.message : "Could not delete the user.",
+                    ),
+                });
+              }}
+            >
+              {remove.isPending ? "Deleting…" : "Delete User"}
             </Button>
           </DialogFooter>
         </DialogContent>

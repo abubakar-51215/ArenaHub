@@ -4,6 +4,7 @@ dashboard metrics, and the audit log."""
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.auth import repository as auth_repo
 from tests.helpers import auth_header, make_admin, make_user
 
 
@@ -53,6 +54,58 @@ async def test_admin_suspend_and_reactivate_user(
     actions = [log["action"] for log in logs.json()["data"]["items"]]
     assert "user.suspend" in actions
     assert "user.reactivate" in actions
+
+    # The account holder is notified of both status changes (FR-A-02).
+    from app.modules.notification import repository as notif_repo
+
+    rows, _ = await notif_repo.list_for_user(db_session, user.id, limit=10, offset=0)
+    events = [n.event for n in rows]
+    assert "account_suspended" in events
+    assert "account_reactivated" in events
+    suspended = next(n for n in rows if n.event == "account_suspended")
+    assert "Reported for abusive behavior." in suspended.body
+
+
+async def test_admin_deletes_user_scrubs_pii_and_blocks_login(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    admin = await make_admin(client, db_session, "aadmin3@example.com")
+    _, user = await make_user(client, db_session, "auser4@example.com", "player")
+
+    deleted = await client.delete(f"/api/v1/admin/users/{user.id}", headers=auth_header(admin))
+    assert deleted.status_code == 200
+
+    # Gone from the active user list...
+    listed = await client.get("/api/v1/admin/users", headers=auth_header(admin))
+    assert all(u["id"] != str(user.id) for u in listed.json()["data"]["items"])
+
+    # ...and can no longer log in, even with the still-valid original password.
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "auser4@example.com", "password": "StrongP@ss1"}
+    )
+    assert login.status_code == 401
+
+    # Deleting twice is a validation error, not a silent success.
+    again = await client.delete(f"/api/v1/admin/users/{user.id}", headers=auth_header(admin))
+    assert again.status_code == 422
+
+    logs = await client.get("/api/v1/admin/audit-logs", headers=auth_header(admin))
+    actions = [log["action"] for log in logs.json()["data"]["items"]]
+    assert "user.delete" in actions
+
+
+async def test_admin_cannot_delete_another_admin(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    admin = await make_admin(client, db_session, "aadmin4@example.com")
+    await make_admin(client, db_session, "aadmin5@example.com")
+    other_admin_user = await auth_repo.get_user_by_email(db_session, "aadmin5@example.com")
+    assert other_admin_user is not None
+
+    resp = await client.delete(
+        f"/api/v1/admin/users/{other_admin_user.id}", headers=auth_header(admin)
+    )
+    assert resp.status_code == 403
 
 
 async def test_admin_dashboard_metrics(client: AsyncClient, db_session: AsyncSession) -> None:

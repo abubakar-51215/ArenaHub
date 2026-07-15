@@ -9,6 +9,7 @@ import {
   LogOut,
   MessageSquareWarning,
   Settings,
+  Star,
   UserCog,
   Users,
   Wallet,
@@ -34,6 +35,7 @@ const NAV: NavItem[] = [
   { label: "Bookings", href: "/admin/bookings", icon: CalendarCheck },
   { label: "Payments", href: "/admin/payments", icon: Wallet },
   { label: "Complaints", href: "/admin/complaints", icon: MessageSquareWarning },
+  { label: "Reviews", href: "/admin/reviews", icon: Star },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];

@@ -28,5 +28,7 @@ class ComplaintResponse(BaseModel):
     description: str
     status: ComplaintStatus
     admin_response: str | None
+    assigned_to: uuid.UUID | None
+    assigned_to_name: str | None
     resolved_at: datetime | None
     created_at: datetime

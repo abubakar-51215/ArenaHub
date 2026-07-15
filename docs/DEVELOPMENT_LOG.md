@@ -5,6 +5,204 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-16 — Traceability review: liked arenas, OTP resend, System Report (Track A, Abubakar)
+
+### Completed
+- **Traceability matrix** (`docs/TRACEABILITY_MATRIX.md`): every FR in
+  docs/03 mapped to backend module → API → UI → test, with an honest
+  known-open-items list (recent-search history, owner business fields at
+  signup, owner web notification center, occupancy report download, admin
+  submission/suspension pings, Excel export, CSP headers, malware-scan
+  documented gap). The review immediately caught a whole requirement no
+  checklist had ever mentioned:
+- **Liked Arenas (FR-P-12)** — was 100% missing despite being in docs/03,
+  docs/06 §12, and the frozen API contract (doc 10). Built:
+  `ArenaLike` model + `add_arena_likes` migration, `POST/DELETE
+  /arenas/{id}/like` (idempotent — a double-tapped heart isn't a 409),
+  `GET /arenas/liked`; mobile heart toggle on the arena detail hero +
+  "Liked Arenas" screen under Profile. 3 new tests (like/unlike/list +
+  cross-player isolation, unapproved-arena 404, auth required).
+- **OTP resend** (functional gap flagged by external review): `POST
+  /auth/resend-otp` — anti-enumeration (same response either way), 60s
+  cooldown off the latest OTP's issue time, retires the outstanding code so
+  exactly one is valid; "Didn't get a code? Resend" on the mobile verify
+  screen. 2 new tests (fresh-code flow incl. old-code rejection, no-leak).
+- **System Report** (doc 08 §9's fifth report type, previously missing):
+  `type=system` on `/admin/reports` — active users, peak booking hours
+  (top-3 windows by confirmed/completed bookings), popular sports (fanned
+  out from courts' JSONB sport lists), plus platform totals. New platform
+  queries in the admin repository; web Reports page gained the option.
+  2 new tests (all-types loop now covers it + a content assertion).
+- Also fixed while in the PDF path: `_admin_revenue_rows` used an em dash
+  for a missing arena name — fpdf's core Helvetica is latin-1, so the first
+  orphan payment row would have crashed PDF rendering.
+- **Branded HTML emails** (`integrations/email/templates.py`): OTP,
+  password-reset, and notification emails now send a styled, inline-CSS
+  HTML card (ArenaHub header, dashed code box, expiry note, footer) as a
+  multipart/alternative with the plain-text fallback — previously a bare
+  one-line text email. Emails are always light-themed (email-client
+  convention). 3 template tests.
+- **Polish batch — every remaining ⚠️ from the traceability matrix built**
+  (user call: close them all rather than leave them documented):
+  - *Suspension/reactivation notifications* (FR-A-02): suspend/reactivate now
+    notify the account holder — email is the channel that matters, since a
+    suspended account can't open the app to read the in-app copy.
+  - *Occupancy & peak-usage report* (FR-O-10): `GET /owner/reports?type=
+    occupancy` — per-court sellable vs booked slots, occupancy %, and
+    busiest booking hour; report-type select added to the Earnings page's
+    export controls.
+  - *Owner web notification center* (FR-O-11): `/owner/notifications` page
+    (event icons, unread dots, mark-all-read, relative timestamps) + a
+    sidebar bell with a polling unread badge — same backend endpoints the
+    mobile center uses.
+  - *CSP + security headers*: `next.config.ts` now sends
+    Content-Security-Policy (self + API origin + OSM tiles + Cloudinary),
+    X-Frame-Options DENY, nosniff, Referrer-Policy, and Permissions-Policy
+    on every route. `script-src` still allows unsafe-inline/eval (Next.js
+    runtime); nonce-based hardening noted for the deployment phase.
+  - *Recent search history* (FR-P-04): last 8 successful queries stored
+    on-device (AsyncStorage-backed Zustand), shown as tappable chips under
+    the search box with a clear control; only queries that actually
+    returned results are recorded, keeping typos out.
+- **Live smoke verification** against a running dev server + seeded data
+  (per external review's manual-checklist): all 15 export downloads
+  byte-verified (headers + `%PDF` magic), trending live, liked-arenas
+  persisting across a fresh login, resend cooldown + anti-enumeration —
+  and a two-WebSocket-client test proving both connections receive the
+  `slot_update` instantly when a third party books. 23/23 checks passed.
+  Remaining for physical-device testing: push delivery, real inbox email,
+  GPS permission dialog.
+
+### Challenges
+- Expo typed routes for the new `/profile/liked` screen wouldn't regenerate:
+  `expo export` under `CI=1` skips typegen entirely, and even without CI the
+  export didn't refresh `.expo/types/router.d.ts` — only a (briefly started,
+  then killed) `expo start` dev server rewrote it.
+- The resend cooldown can't compare `OtpVerification.created_at` (naive,
+  server-set) against the service's aware UTC clock — derived issue time as
+  `expires_at - OTP_TTL` instead, which lives in the same tz convention the
+  verify path already compares against.
+
+### Next
+- Deployment phase (Docker Compose, production config, APK/AAB, manuals) —
+  the only remaining block, per the traceability matrix's open-items list.
+- Small polish candidates from the matrix's ⚠️ rows if time allows before
+  submission (owner web notification center is the most visible one).
+
+---
+
+## 2026-07-15 — Notification module, report module, platform Settings tabs (Track A, Abubakar)
+
+### Completed
+- **`modules/notification/`** (new): `Notification` + `DeviceToken` models +
+  migration, in-app notification center (list with unread count, mark-one/
+  mark-all read), Expo push device registration. `shared/notify.notify_user`
+  (previously a console-log stub) now persists a real notification row and
+  best-effort delivers it over push + email, gated per-category on the
+  existing `User.notification_preferences` JSONB — every existing call site
+  (booking confirm/cancel/payment-failed, payment refund-initiated, owner
+  new-booking, 24h/1h reminders) got a real backend for free. Added a
+  `booking_cancelled` notification (previously missing).
+- **Push delivery**: `app/integrations/push` — the mobile app is a managed
+  Expo project (no native android/ios folders), so device tokens are Expo
+  push tokens; delivery goes through the Expo Push service, not raw FCM — no
+  Firebase project or server key needed. Mobile: `expo-notifications` +
+  `expo-device` installed, `usePushRegistration` hook requests permission and
+  registers the token on login, notification center screen (`notifications.tsx`)
+  rewired from the old booking-derived mock feed to the real API.
+- **Email delivery**: `app/integrations/email` (stdlib `smtplib` over a worker
+  thread — dev logs instead of a real SMTP connection, same seam as OTP
+  delivery). `shared/otp.py`'s `deliver_otp`/`deliver_reset_link` now actually
+  email outside dev instead of only logging "requested".
+- **`modules/report/`** (new): CSV/PDF export for a player's own booking
+  history (`/reports/my-bookings`), an owner's bookings + revenue across
+  their arenas (`/owner/reports`, optional arena/date filters), and
+  platform-wide admin reports (`/admin/reports?type=users|bookings|revenue|
+  arenas`) — all built from the same repositories the dashboards already
+  query, nothing new persisted. Wired real Export CSV/PDF buttons into the
+  owner Earnings page and the admin Reports page (both were placeholder
+  text before).
+- **Admin platform Settings**: extended `PlatformSettings`' free-form JSONB
+  with `email`/`sms`/`payment_gateways`/`booking_policy`/`notifications`
+  sub-objects (no migration needed) and wired the previously-stubbed Email,
+  SMS, Payment Gateways, Booking Settings, and Notifications tabs to real
+  save/load — SMTP credentials and gateway secrets stay server-side in env
+  vars per the existing convention; these tabs are enable/disable toggles and
+  policy defaults only.
+- **Verified**: backend full suite green (98 tests, 6 new for reports) +
+  ruff/black/mypy clean on every touched/new file; new migration applied
+  forward on both dev and test databases; web + mobile `tsc --noEmit` clean,
+  `eslint`/`expo lint` clean, prettier-formatted.
+- **Loose-ends batch (same day, after review):**
+  - **GPS location detection (mobile)**: `expo-location` + a small location
+    store — detects coordinates, snaps to the nearest supported city by
+    Haversine (rejected beyond 60 km so e.g. Peshawar isn't mislabeled
+    Islamabad). Home header shows a tappable location pill and scopes
+    recommendations to the detected city; Search gains a "📍 Near me" chip.
+  - **Admin review moderation**: `/admin/reviews` moderation queue (backend
+    `admin_router` on the review module — list flagged reviews with
+    reviewer/arena/reporter names, dismiss endpoint; admin deletes and
+    dismissals now write audit-log entries) + a dedicated web page (queue
+    table, dismiss / confirm-delete dialog) and a "Reviews" sidebar entry.
+    2 new tests.
+  - **Backup before migration**: `backend/scripts/backup_db.py` (pg_dump
+    custom-format snapshot into gitignored `backend/backups/`, finds the
+    Windows Postgres install if bin/ isn't on PATH, `SKIP_DB_BACKUP=1` to
+    bypass); `npm run migrate`/`migrate:down` now back up first, new
+    `npm run db:backup`; also fixed the root `seed` script, which pointed at
+    a nonexistent `scripts.seed` module.
+  - **Alternatives-when-full**: confirmed already shipped (slots screen shows
+    "Fully booked — try these nearby" from the recommendations endpoint) —
+    no work needed, checklist item closed by inspection.
+  - **Documented design decisions, then implemented anyway** (deviations
+    #21–23): first written up as accepted gaps — trending-by-rating instead
+    of by-recency, suspend instead of delete, no complaint assignment. A
+    second look (all three were cheap, ~2 hours total) turned them into
+    real features instead, and the deviations were rewritten to describe
+    what's actually built rather than what's deliberately skipped:
+    - **Trending**: `GET /arenas/trending?days=&city=&limit=` ranks by
+      non-cancelled/rejected booking count in the window, falling back to
+      the rating sort when nothing was booked (cold-start data doesn't
+      show an empty section). Mobile: a "Trending Now" carousel on Home,
+      distinct from "Recommended for You" (personalized) and "Popular
+      Arenas" (all-time rating). 2 new tests (ranking + fallback).
+    - **Admin delete user**: `DELETE /admin/users/{id}` is a scrubbing
+      soft-delete — `deleted_at`/`is_active=false` (already enforced at
+      login) plus overwriting name/email/phone/avatar/bio with anonymized
+      placeholders, so bookings/payments/refunds/reviews/audit logs that
+      FK to the user stay intact. Reads as a real delete in the admin
+      panel (Delete button + confirm dialog, account vanishes, can't log
+      back in); admin accounts are exempt (403). 2 new tests.
+    - **Complaint assignment**: `complaints.assigned_to` (nullable FK,
+      `SET NULL`) auto-sets to whichever admin's response is first —
+      no assignment UI needed for one admin. Web complaints page shows
+      an "Assigned To" column + the assignee in the respond dialog. 1 new
+      test (assignment sticks to the first responder, a second admin
+      responding doesn't steal it).
+
+### Challenges
+- `notify_user` originally opened its own DB session via the app's
+  module-level `SessionFactory` (mirroring the scheduler jobs' pattern) —
+  broke under pytest with "Event loop is closed", since that engine is bound
+  to whatever event loop was live at first use, and pytest-asyncio hands each
+  test function a fresh loop. Fixed by having `notify_user` take the caller's
+  already-open `db` session instead of opening a second one; in production
+  there's only one event loop for the process, so this was purely a test
+  artifact, but the fix is also simpler and avoids an extra connection.
+- The new `notifications`/`device_tokens` migration was applied to the dev
+  database but the test suite pointed at `arenahub_test`, which still lacked
+  the tables (`UndefinedTableError`) until it was migrated separately —
+  reran `alembic upgrade head` against `TEST_DATABASE_URL` explicitly.
+
+### Next
+- Merge today's `abubakar` work with `umer`'s admin-panel batch, run the
+  combined gate, then hand off the `abubakar` → `main` PR text.
+- Remaining checklist gaps: Docker/deployment (deferred to Sprint 5 per
+  deviation #1), review moderation as its own admin surface (currently
+  piggybacks on `/owner/reviews`).
+
+---
+
 ## 2026-07-15 — Owner Profile page, mobile Settings, complaint module, admin backend + panel (Track B, Umer)
 
 ### Completed

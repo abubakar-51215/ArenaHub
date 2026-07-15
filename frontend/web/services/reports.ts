@@ -1,0 +1,30 @@
+/** Report export downloads (CSV/PDF) — owner + admin. */
+import { downloadFile } from "@/services/api";
+
+export type ReportFormat = "csv" | "pdf";
+export type AdminReportType = "users" | "bookings" | "revenue" | "arenas" | "system";
+export type OwnerReportType = "bookings" | "occupancy";
+
+export interface DateRange {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function downloadOwnerReport(
+  params: { format: ReportFormat; type?: OwnerReportType; arenaId?: string } & DateRange,
+): Promise<void> {
+  const qs = new URLSearchParams({ format: params.format, type: params.type ?? "bookings" });
+  if (params.arenaId) qs.set("arena_id", params.arenaId);
+  if (params.dateFrom) qs.set("date_from", params.dateFrom);
+  if (params.dateTo) qs.set("date_to", params.dateTo);
+  return downloadFile(`/owner/reports?${qs}`, `owner-report.${params.format}`);
+}
+
+export function downloadAdminReport(
+  params: { type: AdminReportType; format: ReportFormat } & DateRange,
+): Promise<void> {
+  const qs = new URLSearchParams({ type: params.type, format: params.format });
+  if (params.dateFrom) qs.set("date_from", params.dateFrom);
+  if (params.dateTo) qs.set("date_to", params.dateTo);
+  return downloadFile(`/admin/reports?${qs}`, `admin-${params.type}-report.${params.format}`);
+}

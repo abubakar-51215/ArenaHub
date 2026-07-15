@@ -51,6 +51,18 @@ class Settings(BaseSettings):
     jazzcash_password: str | None = Field(default=None, alias="JAZZCASH_PASSWORD")
     easypaisa_merchant_id: str | None = Field(default=None, alias="EASYPAISA_MERCHANT_ID")
 
+    # Email (OTP + notification delivery). Unset in dev -> console log instead
+    # of a real SMTP connection (same seam as deliver_otp).
+    email_host: str | None = Field(default=None, alias="EMAIL_HOST")
+    email_port: int = Field(default=587, alias="EMAIL_PORT")
+    email_username: str | None = Field(default=None, alias="EMAIL_USERNAME")
+    email_password: str | None = Field(default=None, alias="EMAIL_PASSWORD")
+    email_from: str = Field(default="ArenaHub <no-reply@arenahub.local>", alias="EMAIL_FROM")
+    # Dev normally never opens an SMTP connection even with credentials set
+    # (so pytest runs can't fire real emails). Flip this on to test real
+    # inbox delivery from a dev machine; prod ignores it and always sends.
+    email_send_in_dev: bool = Field(default=False, alias="EMAIL_SEND_IN_DEV")
+
     @property
     def is_dev(self) -> bool:
         return self.environment == Environment.dev

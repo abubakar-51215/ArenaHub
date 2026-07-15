@@ -6,6 +6,7 @@ serialization never triggers a lazy load on the async session.
 """
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import Select, UnaryExpression, func, select
@@ -17,9 +18,11 @@ from app.modules.arena.model import (
     Arena,
     ArenaBlockedDate,
     ArenaCity,
+    ArenaLike,
     ArenaStatus,
     DiscountCode,
 )
+from app.modules.booking.model import Booking, BookingStatus
 from app.modules.court.model import Court
 from app.modules.review.model import Review
 
@@ -132,6 +135,35 @@ async def search_public_arenas(
     return list(result.scalars().all()), total
 
 
+_NON_TRENDING_STATUSES = (BookingStatus.cancelled, BookingStatus.rejected)
+
+
+async def list_trending_arenas(
+    db: AsyncSession, *, since: datetime, city: ArenaCity | None, limit: int
+) -> list[Arena]:
+    """Approved + active arenas ranked by booking count since ``since``
+    (cancelled/rejected bookings don't count as demand). Empty when nothing
+    was booked in the window — the caller falls back to a popularity sort
+    rather than showing a blank "Trending" section."""
+    booking_count = func.count(Booking.id)
+    base = (
+        select(Arena, booking_count.label("recent_bookings"))
+        .join(Booking, Booking.arena_id == Arena.id)
+        .where(
+            Arena.status == ArenaStatus.approved,
+            Arena.is_active.is_(True),
+            Booking.created_at >= since,
+            Booking.status.not_in(_NON_TRENDING_STATUSES),
+        )
+    )
+    if city:
+        base = base.where(Arena.city == city)
+    result = await db.execute(
+        _with_amenities(base).group_by(Arena.id).order_by(booking_count.desc()).limit(limit)
+    )
+    return [arena for arena, _count in result.all()]
+
+
 async def list_arenas_by_status(
     db: AsyncSession, status: ArenaStatus, *, offset: int, limit: int
 ) -> tuple[list[Arena], int]:
@@ -195,3 +227,38 @@ async def add_discount(db: AsyncSession, discount: DiscountCode) -> DiscountCode
     db.add(discount)
     await db.flush()
     return discount
+
+
+# ---- liked arenas (FR-P-12) ----------------------------------------------
+
+
+async def get_like(db: AsyncSession, player_id: uuid.UUID, arena_id: uuid.UUID) -> ArenaLike | None:
+    result = await db.execute(
+        select(ArenaLike).where(ArenaLike.player_id == player_id, ArenaLike.arena_id == arena_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def add_like(db: AsyncSession, player_id: uuid.UUID, arena_id: uuid.UUID) -> ArenaLike:
+    like = ArenaLike(player_id=player_id, arena_id=arena_id)
+    db.add(like)
+    await db.flush()
+    return like
+
+
+async def list_liked_arenas(
+    db: AsyncSession, player_id: uuid.UUID, *, offset: int, limit: int
+) -> tuple[list[Arena], int]:
+    """A player's liked arenas, most recently liked first. Arenas that have
+    since been suspended/unapproved stay listed — the bookmark is the
+    player's, and hiding it silently would look like data loss."""
+    base = (
+        select(Arena)
+        .join(ArenaLike, ArenaLike.arena_id == Arena.id)
+        .where(ArenaLike.player_id == player_id)
+    )
+    total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    result = await db.execute(
+        _with_amenities(base).order_by(ArenaLike.created_at.desc()).offset(offset).limit(limit)
+    )
+    return list(result.scalars().all()), total

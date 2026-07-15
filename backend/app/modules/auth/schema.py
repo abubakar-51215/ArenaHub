@@ -26,6 +26,10 @@ class OtpVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 
 
+class ResendOtpRequest(BaseModel):
+    email: EmailStr
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
