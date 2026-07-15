@@ -7,7 +7,9 @@ import uuid
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
+from app.modules.arena.model import Arena
 from app.modules.review.model import Review
 from app.modules.user.model import User
 
@@ -42,6 +44,29 @@ async def list_arena_reviews(
         .limit(limit)
     )
     return [(review, name) for review, name in result.all()], total
+
+
+async def list_flagged_reviews(
+    db: AsyncSession, *, offset: int, limit: int
+) -> tuple[list[tuple[Review, str, str, str | None]], int]:
+    """Reported reviews for the admin moderation queue, oldest report first
+    (FIFO, same order the arena verification queue uses). Each row is
+    ``(review, reviewer_name, arena_name, reporter_name)`` — reporter is
+    None if the reporting account was since deleted (FK is SET NULL)."""
+    reporter = aliased(User)
+    base = select(Review).where(Review.is_flagged.is_(True))
+    total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    result = await db.execute(
+        select(Review, User.full_name, Arena.name, reporter.full_name)
+        .join(User, User.id == Review.player_id)
+        .join(Arena, Arena.id == Review.arena_id)
+        .join(reporter, reporter.id == Review.flagged_by, isouter=True)
+        .where(Review.is_flagged.is_(True))
+        .order_by(Review.flagged_at.asc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return [(r, reviewer, arena, rep) for r, reviewer, arena, rep in result.all()], total
 
 
 async def get_rating_summary(db: AsyncSession, arena_id: uuid.UUID) -> tuple[float | None, int]:

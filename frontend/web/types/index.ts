@@ -273,6 +273,19 @@ export interface Review {
   updated_at: string;
 }
 
+export interface ModerationReview {
+  id: string;
+  arena_id: string;
+  arena_name: string;
+  reviewer_name: string;
+  rating: number;
+  review_text: string | null;
+  flag_reason: string | null;
+  reporter_name: string | null;
+  flagged_at: string | null;
+  created_at: string;
+}
+
 export interface RatingSummary {
   average_rating: number | null;
   review_count: number;

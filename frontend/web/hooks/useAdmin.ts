@@ -17,6 +17,7 @@ import {
   updatePlatformSettings,
 } from "@/services/admin";
 import { listComplaints, respondToComplaint } from "@/services/complaints";
+import { deleteReview, dismissReviewReport, listReportedReviews } from "@/services/reviews";
 import type {
   ArenaStatus,
   BookingStatus,
@@ -121,6 +122,21 @@ export function useComplaintActions() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-complaints"] }),
   });
   return { respond };
+}
+
+export function useReportedReviews(page: number) {
+  return useQuery({
+    queryKey: ["admin-reported-reviews", page],
+    queryFn: () => listReportedReviews(page),
+  });
+}
+
+export function useReviewModeration() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-reported-reviews"] });
+  const dismiss = useMutation({ mutationFn: dismissReviewReport, onSuccess: invalidate });
+  const remove = useMutation({ mutationFn: deleteReview, onSuccess: invalidate });
+  return { dismiss, remove };
 }
 
 export function useAuditLogs(page: number) {

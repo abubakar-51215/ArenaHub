@@ -323,3 +323,57 @@ async def test_owner_cannot_respond_to_other_arenas_review(
         json={"response_text": "Not my arena."},
     )
     assert forbidden.status_code == 403
+
+
+async def test_admin_moderation_queue_and_dismiss(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "revowner11@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer11@example.com", "player")
+    reporter, _ = await make_user(client, db_session, "revreporter11@example.com", "player")
+    arena_id, booking_id = await _make_completed_booking(
+        client, db_session, owner, player, "revowner11"
+    )
+    created = await client.post(
+        f"/api/v1/arenas/{arena_id}/reviews",
+        headers=auth_header(player),
+        json={"booking_id": booking_id, "rating": 1, "review_text": "spammy nonsense"},
+    )
+    review_id = created.json()["data"]["id"]
+    await client.post(
+        f"/api/v1/reviews/{review_id}/report",
+        headers=auth_header(reporter),
+        json={"reason": "Spam."},
+    )
+
+    admin = await make_admin(client, db_session, "revmodadmin11@example.com")
+    h = auth_header(admin)
+
+    queue = await client.get("/api/v1/admin/reviews", headers=h)
+    assert queue.status_code == 200
+    items = queue.json()["data"]["items"]
+    row = next(i for i in items if i["id"] == review_id)
+    assert row["flag_reason"] == "Spam."
+    assert row["reviewer_name"]
+    assert row["arena_name"]
+
+    dismissed = await client.post(f"/api/v1/admin/reviews/{review_id}/dismiss", headers=h)
+    assert dismissed.status_code == 200
+
+    # Dismissed -> out of the queue, review itself still exists.
+    queue_after = await client.get("/api/v1/admin/reviews", headers=h)
+    assert all(i["id"] != review_id for i in queue_after.json()["data"]["items"])
+    still_there = await client.get(f"/api/v1/arenas/{arena_id}/reviews")
+    assert any(r["id"] == review_id for r in still_there.json()["data"]["items"])
+
+    # Dismissing twice is a validation error, not a silent success.
+    again = await client.post(f"/api/v1/admin/reviews/{review_id}/dismiss", headers=h)
+    assert again.status_code == 422
+
+
+async def test_admin_moderation_queue_forbidden_for_non_admin(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, _ = await make_user(client, db_session, "revplayer12@example.com", "player")
+    resp = await client.get("/api/v1/admin/reviews", headers=auth_header(player))
+    assert resp.status_code == 403
