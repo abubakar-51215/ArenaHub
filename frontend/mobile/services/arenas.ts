@@ -49,3 +49,17 @@ export function getTrendingArenas(opts: {
     `/arenas/trending${toQuery({ days: opts.days ?? 7, city: opts.city, limit: opts.limit ?? 10 })}`,
   );
 }
+
+// ---- liked arenas (FR-P-12) ----
+
+export function likeArena(arenaId: string): Promise<null> {
+  return api.post<null>(`/arenas/${arenaId}/like`);
+}
+
+export function unlikeArena(arenaId: string): Promise<null> {
+  return api.del<null>(`/arenas/${arenaId}/like`);
+}
+
+export function listLikedArenas(): Promise<Page<Arena>> {
+  return api.get<Page<Arena>>("/arenas/liked?page_size=50");
+}

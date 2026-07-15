@@ -24,7 +24,7 @@ from app.modules.arena.schema import (
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User
-from app.shared.auth import require_role
+from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
 
@@ -72,10 +72,40 @@ async def get_trending_arenas(
     return success(data={"items": items}, message="Trending arenas retrieved.")
 
 
+@router.get("/liked", summary="My liked arenas")
+async def list_liked_arenas(
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_liked_arenas(db, user, params)
+    return success(data=data, message="Liked arenas retrieved.")
+
+
 @router.get("/{arena_id}", summary="Get a public arena")
 async def get_arena(arena_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     data = await service.get_public_arena(db, arena_id)
     return success(data=data, message="Arena retrieved.")
+
+
+@router.post("/{arena_id}/like", summary="Add an arena to my liked list")
+async def like_arena(
+    arena_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.like_arena(db, user, arena_id)
+    return success(message="Arena liked.")
+
+
+@router.delete("/{arena_id}/like", summary="Remove an arena from my liked list")
+async def unlike_arena(
+    arena_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.unlike_arena(db, user, arena_id)
+    return success(message="Arena unliked.")
 
 
 # ---- owner management ----------------------------------------------------

@@ -216,6 +216,35 @@ async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaRespon
     return ArenaResponse.model_validate(arena)
 
 
+# ---- liked arenas (FR-P-12) ----------------------------------------------
+
+
+async def like_arena(db: AsyncSession, user: User, arena_id: uuid.UUID) -> None:
+    """Idempotent: liking an already-liked arena is a no-op, not an error —
+    a double-tapped heart shouldn't surface a 409."""
+    arena = await repo.get_arena(db, arena_id)
+    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+        raise NotFoundError("Arena not found.")
+    if await repo.get_like(db, user.id, arena_id) is None:
+        await repo.add_like(db, user.id, arena_id)
+        await db.commit()
+
+
+async def unlike_arena(db: AsyncSession, user: User, arena_id: uuid.UUID) -> None:
+    like = await repo.get_like(db, user.id, arena_id)
+    if like is not None:
+        await db.delete(like)
+        await db.commit()
+
+
+async def list_liked_arenas(db: AsyncSession, user: User, params: PaginationParams) -> dict:
+    arenas, total = await repo.list_liked_arenas(
+        db, user.id, offset=params.offset, limit=params.page_size
+    )
+    items = [ArenaResponse.model_validate(a) for a in arenas]
+    return paginated(items, total, params)
+
+
 # ---- blocked dates ------------------------------------------------------
 
 
