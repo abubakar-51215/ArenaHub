@@ -232,3 +232,57 @@ async def test_blocked_dates_and_discounts(client: AsyncClient, db_session: Asyn
         json={"code": "TOOBIG", "discount_type": "percentage", "discount_value": "150"},
     )
     assert bad.status_code == 422
+
+
+async def test_like_unlike_and_list_liked_arenas(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "likeowner1@example.com", "owner")
+    h = auth_header(owner)
+    arena = await client.post(
+        "/api/v1/owner/arenas", headers=h, json=arena_payload(name="Likeable Arena")
+    )
+    arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "admin-likeowner1@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+
+    player, _ = await make_user(client, db_session, "likeplayer1@example.com")
+    ph = auth_header(player)
+
+    liked = await client.post(f"/api/v1/arenas/{arena_id}/like", headers=ph)
+    assert liked.status_code == 200
+    # Idempotent: a double-tapped heart is a no-op, not a 409.
+    again = await client.post(f"/api/v1/arenas/{arena_id}/like", headers=ph)
+    assert again.status_code == 200
+
+    listed = await client.get("/api/v1/arenas/liked", headers=ph)
+    assert listed.status_code == 200
+    items = listed.json()["data"]["items"]
+    assert [a["name"] for a in items].count("Likeable Arena") == 1
+
+    unliked = await client.delete(f"/api/v1/arenas/{arena_id}/like", headers=ph)
+    assert unliked.status_code == 200
+    after = await client.get("/api/v1/arenas/liked", headers=ph)
+    assert all(a["id"] != arena_id for a in after.json()["data"]["items"])
+
+    # Another player's liked list is unaffected territory — empty for them.
+    other, _ = await make_user(client, db_session, "likeplayer2@example.com")
+    theirs = await client.get("/api/v1/arenas/liked", headers=auth_header(other))
+    assert theirs.json()["data"]["total"] == 0
+
+
+async def test_liking_unapproved_arena_404s(client: AsyncClient, db_session: AsyncSession) -> None:
+    owner, _ = await make_user(client, db_session, "likeowner2@example.com", "owner")
+    arena = await client.post(
+        "/api/v1/owner/arenas", headers=auth_header(owner), json=arena_payload(name="Pending Arena")
+    )
+    arena_id = arena.json()["data"]["id"]  # still pending — never approved
+
+    player, _ = await make_user(client, db_session, "likeplayer3@example.com")
+    resp = await client.post(f"/api/v1/arenas/{arena_id}/like", headers=auth_header(player))
+    assert resp.status_code == 404
+
+
+async def test_liked_list_requires_auth(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/arenas/liked")
+    assert resp.status_code == 401

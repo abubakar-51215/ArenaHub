@@ -25,6 +25,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -200,3 +201,31 @@ class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     arena: Mapped["Arena"] = relationship(back_populates="discount_codes")
+
+
+class ArenaLike(UUIDPrimaryKeyMixin, Base):
+    """A player's "liked arena" bookmark (FR-P-12, doc 10 §arenas like
+    endpoints). Pure join row — unique per (player, arena) so a double-tap
+    can't duplicate, CASCADE both ways since a bookmark has no life of its
+    own once either side is gone."""
+
+    __tablename__ = "arena_likes"
+    __table_args__ = (
+        UniqueConstraint("player_id", "arena_id", name="uq_arena_likes_player_id_arena_id"),
+    )
+
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    arena_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("arenas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    arena: Mapped["Arena"] = relationship()
