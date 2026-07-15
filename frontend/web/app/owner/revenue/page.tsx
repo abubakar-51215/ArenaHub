@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 
 import { EarningsByArenaDonut, RevenueTrendChart } from "@/components/owner/charts";
 import { PageHeader } from "@/components/owner/page-header";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useDashboardAnalytics, useRevenue } from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, toDateInput } from "@/lib/format";
+import { downloadOwnerReport } from "@/services/reports";
 
 function StatCard({
   label,
@@ -97,6 +99,24 @@ export default function EarningsPage() {
             </option>
           ))}
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            downloadOwnerReport({ format: "csv", arenaId: arenaId || undefined, dateFrom, dateTo })
+          }
+        >
+          Export CSV
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            downloadOwnerReport({ format: "pdf", arenaId: arenaId || undefined, dateFrom, dateTo })
+          }
+        >
+          Export PDF
+        </Button>
       </PageHeader>
 
       <div className="space-y-6 p-8">
