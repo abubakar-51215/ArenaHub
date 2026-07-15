@@ -47,6 +47,27 @@ what got done, what was tricky, and what's next.
   ruff/black/mypy clean on every touched/new file; new migration applied
   forward on both dev and test databases; web + mobile `tsc --noEmit` clean,
   `eslint`/`expo lint` clean, prettier-formatted.
+- **Loose-ends batch (same day, after review):**
+  - **GPS location detection (mobile)**: `expo-location` + a small location
+    store — detects coordinates, snaps to the nearest supported city by
+    Haversine (rejected beyond 60 km so e.g. Peshawar isn't mislabeled
+    Islamabad). Home header shows a tappable location pill and scopes
+    recommendations to the detected city; Search gains a "📍 Near me" chip.
+  - **Admin review moderation**: `/admin/reviews` moderation queue (backend
+    `admin_router` on the review module — list flagged reviews with
+    reviewer/arena/reporter names, dismiss endpoint; admin deletes and
+    dismissals now write audit-log entries) + a dedicated web page (queue
+    table, dismiss / confirm-delete dialog) and a "Reviews" sidebar entry.
+    2 new tests.
+  - **Backup before migration**: `backend/scripts/backup_db.py` (pg_dump
+    custom-format snapshot into gitignored `backend/backups/`, finds the
+    Windows Postgres install if bin/ isn't on PATH, `SKIP_DB_BACKUP=1` to
+    bypass); `npm run migrate`/`migrate:down` now back up first, new
+    `npm run db:backup`; also fixed the root `seed` script, which pointed at
+    a nonexistent `scripts.seed` module.
+  - **Alternatives-when-full**: confirmed already shipped (slots screen shows
+    "Fully booked — try these nearby" from the recommendations endpoint) —
+    no work needed, checklist item closed by inspection.
 
 ### Challenges
 - `notify_user` originally opened its own DB session via the app's
