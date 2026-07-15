@@ -278,6 +278,111 @@ export interface RatingSummary {
   review_count: number;
 }
 
+// ---- admin panel --------------------------------------------------
+
+export type PaymentMethod = "card" | "jazzcash" | "easypaisa" | "bank_transfer";
+export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+
+export interface DashboardMetrics {
+  total_players: number;
+  total_owners: number;
+  total_arenas: number;
+  pending_arenas: number;
+  approved_arenas: number;
+  rejected_arenas: number;
+  bookings_today: number;
+  bookings_this_month: number;
+  bookings_all_time: number;
+  total_revenue: number;
+  active_complaints: number;
+}
+
+export interface AdminUser {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  total_bookings: number;
+}
+
+export interface AdminBooking {
+  id: string;
+  player_id: string;
+  player_name: string;
+  arena_id: string;
+  arena_name: string;
+  court_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  total_amount: string;
+  payment_type: "full" | "advance";
+  status: BookingStatus;
+  created_at: string;
+}
+
+export interface AdminPayment {
+  id: string;
+  player_id: string;
+  player_name: string;
+  arena_name: string | null;
+  amount: string;
+  currency: string;
+  payment_method: PaymentMethod;
+  gateway_transaction_id: string | null;
+  status: PaymentStatus;
+  created_at: string;
+}
+
+export type ComplaintCategory =
+  | "booking_issue"
+  | "payment_issue"
+  | "arena_quality"
+  | "owner_behavior"
+  | "technical_problem"
+  | "other";
+export type ComplaintStatus = "open" | "under_review" | "resolved";
+
+export interface Complaint {
+  id: string;
+  player_id: string;
+  player_name: string;
+  category: ComplaintCategory;
+  description: string;
+  status: ComplaintStatus;
+  admin_response: string | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actor_id: string;
+  actor_name: string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PlatformSettings {
+  site_name: string;
+  site_description: string;
+  site_email: string;
+  site_phone: string;
+  address: string;
+  default_currency: string;
+  timezone: string;
+}
+
 export const WEEKDAY_NAMES = [
   "monday",
   "tuesday",
