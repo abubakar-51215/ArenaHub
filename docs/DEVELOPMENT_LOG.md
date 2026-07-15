@@ -5,6 +5,72 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-15 — Notification module, report module, platform Settings tabs (Track A, Abubakar)
+
+### Completed
+- **`modules/notification/`** (new): `Notification` + `DeviceToken` models +
+  migration, in-app notification center (list with unread count, mark-one/
+  mark-all read), Expo push device registration. `shared/notify.notify_user`
+  (previously a console-log stub) now persists a real notification row and
+  best-effort delivers it over push + email, gated per-category on the
+  existing `User.notification_preferences` JSONB — every existing call site
+  (booking confirm/cancel/payment-failed, payment refund-initiated, owner
+  new-booking, 24h/1h reminders) got a real backend for free. Added a
+  `booking_cancelled` notification (previously missing).
+- **Push delivery**: `app/integrations/push` — the mobile app is a managed
+  Expo project (no native android/ios folders), so device tokens are Expo
+  push tokens; delivery goes through the Expo Push service, not raw FCM — no
+  Firebase project or server key needed. Mobile: `expo-notifications` +
+  `expo-device` installed, `usePushRegistration` hook requests permission and
+  registers the token on login, notification center screen (`notifications.tsx`)
+  rewired from the old booking-derived mock feed to the real API.
+- **Email delivery**: `app/integrations/email` (stdlib `smtplib` over a worker
+  thread — dev logs instead of a real SMTP connection, same seam as OTP
+  delivery). `shared/otp.py`'s `deliver_otp`/`deliver_reset_link` now actually
+  email outside dev instead of only logging "requested".
+- **`modules/report/`** (new): CSV/PDF export for a player's own booking
+  history (`/reports/my-bookings`), an owner's bookings + revenue across
+  their arenas (`/owner/reports`, optional arena/date filters), and
+  platform-wide admin reports (`/admin/reports?type=users|bookings|revenue|
+  arenas`) — all built from the same repositories the dashboards already
+  query, nothing new persisted. Wired real Export CSV/PDF buttons into the
+  owner Earnings page and the admin Reports page (both were placeholder
+  text before).
+- **Admin platform Settings**: extended `PlatformSettings`' free-form JSONB
+  with `email`/`sms`/`payment_gateways`/`booking_policy`/`notifications`
+  sub-objects (no migration needed) and wired the previously-stubbed Email,
+  SMS, Payment Gateways, Booking Settings, and Notifications tabs to real
+  save/load — SMTP credentials and gateway secrets stay server-side in env
+  vars per the existing convention; these tabs are enable/disable toggles and
+  policy defaults only.
+- **Verified**: backend full suite green (98 tests, 6 new for reports) +
+  ruff/black/mypy clean on every touched/new file; new migration applied
+  forward on both dev and test databases; web + mobile `tsc --noEmit` clean,
+  `eslint`/`expo lint` clean, prettier-formatted.
+
+### Challenges
+- `notify_user` originally opened its own DB session via the app's
+  module-level `SessionFactory` (mirroring the scheduler jobs' pattern) —
+  broke under pytest with "Event loop is closed", since that engine is bound
+  to whatever event loop was live at first use, and pytest-asyncio hands each
+  test function a fresh loop. Fixed by having `notify_user` take the caller's
+  already-open `db` session instead of opening a second one; in production
+  there's only one event loop for the process, so this was purely a test
+  artifact, but the fix is also simpler and avoids an extra connection.
+- The new `notifications`/`device_tokens` migration was applied to the dev
+  database but the test suite pointed at `arenahub_test`, which still lacked
+  the tables (`UndefinedTableError`) until it was migrated separately —
+  reran `alembic upgrade head` against `TEST_DATABASE_URL` explicitly.
+
+### Next
+- Merge today's `abubakar` work with `umer`'s admin-panel batch, run the
+  combined gate, then hand off the `abubakar` → `main` PR text.
+- Remaining checklist gaps: Docker/deployment (deferred to Sprint 5 per
+  deviation #1), review moderation as its own admin surface (currently
+  piggybacks on `/owner/reviews`).
+
+---
+
 ## 2026-07-15 — Owner Profile page, mobile Settings, complaint module, admin backend + panel (Track B, Umer)
 
 ### Completed
