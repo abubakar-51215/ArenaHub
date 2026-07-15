@@ -36,6 +36,7 @@ from app.modules.complaint import service as complaint_service
 from app.modules.payment.model import PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import User, UserRole
+from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
 
@@ -144,6 +145,9 @@ async def suspend_user(
         raise NotFoundError("User not found.")
     user.is_active = False
     await record_audit(db, actor, "user.suspend", "user", str(user_id), {"reason": reason})
+    # The email is the channel that matters here — a suspended account can't
+    # open the app to read the in-app copy until it's reactivated.
+    await notify_user(db, user_id, "account_suspended", reason=reason)
     await db.commit()
     refreshed = await repo.get_user(db, user_id)
     assert refreshed is not None
@@ -185,6 +189,7 @@ async def reactivate_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> 
         raise NotFoundError("User not found.")
     user.is_active = True
     await record_audit(db, actor, "user.reactivate", "user", str(user_id))
+    await notify_user(db, user_id, "account_reactivated")
     await db.commit()
     refreshed = await repo.get_user(db, user_id)
     assert refreshed is not None

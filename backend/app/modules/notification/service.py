@@ -59,6 +59,16 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "A refund of PKR {amount} has been initiated for your booking.",
         "category": "payment",
     },
+    "account_suspended": {
+        "title": "Your account has been suspended",
+        "body": "An administrator suspended your account. Reason: {reason}",
+        "category": "account",
+    },
+    "account_reactivated": {
+        "title": "Your account is active again",
+        "body": "An administrator reactivated your account. You can sign in as usual.",
+        "category": "account",
+    },
 }
 
 DEFAULT_EVENT = {
