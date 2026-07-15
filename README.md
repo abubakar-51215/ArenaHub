@@ -123,7 +123,6 @@ real-time digital system.
           │  ACID data store │              │  locks + caching │
           └──────────────────┘              └──────────────────┘
 
-   External: Stripe · JazzCash · EasyPaisa · Cloudinary · FCM · SMTP
 ```
 
 ---
