@@ -122,6 +122,7 @@ export default function AdminComplaintsPage() {
                 <TableHead>Category</TableHead>
                 <TableHead className="w-2/5">Description</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Assigned To</TableHead>
                 <TableHead>Created On</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -129,14 +130,14 @@ export default function AdminComplaintsPage() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
+                  <TableCell className="text-muted-foreground" colSpan={7}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && complaints.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
+                  <TableCell className="text-muted-foreground" colSpan={7}>
                     No complaints found.
                   </TableCell>
                 </TableRow>
@@ -157,6 +158,9 @@ export default function AdminComplaintsPage() {
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={c.status} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {c.assigned_to_name ?? "Unassigned"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(c.created_at.slice(0, 10))}
@@ -208,6 +212,12 @@ export default function AdminComplaintsPage() {
             <DialogTitle>Complaint from {responding?.player_name}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">{responding?.description}</p>
+          <p className="text-xs text-muted-foreground">
+            Assigned to:{" "}
+            <span className="font-medium">
+              {responding?.assigned_to_name ?? "Unassigned — will assign to you on save"}
+            </span>
+          </p>
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">Status</label>

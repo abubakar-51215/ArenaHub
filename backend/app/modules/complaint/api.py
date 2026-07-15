@@ -77,7 +77,7 @@ async def respond_to_complaint(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     complaint = await service.respond_to_complaint(
-        db, complaint_id, data.admin_response, data.status
+        db, user, complaint_id, data.admin_response, data.status
     )
     await admin_service.record_audit(
         db, user, "complaint.respond", "complaint", str(complaint_id), {"status": data.status.value}
