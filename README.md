@@ -78,7 +78,7 @@ real-time digital system.
 - 🎮 **Matchmaking ("Play")** — post an open match, find players, join games
 - 🔔 **Notifications** — in-app center, push (Expo), and email with per-user preferences
 - 📊 **Downloadable Reports &amp; Analytics** (PDF / CSV)
-- 🤖 **AI Recommendations** — content-based arena suggestions
+- 🤖 **AI Recommendations** — content-based arena suggestions + trending-by-recent-bookings
 
 ---
 

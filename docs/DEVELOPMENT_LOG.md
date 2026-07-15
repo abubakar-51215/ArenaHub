@@ -68,13 +68,31 @@ what got done, what was tricky, and what's next.
   - **Alternatives-when-full**: confirmed already shipped (slots screen shows
     "Fully booked — try these nearby" from the recommendations endpoint) —
     no work needed, checklist item closed by inspection.
-  - **Documented design decisions** (PROJECT_GUIDELINES deviations #21–23,
-    per external review advice): "Trending" is fulfilled by rating-ranked
-    Popular Arenas + the recommendation engine, not a recent-booking-count
-    ranking; admins suspend rather than hard-delete users (referential
-    integrity across bookings/payments/audit logs); complaints have no
-    assignment stage (single-admin FYP deployment). Each entry notes the
-    one-change path to the literal feature if an evaluator requires it.
+  - **Documented design decisions, then implemented anyway** (deviations
+    #21–23): first written up as accepted gaps — trending-by-rating instead
+    of by-recency, suspend instead of delete, no complaint assignment. A
+    second look (all three were cheap, ~2 hours total) turned them into
+    real features instead, and the deviations were rewritten to describe
+    what's actually built rather than what's deliberately skipped:
+    - **Trending**: `GET /arenas/trending?days=&city=&limit=` ranks by
+      non-cancelled/rejected booking count in the window, falling back to
+      the rating sort when nothing was booked (cold-start data doesn't
+      show an empty section). Mobile: a "Trending Now" carousel on Home,
+      distinct from "Recommended for You" (personalized) and "Popular
+      Arenas" (all-time rating). 2 new tests (ranking + fallback).
+    - **Admin delete user**: `DELETE /admin/users/{id}` is a scrubbing
+      soft-delete — `deleted_at`/`is_active=false` (already enforced at
+      login) plus overwriting name/email/phone/avatar/bio with anonymized
+      placeholders, so bookings/payments/refunds/reviews/audit logs that
+      FK to the user stay intact. Reads as a real delete in the admin
+      panel (Delete button + confirm dialog, account vanishes, can't log
+      back in); admin accounts are exempt (403). 2 new tests.
+    - **Complaint assignment**: `complaints.assigned_to` (nullable FK,
+      `SET NULL`) auto-sets to whichever admin's response is first —
+      no assignment UI needed for one admin. Web complaints page shows
+      an "Assigned To" column + the assignee in the respond dialog. 1 new
+      test (assignment sticks to the first responder, a second admin
+      responding doesn't steal it).
 
 ### Challenges
 - `notify_user` originally opened its own DB session via the app's

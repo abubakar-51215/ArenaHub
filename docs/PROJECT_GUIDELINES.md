@@ -161,34 +161,38 @@ ask.
     cancel endpoints). Mobile: the Play tab (previously a "Coming
     Soon" placeholder) gets Open Matches / Create Match / My Matches.
 
-21. "TRENDING" = POPULAR-BY-RATING, not recent-booking-count. The
-    checklists' "Trending Arenas" is fulfilled by the Home screen's
-    "Popular Arenas" section (rating-ranked) plus the personalized
-    recommendation engine (docs/12 weighted content-based score, which
-    already factors the player's own booking history). A separate
-    most-booked-in-last-N-days ranking is intentionally not built: on
-    an FYP-scale dataset the ranking would be dominated by seed noise,
-    and it would duplicate the recommendation surface. If an evaluator
-    requires literal recency-based trending, it is one repository
-    query (bookings grouped by arena over a date window) away.
+21. TRENDING = RECENT-BOOKING-COUNT, with a popularity fallback.
+    `GET /arenas/trending?days=&city=&limit=` ranks approved/active
+    arenas by non-cancelled/rejected booking count within the window
+    (default 7 days) — real demand, not a proxy. If the window has
+    zero bookings (cold-start data, or an unlucky city filter), it
+    falls back to the rating-ranked "popular" sort rather than
+    returning an empty section. Mobile: a "Trending Now" carousel on
+    Home, above "Recommended for You" and "Popular Arenas" — all three
+    stay distinct (recency vs. personalization vs. all-time rating).
 
-22. NO ADMIN HARD-DELETE OF USERS. ArenaHub intentionally uses account
-    suspension (suspend/reactivate, with reason + audit log) instead
-    of permanent deletion, because bookings, payments, refunds, audit
-    logs, and reviews all reference user records — hard deletion would
-    break referential integrity and destroy financial history. Players
-    can self-delete via soft delete (deleted_at grace period). The
-    "Delete Users" admin requirement is fulfilled by suspension: the
-    account is unusable, invisible to login, and flagged in the admin
-    panel, while the platform's records stay consistent.
+22. ADMIN "DELETE USER" IS A SCRUBBING SOFT-DELETE, not a row DELETE.
+    `DELETE /admin/users/{id}` sets `deleted_at`/`is_active=false` (already
+    enforced at login and `get_current_user`) and overwrites full_name/
+    email/phone/avatar/bio with anonymized placeholders — bookings,
+    payments, refunds, reviews, and audit logs that FK to the user stay
+    intact, since a real row delete would break referential integrity
+    and destroy financial history. To an admin using the panel this
+    reads as a real delete: a Delete button, a confirmation dialog, the
+    account vanishes from the active list and can never log in again.
+    Admin accounts cannot be deleted this way (403). Distinct from
+    player self-service soft delete (`deleted_at` only, no scrubbing —
+    a grace-period undo a scrubbed delete doesn't offer).
 
-23. NO COMPLAINT ASSIGNMENT STAGE. ArenaHub assumes a single system
-    administrator for the FYP deployment, so complaints are processed
-    directly without an "assigned to" field: the status workflow
-    (open → under_review → resolved, with a required admin response
-    recorded and audit-logged) provides the required triage without an
-    assignment step that would be meaningless with one admin. Adding
-    an assignee column later is a single nullable FK migration.
+23. COMPLAINT ASSIGNMENT IS AUTO-ON-FIRST-RESPONSE, not a picker.
+    `complaints.assigned_to` (nullable FK to users, `SET NULL`) is set
+    to whichever admin's `PUT /admin/complaints/{id}` response is the
+    first one — there is no assignment UI/endpoint, because with a
+    single admin deployment there is nothing to route between. A
+    second admin responding later does not reassign it. The frozen
+    schema (doc 09) has no `assigned_to` column; this is an additive
+    field the same way review flagging/owner-response are additive
+    beyond doc 09 (see the review module's docstring).
 
 ## Standardized environment variables (write these into .env.example)
 Backend:
