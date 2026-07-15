@@ -167,3 +167,27 @@ async def test_system_report_reflects_real_bookings(
     # The confirmed futsal booking must surface in the popularity ranking.
     assert "futsal" in body
     assert "No confirmed bookings yet" not in body.split("Popular sports")[1]
+
+
+async def test_owner_occupancy_report(client: AsyncClient, db_session: AsyncSession) -> None:
+    _, owner, _ = await _make_confirmed_booking(client, db_session, "4")
+
+    resp = await client.get(
+        "/api/v1/owner/reports",
+        headers=auth_header(owner),
+        params={"type": "occupancy", "format": "csv"},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    assert "Arena,Court,Sellable Slots,Booked,Occupancy %,Busiest Hour" in body
+    assert "Court A" in body
+    # One slot of the generated day is booked -> a real percentage, not n/a.
+    assert "n/a" not in body
+
+    pdf = await client.get(
+        "/api/v1/owner/reports",
+        headers=auth_header(owner),
+        params={"type": "occupancy", "format": "pdf"},
+    )
+    assert pdf.status_code == 200
+    assert pdf.content.startswith(b"%PDF")

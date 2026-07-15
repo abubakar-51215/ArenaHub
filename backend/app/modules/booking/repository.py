@@ -285,3 +285,32 @@ async def sum_pending_settlement_for_arenas(
         )
     )
     return Decimal(total or 0)
+
+
+async def busiest_hour_by_court(
+    db: AsyncSession, arena_ids: list[uuid.UUID], *, start: date | None, end: date | None
+) -> dict[uuid.UUID, tuple[int, int]]:
+    """Per-court ``{court_id: (hour, booking_count)}`` for the busiest start
+    hour in a range (cancelled/rejected excluded) — the "peak usage" column
+    on the owner occupancy report."""
+    if not arena_ids:
+        return {}
+    hour = func.cast(func.extract("hour", Booking.start_time), Integer)
+    stmt = (
+        select(Booking.court_id, hour, func.count())
+        .where(
+            Booking.arena_id.in_(arena_ids),
+            Booking.status.notin_([BookingStatus.cancelled, BookingStatus.rejected]),
+        )
+        .group_by(Booking.court_id, hour)
+    )
+    if start is not None:
+        stmt = stmt.where(Booking.booking_date >= start)
+    if end is not None:
+        stmt = stmt.where(Booking.booking_date <= end)
+    result = await db.execute(stmt)
+    best: dict[uuid.UUID, tuple[int, int]] = {}
+    for court_id, h, count in result.all():
+        if court_id not in best or count > best[court_id][1]:
+            best[court_id] = (int(h), int(count))
+    return best

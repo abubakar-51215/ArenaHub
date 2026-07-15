@@ -16,10 +16,12 @@ from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
 from app.modules.report.builders import rows_to_csv, rows_to_pdf
+from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User, UserRole
 
 ReportFormat = Literal["csv", "pdf"]
 AdminReportType = Literal["users", "bookings", "revenue", "arenas", "system"]
+OwnerReportType = Literal["bookings", "occupancy"]
 
 _LIMIT = 5000  # a report is a bulk export, not a paginated view
 
@@ -73,6 +75,7 @@ async def owner_report(
     db: AsyncSession,
     user: User,
     *,
+    report_type: OwnerReportType = "bookings",
     date_from: date | None,
     date_to: date | None,
     arena_id: uuid.UUID | None,
@@ -82,6 +85,13 @@ async def owner_report(
         arena_ids = [arena_id]
     else:
         arena_ids = await arena_repo.list_owner_arena_ids(db, user.id)
+
+    if report_type == "occupancy":
+        headers, rows = await _owner_occupancy_rows(
+            db, arena_ids, date_from=date_from, date_to=date_to
+        )
+        body = _render("Occupancy & Peak Usage", headers, rows, fmt)
+        return body, _media_type(fmt), _filename("owner-occupancy-report", fmt)
 
     rows_raw, _ = await booking_repo.list_owner_bookings_with_names(
         db,
@@ -109,6 +119,31 @@ async def owner_report(
     ]
     body = _render("Owner Bookings & Revenue", headers, rows, fmt)
     return body, _media_type(fmt), _filename("owner-report", fmt)
+
+
+async def _owner_occupancy_rows(
+    db: AsyncSession,
+    arena_ids: list[uuid.UUID],
+    *,
+    date_from: date | None,
+    date_to: date | None,
+) -> tuple[list[str], list[list[str]]]:
+    """Per-court occupancy + peak usage (FR-O-10): sellable vs booked slots
+    in the range, and each court's busiest booking hour."""
+    per_court = await slot_repo.occupancy_by_court(
+        db, arena_ids, date_from=date_from, date_to=date_to
+    )
+    peaks = await booking_repo.busiest_hour_by_court(
+        db, arena_ids, start=date_from, end=date_to
+    )
+    headers = ["Arena", "Court", "Sellable Slots", "Booked", "Occupancy %", "Busiest Hour"]
+    rows = []
+    for court_id, arena_name, court_name, sellable, booked in per_court:
+        pct = f"{(booked / sellable * 100):.1f}%" if sellable else "n/a"
+        peak = peaks.get(court_id)
+        peak_label = f"{peak[0]:02d}:00 ({peak[1]} bookings)" if peak else "-"
+        rows.append([arena_name, court_name, str(sellable), str(booked), pct, peak_label])
+    return headers, rows
 
 
 async def _admin_users_rows(db: AsyncSession) -> tuple[list[str], list[list[str]]]:

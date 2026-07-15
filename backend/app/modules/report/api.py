@@ -47,8 +47,9 @@ async def export_my_bookings(
     )
 
 
-@owner_router.get("", summary="Export my arenas' bookings & revenue")
+@owner_router.get("", summary="Export my arenas' bookings & revenue, or occupancy")
 async def export_owner_report(
+    type: service.OwnerReportType = Query("bookings"),
     format: service.ReportFormat = Query("csv"),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
@@ -57,7 +58,13 @@ async def export_owner_report(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     body, media_type, filename = await service.owner_report(
-        db, user, date_from=date_from, date_to=date_to, arena_id=arena_id, fmt=format
+        db,
+        user,
+        report_type=type,
+        date_from=date_from,
+        date_to=date_to,
+        arena_id=arena_id,
+        fmt=format,
     )
     return Response(
         content=body,
