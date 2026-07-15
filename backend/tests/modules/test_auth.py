@@ -126,3 +126,48 @@ async def test_register_weak_password_rejected(
 ) -> None:
     resp = await _register(client, email="weak@example.com", password="weak")
     assert resp.status_code == 422
+
+
+async def test_resend_otp_issues_fresh_code_and_retires_old(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _register(client, email="resend1@example.com", phone="03007777771")
+    user = await repo.get_user_by_email(db_session, "resend1@example.com")
+    assert user is not None
+    original = await repo.get_latest_otp(db_session, user.id)
+    assert original is not None
+
+    # Cooldown: an immediate resend right after registration is rejected.
+    too_soon = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
+    assert too_soon.status_code == 422
+    assert "wait" in too_soon.json()["message"].lower()
+
+    # Age the outstanding OTP past the cooldown, then resend for real.
+    from app.modules.auth.service import OTP_RESEND_COOLDOWN
+
+    original.expires_at = original.expires_at - OTP_RESEND_COOLDOWN * 2
+    await db_session.commit()
+
+    resent = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
+    assert resent.status_code == 200
+
+    fresh = await repo.get_latest_otp(db_session, user.id)
+    assert fresh is not None
+    assert fresh.id != original.id
+
+    # The old (now retired) code no longer verifies; the fresh one does.
+    old_attempt = await client.post(
+        "/api/v1/auth/verify-otp", json={"email": "resend1@example.com", "code": original.code}
+    )
+    if fresh.code != original.code:  # 1-in-a-million collision guard
+        assert old_attempt.status_code == 422
+    verified = await client.post(
+        "/api/v1/auth/verify-otp", json={"email": "resend1@example.com", "code": fresh.code}
+    )
+    assert verified.status_code == 200
+
+
+async def test_resend_otp_does_not_leak_account_existence(client: AsyncClient) -> None:
+    resp = await client.post("/api/v1/auth/resend-otp", json={"email": "ghost@example.com"})
+    assert resp.status_code == 200
+    assert "new code has been sent" in resp.json()["message"]

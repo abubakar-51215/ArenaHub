@@ -1,20 +1,38 @@
-import { useMutation } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMutation } from "@tanstack/react-query";
+import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { Colors } from '@/constants/theme';
-import { ApiError } from '@/lib/api';
-import { fetchMe, verifyOtp } from '@/services/auth';
-import { useAuthStore } from '@/store/auth';
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/text-field";
+import { Colors } from "@/constants/theme";
+import { ApiError } from "@/lib/api";
+import { fetchMe, resendOtp, verifyOtp } from "@/services/auth";
+import { useAuthStore } from "@/store/auth";
 
 export default function VerifyOtpScreen() {
-  const { email, sentTo } = useLocalSearchParams<{ email: string; sentTo?: string }>();
-  const [code, setCode] = useState('');
+  const { email, sentTo } = useLocalSearchParams<{
+    email: string;
+    sentTo?: string;
+  }>();
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const setSession = useAuthStore((s) => s.setSession);
+
+  const resend = useMutation({
+    mutationFn: () => resendOtp(email),
+    onSuccess: () => {
+      setError(null);
+      setNotice("A new code is on its way.");
+    },
+    onError: (err) => {
+      setNotice(null);
+      setError(
+        err instanceof ApiError ? err.message : "Could not resend the code.",
+      );
+    },
+  });
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -25,10 +43,12 @@ export default function VerifyOtpScreen() {
     },
     onSuccess: ({ tokens, me }) => {
       setSession(tokens, me);
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : 'Invalid code. Try again.');
+      setError(
+        err instanceof ApiError ? err.message : "Invalid code. Try again.",
+      );
     },
   });
 
@@ -36,8 +56,8 @@ export default function VerifyOtpScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Verify your account</Text>
       <Text style={styles.subtitle}>
-        We sent a 6-digit code to {sentTo ?? email}. In development it&apos;s logged to the
-        backend console instead of actually being emailed.
+        We sent a 6-digit code to {sentTo ?? email}. In development it&apos;s
+        logged to the backend console instead of actually being emailed.
       </Text>
 
       <TextField
@@ -51,23 +71,45 @@ export default function VerifyOtpScreen() {
       />
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
 
       <Button
         title="Verify"
         loading={mutation.isPending}
         onPress={() => {
           setError(null);
+          setNotice(null);
           mutation.mutate();
         }}
       />
+
+      <Pressable onPress={() => resend.mutate()} disabled={resend.isPending}>
+        <Text style={[styles.resendText, resend.isPending && { opacity: 0.4 }]}>
+          {resend.isPending ? "Sending…" : "Didn't get a code? Resend"}
+        </Text>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 24, justifyContent: 'center', gap: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.light.text },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 24,
+    justifyContent: "center",
+    gap: 16,
+  },
+  title: { fontSize: 22, fontWeight: "700", color: Colors.light.text },
   subtitle: { fontSize: 14, color: Colors.light.muted, lineHeight: 20 },
-  codeInput: { fontSize: 22, letterSpacing: 8, textAlign: 'center' },
+  codeInput: { fontSize: 22, letterSpacing: 8, textAlign: "center" },
   errorText: { color: Colors.light.destructive, fontSize: 13 },
+  noticeText: { color: Colors.light.success, fontSize: 13 },
+  resendText: {
+    color: Colors.light.tint,
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 4,
+  },
 });

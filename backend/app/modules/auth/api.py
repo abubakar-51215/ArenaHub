@@ -15,6 +15,7 @@ from app.modules.auth.schema import (
     OtpVerifyRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendOtpRequest,
     ResetPasswordRequest,
 )
 from app.shared.auth import get_current_user
@@ -34,6 +35,14 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
 async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     tokens = await service.verify_otp(db, data)
     return success(data=tokens, message="Account verified.")
+
+
+@router.post("/resend-otp", summary="Resend the registration OTP")
+async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+    # Same message whether or not the account exists/needs verifying, so the
+    # endpoint can't be used to enumerate registered emails.
+    await service.resend_otp(db, data.email)
+    return success(message="If that account needs verification, a new code has been sent.")
 
 
 @router.post("/login", summary="Login and receive JWT tokens")
