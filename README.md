@@ -236,9 +236,10 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | `npm run dev:backend` | Backend only (`uv run uvicorn … --reload`) |
 | `npm run dev:web` | Next.js dev server |
 | `npm run dev:mobile` | Expo dev server |
-| `npm run migrate` | `alembic upgrade head` |
+| `npm run migrate` | Back up the DB (pg_dump → `backend/backups/`), then `alembic upgrade head` |
+| `npm run db:backup` | Snapshot the database on its own (`SKIP_DB_BACKUP=1` bypasses it in `migrate`) |
 | `npm run makemigration` | Create a new Alembic revision (autogenerate) |
-| `npm run seed` | Seed reference data (amenities, etc.) |
+| `npm run seed` | Seed demo data (owners, arenas, bookings, reviews) |
 | `npm run test` | Backend pytest suite |
 | `npm run lint` | ruff + eslint |
 | `npm run format` | black + prettier |
