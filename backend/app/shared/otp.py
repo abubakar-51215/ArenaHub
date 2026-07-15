@@ -37,23 +37,24 @@ def generate_reset_token() -> str:
 
 
 def deliver_otp(destination: str, code: str, purpose: str = "verification") -> None:
-    """Deliver an OTP. Dev logs it to the console; elsewhere it's emailed
-    with the branded HTML template (plain-text fallback included)."""
+    """Deliver an OTP as a branded HTML email. Dev also logs the code to the
+    console; whether the email actually goes out is decided inside
+    ``send_email`` (credentials present + EMAIL_SEND_IN_DEV honoured)."""
     settings = get_settings()
     if settings.is_dev:
         log.info("otp_dev_delivery", destination=destination, purpose=purpose, code=code)
-        return
-    log.info("otp_delivery_requested", destination=destination, purpose=purpose)
+    else:
+        log.info("otp_delivery_requested", destination=destination, purpose=purpose)
     subject, text, html = otp_email(code, purpose, ttl_minutes=int(OTP_TTL.total_seconds() // 60))
     asyncio.create_task(send_email(destination, subject, text, html=html))
 
 
 def deliver_reset_link(destination: str, token: str) -> None:
-    """Deliver a password-reset token. Dev logs it to the console."""
+    """Deliver a password-reset token (same delivery gating as OTPs)."""
     settings = get_settings()
     if settings.is_dev:
         log.info("password_reset_dev_delivery", destination=destination, token=token)
-        return
-    log.info("password_reset_requested", destination=destination)
+    else:
+        log.info("password_reset_requested", destination=destination)
     subject, text, html = reset_email(token, ttl_minutes=int(RESET_TOKEN_TTL.total_seconds() // 60))
     asyncio.create_task(send_email(destination, subject, text, html=html))

@@ -33,7 +33,13 @@ async def send_email(to: str, subject: str, body: str, html: str | None = None) 
     Dev logs instead of connecting; prod raises on SMTP failure so the caller
     can decide whether to swallow or surface it."""
     settings = get_settings()
-    if not settings.email_host or not settings.email_password:
+    # Dev never opens SMTP unless explicitly opted in (EMAIL_SEND_IN_DEV=1) —
+    # otherwise a pytest run with real credentials in .env would email people.
+    if (
+        not settings.email_host
+        or not settings.email_password
+        or (settings.is_dev and not settings.email_send_in_dev)
+    ):
         log.info("email_dev_delivery", to=to, subject=subject, html=html is not None)
         return
 

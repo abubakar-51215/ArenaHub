@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     email_username: str | None = Field(default=None, alias="EMAIL_USERNAME")
     email_password: str | None = Field(default=None, alias="EMAIL_PASSWORD")
     email_from: str = Field(default="ArenaHub <no-reply@arenahub.local>", alias="EMAIL_FROM")
+    # Dev normally never opens an SMTP connection even with credentials set
+    # (so pytest runs can't fire real emails). Flip this on to test real
+    # inbox delivery from a dev machine; prod ignores it and always sends.
+    email_send_in_dev: bool = Field(default=False, alias="EMAIL_SEND_IN_DEV")
 
     @property
     def is_dev(self) -> bool:
