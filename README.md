@@ -223,39 +223,6 @@ npm install
 cp .env.example .env    # set EXPO_PUBLIC_API_URL
 npx expo start
 ```
-
----
-
-## 🏃 Task Runner
-
-Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
-
-| Command | Does |
-|---|---|
-| `npm run dev` | Start backend + web dev servers together |
-| `npm run dev:backend` | Backend only (`uv run uvicorn … --reload`) |
-| `npm run dev:web` | Next.js dev server |
-| `npm run dev:mobile` | Expo dev server |
-| `npm run migrate` | Back up the DB (pg_dump → `backend/backups/`), then `alembic upgrade head` |
-| `npm run db:backup` | Snapshot the database on its own (`SKIP_DB_BACKUP=1` bypasses it in `migrate`) |
-| `npm run makemigration` | Create a new Alembic revision (autogenerate) |
-| `npm run seed` | Seed demo data (owners, arenas, bookings, reviews) |
-| `npm run test` | Backend pytest suite |
-| `npm run lint` | ruff + eslint |
-| `npm run format` | black + prettier |
-
----
-
-## 🧭 Roadmap
-
-| Sprint | Focus | Status |
-|---|---|:---:|
-| **Sprint 1** | Scaffold — backend, mobile, web, CI | ✅ Complete |
-| **Sprint 2** | Authentication &amp; core management | ✅ Complete |
-| **Sprint 3** | Booking engine, locking &amp; payments | ✅ Complete |
-| **Sprint 4** | Mobile app, owner dashboard, AI / NLP | ✅ Complete |
-| **Sprint 5** | Admin panel, reports, notifications, deployment |✅ Complete |
-
 ---
 
 ## 🌿 Git Workflow
