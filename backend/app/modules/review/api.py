@@ -3,6 +3,8 @@
 * ``router`` — public arena reviews + rating summary; player submit/edit/
   delete; report/flag (any authenticated user).
 * ``owner_router`` (``/owner``) — owner response to a review on their arena.
+* ``admin_router`` (``/admin/reviews``) — moderation queue of reported
+  reviews + dismiss; deletion reuses ``DELETE /reviews/{id}`` (admin-allowed).
 """
 
 import uuid
@@ -26,8 +28,10 @@ from app.shared.response import success
 
 router = APIRouter(tags=["reviews"])
 owner_router = APIRouter(prefix="/owner", tags=["reviews-owner"])
+admin_router = APIRouter(prefix="/admin/reviews", tags=["reviews-admin"])
 
 _owner = require_role("owner")
+_admin = require_role("admin")
 
 
 # ---- public discovery -----------------------------------------------------
@@ -117,3 +121,28 @@ async def respond_to_review(
 ) -> dict[str, Any]:
     review = await service.respond_to_review(db, user, review_id, data.response_text)
     return success(data=review, message="Response added.")
+
+
+# ---- admin moderation --------------------------------------------------------
+
+
+@admin_router.get("", summary="Reported reviews awaiting moderation")
+async def list_flagged_reviews(
+    params: PaginationParams = Depends(pagination_params),
+    _: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows, total = await service.list_flagged_reviews(
+        db, offset=params.offset, limit=params.page_size
+    )
+    return success(data=paginated(rows, total, params), message="Reported reviews retrieved.")
+
+
+@admin_router.post("/{review_id}/dismiss", summary="Dismiss a review report (keep the review)")
+async def dismiss_flag(
+    review_id: uuid.UUID,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.dismiss_flag(db, user, review_id)
+    return success(message="Report dismissed.")

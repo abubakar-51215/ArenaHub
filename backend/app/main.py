@@ -44,6 +44,7 @@ from app.modules.payment.api import webhook_router as payment_webhook_router
 from app.modules.report.api import admin_router as report_admin_router
 from app.modules.report.api import owner_router as report_owner_router
 from app.modules.report.api import router as report_router
+from app.modules.review.api import admin_router as review_admin_router
 from app.modules.review.api import owner_router as review_owner_router
 from app.modules.review.api import router as review_router
 from app.modules.slot.api import owner_router as slot_owner_router
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(equipment_owner_router, prefix=API_V1_PREFIX)
     app.include_router(review_router, prefix=API_V1_PREFIX)
     app.include_router(review_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(review_admin_router, prefix=API_V1_PREFIX)
     app.include_router(slot_router, prefix=API_V1_PREFIX)
     app.include_router(slot_owner_router, prefix=API_V1_PREFIX)
     app.include_router(booking_router, prefix=API_V1_PREFIX)
