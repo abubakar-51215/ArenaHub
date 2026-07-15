@@ -68,6 +68,13 @@ what got done, what was tricky, and what's next.
   - **Alternatives-when-full**: confirmed already shipped (slots screen shows
     "Fully booked — try these nearby" from the recommendations endpoint) —
     no work needed, checklist item closed by inspection.
+  - **Documented design decisions** (PROJECT_GUIDELINES deviations #21–23,
+    per external review advice): "Trending" is fulfilled by rating-ranked
+    Popular Arenas + the recommendation engine, not a recent-booking-count
+    ranking; admins suspend rather than hard-delete users (referential
+    integrity across bookings/payments/audit logs); complaints have no
+    assignment stage (single-admin FYP deployment). Each entry notes the
+    one-change path to the literal feature if an evaluator requires it.
 
 ### Challenges
 - `notify_user` originally opened its own DB session via the app's
