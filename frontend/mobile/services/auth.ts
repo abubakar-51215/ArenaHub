@@ -43,6 +43,7 @@ export function updateProfile(data: {
   profile_picture?: string | null;
   preferred_sports?: string[];
   preferred_locations?: string[];
+  notification_preferences?: Record<string, boolean>;
 }): Promise<User> {
   return api.put<User>('/users/me', data);
 }
@@ -60,4 +61,24 @@ export function requestPasswordChange(currentPassword: string, newPassword: stri
  * the login screen. */
 export function verifyPasswordChange(code: string): Promise<null> {
   return api.post<null>('/users/me/password/verify', { code });
+}
+
+export function requestPhoneChange(newPhone: string): Promise<null> {
+  return api.post<null>('/users/me/phone', { new_phone: newPhone });
+}
+
+export function verifyPhoneChange(code: string): Promise<User> {
+  return api.post<User>('/users/me/phone/verify', { code });
+}
+
+export function requestEmailChange(newEmail: string): Promise<null> {
+  return api.post<null>('/users/me/email', { new_email: newEmail });
+}
+
+export function verifyEmailChange(code: string): Promise<User> {
+  return api.post<User>('/users/me/email/verify', { code });
+}
+
+export function deleteAccount(): Promise<null> {
+  return api.del<null>('/users/me');
 }
