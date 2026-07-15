@@ -1,7 +1,7 @@
 """Report generation: player booking history, owner booking/revenue, and
-admin platform-wide (users/bookings/revenue/arenas) — each exportable as CSV
-or PDF with an optional date range. Nothing here is persisted; every report
-is built fresh from the same repositories the dashboards already query.
+admin platform-wide (users/bookings/revenue/arenas/system) — each exportable
+as CSV or PDF with an optional date range. Nothing here is persisted; every
+report is built fresh from the same repositories the dashboards already query.
 """
 
 import uuid
@@ -19,7 +19,7 @@ from app.modules.report.builders import rows_to_csv, rows_to_pdf
 from app.modules.user.model import User, UserRole
 
 ReportFormat = Literal["csv", "pdf"]
-AdminReportType = Literal["users", "bookings", "revenue", "arenas"]
+AdminReportType = Literal["users", "bookings", "revenue", "arenas", "system"]
 
 _LIMIT = 5000  # a report is a bulk export, not a paginated view
 
@@ -177,7 +177,9 @@ async def _admin_revenue_rows(
     rows = [
         [
             payment.created_at.date().isoformat(),
-            arena_name or "—",
+            # Plain hyphen: the PDF builder's core Helvetica is latin-1 — an
+            # em dash here would crash rendering on the first orphan payment.
+            arena_name or "-",
             player_name,
             payment.payment_method.value,
             payment.status.value,
@@ -197,6 +199,52 @@ async def _admin_arenas_rows(db: AsyncSession) -> tuple[list[str], list[list[str
         )
     headers = ["Name", "City", "Status", "Registered"]
     return headers, all_rows
+
+
+def _hour_label(hour: int) -> str:
+    # Plain hyphen: the PDF builder's core Helvetica is latin-1, no en dash.
+    return f"{hour:02d}:00-{(hour + 1) % 24:02d}:00"
+
+
+async def _admin_system_rows(db: AsyncSession) -> tuple[list[str], list[list[str]]]:
+    """Platform health summary (doc 08 §9 "System Report": active users,
+    peak hours, popular sports) — metric/value rows, not a row-per-record
+    listing like the other report types."""
+    total_players = await admin_repo.count_users_by_role(db, UserRole.player)
+    total_owners = await admin_repo.count_users_by_role(db, UserRole.owner)
+    active_users = await admin_repo.count_active_users(db)
+    approved_arenas = await admin_repo.count_arenas_by_status(db, ArenaStatus.approved)
+    total_bookings = await admin_repo.count_bookings_since(db, None)
+    revenue = await admin_repo.sum_platform_revenue(db)
+
+    by_hour = await admin_repo.platform_bookings_by_hour(db)
+    peak_hours = sorted(by_hour.items(), key=lambda pair: pair[1], reverse=True)[:3]
+    peak_label = (
+        ", ".join(f"{_hour_label(h)} ({n} bookings)" for h, n in peak_hours)
+        if peak_hours
+        else "No confirmed bookings yet"
+    )
+
+    per_sport = await admin_repo.bookings_per_sport(db)
+    top_sports = sorted(per_sport.items(), key=lambda pair: pair[1], reverse=True)[:5]
+    sports_label = (
+        ", ".join(f"{sport} ({n})" for sport, n in top_sports)
+        if top_sports
+        else "No confirmed bookings yet"
+    )
+
+    headers = ["Metric", "Value"]
+    rows = [
+        ["Total players", str(total_players)],
+        ["Total arena owners", str(total_owners)],
+        ["Active users", str(active_users)],
+        ["Approved arenas", str(approved_arenas)],
+        ["Bookings (all time)", str(total_bookings)],
+        ["Platform revenue (PKR)", f"{revenue:.2f}"],
+        ["Peak booking hours", peak_label],
+        ["Popular sports (by bookings)", sports_label],
+    ]
+    return headers, rows
 
 
 async def admin_report(
@@ -220,6 +268,9 @@ async def admin_report(
     elif report_type == "revenue":
         headers, rows = await _admin_revenue_rows(db, date_from, date_to)
         title = "Platform Revenue"
+    elif report_type == "system":
+        headers, rows = await _admin_system_rows(db)
+        title = "System Report"
     else:
         headers, rows = await _admin_arenas_rows(db)
         title = "Platform Arenas"

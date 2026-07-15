@@ -155,6 +155,45 @@ async def sum_platform_revenue(db: AsyncSession) -> float:
     return float(total or 0)
 
 
+async def count_active_users(db: AsyncSession) -> int:
+    return (
+        await db.scalar(
+            select(func.count()).where(User.is_active.is_(True), User.deleted_at.is_(None))
+        )
+    ) or 0
+
+
+_DEMAND_STATUSES = (BookingStatus.confirmed, BookingStatus.completed)
+
+
+async def platform_bookings_by_hour(db: AsyncSession) -> dict[int, int]:
+    """Confirmed/completed booking counts keyed by start hour — the System
+    Report's "peak hours" input (doc 08 §9)."""
+    hour = func.extract("hour", Booking.start_time)
+    result = await db.execute(
+        select(hour, func.count()).where(Booking.status.in_(_DEMAND_STATUSES)).group_by(hour)
+    )
+    return {int(h): int(count) for h, count in result.all()}
+
+
+async def bookings_per_sport(db: AsyncSession) -> dict[str, int]:
+    """Confirmed/completed booking counts per sport — the System Report's
+    "popular sports" input. ``Court.sport_types`` is a JSONB array, so the
+    per-court counts are fanned out to sports in Python (a court offering
+    two sports credits both — fine for a popularity ranking)."""
+    result = await db.execute(
+        select(Court.sport_types, func.count(Booking.id))
+        .join(Booking, Booking.court_id == Court.id)
+        .where(Booking.status.in_(_DEMAND_STATUSES))
+        .group_by(Court.id, Court.sport_types)
+    )
+    totals: dict[str, int] = {}
+    for sport_types, count in result.all():
+        for sport in sport_types:
+            totals[sport] = totals.get(sport, 0) + int(count)
+    return totals
+
+
 # ---- audit log --------------------------------------------------
 
 
