@@ -204,6 +204,55 @@ class DiscountCodeResponse(BaseModel):
     is_active: bool
 
 
+class ArenaBankDetailsCreate(BaseModel):
+    """Owner adds one bank-transfer receiving account to an arena. An arena
+    may hold several; ``is_default`` marks the one preferred at checkout
+    (setting it unsets any other default)."""
+
+    label: str | None = Field(default=None, max_length=100)
+    bank_name: str = Field(min_length=1, max_length=100)
+    account_title: str = Field(min_length=1, max_length=150)
+    account_number: str = Field(min_length=1, max_length=50)
+    iban: str | None = Field(default=None, max_length=50)
+    branch_code: str | None = Field(default=None, max_length=30)
+    swift_code: str | None = Field(default=None, max_length=30)
+    payment_instructions: str | None = Field(default=None, max_length=1000)
+    is_default: bool = False
+    is_active: bool = True
+
+
+class ArenaBankDetailsUpdate(BaseModel):
+    """PATCH one account — only provided fields change."""
+
+    label: str | None = Field(default=None, max_length=100)
+    bank_name: str | None = Field(default=None, min_length=1, max_length=100)
+    account_title: str | None = Field(default=None, min_length=1, max_length=150)
+    account_number: str | None = Field(default=None, min_length=1, max_length=50)
+    iban: str | None = Field(default=None, max_length=50)
+    branch_code: str | None = Field(default=None, max_length=30)
+    swift_code: str | None = Field(default=None, max_length=30)
+    payment_instructions: str | None = Field(default=None, max_length=1000)
+    is_default: bool | None = None
+    is_active: bool | None = None
+
+
+class ArenaBankDetailsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    arena_id: uuid.UUID
+    label: str | None = None
+    bank_name: str
+    account_title: str
+    account_number: str
+    iban: str | None = None
+    branch_code: str | None = None
+    swift_code: str | None = None
+    payment_instructions: str | None = None
+    is_default: bool
+    is_active: bool
+
+
 class ArenaSearchParams(BaseModel):
     """Public arena search/filter (approved + active only)."""
 

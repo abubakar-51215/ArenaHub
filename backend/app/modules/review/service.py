@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
+from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus
 from app.modules.review import repository as repo
@@ -83,6 +84,9 @@ async def submit_review(
 async def list_arena_reviews(
     db: AsyncSession, arena_id: uuid.UUID, *, offset: int, limit: int
 ) -> tuple[list[ReviewResponse], int]:
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+        raise NotFoundError("Arena not found.")
     rows, total = await repo.list_arena_reviews(db, arena_id, offset=offset, limit=limit)
     return [_to_response(review, name) for review, name in rows], total
 

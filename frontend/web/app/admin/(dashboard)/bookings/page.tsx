@@ -37,7 +37,7 @@ export default function AdminBookingsPage() {
 
   return (
     <>
-      <PageHeader title="Booking Monitoring">
+      <PageHeader title="Booking Monitoring" subtitle="Monitor all arena bookings">
         <Select
           value={status}
           onChange={(e) => {
@@ -55,8 +55,8 @@ export default function AdminBookingsPage() {
         </Select>
       </PageHeader>
 
-      <div className="space-y-4 p-8">
-        <div className="rounded-xl border border-border bg-card">
+      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

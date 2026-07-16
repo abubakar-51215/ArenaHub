@@ -140,9 +140,13 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> AdminUserDeta
 async def suspend_user(
     db: AsyncSession, actor: User, user_id: uuid.UUID, reason: str
 ) -> AdminUserResponse:
+    if user_id == actor.id:
+        raise ForbiddenError("You cannot suspend your own account.")
     user = await repo.get_user(db, user_id)
     if user is None:
         raise NotFoundError("User not found.")
+    if user.role == UserRole.admin:
+        raise ForbiddenError("Admin accounts cannot be suspended.")
     user.is_active = False
     await record_audit(db, actor, "user.suspend", "user", str(user_id), {"reason": reason})
     # The email is the channel that matters here — a suspended account can't
@@ -160,6 +164,8 @@ async def delete_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> None
     logs (which FK to it) stay intact. To anyone using the product this
     reads as a real delete: the account disappears from the active user
     list, can no longer sign in, and its profile is gone."""
+    if user_id == actor.id:
+        raise ForbiddenError("You cannot delete your own account.")
     user = await repo.get_user(db, user_id)
     if user is None:
         raise NotFoundError("User not found.")

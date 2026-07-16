@@ -180,7 +180,7 @@ export default function CalendarPage() {
   return (
     <>
       <PageHeader title="Calendar" />
-      <div className="space-y-4 p-8">
+      <div className="space-y-4 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" onClick={() => setAnchor(new Date())}>
             Today
@@ -202,7 +202,9 @@ export default function CalendarPage() {
                 onClick={() => setView(v)}
                 className={cn(
                   "px-4 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v ? "bg-blue-600 text-white" : "bg-card text-foreground hover:bg-muted",
+                  view === v
+                    ? "bg-brand-gradient text-white"
+                    : "bg-card text-foreground hover:bg-muted",
                 )}
               >
                 {v}
@@ -212,8 +214,8 @@ export default function CalendarPage() {
         </div>
 
         {view === "week" ? (
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
-            <div className="grid min-w-[900px] grid-cols-[64px_repeat(7,1fr)]">
+          <div className="shadow-card overflow-x-auto rounded-xl border border-border bg-card">
+            <div className="grid min-w-225 grid-cols-[64px_repeat(7,1fr)]">
               <div className="border-b border-border" />
               {weekDays.map((d) => (
                 <div
@@ -258,7 +260,7 @@ export default function CalendarPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <div className="shadow-card overflow-x-auto rounded-xl border border-border bg-card">
             <div className="grid min-w-[900px] grid-cols-7">
               {DAY_NAMES.map((name) => (
                 <div

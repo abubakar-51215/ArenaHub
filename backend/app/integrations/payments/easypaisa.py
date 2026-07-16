@@ -2,15 +2,21 @@
 
 Same situation as JazzCash — no merchant sandbox available, so this is a
 deterministic simulator behind the ``PaymentProvider`` interface (FYP risk
-register mitigation). See ``jazzcash.py`` for the identical rationale.
+register mitigation). See ``jazzcash.py`` for the identical rationale and the
+same HMAC-signed-webhook requirement (``X-Signature`` header, hex-encoded,
+keyed by ``EASYPAISA_WEBHOOK_SECRET``, over the raw body).
 """
 
+import hashlib
+import hmac
 import json
 import uuid
 from decimal import Decimal
 
 import structlog
 
+from app.core.config import get_settings
+from app.core.exceptions import ValidationError
 from app.integrations.payments.base import InitiateResult, RefundResult, WebhookEvent
 
 log = structlog.get_logger()
@@ -28,9 +34,24 @@ class EasyPaisaProvider:
         )
 
     def verify_webhook(self, payload: bytes, headers: dict[str, str]) -> WebhookEvent:
+        settings = get_settings()
+        if not settings.easypaisa_webhook_secret:
+            log.warning("easypaisa_webhook_unverified_dev_mode")
+            raise ValidationError("EasyPaisa webhook secret not configured.")
+
+        signature = headers.get("x-signature", "")
+        expected = hmac.new(
+            settings.easypaisa_webhook_secret.encode(), payload, hashlib.sha256
+        ).hexdigest()
+        if not signature or not hmac.compare_digest(signature, expected):
+            raise ValidationError("Invalid EasyPaisa webhook signature.")
+
         data = json.loads(payload)
         return WebhookEvent(
-            gateway_transaction_id=data["gateway_transaction_id"], status=data["status"]
+            gateway_transaction_id=data["gateway_transaction_id"],
+            status=data["status"],
+            amount=Decimal(str(data["amount"])),
+            currency=str(data["currency"]),
         )
 
     async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:

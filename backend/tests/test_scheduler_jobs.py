@@ -85,11 +85,17 @@ async def test_send_upcoming_reminders_notifies_within_window(
     )
     assert count == 0
 
-    # Right at the 1h mark -> notified again (no de-dup tracking yet, by design).
+    # Right at the 1h mark -> notified again (separate window, own sent-flag).
     count = await booking_service.send_upcoming_reminders(
         db_session, now=booking_start - timedelta(hours=1)
     )
     assert count == 1
+
+    # Re-running the same 1h-mark tick -> already sent, no duplicate.
+    count = await booking_service.send_upcoming_reminders(
+        db_session, now=booking_start - timedelta(hours=1)
+    )
+    assert count == 0
 
 
 async def test_complete_finished_bookings_transitions_past_end_time(

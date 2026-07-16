@@ -68,13 +68,13 @@ export default function PricingPage() {
             setFormOpen(true);
           }}
           disabled={courtList.length === 0}
-          className="bg-blue-600 text-white hover:bg-blue-700"
+          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Pricing Rule
         </Button>
       </PageHeader>
 
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-foreground">Arena</label>
           <Select value={activeArena} onChange={(e) => setArenaId(e.target.value)} className="w-64">
@@ -92,7 +92,7 @@ export default function PricingPage() {
             Add courts to this arena before setting peak-pricing rules.
           </p>
         ) : (
-          <div className="rounded-xl border border-border bg-card">
+          <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>

@@ -13,12 +13,26 @@ booking needs it first — payment imports it rather than redefining it.
 """
 
 import uuid
-from datetime import date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Index, Integer, Numeric, String, Text, Time
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Time,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -59,6 +73,15 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_bookings_player_id_status", "player_id", "status"),
         Index("ix_bookings_arena_id_status", "arena_id", "status"),
         Index("ix_bookings_booking_group_id", "booking_group_id"),
+        Index(
+            "uq_bookings_active_slot_id",
+            "slot_id",
+            unique=True,
+            postgresql_where=text("status NOT IN ('cancelled', 'rejected')"),
+        ),
+        CheckConstraint("total_amount > 0", name="ck_bookings_total_amount_positive"),
+        CheckConstraint("advance_amount >= 0", name="ck_bookings_advance_amount_nonneg"),
+        CheckConstraint("remaining_amount >= 0", name="ck_bookings_remaining_amount_nonneg"),
     )
 
     player_id: Mapped[uuid.UUID] = mapped_column(
@@ -113,6 +136,12 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # refund amount later without re-deriving hours-before-start at a
     # different point in time (the tier resolved at cancellation must stick).
     refund_percentage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Set once each reminder is sent so the scheduler never double-sends
+    # across runs (previously relied solely on the run-interval/tolerance
+    # window lining up, which duplicates a reminder if a run is delayed).
+    reminder_24h_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reminder_1h_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     player: Mapped["User"] = relationship()
     arena: Mapped["Arena"] = relationship()

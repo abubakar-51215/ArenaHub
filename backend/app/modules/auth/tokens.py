@@ -33,6 +33,19 @@ async def is_refresh_used(jti: str) -> bool:
     return bool(await redis_cache.get_redis().exists(f"auth:rt:used:{jti}"))
 
 
+async def try_mark_refresh_used(jti: str) -> bool:
+    """Atomic check-and-set (single Redis round trip via SET NX) — returns
+    True the first time a given jti is marked, False on every call after.
+    Using this instead of a separate is_refresh_used + mark_refresh_used pair
+    closes the race where two concurrent requests presenting the same
+    not-yet-rotated token both pass the (non-atomic) check before either
+    marks it used, defeating single-use rotation."""
+    result = await redis_cache.get_redis().set(
+        f"auth:rt:used:{jti}", "1", ex=_REFRESH_TTL_S, nx=True
+    )
+    return bool(result)
+
+
 async def revoke_family(family: str) -> None:
     await redis_cache.get_redis().set(f"auth:rt:revoked:{family}", "1", ex=_REFRESH_TTL_S)
 

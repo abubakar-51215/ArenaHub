@@ -7,12 +7,24 @@ import io
 
 from fpdf import FPDF
 
+# Leading characters that Excel/Sheets/Numbers treat as "this cell is a
+# formula" — a cell like `=cmd|'/c calc'!A1` opened in a spreadsheet can
+# execute. Every report cell is user-controlled data (names, addresses,
+# reasons), so any starting with one of these gets a defusing prefix.
+_FORMULA_TRIGGERS = ("=", "+", "-", "@")
+
+
+def _defuse_formula(cell: str) -> str:
+    if cell.startswith(_FORMULA_TRIGGERS):
+        return f"'{cell}"
+    return cell
+
 
 def rows_to_csv(headers: list[str], rows: list[list[str]]) -> bytes:
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(headers)
-    writer.writerows(rows)
+    writer.writerow([_defuse_formula(h) for h in headers])
+    writer.writerows([_defuse_formula(cell) for cell in row] for row in rows)
     return buf.getvalue().encode("utf-8")
 
 

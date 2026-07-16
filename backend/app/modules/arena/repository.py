@@ -8,14 +8,16 @@ serialization never triggers a lazy load on the async session.
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import cast
 
-from sqlalchemy import Select, UnaryExpression, func, select
+from sqlalchemy import CursorResult, Select, UnaryExpression, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.arena.model import (
     Amenity,
     Arena,
+    ArenaBankDetails,
     ArenaBlockedDate,
     ArenaCity,
     ArenaLike,
@@ -214,6 +216,28 @@ async def get_discount_by_code(
     return result.scalar_one_or_none()
 
 
+async def try_increment_discount_usage(db: AsyncSession, discount_id: uuid.UUID) -> bool:
+    """Atomically increments ``used_count`` only if the row still has uses
+    left, in one round trip — closes the check-then-increment TOCTOU race
+    where two concurrent bookings both read ``used_count < max_uses`` before
+    either commits. Returns False if the discount has no uses left (unlimited
+    discounts, ``max_uses IS NULL``, always succeed)."""
+    result = cast(
+        CursorResult,
+        await db.execute(
+            update(DiscountCode)
+            .where(
+                DiscountCode.id == discount_id,
+                or_(
+                    DiscountCode.max_uses.is_(None), DiscountCode.used_count < DiscountCode.max_uses
+                ),
+            )
+            .values(used_count=DiscountCode.used_count + 1)
+        ),
+    )
+    return result.rowcount > 0
+
+
 async def list_discounts(db: AsyncSession, arena_id: uuid.UUID) -> list[DiscountCode]:
     result = await db.execute(
         select(DiscountCode)
@@ -262,3 +286,51 @@ async def list_liked_arenas(
         _with_amenities(base).order_by(ArenaLike.created_at.desc()).offset(offset).limit(limit)
     )
     return list(result.scalars().all()), total
+
+
+# ---- bank details (manual bank_transfer payment method) -------------------
+
+
+async def list_bank_details(db: AsyncSession, arena_id: uuid.UUID) -> list[ArenaBankDetails]:
+    """All of an arena's bank accounts — default first, then newest."""
+    result = await db.execute(
+        select(ArenaBankDetails)
+        .where(ArenaBankDetails.arena_id == arena_id)
+        .order_by(ArenaBankDetails.is_default.desc(), ArenaBankDetails.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_active_bank_details(db: AsyncSession, arena_id: uuid.UUID) -> list[ArenaBankDetails]:
+    """Active accounts only, default first — what a player sees at checkout."""
+    result = await db.execute(
+        select(ArenaBankDetails)
+        .where(ArenaBankDetails.arena_id == arena_id, ArenaBankDetails.is_active.is_(True))
+        .order_by(ArenaBankDetails.is_default.desc(), ArenaBankDetails.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_bank_details(db: AsyncSession, bank_details_id: uuid.UUID) -> ArenaBankDetails | None:
+    return await db.get(ArenaBankDetails, bank_details_id)
+
+
+async def add_bank_details(db: AsyncSession, details: ArenaBankDetails) -> ArenaBankDetails:
+    db.add(details)
+    await db.flush()
+    return details
+
+
+async def clear_default_bank_details(
+    db: AsyncSession, arena_id: uuid.UUID, *, except_id: uuid.UUID | None = None
+) -> None:
+    """Unset ``is_default`` on every account of an arena except ``except_id``
+    — used to keep at most one default per arena."""
+    stmt = (
+        update(ArenaBankDetails)
+        .where(ArenaBankDetails.arena_id == arena_id, ArenaBankDetails.is_default.is_(True))
+        .values(is_default=False)
+    )
+    if except_id is not None:
+        stmt = stmt.where(ArenaBankDetails.id != except_id)
+    await db.execute(stmt)

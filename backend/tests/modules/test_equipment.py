@@ -80,6 +80,8 @@ async def test_public_listing_hides_inactive_and_out_of_stock(
     h = auth_header(owner)
     arena = await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())
     arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "admin-equipowner2@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
 
     active = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/equipment",
@@ -98,6 +100,24 @@ async def test_public_listing_hides_inactive_and_out_of_stock(
     ids = {e["id"] for e in public.json()["data"]}
     assert active_id in ids
     assert inactive_id not in ids
+
+
+async def test_public_equipment_listing_404s_for_unapproved_arena(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "equipowner3@example.com", "owner")
+    h = auth_header(owner)
+    arena = await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())
+    arena_id = arena.json()["data"]["id"]  # never approved
+
+    await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/equipment",
+        headers=h,
+        json={"name": "Football", "rental_price": "100.00", "quantity_total": 3},
+    )
+
+    resp = await client.get(f"/api/v1/arenas/{arena_id}/equipment")
+    assert resp.status_code == 404
 
 
 async def test_quantity_adjust_rejects_removing_rented_units(

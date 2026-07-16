@@ -158,6 +158,10 @@ export interface Booking {
 export interface BookingGroup {
   booking_group_id: string;
   bookings: Booking[];
+  slots_subtotal: string;
+  equipment_total: string;
+  discount_amount: string;
+  total: string;
 }
 
 export type PaymentMethod = 'card' | 'jazzcash' | 'easypaisa' | 'bank_transfer';
@@ -217,6 +221,21 @@ export interface Review {
 export interface RatingSummary {
   average_rating: number | null;
   review_count: number;
+}
+
+export interface BankDetails {
+  id: string;
+  arena_id: string;
+  label: string | null;
+  bank_name: string;
+  account_title: string;
+  account_number: string;
+  iban: string | null;
+  branch_code: string | null;
+  swift_code: string | null;
+  payment_instructions: string | null;
+  is_default: boolean;
+  is_active: boolean;
 }
 
 export type MatchStatus = 'open' | 'full' | 'cancelled' | 'completed';

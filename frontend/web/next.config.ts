@@ -6,15 +6,25 @@ import type { NextConfig } from "next";
 // 'unsafe-inline'/'unsafe-eval' in script-src: Next.js injects inline runtime
 // scripts (and dev mode needs eval for fast refresh) — a nonce-based policy is
 // the production-hardening follow-up, tracked for the deployment phase.
-const API_ORIGIN = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").origin;
-const API_WS_ORIGIN = API_ORIGIN.replace(/^http/, "ws");
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const API_ORIGIN = rawApiUrl && /^https?:\/\//i.test(rawApiUrl) ? new URL(rawApiUrl).origin : null;
+const API_WS_ORIGIN = API_ORIGIN ? API_ORIGIN.replace(/^http/, "ws") : null;
+
+const IMG_SRC = ["'self'", "data:", "blob:"];
+if (API_ORIGIN) IMG_SRC.push(API_ORIGIN);
+IMG_SRC.push("https://tile.openstreetmap.org", "https://*.tile.openstreetmap.org");
+IMG_SRC.push("https://res.cloudinary.com", "https://images.unsplash.com");
+
+const CONNECT_SRC = ["'self'"];
+if (API_ORIGIN) CONNECT_SRC.push(API_ORIGIN);
+if (API_WS_ORIGIN) CONNECT_SRC.push(API_WS_ORIGIN);
 
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${API_ORIGIN} https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://res.cloudinary.com`,
-  `connect-src 'self' ${API_ORIGIN} ${API_WS_ORIGIN}`,
+  `img-src ${IMG_SRC.join(" ")}`,
+  `connect-src ${CONNECT_SRC.join(" ")}`,
   "font-src 'self' data:",
   "object-src 'none'",
   "base-uri 'self'",

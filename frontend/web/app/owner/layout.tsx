@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Sidebar } from "@/components/owner/sidebar";
+import { DashboardShell } from "@/components/ui/dashboard-shell";
 import { useAuthStore } from "@/store/auth";
 
 /**
@@ -30,9 +31,6 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
-    </div>
+    <DashboardShell sidebar={(close) => <Sidebar onNavigate={close} />}>{children}</DashboardShell>
   );
 }

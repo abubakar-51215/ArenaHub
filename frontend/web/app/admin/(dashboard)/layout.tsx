@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { AdminSidebar } from "@/components/admin/sidebar";
+import { DashboardShell } from "@/components/ui/dashboard-shell";
 import { useAuthStore } from "@/store/auth";
 
 /**
@@ -30,9 +31,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <AdminSidebar />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
-    </div>
+    <DashboardShell sidebar={(close) => <AdminSidebar onNavigate={close} />}>
+      {children}
+    </DashboardShell>
   );
 }

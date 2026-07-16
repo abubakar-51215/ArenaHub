@@ -927,7 +927,11 @@ async def _seed_player_flow(
     gulberg = arenas_by_name["Arena Hub Gulberg Lahore"]
 
     players = await _get_or_create_players(db)
-    ahmed, sara, bilal, hina, usman, ayesha = players
+    if len(players) < 6:
+        raise RuntimeError("Expected at least 6 seeded players for the demo flow.")
+    # PLAYERS has grown well past 6 entries; this flow only names the first
+    # six (the rest exist for the v2 multi-owner flow / general search data).
+    ahmed, sara, bilal, hina, usman, ayesha = players[:6]
 
     dha_courts = (await db.execute(select(Court).where(Court.arena_id == dha.id))).scalars().all()
     gulberg_courts = (
@@ -1915,6 +1919,19 @@ async def _seed_player_flow_v2(
     )
 
 
+async def _manifest_bookings_still_exist(db: AsyncSession, booking_ids: list[str]) -> bool:
+    """A manifest flag like `flow_seeded` only means "we created these rows at
+    some point" — if the DB was since wiped/recreated (e.g. clear_dummy_data.py,
+    a fresh migration, a different DB target) while the manifest file survived,
+    trusting the flag alone skips re-seeding into an actually-empty table. Spot
+    check that the recorded booking IDs are still present before trusting it."""
+    if not booking_ids:
+        return False
+    ids = [uuid.UUID(b) for b in booking_ids]
+    result = await db.execute(select(Booking.id).where(Booking.id.in_(ids)))
+    return len(result.scalars().all()) == len(ids)
+
+
 async def seed() -> None:
     existing_manifest: dict = {}
     if MANIFEST_PATH.exists():
@@ -1938,7 +1955,10 @@ async def seed() -> None:
         manifest["admin_id"] = str(admin.id)
         await db.commit()
 
-        if existing_manifest.get("flow_seeded"):
+        flow_seeded = existing_manifest.get("flow_seeded") and await _manifest_bookings_still_exist(
+            db, existing_manifest.get("bookings", [])
+        )
+        if flow_seeded:
             print("skip (already exists): player-side flow (bookings/payments/reviews)")
             manifest.update(
                 {
@@ -1958,7 +1978,10 @@ async def seed() -> None:
             await _seed_player_flow(db, all_arenas_by_name, manifest)
             await db.commit()
 
-        if existing_manifest.get("flow_seeded_v2"):
+        flow_seeded_v2 = existing_manifest.get(
+            "flow_seeded_v2"
+        ) and await _manifest_bookings_still_exist(db, existing_manifest.get("bookings_v2", []))
+        if flow_seeded_v2:
             print("skip (already exists): multi-owner player-side flow (bookings/payments/reviews)")
             manifest.update(
                 {

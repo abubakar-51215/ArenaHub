@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/theme';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
 import { ApiError } from '@/lib/api';
+import { toLocalDateString } from '@/lib/dates';
 import { getBooking, rescheduleBooking } from '@/services/bookings';
 import type { TimeSlot } from '@/types';
 
@@ -19,7 +20,7 @@ function nextDays(n: number): { date: string; label: string; dayNum: string }[] 
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     days.push({
-      date: d.toISOString().slice(0, 10),
+      date: toLocalDateString(d),
       label: d.toLocaleDateString('en-US', { weekday: 'short' }),
       dayNum: String(d.getDate()),
     });

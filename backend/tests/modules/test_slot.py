@@ -249,3 +249,27 @@ async def test_slot_lock_release_then_reacquire() -> None:
     await locking.release_slot_lock(key1, token1)
     ok4, _, _ = await locking.acquire_slot_lock(court_id, booking_date, start_time)
     assert ok4
+
+
+async def test_generate_slots_flags_window_shorter_than_one_slot(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "slotowner_short@example.com", "owner")
+    h = auth_header(owner)
+    _, court_id = await _make_owned_court(
+        client,
+        owner,
+        operating_hours={"monday": {"open": "08:00", "close": "08:30"}},
+    )
+
+    monday = _next_weekday(1)
+    resp = await client.post(
+        f"/api/v1/owner/courts/{court_id}/slots/generate",
+        headers=h,
+        json={"start_date": monday.isoformat(), "end_date": monday.isoformat()},
+    )
+    assert resp.status_code == 201
+    body = resp.json()["data"]
+    assert body["created"] == 0
+    assert monday.isoformat() in body["skipped_window_too_short"]
+    assert monday.isoformat() not in body["skipped_closed_or_blocked"]

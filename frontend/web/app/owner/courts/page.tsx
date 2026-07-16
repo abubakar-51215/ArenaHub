@@ -43,13 +43,13 @@ function CourtsInner() {
             setFormOpen(true);
           }}
           disabled={!arenaId}
-          className="bg-blue-600 text-white hover:bg-blue-700"
+          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Court
         </Button>
       </PageHeader>
 
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-foreground">Arena</label>
           <Select value={arenaId} onChange={(e) => setArenaId(e.target.value)} className="w-64">
@@ -76,9 +76,12 @@ function CourtsInner() {
           </p>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {courts?.map((court) => (
-            <div key={court.id} className="overflow-hidden rounded-xl border border-border bg-card">
+            <div
+              key={court.id}
+              className="card-elevated overflow-hidden rounded-xl border border-border bg-card"
+            >
               <div
                 className="h-36 w-full bg-linear-to-br from-emerald-800 to-slate-900 bg-cover bg-center"
                 style={court.images[0] ? { backgroundImage: `url(${court.images[0]})` } : undefined}

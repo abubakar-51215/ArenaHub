@@ -17,6 +17,22 @@ async def get_slot(db: AsyncSession, slot_id: uuid.UUID) -> TimeSlot | None:
     return await db.get(TimeSlot, slot_id)
 
 
+async def get_slot_for_update(db: AsyncSession, slot_id: uuid.UUID) -> TimeSlot | None:
+    """Row-locked, session-cache-bypassing read — used for the final
+    availability check right before booking creation. ``db.get()`` would
+    return the identity-mapped object loaded earlier in the same request
+    (before the Redis lock was acquired) without re-querying the DB, so a
+    slot another transaction booked in between could still look available.
+    """
+    result = await db.execute(
+        select(TimeSlot)
+        .where(TimeSlot.id == slot_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_slots(db: AsyncSession, court_id: uuid.UUID, target_date: date) -> list[TimeSlot]:
     result = await db.execute(
         select(TimeSlot)

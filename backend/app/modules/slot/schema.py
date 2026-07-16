@@ -28,6 +28,11 @@ class SlotGenerateResult(BaseModel):
     created: int
     skipped_existing: int
     skipped_closed_or_blocked: list[date]
+    # A day the arena is open on (not blocked/closed) but whose operating
+    # window is shorter than one slot, so it produced zero slots — distinct
+    # from skipped_closed_or_blocked so an owner isn't left wondering why a
+    # seemingly-open day generated nothing.
+    skipped_window_too_short: list[date] = []
 
 
 class SlotUpdate(BaseModel):

@@ -5,6 +5,8 @@ inline-styled on a single centred card. Each helper returns
 ``(subject, text_body, html_body)`` ready for ``send_email``.
 """
 
+import html as html_lib
+
 BRAND = "ArenaHub"
 ACCENT = "#059669"  # emerald-600 — matches the web dashboard's primary button
 TEXT = "#111827"
@@ -105,12 +107,18 @@ If you didn't request this, your account is safe — no action is needed.</p>"""
 
 
 def notification_email(title: str, body: str) -> tuple[str, str, str]:
+    """``title``/``body`` come from ``notification/service.py``'s templates,
+    which interpolate caller-supplied strings (e.g. an admin's suspension
+    reason) — escaped before going into HTML so that content can't inject
+    markup/script into the rendered email."""
     subject = f"{BRAND} — {title}"
     text = f"{title}\n\n{body}"
+    safe_title = html_lib.escape(title)
+    safe_body = html_lib.escape(body)
     html = _layout(
-        title,
+        safe_title,
         f"""\
-<p style="margin:0 0 8px;font-size:18px;font-weight:700;">{title}</p>
-<p style="margin:0;">{body}</p>""",
+<p style="margin:0 0 8px;font-size:18px;font-weight:700;">{safe_title}</p>
+<p style="margin:0;">{safe_body}</p>""",
     )
     return subject, text, html

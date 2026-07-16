@@ -59,7 +59,12 @@ class StripeProvider:
 
         intent = event["data"]["object"]
         status = "completed" if event["type"] == "payment_intent.succeeded" else "failed"
-        return WebhookEvent(gateway_transaction_id=intent["id"], status=status)
+        return WebhookEvent(
+            gateway_transaction_id=intent["id"],
+            status=status,
+            amount=Decimal(str(intent.get("amount_received", intent["amount"]))) / Decimal(100),
+            currency=str(intent["currency"]).upper(),
+        )
 
     async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:
         settings = get_settings()

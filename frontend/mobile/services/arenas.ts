@@ -1,6 +1,6 @@
 /** Player-facing arena discovery API calls. */
 import { api } from "../lib/api";
-import type { Arena, ArenaCity, Page, RatingSummary } from "../types";
+import type { Arena, ArenaCity, BankDetails, Page, RatingSummary } from "../types";
 
 export interface ArenaSearchParams {
   q?: string;
@@ -62,4 +62,11 @@ export function unlikeArena(arenaId: string): Promise<null> {
 
 export function listLikedArenas(): Promise<Page<Arena>> {
   return api.get<Page<Arena>>("/arenas/liked?page_size=50");
+}
+
+/** The arena's active bank-transfer accounts (default first), shown at
+ * checkout when the player picks Bank Transfer so they know where to send
+ * payment before uploading a receipt. */
+export function getBankDetails(arenaId: string): Promise<BankDetails[]> {
+  return api.get<BankDetails[]>(`/arenas/${arenaId}/bank-details`);
 }

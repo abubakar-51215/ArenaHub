@@ -286,3 +286,144 @@ async def test_liking_unapproved_arena_404s(client: AsyncClient, db_session: Asy
 async def test_liked_list_requires_auth(client: AsyncClient) -> None:
     resp = await client.get("/api/v1/arenas/liked")
     assert resp.status_code == 401
+
+
+async def test_owner_bank_accounts_crud_and_player_checkout_read(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "bankowner1@example.com", "owner")
+    h = auth_header(owner)
+    arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
+        "data"
+    ]["id"]
+
+    # Nothing set yet — owner sees an empty list, player checkout 404s.
+    empty = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
+    assert empty.status_code == 200
+    assert empty.json()["data"] == []
+
+    # First account added becomes the default automatically.
+    first = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details",
+        headers=h,
+        json={
+            "label": "Meezan Main",
+            "bank_name": "Meezan Bank",
+            "account_title": "ArenaHub Sports",
+            "account_number": "1234567890123",
+            "iban": "PK36MEZN0001234567890123",
+        },
+    )
+    assert first.status_code == 201
+    first_id = first.json()["data"]["id"]
+    assert first.json()["data"]["is_default"] is True
+
+    # A second account, explicitly default → unseats the first as default.
+    second = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details",
+        headers=h,
+        json={
+            "label": "HBL Backup",
+            "bank_name": "HBL",
+            "account_title": "ArenaHub Sports",
+            "account_number": "9876543210",
+            "is_default": True,
+        },
+    )
+    assert second.status_code == 201
+    second_id = second.json()["data"]["id"]
+
+    listed = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
+    accounts = {a["id"]: a for a in listed.json()["data"]}
+    assert len(accounts) == 2
+    assert accounts[second_id]["is_default"] is True
+    assert accounts[first_id]["is_default"] is False
+
+    # Deactivate the first so it's hidden from checkout.
+    await client.patch(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/{first_id}",
+        headers=h,
+        json={"is_active": False},
+    )
+
+    # Another owner cannot list or edit these.
+    other_owner, _ = await make_user(client, db_session, "bankowner2@example.com", "owner")
+    forbidden = await client.get(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=auth_header(other_owner)
+    )
+    assert forbidden.status_code == 403
+
+    # Pending approval → checkout 404s (arena not bookable yet).
+    player, _ = await make_user(client, db_session, "bankplayer1@example.com")
+    assert (
+        await client.get(f"/api/v1/arenas/{arena_id}/bank-details", headers=auth_header(player))
+    ).status_code == 404
+
+    admin = await make_admin(client, db_session, "admin-bankowner1@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+
+    # Checkout returns only active accounts, default first.
+    checkout = await client.get(
+        f"/api/v1/arenas/{arena_id}/bank-details", headers=auth_header(player)
+    )
+    assert checkout.status_code == 200
+    checkout_accounts = checkout.json()["data"]
+    assert len(checkout_accounts) == 1  # the deactivated first is excluded
+    assert checkout_accounts[0]["bank_name"] == "HBL"
+    assert checkout_accounts[0]["is_default"] is True
+
+    # Deleting the default (HBL) leaves only the inactive first account, so —
+    # a default must be active — the arena is left with no default.
+    await client.delete(f"/api/v1/owner/arenas/{arena_id}/bank-details/{second_id}", headers=h)
+    after = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
+    remaining = {a["id"]: a for a in after.json()["data"]}
+    assert len(remaining) == 1
+    assert remaining[first_id]["is_default"] is False  # inactive can't be default
+
+    # Reactivating it makes it the (only active) default automatically.
+    reactivated = await client.patch(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/{first_id}",
+        headers=h,
+        json={"is_active": True},
+    )
+    assert reactivated.json()["data"]["is_default"] is True
+
+    assert (await client.get(f"/api/v1/arenas/{arena_id}/bank-details")).status_code == 401
+
+
+async def test_deactivating_default_bank_account_promotes_another(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "bankowner3@example.com", "owner")
+    h = auth_header(owner)
+    arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
+        "data"
+    ]["id"]
+
+    a = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details",
+        headers=h,
+        json={"bank_name": "Meezan", "account_title": "T", "account_number": "1"},
+    )
+    a_id = a.json()["data"]["id"]  # first -> default
+    b = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details",
+        headers=h,
+        json={"bank_name": "HBL", "account_title": "T", "account_number": "2"},
+    )
+    b_id = b.json()["data"]["id"]
+
+    # Deactivating the default (a) promotes the other active account (b).
+    await client.patch(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/{a_id}",
+        headers=h,
+        json={"is_active": False},
+    )
+    listed = {
+        x["id"]: x
+        for x in (
+            await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
+        ).json()["data"]
+    }
+    assert listed[a_id]["is_default"] is False
+    assert listed[b_id]["is_default"] is True

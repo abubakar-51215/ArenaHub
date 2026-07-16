@@ -80,9 +80,18 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # allow_origins=["*"] combined with allow_credentials=True makes Starlette
+    # reflect the request's actual Origin header (effectively "any origin,
+    # with credentials") — an explicit localhost allowlist in dev avoids that
+    # gap without losing convenience. Prod/staging read a configured list.
+    if settings.is_dev:
+        cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    else:
+        cors_origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.is_dev else [],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
