@@ -73,7 +73,7 @@ async def test_owner_can_upload_to_arena_folder(
         "/api/v1/uploads/image",
         headers=auth_header(owner),
         params={"folder": "arenas"},
-        files={"file": ("court.jpg", b"fake-jpeg-bytes", "image/jpeg")},
+        files={"file": ("court.jpg", b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01", "image/jpeg")},
     )
     assert resp.status_code == 200
     assert resp.json()["data"]["url"].startswith("/uploads/arenas/")

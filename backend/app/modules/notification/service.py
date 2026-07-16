@@ -59,6 +59,11 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "A refund of PKR {amount} has been initiated for your booking.",
         "category": "payment",
     },
+    "balance_paid": {
+        "title": "Balance paid",
+        "body": "Your outstanding balance has been paid. Your booking is fully settled.",
+        "category": "payment",
+    },
     "account_suspended": {
         "title": "Your account has been suspended",
         "body": "An administrator suspended your account. Reason: {reason}",

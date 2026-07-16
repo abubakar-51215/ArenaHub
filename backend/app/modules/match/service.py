@@ -134,7 +134,11 @@ async def list_my_matches(db: AsyncSession, user: User) -> dict:
 
 
 async def join_match(db: AsyncSession, user: User, match_id: uuid.UUID) -> MatchDetailResponse:
-    match = await repo.get_match(db, match_id)
+    # Lock the Match row first — serializes concurrent joins for the same
+    # match so the capacity check below and the participant insert are
+    # effectively atomic (a second concurrent request blocks here until the
+    # first commits, then re-reads the now-current participant count).
+    match = await repo.get_match_for_update(db, match_id)
     if match is None:
         raise NotFoundError("Match not found.")
     if match.status != MatchStatus.open:

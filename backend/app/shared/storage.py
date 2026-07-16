@@ -32,12 +32,28 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 # can never traverse outside media_root.
 ALLOWED_FOLDERS = frozenset({"arenas", "courts", "misc", "receipts", "avatars"})
 
+# Magic-byte signatures for each allowed type — the Content-Type header is
+# client-supplied and trivially spoofed, so the actual bytes must agree with
+# what's claimed before anything is written to disk/served back to users.
+_MAGIC_BYTES: dict[str, tuple[bytes, ...]] = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    # RIFF????WEBP — the 4 bytes after "RIFF" are a little-endian size field,
+    # so only the leading/trailing markers are checked.
+    "image/webp": (b"RIFF",),
+}
+
 
 def _validate(content: bytes, content_type: str) -> str:
     if content_type not in ALLOWED_IMAGE_TYPES:
         raise ValidationError("Unsupported image type. Use JPEG, PNG, or WebP.")
     if len(content) > MAX_IMAGE_BYTES:
         raise ValidationError("Image is too large (max 5 MB).")
+    signatures = _MAGIC_BYTES[content_type]
+    if not any(content.startswith(sig) for sig in signatures):
+        raise ValidationError("File content does not match the declared image type.")
+    if content_type == "image/webp" and content[8:12] != b"WEBP":
+        raise ValidationError("File content does not match the declared image type.")
     return ALLOWED_IMAGE_TYPES[content_type]
 
 

@@ -17,6 +17,8 @@ from app.database.session import get_db
 from app.modules.arena import service
 from app.modules.arena.model import ArenaCity
 from app.modules.arena.schema import (
+    ArenaBankDetailsCreate,
+    ArenaBankDetailsUpdate,
     ArenaCreate,
     ArenaUpdate,
     BlockedDateCreate,
@@ -106,6 +108,19 @@ async def unlike_arena(
 ) -> dict[str, Any]:
     await service.unlike_arena(db, user, arena_id)
     return success(message="Arena unliked.")
+
+
+@router.get(
+    "/{arena_id}/bank-details",
+    summary="Get the arena's bank-transfer details (checkout, bank_transfer method)",
+)
+async def get_bank_details(
+    arena_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.get_bank_details_for_checkout(db, arena_id)
+    return success(data=data, message="Bank details retrieved.")
 
 
 # ---- owner management ----------------------------------------------------
@@ -260,3 +275,58 @@ async def delete_discount(
 ) -> dict[str, Any]:
     await service.delete_discount(db, user, arena_id, discount_id)
     return success(message="Discount code deleted.")
+
+
+# ---- bank details (manual bank_transfer payment method) --------------------
+
+
+@owner_router.get("/{arena_id}/bank-details", summary="List my arena's bank accounts")
+async def list_owner_bank_details(
+    arena_id: uuid.UUID,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_owner_bank_details(db, user, arena_id)
+    return success(data=data, message="Bank accounts retrieved.")
+
+
+@owner_router.post(
+    "/{arena_id}/bank-details",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a bank account to my arena",
+)
+async def add_bank_details(
+    arena_id: uuid.UUID,
+    data: ArenaBankDetailsCreate,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    saved = await service.add_bank_details(db, user, arena_id, data)
+    return success(data=saved, message="Bank account added.")
+
+
+@owner_router.patch(
+    "/{arena_id}/bank-details/{bank_details_id}", summary="Update one of my arena's bank accounts"
+)
+async def update_bank_details(
+    arena_id: uuid.UUID,
+    bank_details_id: uuid.UUID,
+    data: ArenaBankDetailsUpdate,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    saved = await service.update_bank_details(db, user, arena_id, bank_details_id, data)
+    return success(data=saved, message="Bank account updated.")
+
+
+@owner_router.delete(
+    "/{arena_id}/bank-details/{bank_details_id}", summary="Remove one of my arena's bank accounts"
+)
+async def delete_bank_details(
+    arena_id: uuid.UUID,
+    bank_details_id: uuid.UUID,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.delete_bank_details(db, user, arena_id, bank_details_id)
+    return success(message="Bank account removed.")

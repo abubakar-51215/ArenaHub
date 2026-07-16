@@ -7,7 +7,12 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.booking.model import PaymentPlan, PaymentStatus
-from app.modules.payment.model import PaymentMethod, RefundStatus
+from app.modules.payment.model import (
+    PaymentLifecycleStatus,
+    PaymentMethod,
+    PaymentPurpose,
+    RefundStatus,
+)
 
 
 class PaymentInitiateRequest(BaseModel):
@@ -35,7 +40,9 @@ class PaymentResponse(BaseModel):
     payment_provider: str
     gateway_transaction_id: str | None = None
     status: PaymentStatus
+    lifecycle_status: PaymentLifecycleStatus
     payment_type: PaymentPlan
+    purpose: PaymentPurpose
     receipt_proof_url: str | None = None
     created_at: datetime
 
@@ -63,3 +70,13 @@ class RefundResponse(BaseModel):
     reason: str
     status: RefundStatus
     processed_at: datetime | None = None
+
+
+class PaymentEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    from_status: PaymentLifecycleStatus | None = None
+    to_status: PaymentLifecycleStatus
+    note: str | None = None
+    created_at: datetime

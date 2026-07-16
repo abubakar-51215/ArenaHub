@@ -61,3 +61,11 @@ class BookingResponse(BaseModel):
 class BookingGroupResponse(BaseModel):
     booking_group_id: uuid.UUID
     bookings: list[BookingResponse]
+    # Server-authoritative price breakdown for the whole checkout, so the
+    # client can show the player exactly how the total was reached (slots +
+    # equipment − discount) instead of only an opaque final figure or a
+    # client-side estimate. ``discount_amount`` is 0 when no code applied.
+    slots_subtotal: Decimal
+    equipment_total: Decimal
+    discount_amount: Decimal
+    total: Decimal

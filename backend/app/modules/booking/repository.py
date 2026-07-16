@@ -20,6 +20,19 @@ async def get_booking(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None
     return await db.get(Booking, booking_id)
 
 
+async def get_booking_for_update(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None:
+    """Row-locked, session-cache-bypassing read — used right before a status
+    transition (cancel/reschedule) so a concurrent request against the same
+    booking can't also pass its own stale status check and race the mutation."""
+    result = await db.execute(
+        select(Booking)
+        .where(Booking.id == booking_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
 async def add_booking(db: AsyncSession, booking: Booking) -> Booking:
     db.add(booking)
     await db.flush()
@@ -31,6 +44,16 @@ async def list_group(db: AsyncSession, booking_group_id: uuid.UUID) -> list[Book
         select(Booking)
         .where(Booking.booking_group_id == booking_group_id)
         .order_by(Booking.start_time.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_group_for_update(db: AsyncSession, booking_group_id: uuid.UUID) -> list[Booking]:
+    result = await db.execute(
+        select(Booking)
+        .where(Booking.booking_group_id == booking_group_id)
+        .order_by(Booking.start_time.asc())
+        .with_for_update()
     )
     return list(result.scalars().all())
 
@@ -72,6 +95,17 @@ async def list_stale_pending_payment(db: AsyncSession, cutoff: datetime) -> list
         select(Booking).where(
             Booking.status == BookingStatus.pending_payment, Booking.created_at < cutoff
         )
+    )
+    return list(result.scalars().all())
+
+
+async def list_stale_pending_payment_for_update(
+    db: AsyncSession, cutoff: datetime
+) -> list[Booking]:
+    result = await db.execute(
+        select(Booking)
+        .where(Booking.status == BookingStatus.pending_payment, Booking.created_at < cutoff)
+        .with_for_update()
     )
     return list(result.scalars().all())
 
