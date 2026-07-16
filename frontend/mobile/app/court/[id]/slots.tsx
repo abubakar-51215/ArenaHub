@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/theme';
 import { useArena, useArenaCourts } from '@/hooks/useArenas';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
+import { toLocalDateString } from '@/lib/dates';
 import { getRecommendations } from '@/services/ai';
 import type { TimeSlot } from '@/types';
 
@@ -20,7 +21,7 @@ function nextDays(n: number): { date: string; label: string; dayNum: string }[] 
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     days.push({
-      date: d.toISOString().slice(0, 10),
+      date: toLocalDateString(d),
       label: d.toLocaleDateString('en-US', { weekday: 'short' }),
       dayNum: String(d.getDate()),
     });

@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors } from "@/constants/theme";
+import { Brand, Colors, Shadow } from "@/constants/theme";
 import { logout } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
@@ -57,7 +58,19 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
+      <LinearGradient
+        colors={Brand.gradientHero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <Pressable
+          style={styles.editBtn}
+          hitSlop={12}
+          onPress={() => router.push("/profile/edit")}
+        >
+          <Ionicons name="create-outline" size={20} color="#fff" />
+        </Pressable>
         {user?.profile_picture ? (
           <Image
             source={{ uri: user.profile_picture }}
@@ -73,7 +86,7 @@ export default function ProfileScreen() {
         )}
         <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.menu}>
         {MENU_ITEMS.map((item) => (
@@ -115,17 +128,33 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   header: {
     alignItems: "center",
-    paddingVertical: 28,
-    backgroundColor: Colors.light.tint,
+    paddingTop: 24,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  editBtn: {
+    position: "absolute",
+    top: 16,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.5)",
+    ...Shadow.card,
   },
   avatarInitial: { fontSize: 28, fontWeight: "700", color: Colors.light.tint },
   name: { fontSize: 18, fontWeight: "700", color: "#fff" },

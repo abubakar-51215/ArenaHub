@@ -2,42 +2,17 @@
 
 import { useMemo, useState } from "react";
 
+import { Clock, Percent, TrendingUp, Wallet } from "lucide-react";
+
 import { BookingsByTimeChart, RevenueTrendChart } from "@/components/owner/charts";
 import { PageHeader } from "@/components/owner/page-header";
 import { StatusBadge } from "@/components/owner/status-badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { StatCard } from "@/components/ui/stat-card";
 import { useDashboardAnalytics } from "@/hooks/useDashboard";
 import { formatDateShort, formatHour, formatRs, formatTime, toDateInput } from "@/lib/format";
 import { ARENA_CITIES } from "@/types";
-
-function StatCard({
-  label,
-  value,
-  delta,
-  deltaSuffix = "vs last period",
-  subtitle,
-}: {
-  label: string;
-  value: string;
-  delta?: number | null;
-  deltaSuffix?: string;
-  subtitle?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
-      {delta != null && (
-        <p className={`mt-1 text-xs ${delta >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-          {delta >= 0 ? "+" : ""}
-          {delta}% {deltaSuffix}
-        </p>
-      )}
-      {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const today = useMemo(() => new Date(), []);
@@ -89,17 +64,21 @@ export default function DashboardPage() {
         />
       </PageHeader>
 
-      <div className="space-y-6 p-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Revenue"
             value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)}
             delta={data?.revenue_change_pct}
+            icon={Wallet}
+            tone="green"
           />
           <StatCard
             label="Total Bookings"
             value={isLoading ? "—" : String(data?.total_bookings ?? 0)}
             delta={data?.bookings_change_pct}
+            icon={TrendingUp}
+            tone="blue"
           />
           <StatCard
             label="Peak Hours"
@@ -111,27 +90,31 @@ export default function DashboardPage() {
                   : "—"
             }
             subtitle="Most booked window"
+            icon={Clock}
+            tone="amber"
           />
           <StatCard
             label="Occupancy Rate"
             value={isLoading ? "—" : data?.occupancy_rate != null ? `${data.occupancy_rate}%` : "—"}
             delta={data?.occupancy_change_pts}
+            icon={Percent}
+            tone="violet"
           />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="shadow-card rounded-xl border border-border bg-card p-5">
             <h3 className="mb-4 font-semibold text-foreground">Revenue Overview</h3>
             <RevenueTrendChart data={trend} />
           </div>
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="shadow-card rounded-xl border border-border bg-card p-5">
             <h3 className="mb-4 font-semibold text-foreground">Bookings by Time of Day</h3>
             <BookingsByTimeChart data={byTime} />
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-border bg-card">
+          <div className="shadow-card rounded-xl border border-border bg-card">
             <div className="border-b border-border px-5 py-4">
               <h3 className="font-semibold text-foreground">Top Arenas</h3>
             </div>
@@ -150,7 +133,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-card">
+          <div className="shadow-card rounded-xl border border-border bg-card">
             <div className="border-b border-border px-5 py-4">
               <h3 className="font-semibold text-foreground">Recent Bookings</h3>
             </div>

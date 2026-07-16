@@ -5,6 +5,163 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## 2026-07-17 — Closed the four payment "minor limitations"
+
+Turned the documented minor limitations into real fixes/features.
+
+- **#4 Bank default invariant**: a default account must now stay active. `_ensure_active_default` runs after every add/update/delete — deactivating or deleting the default auto-promotes another active account; marking an account default also activates it. (An arena with only inactive accounts correctly has no default.)
+- **#1 Refund cap** (reschedule-then-cancel): cancellation refunds no longer skip when a prior refund exists on the payment. The amount is capped at `captured − already_refunded`, so a reschedule overpayment refund plus a later cancellation refund can total the captured amount but never exceed it. Removed the old per-booking dedup; `force_refund` now blocks only a fully-refunded payment.
+- **#2 Refund audit trail**: every refund (partial and full) is now recorded in `payment_events` via a new `state_machine.record_note` annotation event, so `GET /payments/{id}/events` shows reschedule-overpayment and cancellation refunds — not just the full-refund lifecycle transition. Also fixed a related bug found while doing this: the auto-cancel sweep set the coarse `payment.status=failed` but left `lifecycle_status` orphaned — it now advances to `expired`.
+- **#3 Pay outstanding balance online**: new `Payment.purpose` (booking|balance). `POST /payments/initiate-balance` charges the group's outstanding `remaining_amount` (gateway methods only); on capture, `_settle_balance` zeroes the balance on the already-confirmed bookings (no re-confirm) and marks them fully paid. Webhook + dev-confirm branch on purpose; a failed balance payment leaves the confirmed booking intact (balance still owed). Mobile: the booking card shows a "Pay Rs. X Balance" button when a confirmed booking has an outstanding balance, routing the payment screen in balance mode.
+
+### Migration
+- `a1c9e4b7d2f6` (payment_purpose enum + `payments.purpose`, existing rows → booking). Full base→head chain and the new migration verified clean.
+
+### Verification
+- Full backend suite passes (added tests: reschedule-then-cancel refund cap + audit trail, pay-balance-online end-to-end, deactivate-default-promotes-another); `mypy` clean (143 files); `ruff` clean.
+- `frontend/web` and `frontend/mobile`: `tsc --noEmit` and lint clean.
+
+---
+
+## 2026-07-17 — Payment architecture enhancements (provider abstraction, state machine, audit trail, multi-account)
+
+Implemented the four optional/future payment-architecture enhancements from the review (the Owner Wallet / Platform Commission item was explicitly excluded and left untouched — no wallet exists in the codebase).
+
+### 1. Payment provider abstraction + MockProvider
+- The `PaymentProvider` Protocol + Stripe/JazzCash/EasyPaisa/Manual providers + `get_provider` factory already existed; added `integrations/payments/mock.py` (`MockProvider`) and a `PAYMENT_MODE` setting (`auto`|`mock`). In `mock` mode every gateway method resolves to the deterministic MockProvider (no network/credentials/real charge); `bank_transfer` is always manual.
+
+### 2. Payment state machine
+- New `PaymentLifecycleStatus` enum (pending → initiated → processing → pending_approval → paid → confirmed, plus failed/expired/rejected/refunded) tracked on `payments.lifecycle_status`, **alongside** the coarse `status` that still drives booking/revenue (so nothing existing changed behavior). `payment/state_machine.py` defines the legal transition table and a single `advance()` entry point that validates moves and records an audit event. Wired into initiate/confirm/fail/receipt-upload/refund flows.
+
+### 3. Payment audit history
+- New append-only `payment_events` table (from_status, to_status, note, created_at), written on every lifecycle transition via the state machine. Exposed at `GET /payments/{id}/events` (same visibility rule as the receipt: paying player, arena owner, or admin). Fully refunded payments advance to `refunded` once total refunds reach the captured amount.
+
+### 4. Multiple bank accounts per arena
+- `ArenaBankDetails` went from one-row-per-arena (unique arena_id) to many, with `label`, `is_default`, `is_active`. Owner API is now full CRUD: `GET` (list), `POST` (add), `PATCH /{id}`, `DELETE /{id}`; setting a default unseats others, the first account auto-defaults, and deleting the default promotes another. Checkout `GET /arenas/{id}/bank-details` returns active accounts (default first). Web owner form rebuilt as a multi-account manager; mobile checkout shows a selectable account list (single account renders as before).
+
+### Migrations
+- `e7f1a2c9d3b4` (payment lifecycle enum + column + `payment_events` table, backfilling lifecycle from existing coarse status) and `f8a3b1e6c2d7` (bank-details multi-account: drop unique, add columns, mark existing row default). Both verified upgrade → downgrade → upgrade clean.
+
+### Verification
+- Full backend suite passes (added a payment-lifecycle audit-trail test and a multi-account bank CRUD test); `mypy` clean (143 files); `ruff` clean.
+- `frontend/web` and `frontend/mobile`: `tsc --noEmit` and lint clean.
+
+---
+
+## 2026-07-17 — Reschedule payment reconciliation (revenue-leak fix)
+
+### Completed
+- **Reschedule repricing now reconciles the payment, not just the amounts.** Previously `reschedule_booking` recomputed `total_amount`/`advance_amount`/`remaining_amount` from the new slot price alone, so a confirmed, already-paid booking moved to a peak/pricier slot silently showed as fully paid at the higher price — the venue lost the difference. Now it captures what was already paid (`old total − old remaining`) and:
+  - **Pricier/same slot**: keeps the booking confirmed and records the difference as an outstanding `remaining_amount`, payable at the venue or online — the same balance model advance bookings already use (per product decision: the player keeps the slot and settles the difference).
+  - **Cheaper slot**: refunds the overpaid difference via the new `payment.service.refund_reschedule_overpayment` helper (no-op when no completed payment was captured, e.g. a pending_approval bank transfer).
+- Added `refund_reschedule_overpayment` to the payment module (partial refund of a live booking, not gated on `refund_eligible` unlike the cancellation refund).
+
+### Verification
+- New regression test `test_reschedule_to_pricier_slot_bills_difference_as_outstanding`: books a 2000 off-peak slot (full payment, confirmed), reschedules to a ×1.5 peak slot, asserts `total=3000, advance=2000 (already paid), remaining=1000, status=confirmed`.
+- Full backend suite passes (142 tests); `mypy` clean; `ruff` clean.
+
+### Notes
+- The large payment-architecture items from the same review (provider abstraction, mock/sandbox providers, wallet/commission routing, explicit payment state machine, Excel export, web receipt-upload UI) remain intentionally deferred — out of scope per the earlier "bank details only" decision. This session addressed only the one concrete correctness bug in that review (reschedule reconciliation).
+
+---
+
+## 2026-07-17 — Final audit sweep: CSV auth-refresh + mobile discount transparency
+
+### Completed
+- **Report-export auth refresh (was the last real web gap)**: `services/api.ts#downloadFile` (owner + admin CSV/PDF report downloads) now mirrors `apiRequest`'s one-shot refresh-on-401 — an expired access token transparently refreshes and retries instead of failing the download. `exportCsv` on the bookings page was re-confirmed safe (builds from in-memory rows, no network call).
+- **Mobile discount transparency (last real mobile gap)**: `BookingGroupResponse` now returns a server-authoritative price breakdown — `slots_subtotal`, `equipment_total`, `discount_amount`, `total` (all quantized to 2dp). The mobile payment screen renders the itemized breakdown (slots subtotal, equipment, discount deducted, final total) instead of a single opaque "Total", so a player can independently verify the discount that was applied. Booking-with-discount test extended to assert the breakdown.
+- **Verified not-an-issue**: the arena-city enum migration (`b4d7f21a9c33`) already uses a `USING city::text::arena_city` clause, so it's safe on a non-empty table — the "migration may fail on existing data" finding as written doesn't apply (only a genuinely out-of-enum city value would fail, which can't exist since the column was born with the enum).
+
+### Verification
+- Full backend suite passes (141 tests); `mypy app` clean; `ruff check app tests` clean.
+- `frontend/web` and `frontend/mobile`: `tsc --noEmit` and lint clean.
+
+### Status
+- Every Critical, High, Medium, and Low finding across all audit passes is now either fixed or explicitly verified safe, **except** five pure documentation/CI items intentionally deferred (API spec drift, DB design doc drift, Expo/FCM doc reference, CI migration-model check, web lint-as-warning). None affect runtime correctness.
+
+---
+
+## 2026-07-17 — Closed the remaining audit gaps (backend races/docs, mobile, web polish)
+
+### Completed
+- **Lossy migration downgrade fixed**: `f3dc8c5b1963`'s `locked_until` tz-aware↔naive conversion now uses explicit `AT TIME ZONE 'UTC'` in both directions instead of a bare `alter_column` type change, so rollback can't silently shift stored values under a non-UTC session timezone.
+- **Cancel/reschedule race fixed**: added `booking/repository.get_booking_for_update` (row lock + `populate_existing`); `cancel_booking` and `reschedule_booking` now lock the booking row right before their status check/mutation, closing the window where a concurrent cancel and reschedule on the same booking could both pass a stale status check.
+- **Refund threshold boundary fixed**: `resolve_refund_percentage` now uses `>` instead of `>=`, matching docs/11's "> 6 hours: 100%, < 6 hours: 0%" — cancelling at exactly the threshold no longer over-refunds.
+- **Public visibility gaps closed**: `equipment.list_public_equipment` and `review.list_arena_reviews` now 404 unless the parent arena is `approved` + `is_active`, matching every other public-discovery endpoint (booking creation, arena/court lookups already did this).
+- **Overnight slot-generation silent failure fixed**: `generate_slots` now reports a day whose window is under one hour as `skipped_window_too_short` instead of silently producing zero slots with no signal (true midnight-crossing windows remain rejected at the `DayHours` schema level, so that scenario was already unreachable).
+- **Mobile**: WebSocket reconnect now backs off exponentially with jitter (was a fixed 2s retry); `uploadImage` throws a proper `ApiError` with status/field-errors instead of a generic `Error` (and no longer throws an uncaught `SyntaxError` on a non-JSON error body); a production build now refuses to start without an `https://` `EXPO_PUBLIC_API_URL`; cached GPS fixes older than 5 minutes are treated as stale and re-fetched.
+- **Web**: revenue page no longer shows the same number under two different labels ("Net Payout"/"Total Payouts" collapsed into one "Collected So Far" card); the reviews page gained a "Load More" control instead of a silent 100-row cap; the receipt-verification dialog now checks the receipt URL against the same host allowlist as the CSP `img-src` policy before rendering it as an `<img>`.
+
+### Verification
+- Full backend test suite passes (141 tests, up from 138 — added tests for the equipment/review visibility fix and the short-window slot-generation signal).
+- `mypy app` clean, `ruff check app tests` clean.
+- Migration chain verified end-to-end: fresh downgrade to base and upgrade back to head, clean both ways, including the corrected `locked_until` conversion.
+- `frontend/web` and `frontend/mobile`: `tsc --noEmit` and lint clean.
+
+### Notes
+- Deliberately left as-is (pure documentation/CI, no runtime risk): API spec drift, DB design doc drift, Expo/FCM doc inconsistency, missing CI migration-model verification, and web lint-as-warning-not-error. None of these affect correctness; revisit if a reviewer specifically asks for doc parity.
+
+---
+
+## 2026-07-16 — Concurrency/WS fixes + owner bank-details feature
+
+### Completed
+- **Booking availability re-check (M2)**: added `slot_repo.get_slot_for_update`, a row-locked read with `populate_existing=True`, and switched the final pre-commit availability check in `booking/service.py` to use it — the old `get_slot`/`db.get()` call returned the identity-mapped object loaded before the Redis lock was acquired instead of re-querying, so a slot another transaction just booked could still look available.
+- **Missing WS broadcast on owner slot edits (M3)**: `slot/service.py`'s `update_slot`/`delete_slot` now call `broadcast_slot_status` after commit, matching the booking/payment paths — owner-side slot edits/blocks weren't pushing live updates to connected clients before.
+- **WS broadcast set-mutation race (M4)**: `websocket/manager.py`'s `broadcast` now iterates `list(conns)` instead of the live connection set — a concurrent `disconnect()` mid-broadcast (each send is awaited) could otherwise raise "Set changed size during iteration."
+- **Mobile midnight date bug (M13)**: added `lib/dates.ts#toLocalDateString`; fixed three `nextDays()` helpers (court slots, match creation, reschedule) that built date strings with `Date.toISOString().slice(0,10)` — for UTC+5 (Pakistan) that reports yesterday's date for several hours after local midnight.
+- **Notification email HTML escaping (Low)**: `notification_email()` now HTML-escapes `title`/`body` before interpolating into the email template — those strings can carry caller-supplied text (e.g. an admin's suspension reason) via `notification/service.py`'s template formatting.
+- **Fixed a broken migration**: `a9b3d47f2f11`'s trigger DDL bundled `DROP TRIGGER` + `CREATE TRIGGER` in one `op.execute()`, which asyncpg's prepared-statement protocol rejects; split into two calls.
+- **Owner Bank Details feature** (the one concrete ask from an external review pass): new `ArenaBankDetails` model/table (migration `d2e5a917c4b0`) — bank name, account title, account number, IBAN, branch code, SWIFT, instructions, one row per arena. Owner API (`GET`/`PUT /owner/arenas/{id}/bank-details`), player-facing checkout read (`GET /arenas/{id}/bank-details`, gated on the arena being approved+active). Web: owner sets details from Payment Config; a receipt-review dialog on the bookings page shows the arena's own bank details next to the uploaded receipt for verification. Mobile: the bank_transfer payment screen fetches and displays the arena's bank details before the player uploads a receipt, and disables Pay until details exist.
+
+### Verification
+- Full backend test suite passes (138 tests) including a new bank-details ownership/visibility test.
+- `mypy app` clean, `ruff check app tests` clean.
+- `frontend/web` and `frontend/mobile`: `tsc --noEmit` and lint clean.
+- Migration round-trip verified: upgrade head → downgrade one step → upgrade head, clean both ways.
+
+### Notes
+- Scoped this session to the one concretely-specified feature from a much larger review document (payment-provider abstraction, admin/owner role rearchitecture, and wallet/commission systems were explicitly deferred as roadmap discussion, not a current ask).
+
+---
+
+## 2026-07-16 — Medium/low audit cleanup + migration branch merge
+
+### Completed
+- **Audit tracker verification**: re-checked every open Medium item from the 2026-07-16 audit against the current code. Overlapping peak-pricing validation, the percentage-discount cap on update, upload magic-byte + streaming size validation, CSV formula-injection defusing, and the numeric/inventory CHECK constraint migration were all already implemented in earlier work on this branch — verified rather than re-built.
+- **Reminder de-dup (Low #18)**: added `reminder_24h_sent_at`/`reminder_1h_sent_at` columns to `Booking` so `send_upcoming_reminders` skips a booking it already notified for that window, instead of relying solely on the scheduler's run-interval/tolerance lining up. New migration `b1c4d8e6f2a3`.
+- **Fixed a broken migration**: `a9b3d47f2f11`'s match-capacity trigger DDL bundled `DROP TRIGGER` + `CREATE TRIGGER` in a single `op.execute()`, which asyncpg's prepared-statement protocol rejects ("cannot insert multiple commands into a prepared statement") — split into two `op.execute()` calls. This had never actually been run end-to-end before.
+- **Merged a stray migration branch**: `alembic heads` showed two heads (`b72d9fb46365` off the arena-likes chain, `a9b3d47f2f11`/mine off the booking-webhook chain) that diverged at `f9c9376613cc` — likely from parallel branch work never rebased. Added merge revision `cc641b731b7d` so `alembic upgrade head` resolves to one head again.
+- Cleaned up a handful of pre-existing lint failures (import order in `match/model.py`, two over-length signatures) unrelated to this session's changes, so `ruff check` is clean.
+
+### Verification
+- Full backend test suite passes (137 tests) against the test DB after `alembic upgrade head`.
+- `mypy app` — no issues (141 files).
+- `ruff check app tests` — all checks passed.
+- Migration round-trip verified: upgrade head → downgrade to pre-merge revision → upgrade head again, clean both ways.
+
+---
+
+## 2026-07-16 — Security/race hardening + seed robustness + web config fallback
+
+### Completed
+- **Payment/booking race hardening**: added row-locked booking-group reads for payment confirmation, bank-transfer approval/rejection, receipt upload, and auto-cancel. Webhook handling now locks the whole booking group before checking terminal state, closing the race where a late webhook and the stale-booking sweep could interleave on the same rows.
+- **Seed robustness**: the player-flow seed now fails fast if the expected player roster is shorter than the unpacking path needs, instead of crashing with an opaque tuple-unpack error when the manifest and DB drift apart.
+- **Web production fallback**: the shared frontend API config now falls back to same-origin `/api/v1` when `NEXT_PUBLIC_API_URL` is absent, and the CSP builder only injects the backend origin when one is actually configured. This keeps dev/prod bootstraps from hard-failing on an unset public API URL while preserving the existing CSP host allowlist.
+- **Media validation alignment**: updated the owner arena-upload test to send a real JPEG signature so it exercises the authorization path after the new magic-byte validation.
+
+
+### Verification
+- `backend/tests/modules/test_payment.py` and `backend/tests/modules/test_booking.py` pass.
+- Full backend test suite passes with `pytest -q -p no:logging`.
+- `frontend/web` typecheck passes (`next typegen && tsc --noEmit`).
+- `frontend/web` lint passes.
+
+### Notes
+- Several tracker items in the user list were already implemented in code before this session, including the existing JWT secret guard, dev CORS allowlist, discount TOCTOU protection, match join row lock, refresh-token atomic mark-used, and the report/export sanitization path.
+
+---
+
 ## 2026-07-16 — Traceability review: liked arenas, OTP resend, System Report (Track A, Abubakar)
 
 ### Completed

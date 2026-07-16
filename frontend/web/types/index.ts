@@ -130,6 +130,21 @@ export interface DiscountCode {
   is_active: boolean;
 }
 
+export interface BankDetails {
+  id: string;
+  arena_id: string;
+  label: string | null;
+  bank_name: string;
+  account_title: string;
+  account_number: string;
+  iban: string | null;
+  branch_code: string | null;
+  swift_code: string | null;
+  payment_instructions: string | null;
+  is_default: boolean;
+  is_active: boolean;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;

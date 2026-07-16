@@ -25,6 +25,8 @@ class InitiateResult:
 class WebhookEvent:
     gateway_transaction_id: str
     status: str  # "completed" | "failed"
+    amount: Decimal
+    currency: str
 
 
 @dataclass

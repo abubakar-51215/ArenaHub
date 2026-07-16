@@ -79,13 +79,16 @@ export default function BookingSummaryScreen() {
           .map(([equipment_id, quantity]) => ({ equipment_id, quantity })),
       }),
     onSuccess: (group) => {
-      const actualTotal = group.bookings.reduce((sum, b) => sum + Number(b.total_amount), 0);
       router.replace({
         pathname: '/payment/[groupId]',
         params: {
           groupId: group.booking_group_id,
-          amount: String(actualTotal),
+          amount: group.total,
+          slotsSubtotal: group.slots_subtotal,
+          equipmentTotal: group.equipment_total,
+          discountAmount: group.discount_amount,
           bookingId: group.bookings[0]?.id ?? '',
+          arenaId,
         },
       });
     },

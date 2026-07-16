@@ -3,6 +3,7 @@
  * since this needs a FormData body and no Content-Type override (fetch sets
  * the multipart boundary itself).
  */
+import { ApiError, type FieldError } from '../lib/api';
 import { API_BASE } from '../lib/config';
 import { useAuthStore } from '../store/auth';
 
@@ -23,9 +24,21 @@ export async function uploadImage(
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: form,
   });
-  const env = await res.json();
-  if (!res.ok || !env.success) {
-    throw new Error(env.message || 'Upload failed');
+  // A non-JSON body (5xx HTML error page, proxy timeout) must not throw an
+  // uncaught SyntaxError out of this function.
+  let env: {
+    success?: boolean;
+    message?: string;
+    data?: { url?: string };
+    errors?: FieldError[] | null;
+  };
+  try {
+    env = await res.json();
+  } catch {
+    throw new ApiError(res.statusText || 'Upload failed', res.status);
   }
-  return env.data.url as string;
+  if (!res.ok || !env.success || !env.data?.url) {
+    throw new ApiError(env.message || 'Upload failed', res.status, env.errors ?? []);
+  }
+  return env.data.url;
 }

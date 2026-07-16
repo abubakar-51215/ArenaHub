@@ -6,6 +6,7 @@ every mutating path resolves ``court → arena → owner`` before proceeding.
 """
 
 import uuid
+from datetime import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,14 +130,49 @@ async def list_public_pricing_rules(
 # ---- peak-pricing rules -------------------------------------------------
 
 
+def _rules_conflict(a_weekday: int | None, a_start: time, a_end: time, b: CourtPricingRule) -> bool:
+    """True if two pricing windows can both match the same booking slot —
+    same court, weekdays that aren't mutually exclusive (either is "every
+    day", i.e. None, or they're literally the same weekday), and overlapping
+    time ranges. Mirrors resolve_peak_price's own matching logic (shared/
+    pricing.py) so "can this ever be ambiguous at lookup time" is answered
+    the same way here as it is when a price is actually resolved."""
+    if a_weekday is not None and b.weekday is not None and a_weekday != b.weekday:
+        return False
+    return a_start < b.end_time and b.start_time < a_end  # half-open range overlap
+
+
+async def _reject_overlapping_rule(
+    db: AsyncSession,
+    court_id: uuid.UUID,
+    weekday: int | None,
+    start_time: time,
+    end_time: time,
+    exclude_rule_id: uuid.UUID | None = None,
+) -> None:
+    existing = await repo.list_pricing_rules(db, court_id)
+    for other in existing:
+        if not other.is_active or other.id == exclude_rule_id:
+            continue
+        if _rules_conflict(weekday, start_time, end_time, other):
+            raise ValidationError(
+                f"This window overlaps the existing rule '{other.name}' — a booking "
+                "in the overlap would silently resolve to whichever multiplier is "
+                "higher. Adjust the times so windows don't overlap."
+            )
+
+
 async def add_pricing_rule(
     db: AsyncSession, user: User, court_id: uuid.UUID, data: PricingRuleCreate
 ) -> PricingRuleResponse:
     await _owned_court(db, court_id, user)
+    weekday = int(data.weekday) if data.weekday is not None else None
+    if data.is_active:
+        await _reject_overlapping_rule(db, court_id, weekday, data.start_time, data.end_time)
     rule = CourtPricingRule(
         court_id=court_id,
         name=data.name,
-        weekday=int(data.weekday) if data.weekday is not None else None,
+        weekday=weekday,
         start_time=data.start_time,
         end_time=data.end_time,
         price_multiplier=data.price_multiplier,
@@ -180,6 +216,10 @@ async def update_pricing_rule(
         setattr(rule, field, value)
     if rule.end_time <= rule.start_time:
         raise ValidationError("end_time must be after start_time.")
+    if rule.is_active:
+        await _reject_overlapping_rule(
+            db, court_id, rule.weekday, rule.start_time, rule.end_time, exclude_rule_id=rule.id
+        )
     await db.commit()
     return PricingRuleResponse.model_validate(rule)
 

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     ForeignKey,
     Integer,
     Numeric,
@@ -42,6 +43,7 @@ class Weekday(IntEnum):
 
 class Court(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "courts"
+    __table_args__ = (CheckConstraint("base_price > 0", name="ck_courts_base_price_positive"),)
 
     arena_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -71,6 +73,10 @@ class CourtPricingRule(UUIDPrimaryKeyMixin, Base):
     booking engine (Sprint 3) resolves the effective price from these rules."""
 
     __tablename__ = "court_pricing_rules"
+    __table_args__ = (
+        CheckConstraint("price_multiplier > 0", name="ck_court_pricing_rules_multiplier_positive"),
+        CheckConstraint("end_time > start_time", name="ck_court_pricing_rules_time_order"),
+    )
 
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

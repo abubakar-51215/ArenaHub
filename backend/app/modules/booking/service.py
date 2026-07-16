@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.locking import acquire_slot_lock, release_slot_lock
@@ -43,8 +44,8 @@ STALE_PENDING_PAYMENT_AFTER = timedelta(hours=24)
 # must be >= half the scheduler's run interval so a booking starting exactly
 # on a lead time is never missed between two runs.
 REMINDER_WINDOWS = [
-    (timedelta(hours=24), timedelta(minutes=20), "booking_reminder_24h"),
-    (timedelta(hours=1), timedelta(minutes=20), "booking_reminder_1h"),
+    (timedelta(hours=24), timedelta(minutes=20), "booking_reminder_24h", "reminder_24h_sent_at"),
+    (timedelta(hours=1), timedelta(minutes=20), "booking_reminder_1h", "reminder_1h_sent_at"),
 ]
 
 
@@ -97,7 +98,7 @@ async def create_booking(
 
         fresh_slots: list[TimeSlot] = []
         for slot in slots:
-            fresh = await slot_repo.get_slot(db, slot.id)
+            fresh = await slot_repo.get_slot_for_update(db, slot.id)
             if fresh is None or fresh.status != SlotStatus.available:
                 raise ConflictError("One of the selected slots is no longer available.")
             fresh_slots.append(fresh)
@@ -153,9 +154,16 @@ async def create_booking(
             slot.status = SlotStatus.reserved
             bookings.append(booking)
 
-        if discount is not None:
-            discount.used_count += 1
+        # Atomic conditional UPDATE, not a read-modify-write on the ORM object
+        # — closes the TOCTOU race where two concurrent bookings both pass
+        # the earlier `_is_discount_usable` check before either commits,
+        # which could otherwise push used_count past max_uses.
+        if discount is not None and not await arena_repo.try_increment_discount_usage(
+            db, discount.id
+        ):
+            raise ConflictError("This discount code just reached its usage limit.")
 
+        equipment_total = Decimal("0")
         if data.equipment:
             # Attached to the first row — one payment covers the whole
             # group, so the addon cost only needs to land once.
@@ -175,7 +183,11 @@ async def create_booking(
                 primary.advance_amount = primary.total_amount
             primary.remaining_amount = primary.total_amount - primary.advance_amount
 
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            raise ConflictError("One of the selected slots was booked at the same time.") from exc
         for slot in fresh_slots:
             await broadcast_slot_status(
                 court.id, slot.id, slot.date, slot.start_time, slot.status.value
@@ -184,9 +196,17 @@ async def create_booking(
         for key, token in acquired:
             await release_slot_lock(key, token)
 
+    # discounted_total is the post-discount slot total; equipment is never
+    # discounted, so the final total is that plus equipment. discount_amount
+    # is the slot subtotal minus its discounted form (0 when no code applied).
+    cents = Decimal("0.01")
     return BookingGroupResponse(
         booking_group_id=group_id,
         bookings=[BookingResponse.model_validate(b) for b in bookings],
+        slots_subtotal=subtotal.quantize(cents),
+        equipment_total=equipment_total.quantize(cents),
+        discount_amount=(subtotal - discounted_total).quantize(cents),
+        total=(discounted_total + equipment_total).quantize(cents),
     )
 
 
@@ -255,6 +275,14 @@ async def cancel_booking(
     booking = await _visible_booking(db, user, booking_id)
     if user.role == UserRole.player and booking.player_id != user.id:
         raise ForbiddenError("You cannot cancel someone else's booking.")
+    # Row-locked re-read right before the status check/mutation — otherwise a
+    # concurrent reschedule (or a second cancel) on the same booking could
+    # pass its own status check against the same stale state and race this
+    # transition (e.g. both a cancel and an in-flight reschedule committing).
+    locked = await repo.get_booking_for_update(db, booking_id)
+    if locked is None:
+        raise NotFoundError("Booking not found.")
+    booking = locked
     if booking.status not in _CANCELLABLE:
         raise ValidationError(f"A booking in '{booking.status}' status cannot be cancelled.")
 
@@ -301,6 +329,12 @@ async def reschedule_booking(
     booking = await _visible_booking(db, user, booking_id)
     if user.role == UserRole.player and booking.player_id != user.id:
         raise ForbiddenError("You cannot reschedule someone else's booking.")
+    # Same row-lock rationale as cancel_booking: block a concurrent cancel
+    # (or a second reschedule) on this booking from racing this transition.
+    locked = await repo.get_booking_for_update(db, booking_id)
+    if locked is None:
+        raise NotFoundError("Booking not found.")
+    booking = locked
     if booking.status not in _RESCHEDULABLE:
         raise ValidationError(f"A booking in '{booking.status}' status cannot be rescheduled.")
     if _booking_start(booking) <= datetime.now():
@@ -322,8 +356,7 @@ async def reschedule_booking(
 
         old_slot = await slot_repo.get_slot(db, booking.slot_id)
         # Carry the old slot's occupancy status onto the new one, preserving
-        # the pending_approval/confirmed invariant (price is unchanged —
-        # the player already committed to the original amount).
+        # the pending_approval/confirmed invariant.
         fresh_new_slot.status = old_slot.status if old_slot is not None else SlotStatus.reserved
         if old_slot is not None:
             old_slot.status = SlotStatus.available
@@ -332,6 +365,28 @@ async def reschedule_booking(
         booking.booking_date = fresh_new_slot.date
         booking.start_time = fresh_new_slot.start_time
         booking.end_time = fresh_new_slot.end_time
+
+        # Reprice against the new slot and reconcile against what the player
+        # has already paid upfront for this booking (its old total minus the
+        # balance that was still outstanding). The player keeps the booking;
+        # a positive price difference becomes an outstanding balance owed at
+        # the venue or online — exactly like an advance booking's remaining
+        # balance — rather than the booking silently absorbing the change and
+        # showing as fully paid at the new (higher) amount. A negative
+        # difference (cheaper slot) means the player overpaid and is refunded.
+        already_paid = booking.total_amount - booking.remaining_amount
+        new_total = fresh_new_slot.price
+        booking.total_amount = new_total
+        if new_total >= already_paid:
+            booking.advance_amount = already_paid
+            booking.remaining_amount = new_total - already_paid
+        else:
+            booking.advance_amount = new_total
+            booking.remaining_amount = Decimal("0")
+            from app.modules.payment.service import refund_reschedule_overpayment
+
+            await refund_reschedule_overpayment(db, booking, already_paid - new_total)
+
         await db.commit()
         if old_slot is not None:
             await broadcast_slot_status(
@@ -358,9 +413,17 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
     """Cancel bookings still ``pending_payment`` after 24 hours, releasing
     their slots. Called by the APScheduler job in ``app/tasks/`` (added
     alongside the payment module)."""
+    # Local import avoids a payment<->booking circular import (same seam as
+    # cancel_booking's create_refund_for_cancelled_booking import below).
+    from app.modules.payment import repository as payment_repo
+    from app.modules.payment import state_machine
+    from app.modules.payment.model import PaymentLifecycleStatus as Lifecycle
+    from app.modules.payment.model import PaymentStatus as GatewayPaymentStatus
+
     cutoff = (now or datetime.now()) - STALE_PENDING_PAYMENT_AFTER
-    stale = await repo.list_stale_pending_payment(db, cutoff)
+    stale = await repo.list_stale_pending_payment_for_update(db, cutoff)
     freed_slots: list[TimeSlot] = []
+    marked_groups: set[uuid.UUID] = set()
     for booking in stale:
         slot = await slot_repo.get_slot(db, booking.slot_id)
         if slot is not None and slot.status == SlotStatus.reserved:
@@ -369,6 +432,21 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
         booking.status = BookingStatus.cancelled
         booking.cancellation_reason = "Auto-cancelled: payment not completed within 24 hours."
         await equipment_service.release_for_booking(db, booking.id)
+
+        # Also close out the gateway payment row so a webhook that arrives
+        # after this sweep sees status != pending and no-ops instead of
+        # resurrecting the booking it just cancelled (belt-and-suspenders on
+        # top of handle_webhook's own booking-status check).
+        if booking.booking_group_id not in marked_groups:
+            marked_groups.add(booking.booking_group_id)
+            payment = await payment_repo.get_payment_by_group(db, booking.booking_group_id)
+            if payment is not None and payment.status == GatewayPaymentStatus.pending:
+                payment.status = GatewayPaymentStatus.failed
+                # Keep the fine-grained lifecycle in step with the coarse
+                # status — the payment window elapsed, so it's expired.
+                await state_machine.advance(
+                    db, payment, Lifecycle.expired, note="Payment window elapsed (auto-cancel)."
+                )
     await db.commit()
     for slot in freed_slots:
         await broadcast_slot_status(
@@ -399,21 +477,22 @@ async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None)
     ``app/tasks/``. Console-logs via ``shared/notify`` until the real
     notification module (Sprint 5) exists — see that module's docstring.
 
-    Simplification: there's no "reminder already sent" flag on Booking, so
-    correctness depends on the scheduler's run interval staying inside each
-    window's tolerance (no duplicate/missed reminders as long as it does);
-    the Sprint 5 notification module should add proper send-tracking.
+    Each window's ``*_sent_at`` column on Booking is checked/set so a delayed
+    or re-run scheduler tick can never send the same reminder twice.
     """
     current = now or datetime.now()
     sent = 0
-    for lead_time, tolerance, event in REMINDER_WINDOWS:
+    for lead_time, tolerance, event, sent_at_field in REMINDER_WINDOWS:
         window_start = current + lead_time - tolerance
         window_end = current + lead_time + tolerance
         candidate_dates = {window_start.date(), window_end.date()}
         for booking in await repo.list_confirmed_bookings_on_dates(db, list(candidate_dates)):
+            if getattr(booking, sent_at_field) is not None:
+                continue
             start = _booking_start(booking)
             if window_start <= start <= window_end:
                 await notify_user(db, booking.player_id, event, booking_id=str(booking.id))
+                setattr(booking, sent_at_field, current)
                 sent += 1
     if sent:
         await db.commit()

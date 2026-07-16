@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
 from app.modules.booking.model import Booking, PaymentStatus
-from app.modules.payment.model import Payment, Refund
+from app.modules.payment.model import Payment, PaymentEvent, PaymentPurpose, Refund
 
 
 async def get_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
@@ -19,9 +19,30 @@ async def get_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment | None
 
 
 async def get_payment_by_group(db: AsyncSession, booking_group_id: uuid.UUID) -> Payment | None:
+    """The primary (initial ``booking``) payment for a group — what refunds
+    draw against and receipts render. Balance top-ups are separate rows, found
+    via ``get_pending_balance_payment``."""
     result = await db.execute(
         select(Payment)
-        .where(Payment.booking_group_id == booking_group_id)
+        .where(
+            Payment.booking_group_id == booking_group_id,
+            Payment.purpose == PaymentPurpose.booking,
+        )
+        .order_by(Payment.created_at.desc())
+    )
+    return result.scalars().first()
+
+
+async def get_pending_balance_payment(
+    db: AsyncSession, booking_group_id: uuid.UUID
+) -> Payment | None:
+    result = await db.execute(
+        select(Payment)
+        .where(
+            Payment.booking_group_id == booking_group_id,
+            Payment.purpose == PaymentPurpose.balance,
+            Payment.status == PaymentStatus.pending,
+        )
         .order_by(Payment.created_at.desc())
     )
     return result.scalars().first()
@@ -63,6 +84,22 @@ async def get_payment_by_gateway_transaction_id(
     return result.scalar_one_or_none()
 
 
+async def get_payment_by_gateway_transaction_id_for_update(
+    db: AsyncSession, gateway_transaction_id: str
+) -> Payment | None:
+    result = await db.execute(
+        select(Payment)
+        .where(Payment.gateway_transaction_id == gateway_transaction_id)
+        .with_for_update()
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_payment_for_update(db: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
+    result = await db.execute(select(Payment).where(Payment.id == payment_id).with_for_update())
+    return result.scalar_one_or_none()
+
+
 async def add_payment(db: AsyncSession, payment: Payment) -> Payment:
     db.add(payment)
     await db.flush()
@@ -75,9 +112,22 @@ async def add_refund(db: AsyncSession, refund: Refund) -> Refund:
     return refund
 
 
-async def get_refund_for_booking(db: AsyncSession, booking_id: uuid.UUID) -> Refund | None:
-    result = await db.execute(select(Refund).where(Refund.booking_id == booking_id))
-    return result.scalars().first()
+async def sum_refunds_for_payment(db: AsyncSession, payment_id: uuid.UUID) -> Decimal:
+    """Total refunded (pending + processed) against a payment — used to decide
+    when a payment is fully refunded and its lifecycle should reflect it."""
+    total = await db.scalar(
+        select(func.coalesce(func.sum(Refund.amount), 0)).where(Refund.payment_id == payment_id)
+    )
+    return Decimal(total or 0)
+
+
+async def list_payment_events(db: AsyncSession, payment_id: uuid.UUID) -> list[PaymentEvent]:
+    result = await db.execute(
+        select(PaymentEvent)
+        .where(PaymentEvent.payment_id == payment_id)
+        .order_by(PaymentEvent.created_at.asc())
+    )
+    return list(result.scalars().all())
 
 
 # ---- owner dashboard revenue ----------------------------------------------

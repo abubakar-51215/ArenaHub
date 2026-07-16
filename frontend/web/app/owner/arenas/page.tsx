@@ -40,13 +40,16 @@ export default function ArenasPage() {
   return (
     <>
       <PageHeader title="Manage Arenas">
-        <Button onClick={openCreate} className="bg-blue-600 text-white hover:bg-blue-700">
+        <Button
+          onClick={openCreate}
+          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+        >
           <Plus className="size-4" /> Add Arena
         </Button>
       </PageHeader>
 
-      <div className="p-8">
-        <div className="rounded-xl border border-border bg-card">
+      <div className="animate-fade-in p-4 sm:p-6 lg:p-8">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

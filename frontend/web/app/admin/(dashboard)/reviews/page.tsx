@@ -66,14 +66,14 @@ export default function AdminReviewsPage() {
 
   return (
     <>
-      <PageHeader title="Review Moderation" />
+      <PageHeader title="Review Moderation" subtitle="Moderate user reviews and ratings" />
 
-      <div className="space-y-4 p-8">
+      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
 
-        <div className="rounded-xl border border-border bg-card">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

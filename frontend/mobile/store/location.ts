@@ -24,6 +24,10 @@ const CITY_CENTERS: Record<ArenaCity, { lat: number; lon: number }> = {
 /** A detection farther than this from every supported city is rejected. */
 const MAX_CITY_RADIUS_KM = 60;
 
+/** A cached last-known fix older than this is treated as stale — the device
+ * may not have moved GPS in a while, so a fresh fix is requested instead. */
+const MAX_CACHED_LOCATION_AGE_MS = 5 * 60 * 1000;
+
 function haversineKm(
   lat1: number,
   lon1: number,
@@ -79,11 +83,15 @@ export const useLocationStore = create<LocationState>()((set, get) => ({
         set({ status: "denied", city: null });
         return;
       }
+      const cached = await Location.getLastKnownPositionAsync();
+      const cachedIsFresh =
+        cached != null && Date.now() - cached.timestamp <= MAX_CACHED_LOCATION_AGE_MS;
       const position =
-        (await Location.getLastKnownPositionAsync()) ??
-        (await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        }));
+        cachedIsFresh && cached
+          ? cached
+          : await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
       const city = nearestSupportedCity(
         position.coords.latitude,
         position.coords.longitude,

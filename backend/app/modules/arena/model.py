@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -177,7 +178,22 @@ class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     amount, optional usage cap + validity window + minimum-spend threshold."""
 
     __tablename__ = "discount_codes"
-    __table_args__ = (UniqueConstraint("arena_id", "code", name="uq_discount_codes_arena_id_code"),)
+    __table_args__ = (
+        UniqueConstraint("arena_id", "code", name="uq_discount_codes_arena_id_code"),
+        CheckConstraint("discount_value > 0", name="ck_discount_codes_discount_value_positive"),
+        CheckConstraint(
+            "discount_type != 'percentage' OR discount_value <= 100",
+            name="ck_discount_codes_percentage_max_100",
+        ),
+        CheckConstraint(
+            "min_booking_amount >= 0", name="ck_discount_codes_min_booking_amount_nonneg"
+        ),
+        CheckConstraint("used_count >= 0", name="ck_discount_codes_used_count_nonneg"),
+        CheckConstraint(
+            "max_uses IS NULL OR used_count <= max_uses",
+            name="ck_discount_codes_used_count_within_max_uses",
+        ),
+    )
 
     arena_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -201,6 +217,37 @@ class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     arena: Mapped["Arena"] = relationship(back_populates="discount_codes")
+
+
+class ArenaBankDetails(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """An owner's receiving-account details for the ``bank_transfer`` payment
+    method — shown to the player at checkout so they know where to send the
+    transfer before uploading a receipt (docs/06, docs/11 manual-payment
+    flow). An arena may hold several accounts (e.g. Meezan / HBL / UBL); at
+    most one is ``is_default``, and only ``is_active`` accounts are offered to
+    players at checkout."""
+
+    __tablename__ = "arena_bank_details"
+
+    arena_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("arenas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Owner-facing label distinguishing multiple accounts, e.g. "Meezan Main".
+    label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bank_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    account_title: Mapped[str] = mapped_column(String(150), nullable=False)
+    account_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    iban: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    branch_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    swift_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    payment_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    arena: Mapped["Arena"] = relationship()
 
 
 class ArenaLike(UUIDPrimaryKeyMixin, Base):

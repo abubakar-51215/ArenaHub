@@ -41,6 +41,7 @@ export class ApiError extends Error {
 }
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+let refreshPromise: Promise<string | null> | null = null;
 
 async function parse<T>(res: Response): Promise<ApiEnvelope<T>> {
   try {
@@ -68,20 +69,28 @@ async function rawRequest(
 
 /** Attempt a one-shot refresh of the token pair. Returns the new access token. */
 async function tryRefresh(): Promise<string | null> {
-  const { refreshToken, setTokens, clear } = useAuthStore.getState();
-  if (!refreshToken) return null;
-  const res = await rawRequest("POST", "/auth/refresh", { refresh_token: refreshToken }, null);
-  if (!res.ok) {
-    clear();
-    return null;
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    const { refreshToken, setTokens, clear } = useAuthStore.getState();
+    if (!refreshToken) return null;
+    const res = await rawRequest("POST", "/auth/refresh", { refresh_token: refreshToken }, null);
+    if (!res.ok) {
+      clear();
+      return null;
+    }
+    const env = await parse<Tokens>(res);
+    if (!env.data) {
+      clear();
+      return null;
+    }
+    setTokens(env.data);
+    return env.data.access_token;
+  })();
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
-  const env = await parse<Tokens>(res);
-  if (!env.data) {
-    clear();
-    return null;
-  }
-  setTokens(env.data);
-  return env.data.access_token;
 }
 
 /** Authed request against /api/v1. Throws {@link ApiError} on a failure envelope. */
@@ -110,12 +119,19 @@ export const api = {
 };
 
 /** Fetch a binary report export and trigger a browser download. Raw fetch
- * since these endpoints return CSV/PDF bytes, not the JSON envelope. */
+ * since these endpoints return CSV/PDF bytes, not the JSON envelope — but it
+ * mirrors apiRequest's one-shot refresh-on-401 so an expired access token
+ * transparently refreshes instead of failing the download. */
 export async function downloadFile(path: string, fallbackName: string): Promise<void> {
   const token = useAuthStore.getState().accessToken;
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const doFetch = (t: string | null) =>
+    fetch(`${API_BASE}${path}`, { headers: t ? { Authorization: `Bearer ${t}` } : undefined });
+
+  let res = await doFetch(token);
+  if (res.status === 401 && token) {
+    const fresh = await tryRefresh();
+    if (fresh) res = await doFetch(fresh);
+  }
   if (!res.ok) throw new ApiError("Could not download the report.", res.status);
 
   const disposition = res.headers.get("Content-Disposition") ?? "";

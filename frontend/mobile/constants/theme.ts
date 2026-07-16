@@ -11,6 +11,36 @@ import { Platform } from 'react-native';
 const tintColorLight = '#2563EB';
 const tintColorDark = '#60A5FA';
 
+/** Brand gradients & elevation, mirrored from the web design system. */
+export const Brand = {
+  /** Primary CTA / active surfaces — blue → deep blue. */
+  gradient: ['#3B82F6', '#2563EB'] as const,
+  /** Hero banners (profile header, matchmaking) — blue → indigo. */
+  gradientHero: ['#2563EB', '#1E40AF'] as const,
+  /** Logo mark accent — blue → emerald. */
+  gradientBrand: ['#2563EB', '#16A34A'] as const,
+  primary: '#2563EB',
+  primaryDark: '#1D4ED8',
+};
+
+/** Reusable soft elevation for cards & buttons. */
+export const Shadow = {
+  card: {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  brand: {
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
+};
+
 export const Colors = {
   light: {
     text: '#11181C',

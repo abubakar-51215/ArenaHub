@@ -27,6 +27,8 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -49,38 +51,54 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0.002 247);
+  --foreground: oklch(0.21 0.02 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.21 0.02 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.21 0.02 260);
+  /* Brand blue (#2563EB / blue-600) as the primary across the platform. */
+  --primary: oklch(0.546 0.215 262.9);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.968 0.006 247);
+  --secondary-foreground: oklch(0.28 0.02 260);
+  --muted: oklch(0.968 0.006 247);
+  --muted-foreground: oklch(0.552 0.02 257);
+  --accent: oklch(0.955 0.02 255);
+  --accent-foreground: oklch(0.42 0.14 262.9);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --success: oklch(0.627 0.17 149.2);
+  --warning: oklch(0.705 0.16 70);
+  --border: oklch(0.922 0.006 247);
+  --input: oklch(0.922 0.006 247);
+  --ring: oklch(0.546 0.215 262.9);
+  /* Chart palette — mirrors the wireframe donut/line/bar hues. */
+  --chart-1: oklch(0.546 0.215 262.9); /* blue   */
+  --chart-2: oklch(0.627 0.17 149.2); /* emerald */
+  --chart-3: oklch(0.769 0.16 70.08); /* amber  */
+  --chart-4: oklch(0.637 0.21 25.5); /* red    */
+  --chart-5: oklch(0.606 0.19 293.7); /* violet */
+  --radius: 0.7rem;
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.32 0.02 260);
+  --sidebar-primary: oklch(0.546 0.215 262.9);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.955 0.02 255);
+  --sidebar-accent-foreground: oklch(0.42 0.14 262.9);
+  --sidebar-border: oklch(0.922 0.006 247);
+  --sidebar-ring: oklch(0.546 0.215 262.9);
+
+  /* Brand gradients & elevation — reused across surfaces. */
+  --brand-gradient: linear-gradient(135deg, oklch(0.58 0.21 264) 0%, oklch(0.5 0.22 262) 100%);
+  --brand-gradient-soft: linear-gradient(
+    135deg,
+    oklch(0.97 0.02 255) 0%,
+    oklch(0.955 0.03 262) 100%
+  );
+  --shadow-brand: 0 10px 30px -12px oklch(0.546 0.215 262.9 / 0.45);
+  --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04), 0 4px 16px -8px oklch(0.21 0.02 260 / 0.08);
+  --shadow-card-hover:
+    0 4px 12px -4px oklch(0.21 0.02 260 / 0.1), 0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
 }
 
 .dark {
@@ -125,6 +143,148 @@
      class in layout.tsx; custom properties don't flow up to ancestors, so
      font-sans must be applied here (not on <html>) or it can't resolve it. */
   body {
-    @apply bg-background font-sans text-foreground;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Brand system — gradients, elevation, and motion.
+   Tasteful/professional intensity: soft gradients on hero/CTA/stat surfaces,
+   layered shadows, and short enter/hover micro-animations. Everything here
+   degrades gracefully under `prefers-reduced-motion`.
+--------------------------------------------------------------------------- */
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: var(--brand-gradient);
+  }
+  .bg-brand-gradient-soft {
+    background-image: var(--brand-gradient-soft);
+  }
+  .text-gradient-brand {
+    background-image: linear-gradient(120deg, oklch(0.55 0.21 263) 0%, oklch(0.63 0.17 173) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-brand {
+    box-shadow: var(--shadow-brand);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  /* Elevated card: soft shadow, subtle lift + ring on hover. */
+  .card-elevated {
+    box-shadow: var(--shadow-card);
+    transition:
+      box-shadow 0.25s ease,
+      transform 0.25s ease;
+  }
+  .card-elevated:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  /* Thin gradient accent used along the top of stat/hero cards. */
+  .accent-top::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background-image: var(--brand-gradient);
+    opacity: 0.9;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease both;
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Stagger helper — apply alongside an enter animation on list items. */
+.stagger > * {
+  animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 0.16s;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 0.24s;
+}
+
+/* Skeleton shimmer for loading states. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--muted);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.6), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-scale-in,
+  .stagger > *,
+  .card-elevated {
+    animation: none !important;
+    transition: none !important;
+  }
+  .card-elevated:hover {
+    transform: none;
   }
 }

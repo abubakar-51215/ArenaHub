@@ -12,7 +12,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +25,15 @@ if TYPE_CHECKING:
 
 class Equipment(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "equipment"
+    __table_args__ = (
+        CheckConstraint("rental_price > 0", name="ck_equipment_rental_price_positive"),
+        CheckConstraint("quantity_total >= 0", name="ck_equipment_quantity_total_nonneg"),
+        CheckConstraint("quantity_available >= 0", name="ck_equipment_quantity_available_nonneg"),
+        CheckConstraint(
+            "quantity_available <= quantity_total",
+            name="ck_equipment_quantity_available_within_total",
+        ),
+    )
 
     arena_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("arenas.id", ondelete="CASCADE"), nullable=False, index=True

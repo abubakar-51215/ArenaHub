@@ -55,7 +55,7 @@ export default function OwnerNotificationsPage() {
         </Button>
       </PageHeader>
 
-      <div className="space-y-3 p-8">
+      <div className="space-y-3 p-4 sm:p-6 lg:p-8">
         {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {!isLoading && notifications.length === 0 && (
           <div className="rounded-xl border border-border bg-card p-10 text-center">

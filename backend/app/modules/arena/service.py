@@ -14,8 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as repo
-from app.modules.arena.model import Arena, ArenaBlockedDate, ArenaCity, ArenaStatus, DiscountCode
+from app.modules.arena.model import (
+    Arena,
+    ArenaBankDetails,
+    ArenaBlockedDate,
+    ArenaCity,
+    ArenaStatus,
+    DiscountCode,
+    DiscountType,
+)
 from app.modules.arena.schema import (
+    ArenaBankDetailsCreate,
+    ArenaBankDetailsResponse,
+    ArenaBankDetailsUpdate,
     ArenaCreate,
     ArenaResponse,
     ArenaUpdate,
@@ -338,6 +349,11 @@ async def update_discount(
         setattr(discount, field, value)
     if discount.valid_from and discount.valid_until and discount.valid_until <= discount.valid_from:
         raise ValidationError("valid_until must be after valid_from.")
+    # DiscountCodeUpdate has no discount_type field (it's immutable after
+    # create), so this bound can only be enforced here against the existing
+    # type — the create-time model_validator only ever saw the create schema.
+    if discount.discount_type is DiscountType.percentage and discount.discount_value > 100:
+        raise ValidationError("percentage discount cannot exceed 100.")
     await db.commit()
     return DiscountCodeResponse.model_validate(discount)
 
@@ -348,3 +364,107 @@ async def delete_discount(
     discount = await _owned_discount(db, user, arena_id, discount_id)
     await db.delete(discount)
     await db.commit()
+
+
+# ---- bank details (manual bank_transfer payment method) -------------------
+
+
+async def list_owner_bank_details(
+    db: AsyncSession, user: User, arena_id: uuid.UUID
+) -> list[ArenaBankDetailsResponse]:
+    """All of the owner's bank accounts for an arena (may be empty)."""
+    await _owned_arena(db, arena_id, user)
+    rows = await repo.list_bank_details(db, arena_id)
+    return [ArenaBankDetailsResponse.model_validate(r) for r in rows]
+
+
+async def _owned_bank_details(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, bank_details_id: uuid.UUID
+) -> ArenaBankDetails:
+    await _owned_arena(db, arena_id, user)
+    details = await repo.get_bank_details(db, bank_details_id)
+    if details is None or details.arena_id != arena_id:
+        raise NotFoundError("Bank account not found.")
+    return details
+
+
+async def _ensure_active_default(db: AsyncSession, arena_id: uuid.UUID) -> None:
+    """Guarantee the invariant "an arena with any active account has exactly
+    one active default". Called after any mutation: if no active account is
+    marked default, promote the newest active one; and clear a default flag
+    left on an inactive account."""
+    accounts = await repo.list_bank_details(db, arena_id)
+    active = [a for a in accounts if a.is_active]
+    # A default must be active — drop the flag from any inactive account.
+    for a in accounts:
+        if a.is_default and not a.is_active:
+            a.is_default = False
+    if active and not any(a.is_default for a in active):
+        active[0].is_default = True  # list is default-first then newest
+
+
+async def add_bank_details(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, data: ArenaBankDetailsCreate
+) -> ArenaBankDetailsResponse:
+    await _owned_arena(db, arena_id, user)
+    fields = data.model_dump()
+    # A default must be active — asking for a default implies active.
+    if fields.get("is_default"):
+        fields["is_active"] = True
+    details = ArenaBankDetails(arena_id=arena_id, **fields)
+    saved = await repo.add_bank_details(db, details)
+    if saved.is_default:
+        await repo.clear_default_bank_details(db, arena_id, except_id=saved.id)
+    await _ensure_active_default(db, arena_id)
+    await db.commit()
+    return ArenaBankDetailsResponse.model_validate(saved)
+
+
+async def update_bank_details(
+    db: AsyncSession,
+    user: User,
+    arena_id: uuid.UUID,
+    bank_details_id: uuid.UUID,
+    data: ArenaBankDetailsUpdate,
+) -> ArenaBankDetailsResponse:
+    details = await _owned_bank_details(db, user, arena_id, bank_details_id)
+    fields = data.model_dump(exclude_unset=True)
+    # Making an account the default also activates it (a default must be
+    # active, so it's always offered at checkout).
+    if fields.get("is_default"):
+        fields["is_active"] = True
+    for field, value in fields.items():
+        setattr(details, field, value)
+    if details.is_default:
+        await repo.clear_default_bank_details(db, arena_id, except_id=details.id)
+    await _ensure_active_default(db, arena_id)
+    await db.commit()
+    return ArenaBankDetailsResponse.model_validate(details)
+
+
+async def delete_bank_details(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, bank_details_id: uuid.UUID
+) -> None:
+    details = await _owned_bank_details(db, user, arena_id, bank_details_id)
+    await db.delete(details)
+    await db.flush()
+    # Removing the default (or any account) may leave the arena without an
+    # active default — promote another if so.
+    await _ensure_active_default(db, arena_id)
+    await db.commit()
+
+
+async def get_bank_details_for_checkout(
+    db: AsyncSession, arena_id: uuid.UUID
+) -> list[ArenaBankDetailsResponse]:
+    """Player-facing read at checkout — any authenticated user, restricted to
+    arenas actually bookable (matches ``get_public_arena``'s visibility rule).
+    Returns every active account (default first) so the player can pick which
+    to transfer to."""
+    arena = await repo.get_arena(db, arena_id)
+    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+        raise NotFoundError("Arena not found.")
+    rows = await repo.list_active_bank_details(db, arena_id)
+    if not rows:
+        raise NotFoundError("This arena has not set up bank transfer details yet.")
+    return [ArenaBankDetailsResponse.model_validate(r) for r in rows]

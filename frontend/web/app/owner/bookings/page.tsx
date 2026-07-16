@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/owner/page-header";
+import { ReceiptReviewDialog } from "@/components/owner/receipt-review-dialog";
 import { StatusBadge } from "@/components/owner/status-badge";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,7 @@ export default function BookingsPage() {
   const approve = useApprovePayment();
   const reject = useRejectPayment();
   const [rejecting, setRejecting] = useState<OwnerBookingRow | null>(null);
+  const [reviewing, setReviewing] = useState<OwnerBookingRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onApprove(row: OwnerBookingRow) {
@@ -143,7 +145,7 @@ export default function BookingsPage() {
   return (
     <>
       <PageHeader title="Booking Management" />
-      <div className="space-y-4 p-8">
+      <div className="space-y-4 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-wrap items-center gap-3">
           <Select value={arenaId} onChange={(e) => setArena(e.target.value)} className="w-44">
             <option value="">All Arenas</option>
@@ -200,7 +202,7 @@ export default function BookingsPage() {
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
 
-        <div className="rounded-xl border border-border bg-card">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -251,15 +253,14 @@ export default function BookingsPage() {
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
                       {row.receipt_proof_url && (
-                        <a
-                          href={row.receipt_proof_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="View receipt"
+                        <button
+                          type="button"
+                          onClick={() => setReviewing(row)}
+                          title="Verify receipt against bank details"
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <ExternalLink className="size-4" />
-                        </a>
+                        </button>
                       )}
                       {row.status === "pending_approval" && row.payment_id && (
                         <>
@@ -309,7 +310,11 @@ export default function BookingsPage() {
                   key={p}
                   variant={p === page ? "default" : "outline"}
                   size="icon-sm"
-                  className={p === page ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+                  className={
+                    p === page
+                      ? "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+                      : ""
+                  }
                   onClick={() => setPage(p)}
                 >
                   {p}
@@ -329,6 +334,8 @@ export default function BookingsPage() {
           </div>
         </div>
       </div>
+
+      <ReceiptReviewDialog row={reviewing} onOpenChange={(v) => !v && setReviewing(null)} />
 
       <TextInputDialog
         open={!!rejecting}

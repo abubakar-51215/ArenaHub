@@ -80,7 +80,7 @@ export default function AdminComplaintsPage() {
 
   return (
     <>
-      <PageHeader title="Complaints">
+      <PageHeader title="Complaints" subtitle="Manage user complaints and support tickets">
         <Select
           value={status}
           onChange={(e) => {
@@ -113,8 +113,8 @@ export default function AdminComplaintsPage() {
         </Select>
       </PageHeader>
 
-      <div className="space-y-4 p-8">
-        <div className="rounded-xl border border-border bg-card">
+      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -255,7 +255,7 @@ export default function AdminComplaintsPage() {
               Cancel
             </Button>
             <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
               disabled={respond.isPending || !response.trim()}
               onClick={onRespond}
             >
