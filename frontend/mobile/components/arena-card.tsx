@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Shadow } from '@/constants/theme';
 import type { Arena } from '@/types';
 
 export function ArenaCard({ arena, width }: { arena: Arena; width?: number }) {
@@ -43,9 +43,10 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     backgroundColor: '#fff',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.border,
     overflow: 'hidden',
+    ...Shadow.card,
   },
   image: { width: '100%', height: 110, backgroundColor: Colors.light.card },
   body: { padding: 10, gap: 4 },
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   meta: { fontSize: 12, color: Colors.light.muted, flexShrink: 1 },
   sportPill: {
-    backgroundColor: Colors.light.card,
+    backgroundColor: '#EFF6FF',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,

@@ -1,34 +1,68 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
-import { initiatePayment, simulateConfirm, uploadReceipt } from '@/services/payments';
+import { getBankDetails } from '@/services/arenas';
+import {
+  initiateBalancePayment,
+  initiatePayment,
+  simulateConfirm,
+  uploadReceipt,
+} from '@/services/payments';
 import { uploadImage } from '@/services/uploads';
 import type { PaymentMethod } from '@/types';
 
-const METHODS: { value: PaymentMethod; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'card', label: 'Credit / Debit Card', icon: 'card-outline' },
-  { value: 'jazzcash', label: 'JazzCash', icon: 'phone-portrait-outline' },
-  { value: 'easypaisa', label: 'EasyPaisa', icon: 'wallet-outline' },
-  { value: 'bank_transfer', label: 'Bank Transfer', icon: 'business-outline' },
-];
+const ALL_METHODS: { value: PaymentMethod; label: string; icon: keyof typeof Ionicons.glyphMap }[] =
+  [
+    { value: 'card', label: 'Credit / Debit Card', icon: 'card-outline' },
+    { value: 'jazzcash', label: 'JazzCash', icon: 'phone-portrait-outline' },
+    { value: 'easypaisa', label: 'EasyPaisa', icon: 'wallet-outline' },
+    { value: 'bank_transfer', label: 'Bank Transfer', icon: 'business-outline' },
+  ];
 
 export default function PaymentScreen() {
-  const { groupId, amount, bookingId } = useLocalSearchParams<{
-    groupId: string;
-    amount: string;
-    bookingId: string;
-  }>();
+  const { groupId, amount, bookingId, arenaId, slotsSubtotal, equipmentTotal, discountAmount, balance } =
+    useLocalSearchParams<{
+      groupId: string;
+      amount: string;
+      bookingId: string;
+      arenaId: string;
+      slotsSubtotal: string;
+      equipmentTotal: string;
+      discountAmount: string;
+      balance: string;
+    }>();
+  // Balance mode settles an outstanding balance on a confirmed booking —
+  // gateway methods only (a balance isn't paid by bank-transfer receipt).
+  const isBalance = balance === '1';
+  const METHODS = isBalance
+    ? ALL_METHODS.filter((m) => m.value !== 'bank_transfer')
+    : ALL_METHODS;
+  const discount = Number(discountAmount ?? 0);
+  const equipment = Number(equipmentTotal ?? 0);
   const [method, setMethod] = useState<PaymentMethod>('card');
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const bankDetails = useQuery({
+    queryKey: ['bank-details', arenaId],
+    queryFn: () => getBankDetails(arenaId),
+    enabled: method === 'bank_transfer' && !!arenaId,
+  });
+  const accounts = bankDetails.data ?? [];
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const selectedAccount =
+    accounts.find((a) => a.id === selectedAccountId) ??
+    accounts.find((a) => a.is_default) ??
+    accounts[0] ??
+    null;
 
   async function pickReceipt() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -42,6 +76,11 @@ export default function PaymentScreen() {
 
   const payMutation = useMutation({
     mutationFn: async () => {
+      if (isBalance) {
+        const { payment } = await initiateBalancePayment(groupId, method);
+        await simulateConfirm(payment.id, true);
+        return { pendingApproval: false };
+      }
       const { payment } = await initiatePayment(groupId, method);
       if (method === 'bank_transfer') {
         if (!receiptUri) throw new Error('Attach a receipt photo first.');
@@ -67,7 +106,7 @@ export default function PaymentScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Payment</Text>
+        <Text style={styles.title}>{isBalance ? 'Pay Balance' : 'Payment'}</Text>
       </View>
 
       <View style={styles.content}>
@@ -89,6 +128,71 @@ export default function PaymentScreen() {
 
         {method === 'bank_transfer' ? (
           <View style={styles.receiptSection}>
+            <Text style={styles.sectionTitle}>Transfer To</Text>
+            {bankDetails.isLoading ? (
+              <ActivityIndicator color={Colors.light.tint} />
+            ) : accounts.length > 0 ? (
+              <>
+                {accounts.length > 1 ? (
+                  <Text style={styles.receiptHint}>
+                    Choose an account to transfer to:
+                  </Text>
+                ) : null}
+                {accounts.map((account) => {
+                  const isSelected = selectedAccount?.id === account.id;
+                  return (
+                    <Pressable
+                      key={account.id}
+                      onPress={() => setSelectedAccountId(account.id)}
+                      style={[styles.bankCard, isSelected && styles.bankCardActive]}>
+                      {accounts.length > 1 ? (
+                        <View style={styles.bankRow}>
+                          <Text style={styles.bankValue}>{account.label || account.bank_name}</Text>
+                          <Ionicons
+                            name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                            size={18}
+                            color={isSelected ? Colors.light.tint : Colors.light.muted}
+                          />
+                        </View>
+                      ) : null}
+                      <View style={styles.bankRow}>
+                        <Text style={styles.bankLabel}>Bank</Text>
+                        <Text style={styles.bankValue}>{account.bank_name}</Text>
+                      </View>
+                      <View style={styles.bankRow}>
+                        <Text style={styles.bankLabel}>Account Title</Text>
+                        <Text style={styles.bankValue}>{account.account_title}</Text>
+                      </View>
+                      <View style={styles.bankRow}>
+                        <Text style={styles.bankLabel}>Account Number</Text>
+                        <Text style={styles.bankValue}>{account.account_number}</Text>
+                      </View>
+                      {account.iban ? (
+                        <View style={styles.bankRow}>
+                          <Text style={styles.bankLabel}>IBAN</Text>
+                          <Text style={styles.bankValue}>{account.iban}</Text>
+                        </View>
+                      ) : null}
+                      {account.branch_code ? (
+                        <View style={styles.bankRow}>
+                          <Text style={styles.bankLabel}>Branch Code</Text>
+                          <Text style={styles.bankValue}>{account.branch_code}</Text>
+                        </View>
+                      ) : null}
+                      {account.payment_instructions ? (
+                        <Text style={styles.receiptHint}>{account.payment_instructions}</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : (
+              <Text style={styles.receiptHint}>
+                This arena hasn&apos;t set up bank transfer details yet — choose another payment
+                method.
+              </Text>
+            )}
+
             <Text style={styles.sectionTitle}>Upload Receipt</Text>
             {receiptUri ? (
               <Image source={{ uri: receiptUri }} style={styles.receiptPreview} />
@@ -106,8 +210,28 @@ export default function PaymentScreen() {
         ) : null}
 
         <View style={styles.priceSection}>
-          <Text style={styles.priceLabel}>Total Amount</Text>
-          <Text style={styles.priceValue}>Rs. {amount}</Text>
+          {slotsSubtotal ? (
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Slots subtotal</Text>
+              <Text style={styles.breakdownValue}>Rs. {slotsSubtotal}</Text>
+            </View>
+          ) : null}
+          {equipment > 0 ? (
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Equipment</Text>
+              <Text style={styles.breakdownValue}>Rs. {equipmentTotal}</Text>
+            </View>
+          ) : null}
+          {discount > 0 ? (
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Discount</Text>
+              <Text style={[styles.breakdownValue, styles.discountValue]}>− Rs. {discountAmount}</Text>
+            </View>
+          ) : null}
+          <View style={styles.totalRow}>
+            <Text style={styles.priceLabel}>{isBalance ? 'Balance Due' : 'Total Amount'}</Text>
+            <Text style={styles.priceValue}>Rs. {amount}</Text>
+          </View>
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -117,6 +241,7 @@ export default function PaymentScreen() {
         <Button
           title={`Pay Rs. ${amount}`}
           loading={payMutation.isPending}
+          disabled={method === 'bank_transfer' && accounts.length === 0}
           onPress={() => {
             setError(null);
             payMutation.mutate();
@@ -146,6 +271,17 @@ const styles = StyleSheet.create({
   methodRowActive: { borderColor: Colors.light.tint, backgroundColor: '#EFF6FF' },
   methodLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.light.text },
   receiptSection: { marginTop: 8 },
+  bankCard: {
+    backgroundColor: Colors.light.card,
+    borderRadius: 10,
+    padding: 14,
+    gap: 8,
+    marginBottom: 12,
+  },
+  bankCardActive: { borderWidth: 1.5, borderColor: Colors.light.tint },
+  bankRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  bankLabel: { fontSize: 12, color: Colors.light.muted },
+  bankValue: { fontSize: 13, fontWeight: '600', color: Colors.light.text, flexShrink: 1, textAlign: 'right' },
   receiptPreview: { width: '100%', height: 160, borderRadius: 10, marginBottom: 10, backgroundColor: Colors.light.card },
   receiptButton: {
     flexDirection: 'row',
@@ -160,13 +296,21 @@ const styles = StyleSheet.create({
   receiptButtonText: { color: Colors.light.tint, fontWeight: '600', fontSize: 13 },
   receiptHint: { fontSize: 11, color: Colors.light.muted, marginTop: 8, lineHeight: 16 },
   priceSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginTop: 24,
     paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.light.border,
+    gap: 8,
+  },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  breakdownLabel: { fontSize: 13, color: Colors.light.muted },
+  breakdownValue: { fontSize: 13, color: Colors.light.text },
+  discountValue: { color: '#059669' },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
   },
   priceLabel: { fontSize: 14, color: Colors.light.muted },
   priceValue: { fontSize: 20, fontWeight: '700', color: Colors.light.text },

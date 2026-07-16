@@ -38,7 +38,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="shadow-card rounded-xl border border-border bg-card p-6">
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       <div className="mt-4">{children}</div>
@@ -115,7 +115,7 @@ function OtpDialog({
           </Button>
           <Button
             type="button"
-            className="bg-blue-600 text-white hover:bg-blue-700"
+            className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
             disabled={pending || code.length !== 6}
             onClick={() => onConfirm(code)}
           >
@@ -212,8 +212,19 @@ export default function OwnerProfilePage() {
 
   return (
     <>
-      <PageHeader title="Profile" />
-      <div className="mx-auto max-w-2xl space-y-6 p-8">
+      <PageHeader title="Profile & Settings" subtitle="Manage your account and business details" />
+      <div className="mx-auto max-w-2xl animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="shadow-card flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-card p-6">
+          <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-2xl font-bold text-white shadow-brand">
+            {user.full_name?.[0]?.toUpperCase() ?? "?"}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold text-foreground">{user.full_name}</p>
+            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+            {user.phone && <p className="truncate text-sm text-muted-foreground">{user.phone}</p>}
+          </div>
+        </div>
+
         <Section title="Basic information">
           <div className="space-y-4">
             <div>
@@ -228,7 +239,7 @@ export default function OwnerProfilePage() {
             <div className="flex items-center justify-between">
               {nameMutation.isSuccess && <span className="text-sm text-emerald-600">Saved.</span>}
               <Button
-                className="ml-auto bg-blue-600 text-white hover:bg-blue-700"
+                className="ml-auto bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
                 disabled={
                   nameMutation.isPending || !fullName.trim() || fullName.trim() === user.full_name
                 }
@@ -311,7 +322,7 @@ export default function OwnerProfilePage() {
             <ErrorText message={passwordError} />
             <div className="flex justify-end">
               <Button
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
                 disabled={requestPasswordMutation.isPending || !currentPassword || !passwordsMatch}
                 onClick={() => requestPasswordMutation.mutate()}
               >

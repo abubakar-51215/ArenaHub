@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
+import { BankDetailsForm } from "@/components/owner/bank-details-form";
 import { DiscountForm } from "@/components/owner/discount-form";
 import { PageHeader } from "@/components/owner/page-header";
 import { StatusBadge } from "@/components/owner/status-badge";
@@ -41,13 +42,13 @@ function PaymentsInner() {
             setFormOpen(true);
           }}
           disabled={!arenaId}
-          className="bg-blue-600 text-white hover:bg-blue-700"
+          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Discount Code
         </Button>
       </PageHeader>
 
-      <div className="space-y-8 p-8">
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8">
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-foreground">Arena</label>
           <Select value={arenaId} onChange={(e) => setArenaId(e.target.value)} className="w-64">
@@ -100,6 +101,13 @@ function PaymentsInner() {
               </a>{" "}
               page.
             </p>
+          </section>
+        )}
+
+        {arenaId && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Bank Transfer Details</h2>
+            <BankDetailsForm arenaId={arenaId} />
           </section>
         )}
 

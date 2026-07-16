@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { Colors } from '@/constants/theme';
+import { Colors, Shadow } from '@/constants/theme';
 import { useArena } from '@/hooks/useArenas';
 import type { Booking } from '@/types';
 
@@ -61,6 +61,28 @@ export function BookingCard({
           {booking.booking_date} · {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)}
         </Text>
         <Text style={styles.amount}>Rs. {booking.total_amount}</Text>
+        {booking.status === 'confirmed' && Number(booking.remaining_amount) > 0 ? (
+          <View style={styles.balanceNotice}>
+            <Text style={styles.balanceText}>
+              Rs. {booking.remaining_amount} balance due — pay online or at the venue.
+            </Text>
+            <Button
+              title={`Pay Rs. ${booking.remaining_amount} Balance`}
+              onPress={() =>
+                router.push({
+                  pathname: '/payment/[groupId]',
+                  params: {
+                    groupId: booking.booking_group_id,
+                    amount: booking.remaining_amount,
+                    bookingId: booking.id,
+                    arenaId: booking.arena_id,
+                    balance: '1',
+                  },
+                })
+              }
+            />
+          </View>
+        ) : null}
         {RESCHEDULABLE.includes(booking.status) && !hasStarted(booking) ? (
           <Button
             title="Reschedule"
@@ -107,13 +129,17 @@ export function BookingCard({
 }
 
 const styles = StyleSheet.create({
+  balanceNotice: { gap: 6, marginBottom: 4 },
+  balanceText: { fontSize: 12, color: Colors.light.warning },
   card: {
     flexDirection: 'row',
-    borderWidth: 1,
+    backgroundColor: '#fff',
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.border,
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 12,
+    ...Shadow.card,
   },
   image: { width: 90, backgroundColor: Colors.light.card },
   body: { flex: 1, padding: 12, gap: 4 },

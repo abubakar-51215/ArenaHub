@@ -49,7 +49,7 @@ const NAV: NavItem[] = [
   { label: "Profile", href: "/owner/profile", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { refreshToken, clear } = useAuthStore();
@@ -68,11 +68,11 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar">
-      <div className="flex h-16 items-center px-5">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="flex h-16 items-center border-b border-border/60 px-5">
         <Logo />
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
         {NAV.map((item) => {
           const active =
             item.href &&
@@ -94,18 +94,26 @@ export function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-blue-600 text-white" : "text-sidebar-foreground hover:bg-muted",
+                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+                active
+                  ? "bg-brand-gradient text-white shadow-brand"
+                  : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
-              <Icon className="size-4" />
+              <Icon
+                className={cn(
+                  "size-4 transition-transform duration-200 group-hover:scale-110",
+                  active ? "text-white" : "text-muted-foreground group-hover:text-accent-foreground",
+                )}
+              />
               <span className="flex-1">{item.label}</span>
               {item.label === "Notifications" && unread > 0 && (
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
-                    active ? "bg-white text-blue-600" : "bg-blue-600 text-white",
+                    active ? "bg-white text-primary" : "bg-primary text-white",
                   )}
                 >
                   {unread > 99 ? "99+" : unread}

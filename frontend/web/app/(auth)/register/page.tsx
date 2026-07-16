@@ -160,7 +160,7 @@ export default function RegisterPage() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="h-11 w-full bg-blue-600 text-white hover:bg-blue-700"
+              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
             >
               {submitting ? "Creating account…" : "Create Account"}
             </Button>
@@ -201,7 +201,7 @@ export default function RegisterPage() {
               type="submit"
               size="lg"
               disabled={submitting || code.length !== 6}
-              className="h-11 w-full bg-blue-600 text-white hover:bg-blue-700"
+              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
             >
               {submitting ? "Verifying…" : "Verify & Continue"}
             </Button>

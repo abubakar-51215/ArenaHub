@@ -1,8 +1,8 @@
 /**
  * Fetches a court's slots for a date and keeps them live via the per-court
  * WebSocket channel — patches the matching slot's status in place on each
- * `slot_update` message, and reconnects with a short backoff + full refetch
- * on drop (the backend doesn't replay missed messages).
+ * `slot_update` message, and reconnects with exponential backoff + jitter and
+ * a full refetch on drop (the backend doesn't replay missed messages).
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
@@ -11,10 +11,14 @@ import { listSlots } from '../services/courts';
 import { courtSlotsWsUrl, type SlotUpdateMessage } from '../lib/websocket';
 import type { TimeSlot } from '../types';
 
+const BASE_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 30000;
+
 export function useCourtSlots(courtId: string | undefined, date: string) {
   const queryClient = useQueryClient();
   const queryKey = ['court-slots', courtId, date];
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attempt = useRef(0);
 
   const query = useQuery({
     queryKey,
@@ -31,6 +35,10 @@ export function useCourtSlots(courtId: string | undefined, date: string) {
       if (cancelled || !courtId) return;
       ws = new WebSocket(courtSlotsWsUrl(courtId));
 
+      ws.onopen = () => {
+        attempt.current = 0;
+      };
+
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as SlotUpdateMessage;
@@ -46,10 +54,20 @@ export function useCourtSlots(courtId: string | undefined, date: string) {
       ws.onclose = () => {
         if (cancelled) return;
         // Reconnect and re-fetch — no message replay on this channel.
-        reconnectTimer.current = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey });
-          connect();
-        }, 2000);
+        // Exponential backoff with jitter so a sustained outage doesn't
+        // hammer the server every 2s indefinitely.
+        const delay = Math.min(
+          BASE_RECONNECT_DELAY_MS * 2 ** attempt.current,
+          MAX_RECONNECT_DELAY_MS,
+        );
+        attempt.current += 1;
+        reconnectTimer.current = setTimeout(
+          () => {
+            queryClient.invalidateQueries({ queryKey });
+            connect();
+          },
+          delay + Math.random() * 500,
+        );
       };
     }
 

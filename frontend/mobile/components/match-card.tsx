@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { Colors } from '@/constants/theme';
+import { Colors, Shadow } from '@/constants/theme';
 import type { Match } from '@/types';
 
 const SPORT_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
@@ -85,11 +85,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderWidth: 1,
+    backgroundColor: '#fff',
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.border,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
+    ...Shadow.card,
   },
   icon: {
     width: 44,
