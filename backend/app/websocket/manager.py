@@ -40,8 +40,12 @@ class CourtChannelManager:
         conns = self._connections.get(court_id)
         if not conns:
             return
+        # Snapshot before iterating: each send is awaited, and a concurrent
+        # disconnect() (from another connection's teardown) mutates this same
+        # set — iterating the live set would raise "Set changed size during
+        # iteration" once that happens mid-broadcast.
         dead: list[WebSocket] = []
-        for ws in conns:
+        for ws in list(conns):
             try:
                 await ws.send_json(message)
             except Exception:  # noqa: BLE001 - a dead socket must not break the broadcast

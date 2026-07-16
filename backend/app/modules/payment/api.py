@@ -60,6 +60,16 @@ async def initiate_payment(
     return success(data=result, message="Payment initiated.")
 
 
+@router.post("/initiate-balance", summary="Pay an outstanding balance online")
+async def initiate_balance_payment(
+    data: PaymentInitiateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    result = await service.initiate_balance_payment(db, user, data)
+    return success(data=result, message="Balance payment initiated.")
+
+
 @router.post("/{payment_id}/receipt", summary="Upload a bank transfer receipt")
 async def upload_receipt(
     payment_id: uuid.UUID,
@@ -93,6 +103,16 @@ async def receipt_pdf(
 ) -> Response:
     pdf_bytes = await service.get_receipt_pdf(db, user, payment_id)
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+@router.get("/{payment_id}/events", summary="Payment lifecycle audit trail")
+async def payment_events(
+    payment_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    events = await service.list_payment_events(db, user, payment_id)
+    return success(data=events, message="Payment events retrieved.")
 
 
 @owner_router.post("/{payment_id}/approve", summary="Approve a bank transfer receipt")

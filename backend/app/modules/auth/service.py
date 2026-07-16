@@ -186,8 +186,14 @@ async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:
 
     if await tokens.is_family_revoked(family):
         raise UnauthorizedError("Session revoked, please log in again.")
-    if await tokens.is_refresh_used(jti):
-        # Replay of a rotated token — kill the whole family (deviation #17).
+    # Atomic check-and-set: the first caller to mark this jti wins; any
+    # concurrent or later request presenting the same token sees it already
+    # marked and is treated as a replay. This closes the race a plain
+    # is_refresh_used-then-mark_refresh_used pair leaves open when two
+    # requests race the read before either writes.
+    if not await tokens.try_mark_refresh_used(jti):
+        # Replay of a rotated (or concurrently-raced) token — kill the whole
+        # family (deviation #17).
         await tokens.revoke_family(family)
         raise UnauthorizedError("Refresh token reuse detected; session revoked.")
     if int(payload.get("iat", 0)) < await tokens.get_session_epoch(user_id):
@@ -197,7 +203,6 @@ async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:
     if user is None or user.deleted_at is not None or not user.is_active:
         raise UnauthorizedError("Account is not active.")
 
-    await tokens.mark_refresh_used(jti)
     return TokenResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=create_refresh_token(user.id, family=family),

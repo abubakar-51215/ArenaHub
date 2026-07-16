@@ -44,6 +44,11 @@ def _test_database_url() -> str:
 # Must run before `app.main` (or anything importing it) is ever imported —
 # Settings() is built at module scope there and cached for the process.
 os.environ["DATABASE_URL"] = _test_database_url()
+# JazzCash/EasyPaisa webhook simulators require a signed request (see
+# app/integrations/payments/{jazzcash,easypaisa}.py) — tests that exercise
+# the webhook path sign their payload with these same well-known secrets.
+os.environ.setdefault("JAZZCASH_WEBHOOK_SECRET", "test-jazzcash-webhook-secret")
+os.environ.setdefault("EASYPAISA_WEBHOOK_SECRET", "test-easypaisa-webhook-secret")
 
 from collections.abc import AsyncIterator  # noqa: E402
 

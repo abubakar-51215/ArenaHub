@@ -10,7 +10,7 @@ from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError
+from app.core.exceptions import ForbiddenError, NotFoundError
 from app.modules.admin import repository as admin_repo
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaStatus
@@ -85,6 +85,11 @@ async def owner_report(
     fmt: ReportFormat,
 ) -> tuple[bytes, str, str]:
     if arena_id is not None:
+        arena = await arena_repo.get_arena(db, arena_id)
+        if arena is None:
+            raise NotFoundError("Arena not found.")
+        if arena.owner_id != user.id:
+            raise ForbiddenError("You do not own this arena.")
         arena_ids = [arena_id]
     else:
         arena_ids = await arena_repo.list_owner_arena_ids(db, user.id)

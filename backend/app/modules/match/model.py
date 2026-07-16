@@ -14,6 +14,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -45,6 +46,7 @@ class MatchStatus(StrEnum):
 
 class Match(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "matches"
+    __table_args__ = (CheckConstraint("max_players > 0", name="ck_matches_max_players_positive"),)
 
     creator_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True

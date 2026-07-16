@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import Arena
+from app.modules.arena.model import Arena, ArenaStatus
 from app.modules.equipment import repository as repo
 from app.modules.equipment.model import BookingEquipment, Equipment
 from app.modules.equipment.schema import (
@@ -66,6 +66,9 @@ async def list_owner_equipment(
 
 
 async def list_public_equipment(db: AsyncSession, arena_id: uuid.UUID) -> list[EquipmentResponse]:
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+        raise NotFoundError("Arena not found.")
     rows = await repo.list_equipment(db, arena_id, active_only=True)
     return [EquipmentResponse.model_validate(r) for r in rows if r.quantity_available > 0]
 

@@ -15,15 +15,31 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, UploadFile
 
-from app.core.exceptions import ForbiddenError
+from app.core.exceptions import ForbiddenError, ValidationError
 from app.modules.user.model import User, UserRole
 from app.shared.auth import get_current_user
 from app.shared.response import success
-from app.shared.storage import save_image
+from app.shared.storage import MAX_IMAGE_BYTES, save_image
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 _PLAYER_ALLOWED_FOLDERS = frozenset({"receipts", "avatars"})
+_CHUNK_SIZE = 256 * 1024  # 256 KB
+
+
+async def _read_bounded(file: UploadFile) -> bytes:
+    """Reads the upload in chunks, aborting as soon as the size cap is
+    exceeded — an oversized file is rejected without ever buffering the
+    whole thing in memory (the previous `await file.read()` bought nothing
+    from the size check that ran after it had already finished)."""
+    chunks: list[bytes] = []
+    total = 0
+    while chunk := await file.read(_CHUNK_SIZE):
+        total += len(chunk)
+        if total > MAX_IMAGE_BYTES:
+            raise ValidationError("Image is too large (max 5 MB).")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 @router.post("/image", summary="Upload an image and get its URL")
@@ -34,6 +50,6 @@ async def upload_image(
 ) -> dict[str, Any]:
     if user.role not in (UserRole.owner, UserRole.admin) and folder not in _PLAYER_ALLOWED_FOLDERS:
         raise ForbiddenError("Players may only upload to the receipts or avatars folders.")
-    content = await file.read()
+    content = await _read_bounded(file)
     url = save_image(content, file.content_type or "", folder=folder)
     return success(data={"url": url}, message="Image uploaded.")

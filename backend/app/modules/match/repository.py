@@ -35,6 +35,15 @@ async def get_match(db: AsyncSession, match_id: uuid.UUID) -> Match | None:
     return result.scalar_one_or_none()
 
 
+async def get_match_for_update(db: AsyncSession, match_id: uuid.UUID) -> Match | None:
+    """Locks the Match row (``SELECT ... FOR UPDATE``) so a concurrent join
+    can't read the same pre-insert participant count before either commits —
+    closes the race where two simultaneous joins both pass the capacity
+    check and push the match past ``max_players``."""
+    result = await db.execute(select(Match).where(Match.id == match_id).with_for_update())
+    return result.scalar_one_or_none()
+
+
 async def list_open_matches(
     db: AsyncSession,
     *,

@@ -22,6 +22,7 @@ from app.modules.slot.schema import (
 )
 from app.modules.user.model import User
 from app.shared.pricing import resolve_peak_price
+from app.websocket.manager import broadcast_slot_status
 
 SLOT_LENGTH = timedelta(hours=1)
 
@@ -81,6 +82,7 @@ async def generate_slots(
     created = 0
     skipped_existing = 0
     skipped_closed_or_blocked: list[date] = []
+    skipped_window_too_short: list[date] = []
 
     cursor = data.start_date
     while cursor <= data.end_date:
@@ -97,8 +99,18 @@ async def generate_slots(
             continue
 
         open_time, close_time = hours
+        starts = _hourly_starts(open_time, close_time)
+        if not starts:
+            # Open per operating_hours (close > open is enforced at the
+            # schema level, so this isn't an overnight window) but the
+            # window is under an hour — surface it instead of silently
+            # producing zero slots for a day that looks "open."
+            skipped_window_too_short.append(cursor)
+            cursor += timedelta(days=1)
+            continue
+
         existing = await repo.existing_start_times(db, court_id, cursor)
-        for start in _hourly_starts(open_time, close_time):
+        for start in starts:
             if start in existing:
                 skipped_existing += 1
                 continue
@@ -123,6 +135,7 @@ async def generate_slots(
         created=created,
         skipped_existing=skipped_existing,
         skipped_closed_or_blocked=skipped_closed_or_blocked,
+        skipped_window_too_short=skipped_window_too_short,
     )
 
 
@@ -167,6 +180,9 @@ async def update_slot(
     for field, value in fields.items():
         setattr(slot, field, value)
     await db.commit()
+    await broadcast_slot_status(
+        court_id, slot.id, slot.date, slot.start_time, slot.status.value
+    )
     return SlotResponse.model_validate(slot)
 
 
@@ -176,5 +192,7 @@ async def delete_slot(
     slot = await _owned_slot(db, user, court_id, slot_id)
     if slot.status in _HAS_BOOKING_STATUSES:
         raise ValidationError("Cannot delete a slot that has an active booking.")
+    slot_id_, slot_date, start_time = slot.id, slot.date, slot.start_time
     await db.delete(slot)
     await db.commit()
+    await broadcast_slot_status(court_id, slot_id_, slot_date, start_time, "deleted")

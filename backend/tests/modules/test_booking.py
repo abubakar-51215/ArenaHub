@@ -161,8 +161,14 @@ async def test_create_booking_with_discount_code(
         },
     )
     assert resp.status_code == 200
-    booking = resp.json()["data"]["bookings"][0]
+    group = resp.json()["data"]
+    booking = group["bookings"][0]
     assert booking["total_amount"] == "1800.00"  # 2000 - 10%
+    # Server-authoritative price breakdown for checkout transparency.
+    assert group["slots_subtotal"] == "2000.00"
+    assert group["discount_amount"] == "200.00"
+    assert group["equipment_total"] == "0.00"
+    assert group["total"] == "1800.00"
 
 
 async def test_advance_rejected_when_arena_requires_full_payment(
@@ -337,6 +343,88 @@ async def test_reschedule_booking_to_another_slot(
     by_id = {s["id"]: s for s in refreshed}
     assert by_id[slots[0]["id"]]["status"] == "available"
     assert by_id[slots[1]["id"]]["status"] == "booked"
+
+
+async def test_reschedule_to_pricier_slot_bills_difference_as_outstanding(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Moving a confirmed (paid) booking to a peak/pricier slot must not leave
+    it silently "fully paid" at the higher price — the difference becomes an
+    outstanding balance (payable at venue or online), like an advance."""
+    import uuid as uuid_mod
+
+    from app.modules.booking import repository as booking_repo
+    from app.modules.booking.model import BookingStatus
+    from app.modules.slot import repository as slot_repo
+    from app.modules.slot.model import SlotStatus
+
+    owner, _ = await make_user(client, db_session, "bookowner_rp@example.com", "owner")
+    player, _ = await make_user(client, db_session, "bookplayer_rp@example.com", "player")
+    h = auth_header(owner)
+    arena = await client.post(
+        "/api/v1/owner/arenas",
+        headers=h,
+        json=arena_payload(require_full_payment=True),
+    )
+    arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "admin-bookowner_rp@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+    court = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/courts",
+        headers=h,
+        json={"name": "Court A", "sport_types": ["futsal"], "base_price": "2000.00"},
+    )
+    court_id = court.json()["data"]["id"]
+
+    # Peak window 20:00–22:00 every day at ×1.5 → the 20:00 slot costs 3000.
+    await client.post(
+        f"/api/v1/owner/courts/{court_id}/pricing-rules",
+        headers=h,
+        json={
+            "name": "Evening Peak",
+            "start_time": "20:00",
+            "end_time": "22:00",
+            "price_multiplier": "1.50",
+        },
+    )
+    monday = _next_weekday(1)
+    await client.post(
+        f"/api/v1/owner/courts/{court_id}/slots/generate",
+        headers=h,
+        json={"start_date": monday.isoformat(), "end_date": monday.isoformat()},
+    )
+    slots = await _slots(client, h, court_id, monday)
+    off_peak = next(s for s in slots if s["start_time"] == "08:00:00")
+    peak = next(s for s in slots if s["start_time"] == "20:00:00")
+    assert off_peak["price"] == "2000.00"
+    assert peak["price"] == "3000.00"
+
+    created = await client.post(
+        "/api/v1/bookings",
+        headers=auth_header(player),
+        json={"court_id": court_id, "slot_ids": [off_peak["id"]], "payment_type": "full"},
+    )
+    booking_id = created.json()["data"]["bookings"][0]["id"]
+
+    booking = await booking_repo.get_booking(db_session, uuid_mod.UUID(booking_id))
+    assert booking is not None
+    booking.status = BookingStatus.confirmed
+    slot_row = await slot_repo.get_slot(db_session, booking.slot_id)
+    assert slot_row is not None
+    slot_row.status = SlotStatus.booked
+    await db_session.commit()
+
+    resp = await client.post(
+        f"/api/v1/bookings/{booking_id}/reschedule",
+        headers=auth_header(player),
+        json={"new_slot_id": peak["id"]},
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["total_amount"] == "3000.00"
+    assert data["advance_amount"] == "2000.00"  # what was already paid
+    assert data["remaining_amount"] == "1000.00"  # owed at venue / online
+    assert data["status"] == "confirmed"
 
 
 async def test_auto_cancel_stale_pending_payment_bookings(
