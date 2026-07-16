@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { MatchCard } from '@/components/match-card';
-import { Colors } from '@/constants/theme';
+import { Brand, Colors, Shadow } from '@/constants/theme';
 import { useMyMatches, useOpenMatches } from '@/hooks/useMatches';
 import { ApiError } from '@/lib/api';
 import { joinMatch } from '@/services/matches';
@@ -48,9 +49,19 @@ export default function PlayScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Find players. Join matches. Play together!</Text>
-      </View>
+      <LinearGradient
+        colors={Brand.gradientHero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="people" size={22} color="#fff" />
+        </View>
+        <View style={styles.heroTextWrap}>
+          <Text style={styles.heroTitle}>Find players. Join matches.</Text>
+          <Text style={styles.heroSubtitle}>Team up and play together!</Text>
+        </View>
+      </LinearGradient>
 
       <View style={styles.tabs}>
         {(['open', 'mine'] as const).map((t) => (
@@ -126,13 +137,26 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '700', color: Colors.light.text },
   hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     marginHorizontal: 20,
     marginTop: 14,
     padding: 16,
-    borderRadius: 14,
-    backgroundColor: Colors.light.card,
+    borderRadius: 16,
+    ...Shadow.brand,
   },
-  heroTitle: { fontSize: 15, fontWeight: '700', color: Colors.light.text, textAlign: 'center' },
+  heroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  heroTextWrap: { flex: 1 },
+  heroTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  heroSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 14 },
   tab: {
     flex: 1,

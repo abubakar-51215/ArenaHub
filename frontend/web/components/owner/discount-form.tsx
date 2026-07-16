@@ -188,7 +188,7 @@ export function DiscountForm({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
             >
               {pending ? "Saving…" : editing ? "Save Changes" : "Add Code"}
             </Button>

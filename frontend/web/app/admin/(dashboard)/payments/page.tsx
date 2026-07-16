@@ -36,7 +36,7 @@ export default function AdminPaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Payment Monitoring">
+      <PageHeader title="Payment Monitoring" subtitle="Monitor all arena payments and transactions">
         <Select
           value={method}
           onChange={(e) => {
@@ -69,8 +69,8 @@ export default function AdminPaymentsPage() {
         </Select>
       </PageHeader>
 
-      <div className="space-y-4 p-8">
-        <div className="rounded-xl border border-border bg-card">
+      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

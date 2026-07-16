@@ -11,7 +11,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return <thead className={cn("[&_tr]:border-b", className)} {...props} />;
+  return <thead className={cn("bg-muted/50 [&_tr]:border-b", className)} {...props} />;
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {

@@ -27,7 +27,15 @@ import { formatDate } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { AdminUser, UserRole } from "@/types";
 
-export function UsersView({ role, title }: { role?: UserRole; title: string }) {
+export function UsersView({
+  role,
+  title,
+  subtitle,
+}: {
+  role?: UserRole;
+  title: string;
+  subtitle?: string;
+}) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const { data, isLoading } = useUsers({ role, search: search || undefined, page });
@@ -43,8 +51,8 @@ export function UsersView({ role, title }: { role?: UserRole; title: string }) {
 
   return (
     <>
-      <PageHeader title={title} />
-      <div className="space-y-4 p-8">
+      <PageHeader title={title} subtitle={subtitle} />
+      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
         <Input
           placeholder="Search by name or email…"
           value={search}
@@ -55,7 +63,7 @@ export function UsersView({ role, title }: { role?: UserRole; title: string }) {
           className="max-w-sm"
         />
 
-        <div className="rounded-xl border border-border bg-card">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

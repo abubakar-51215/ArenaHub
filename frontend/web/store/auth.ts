@@ -9,6 +9,21 @@ import { persist } from "zustand/middleware";
 
 import type { Tokens, User } from "@/types";
 
+// A non-sensitive cookie mirroring the signed-in user's role — NOT the JWT
+// itself (that stays in localStorage; the API remains the real authorization
+// boundary). This only lets edge middleware bounce obviously-unauthenticated
+// visitors away from /owner and /admin before the client bundle loads,
+// closing the "flash of protected shell" gap. Forging this cookie gains
+// nothing: every API call still requires a valid Bearer JWT.
+function setRoleCookie(role: string | null) {
+  if (typeof document === "undefined") return;
+  if (role) {
+    document.cookie = `session_role=${role}; path=/; max-age=2592000; samesite=lax`;
+  } else {
+    document.cookie = "session_role=; path=/; max-age=0; samesite=lax";
+  }
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
@@ -28,16 +43,24 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       hydrated: false,
-      setSession: (tokens, user) =>
+      setSession: (tokens, user) => {
+        setRoleCookie(user.role);
         set({
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
           user,
-        }),
+        });
+      },
       setTokens: (tokens) =>
         set({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token }),
-      setUser: (user) => set({ user }),
-      clear: () => set({ accessToken: null, refreshToken: null, user: null }),
+      setUser: (user) => {
+        setRoleCookie(user.role);
+        set({ user });
+      },
+      clear: () => {
+        setRoleCookie(null);
+        set({ accessToken: null, refreshToken: null, user: null });
+      },
     }),
     {
       name: "arenahub-auth",

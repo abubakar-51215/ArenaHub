@@ -59,12 +59,19 @@ export default function ReviewsPage() {
   const { data: arenaPage } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
 
+  // Fetched per-arena and merged client-side, so "load more" bumps a single
+  // shared page_size across every arena's query rather than paging each
+  // arena independently (simpler than per-arena cursors for a flattened,
+  // globally-sorted list).
+  const PAGE_SIZE_STEP = 50;
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_STEP);
+
   const reviewQueries = useQueries({
     queries: arenas.map((a) => ({
-      queryKey: ["reviews", a.id],
-      queryFn: async (): Promise<TaggedReview[]> => {
-        const page = await listArenaReviews(a.id, 1, 100);
-        return page.items.map((r) => ({ ...r, arena_name: a.name }));
+      queryKey: ["reviews", a.id, pageSize],
+      queryFn: async (): Promise<{ items: TaggedReview[]; total: number }> => {
+        const page = await listArenaReviews(a.id, 1, pageSize);
+        return { items: page.items.map((r) => ({ ...r, arena_name: a.name })), total: page.total };
       },
     })),
   });
@@ -72,10 +79,11 @@ export default function ReviewsPage() {
   const reviews = useMemo(
     () =>
       reviewQueries
-        .flatMap((q) => q.data ?? [])
+        .flatMap((q) => q.data?.items ?? [])
         .sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [reviewQueries],
   );
+  const canLoadMore = reviewQueries.some((q) => (q.data?.total ?? 0) > pageSize);
 
   const [responding, setResponding] = useState<TaggedReview | null>(null);
   const [pending, setPending] = useState(false);
@@ -99,12 +107,12 @@ export default function ReviewsPage() {
   return (
     <>
       <PageHeader title="Reviews Management" />
-      <div className="space-y-4 p-8">
+      <div className="space-y-4 p-4 sm:p-6 lg:p-8">
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
 
-        <div className="rounded-xl border border-border bg-card">
+        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -178,6 +186,18 @@ export default function ReviewsPage() {
             </TableBody>
           </Table>
         </div>
+
+        {canLoadMore && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              onClick={() => setPageSize((n) => n + PAGE_SIZE_STEP)}
+              disabled={loading}
+            >
+              Load More
+            </Button>
+          </div>
+        )}
       </div>
 
       <TextInputDialog

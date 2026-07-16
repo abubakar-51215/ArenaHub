@@ -394,7 +394,7 @@ function SecurityTab() {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-foreground">Audit Log</h3>
-      <div className="rounded-xl border border-border bg-card">
+      <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -469,8 +469,8 @@ export default function AdminSettingsPage() {
 
   return (
     <>
-      <PageHeader title="System Settings" />
-      <div className="space-y-6 p-8">
+      <PageHeader title="System Settings" subtitle="Manage system configuration and preferences" />
+      <div className="animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="flex gap-1 border-b border-border">
           {TABS.map((t) => (
             <button

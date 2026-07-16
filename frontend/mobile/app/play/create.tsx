@@ -10,6 +10,7 @@ import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { useArenaCourts } from '@/hooks/useArenas';
 import { ApiError } from '@/lib/api';
+import { toLocalDateString } from '@/lib/dates';
 import { searchArenas } from '@/services/arenas';
 import { createMatch } from '@/services/matches';
 import type { Arena, Court } from '@/types';
@@ -23,7 +24,7 @@ function nextDays(n: number): { date: string; label: string; dayNum: string }[] 
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     days.push({
-      date: d.toISOString().slice(0, 10),
+      date: toLocalDateString(d),
       label: d.toLocaleDateString('en-US', { weekday: 'short' }),
       dayNum: String(d.getDate()),
     });

@@ -80,7 +80,7 @@ export function TextInputDialog({
             variant={destructive ? "destructive" : "default"}
             onClick={() => onSubmit(value)}
             disabled={pending || !value.trim()}
-            className={destructive ? "" : "bg-blue-600 text-white hover:bg-blue-700"}
+            className={destructive ? "" : "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"}
           >
             {pending ? "Saving…" : confirmLabel}
           </Button>
