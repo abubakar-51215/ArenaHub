@@ -310,7 +310,11 @@ export default function BookingsPage() {
                   key={p}
                   variant={p === page ? "default" : "outline"}
                   size="icon-sm"
-                  className={p === page ? "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95" : ""}
+                  className={
+                    p === page
+                      ? "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+                      : ""
+                  }
                   onClick={() => setPage(p)}
                 >
                   {p}

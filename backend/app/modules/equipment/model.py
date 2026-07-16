@@ -28,9 +28,7 @@ class Equipment(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         CheckConstraint("rental_price > 0", name="ck_equipment_rental_price_positive"),
         CheckConstraint("quantity_total >= 0", name="ck_equipment_quantity_total_nonneg"),
-        CheckConstraint(
-            "quantity_available >= 0", name="ck_equipment_quantity_available_nonneg"
-        ),
+        CheckConstraint("quantity_available >= 0", name="ck_equipment_quantity_available_nonneg"),
         CheckConstraint(
             "quantity_available <= quantity_total",
             name="ck_equipment_quantity_available_within_total",

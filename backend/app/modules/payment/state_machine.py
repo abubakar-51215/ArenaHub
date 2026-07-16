@@ -90,8 +90,6 @@ async def record_note(db: AsyncSession, payment: Payment, note: str) -> PaymentE
     but aren't state transitions, e.g. a partial refund. ``from_status`` and
     ``to_status`` are both the current state so the row is unambiguous."""
     current = payment.lifecycle_status
-    event = PaymentEvent(
-        payment_id=payment.id, from_status=current, to_status=current, note=note
-    )
+    event = PaymentEvent(payment_id=payment.id, from_status=current, to_status=current, note=note)
     db.add(event)
     return event

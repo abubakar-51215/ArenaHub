@@ -40,7 +40,10 @@ export default function ArenasPage() {
   return (
     <>
       <PageHeader title="Manage Arenas">
-        <Button onClick={openCreate} className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95">
+        <Button
+          onClick={openCreate}
+          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+        >
           <Plus className="size-4" /> Add Arena
         </Button>
       </PageHeader>

@@ -130,9 +130,7 @@ async def list_public_pricing_rules(
 # ---- peak-pricing rules -------------------------------------------------
 
 
-def _rules_conflict(
-    a_weekday: int | None, a_start: time, a_end: time, b: CourtPricingRule
-) -> bool:
+def _rules_conflict(a_weekday: int | None, a_start: time, a_end: time, b: CourtPricingRule) -> bool:
     """True if two pricing windows can both match the same booking slot —
     same court, weekdays that aren't mutually exclusive (either is "every
     day", i.e. None, or they're literally the same weekday), and overlapping

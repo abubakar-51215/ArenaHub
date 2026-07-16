@@ -19,6 +19,7 @@ def _jazzcash_signature(payload: bytes) -> str:
     secret = os.environ["JAZZCASH_WEBHOOK_SECRET"]
     return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
+
 def _easypaisa_signature(payload: bytes) -> str:
     secret = os.environ["EASYPAISA_WEBHOOK_SECRET"]
     return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
@@ -628,9 +629,7 @@ async def test_payment_lifecycle_audit_trail_records_transitions(
         params={"success": True},
     )
 
-    events = await client.get(
-        f"/api/v1/payments/{payment_id}/events", headers=auth_header(player)
-    )
+    events = await client.get(f"/api/v1/payments/{payment_id}/events", headers=auth_header(player))
     assert events.status_code == 200
     trail = [(e["from_status"], e["to_status"]) for e in events.json()["data"]]
     # created -> initiated -> paid -> confirmed, in order.
