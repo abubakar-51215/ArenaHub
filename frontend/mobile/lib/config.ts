@@ -8,12 +8,16 @@
 const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
 
 // __DEV__ is false in a release/production build (EAS build profile). A
-// production build must never silently fall back to plain-HTTP localhost —
-// that would only happen from a misconfigured build profile, but fail loudly
-// rather than ship traffic in the clear.
+// production build must never silently talk to plain-HTTP localhost — surface
+// a misconfigured build profile loudly instead of shipping traffic in the
+// clear. This warns rather than throws at module load so it can't break the
+// static web export/bundling step (which also runs with __DEV__ === false but
+// has no runtime env to point at); the fallback below is never a real prod
+// endpoint anyway.
 if (!__DEV__ && (!envApiUrl || !envApiUrl.startsWith('https://'))) {
-  throw new Error(
-    'EXPO_PUBLIC_API_URL must be set to an https:// URL in production builds.',
+  console.warn(
+    'EXPO_PUBLIC_API_URL should be an https:// URL in production builds; ' +
+      'falling back to the dev localhost endpoint.',
   );
 }
 

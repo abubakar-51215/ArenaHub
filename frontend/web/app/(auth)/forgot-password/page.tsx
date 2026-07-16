@@ -81,7 +81,10 @@ export default function ForgotPasswordPage() {
             we&apos;ve sent a link to reset your password. It expires in 30 minutes.
           </p>
           <Link href="/reset-password" className="mt-6 block">
-            <Button size="lg" className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95">
+            <Button
+              size="lg"
+              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+            >
               I have my reset link
             </Button>
           </Link>

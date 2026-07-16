@@ -180,9 +180,7 @@ async def update_slot(
     for field, value in fields.items():
         setattr(slot, field, value)
     await db.commit()
-    await broadcast_slot_status(
-        court_id, slot.id, slot.date, slot.start_time, slot.status.value
-    )
+    await broadcast_slot_status(court_id, slot.id, slot.date, slot.start_time, slot.status.value)
     return SlotResponse.model_validate(slot)
 
 

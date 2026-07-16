@@ -90,11 +90,15 @@
 
   /* Brand gradients & elevation — reused across surfaces. */
   --brand-gradient: linear-gradient(135deg, oklch(0.58 0.21 264) 0%, oklch(0.5 0.22 262) 100%);
-  --brand-gradient-soft: linear-gradient(135deg, oklch(0.97 0.02 255) 0%, oklch(0.955 0.03 262) 100%);
+  --brand-gradient-soft: linear-gradient(
+    135deg,
+    oklch(0.97 0.02 255) 0%,
+    oklch(0.955 0.03 262) 100%
+  );
   --shadow-brand: 0 10px 30px -12px oklch(0.546 0.215 262.9 / 0.45);
   --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04), 0 4px 16px -8px oklch(0.21 0.02 260 / 0.08);
-  --shadow-card-hover: 0 4px 12px -4px oklch(0.21 0.02 260 / 0.1),
-    0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
+  --shadow-card-hover:
+    0 4px 12px -4px oklch(0.21 0.02 260 / 0.1), 0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
 }
 
 .dark {
@@ -157,11 +161,7 @@
     background-image: var(--brand-gradient-soft);
   }
   .text-gradient-brand {
-    background-image: linear-gradient(
-      120deg,
-      oklch(0.55 0.21 263) 0%,
-      oklch(0.63 0.17 173) 100%
-    );
+    background-image: linear-gradient(120deg, oklch(0.55 0.21 263) 0%, oklch(0.63 0.17 173) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -271,12 +271,7 @@
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    oklch(1 0 0 / 0.6),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.6), transparent);
   animation: shimmer 1.5s infinite;
 }
 

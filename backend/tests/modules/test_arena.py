@@ -293,9 +293,9 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
 ) -> None:
     owner, _ = await make_user(client, db_session, "bankowner1@example.com", "owner")
     h = auth_header(owner)
-    arena_id = (
-        await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())
-    ).json()["data"]["id"]
+    arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
+        "data"
+    ]["id"]
 
     # Nothing set yet — owner sees an empty list, player checkout 404s.
     empty = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
@@ -356,9 +356,7 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
     # Pending approval → checkout 404s (arena not bookable yet).
     player, _ = await make_user(client, db_session, "bankplayer1@example.com")
     assert (
-        await client.get(
-            f"/api/v1/arenas/{arena_id}/bank-details", headers=auth_header(player)
-        )
+        await client.get(f"/api/v1/arenas/{arena_id}/bank-details", headers=auth_header(player))
     ).status_code == 404
 
     admin = await make_admin(client, db_session, "admin-bankowner1@example.com")
@@ -376,9 +374,7 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
 
     # Deleting the default (HBL) leaves only the inactive first account, so —
     # a default must be active — the arena is left with no default.
-    await client.delete(
-        f"/api/v1/owner/arenas/{arena_id}/bank-details/{second_id}", headers=h
-    )
+    await client.delete(f"/api/v1/owner/arenas/{arena_id}/bank-details/{second_id}", headers=h)
     after = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
     remaining = {a["id"]: a for a in after.json()["data"]}
     assert len(remaining) == 1
@@ -400,9 +396,9 @@ async def test_deactivating_default_bank_account_promotes_another(
 ) -> None:
     owner, _ = await make_user(client, db_session, "bankowner3@example.com", "owner")
     h = auth_header(owner)
-    arena_id = (
-        await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())
-    ).json()["data"]["id"]
+    arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
+        "data"
+    ]["id"]
 
     a = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/bank-details",
@@ -423,8 +419,11 @@ async def test_deactivating_default_bank_account_promotes_another(
         headers=h,
         json={"is_active": False},
     )
-    listed = {x["id"]: x for x in (
-        await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
-    ).json()["data"]}
+    listed = {
+        x["id"]: x
+        for x in (
+            await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
+        ).json()["data"]
+    }
     assert listed[a_id]["is_default"] is False
     assert listed[b_id]["is_default"] is True

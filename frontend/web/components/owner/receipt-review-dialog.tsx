@@ -25,8 +25,7 @@ export function ReceiptReviewDialog({
   const { data: bankAccounts } = useBankDetails(row?.arena_id ?? null);
   // Show the default account (or the first) as the one the player most likely
   // transferred to.
-  const bankDetails =
-    bankAccounts?.find((a) => a.is_default) ?? bankAccounts?.[0] ?? null;
+  const bankDetails = bankAccounts?.find((a) => a.is_default) ?? bankAccounts?.[0] ?? null;
 
   return (
     <Dialog open={!!row} onOpenChange={onOpenChange}>
@@ -92,7 +91,9 @@ export function ReceiptReviewDialog({
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                {row.receipt_proof_url ? "Receipt URL could not be verified." : "No receipt uploaded."}
+                {row.receipt_proof_url
+                  ? "Receipt URL could not be verified."
+                  : "No receipt uploaded."}
               </p>
             )}
           </div>

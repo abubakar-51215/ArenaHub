@@ -71,20 +71,20 @@ async function rawRequest(
 async function tryRefresh(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
-  const { refreshToken, setTokens, clear } = useAuthStore.getState();
-  if (!refreshToken) return null;
-  const res = await rawRequest("POST", "/auth/refresh", { refresh_token: refreshToken }, null);
-  if (!res.ok) {
-    clear();
-    return null;
-  }
-  const env = await parse<Tokens>(res);
-  if (!env.data) {
-    clear();
-    return null;
-  }
-  setTokens(env.data);
-  return env.data.access_token;
+    const { refreshToken, setTokens, clear } = useAuthStore.getState();
+    if (!refreshToken) return null;
+    const res = await rawRequest("POST", "/auth/refresh", { refresh_token: refreshToken }, null);
+    if (!res.ok) {
+      clear();
+      return null;
+    }
+    const env = await parse<Tokens>(res);
+    if (!env.data) {
+      clear();
+      return null;
+    }
+    setTokens(env.data);
+    return env.data.access_token;
   })();
   try {
     return await refreshPromise;

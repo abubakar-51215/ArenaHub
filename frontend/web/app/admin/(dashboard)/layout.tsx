@@ -31,6 +31,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   }
 
   return (
-    <DashboardShell sidebar={(close) => <AdminSidebar onNavigate={close} />}>{children}</DashboardShell>
+    <DashboardShell sidebar={(close) => <AdminSidebar onNavigate={close} />}>
+      {children}
+    </DashboardShell>
   );
 }

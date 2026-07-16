@@ -105,7 +105,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <Icon
                 className={cn(
                   "size-4 transition-transform duration-200 group-hover:scale-110",
-                  active ? "text-white" : "text-muted-foreground group-hover:text-accent-foreground",
+                  active
+                    ? "text-white"
+                    : "text-muted-foreground group-hover:text-accent-foreground",
                 )}
               />
               <span className="flex-1">{item.label}</span>

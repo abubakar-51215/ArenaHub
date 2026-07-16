@@ -108,8 +108,8 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Shown to players at checkout when they choose Bank Transfer. Mark one account as the
-        default — it&apos;s listed first. Inactive accounts are hidden from players.
+        Shown to players at checkout when they choose Bank Transfer. Mark one account as the default
+        — it&apos;s listed first. Inactive accounts are hidden from players.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">

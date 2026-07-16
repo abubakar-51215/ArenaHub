@@ -30,5 +30,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  return <DashboardShell sidebar={(close) => <Sidebar onNavigate={close} />}>{children}</DashboardShell>;
+  return (
+    <DashboardShell sidebar={(close) => <Sidebar onNavigate={close} />}>{children}</DashboardShell>
+  );
 }
