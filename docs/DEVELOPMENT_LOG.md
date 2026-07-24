@@ -5,7 +5,33 @@ what got done, what was tricky, and what's next.
 
 ---
 
-## 2026-07-17 — Closed the four payment "minor limitations"
+## 2026-07-24 — Demo data for every screen on all three sides
+
+### Completed
+- **Seed v3 ("showcase") data** in `backend/scripts/seed_dummy_data.py` — the previously-empty screens now all have data:
+  - 8 complaints across every category and status (open / under-review / resolved with admin responses) for the admin support inbox.
+  - 6 "Play" matches with 27 participants across all four statuses (open/full/completed/cancelled) for the mobile Play tab.
+  - 15 in-app notifications (players + owners, mixed read/unread, titles/bodies mirroring the app's `EVENT_META` so they render identically to real ones).
+  - 13 liked-arena bookmarks for the mobile profile.
+  - 7 arena bank accounts (`ArenaBankDetails`) across 6 approved arenas — DHA Lahore gets two to exercise the multi-account checkout UI.
+  - 3 audit-log entries mirroring the arenas' actual moderation state (2 approvals + the Johar Town rejection).
+  - 2 new **pending** arenas (Karachi Padel Club, Islamabad Cricket Hub) so the admin verification queue is never empty.
+- **Timestamp re-anchoring** (runs on every seed): seeded bookings/payments used to keep `created_at` = the moment the seed first ran, so the owner revenue-trend chart (bucketed by payment `created_at`) drained to zero as that day receded. Each seeded payment is now re-anchored to just before its booking's play date (clamped to now), so the last-7-days analytics always show activity.
+- **Applied pending migrations** (the DB was 4 revisions behind: bank details, payment lifecycle, multi-account, payment purpose) and re-seeded fresh, so all bookings/matches are current-dated (7 upcoming bookings for calendars and the mobile app).
+- Bank-transfer payments awaiting owner approval get `lifecycle_status=pending_approval` (the migration backfill could only infer the coarse status).
+- Verified end-to-end over the live API as all three roles: admin metrics/complaints/pending-arenas/audit-logs, owner summary/analytics (revenue trend now shows bars across the week)/pending-approvals/revenue, player matches/notifications/likes/bookings — all 200 with real data. `ruff`/`black`/`mypy` clean.
+
+### Challenges
+- **Reseeding was not actually repeatable** — three latent bugs surfaced the moment clear + re-seed ran against a survived database:
+  1. The seeder rewrites the manifest on every run but only recorded *newly created* arenas, so skipped (pre-existing) arenas vanished from it and `clear_dummy_data.py` could never delete them again. Skipped arenas are now re-recorded with their court ids.
+  2. Slot generation blindly inserted, colliding with the unique `(court, date, start)` constraint when slots survived. It now reuses existing slots and only inserts missing ones.
+  3. Clearing bookings left their time slots stuck at `booked` with no booking behind them — permanently unavailable in the app. The clear script now frees those slots.
+- The migration adding `CHECK (rental_price > 0)` failed on the seeded free "First Aid Kit" (Rs 0) — priced it at Rs 50 (the schema no longer models free rentals) and fixed the seed spec to match.
+- Bank-detail manifest ids were recorded before `flush()`, i.e. as `"None"` ×7 — collected after flush now, and the clear script tolerates malformed ids from older manifests.
+
+### Next
+- Demo walkthrough of all three sides with the fresh data (wireframe-parity check screen by screen).
+- Fold the pending auth deep-dive findings into the audit remediation work.
 
 Turned the documented minor limitations into real fixes/features.
 

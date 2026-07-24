@@ -239,7 +239,7 @@ Cross-platform npm scripts from the repo root (no Makefile needed on Windows):
 | `npm run migrate` | Back up the DB (pg_dump → `backend/backups/`), then `alembic upgrade head` |
 | `npm run db:backup` | Snapshot the database on its own (`SKIP_DB_BACKUP=1` bypasses it in `migrate`) |
 | `npm run makemigration` | Create a new Alembic revision (autogenerate) |
-| `npm run seed` | Seed demo data (owners, arenas, bookings, reviews) |
+| `npm run seed` | Seed demo data for all three sides (owners, arenas, bookings, reviews, complaints, matches, notifications, bank accounts) |
 | `npm run test` | Backend pytest suite |
 | `npm run lint` | ruff + eslint |
 | `npm run format` | black + prettier |

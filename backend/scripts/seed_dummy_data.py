@@ -29,29 +29,41 @@ import asyncio
 import json
 import uuid
 from collections.abc import Sequence
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.database.session import SessionFactory
+from app.modules.admin.model import AuditLog
 from app.modules.arena.model import (
     Amenity,
     Arena,
+    ArenaBankDetails,
     ArenaBlockedDate,
+    ArenaLike,
     ArenaStatus,
     DiscountCode,
     DiscountType,
     arena_amenities,
 )
 from app.modules.booking.model import Booking, BookingStatus, PaymentPlan, PaymentStatus
+from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintStatus
 from app.modules.court.model import Court, CourtPricingRule
 from app.modules.equipment.model import BookingEquipment, Equipment
-from app.modules.payment.model import Payment, PaymentMethod, Refund, RefundStatus
+from app.modules.match.model import Match, MatchParticipant, MatchStatus
+from app.modules.notification.model import Notification
+from app.modules.payment.model import (
+    Payment,
+    PaymentLifecycleStatus,
+    PaymentMethod,
+    Refund,
+    RefundStatus,
+)
 from app.modules.review.model import Review
 from app.modules.slot.model import SlotStatus, TimeSlot
 from app.modules.user.model import User, UserRole
@@ -290,7 +302,8 @@ AHMED_ARENAS = [
     ),
 ]
 
-# Fourth owner: Usman Farooq — one arena in Karachi.
+# Fourth owner: Usman Farooq — one approved arena plus one still awaiting
+# admin review, so the admin verification queue always has something in it.
 USMAN_ARENAS = [
     (
         "Karachi Indoor Arena",
@@ -307,9 +320,24 @@ USMAN_ARENAS = [
             ("Football Court 1", ["futsal"], 10, Decimal("2700.00"), True),
         ],
     ),
+    (
+        "Karachi Padel Club",
+        "Karachi",
+        "DHA Phase 8",
+        Decimal("24.8020"),
+        Decimal("67.0660"),
+        ArenaStatus.pending,
+        True,
+        ["padel"],
+        [
+            ("Padel Court 1", ["padel"], 4, Decimal("3200.00"), True),
+            ("Padel Court 2", ["padel"], 4, Decimal("3200.00"), True),
+        ],
+    ),
 ]
 
-# Fifth owner: Bilal Chaudhry — one arena in Islamabad.
+# Fifth owner: Bilal Chaudhry — one approved arena plus one pending, same
+# reasoning as Usman's second arena above.
 BILAL_ARENAS = [
     (
         "Islamabad Sports Center",
@@ -324,6 +352,19 @@ BILAL_ARENAS = [
             ("Football Court 1", ["futsal"], 10, Decimal("2800.00"), True),
             ("Cricket Ground", ["cricket"], 22, Decimal("3600.00"), True),
             ("Badminton Court A", ["badminton"], 4, Decimal("1700.00"), True),
+        ],
+    ),
+    (
+        "Islamabad Cricket Hub",
+        "Islamabad",
+        "G-13",
+        Decimal("33.6520"),
+        Decimal("72.9746"),
+        ArenaStatus.pending,
+        True,
+        ["cricket"],
+        [
+            ("Cricket Ground", ["cricket"], 22, Decimal("3400.00"), True),
         ],
     ),
 ]
@@ -392,7 +433,9 @@ ARENA_AMENITIES = {
     "Lahore Arena": ["Parking", "Changing Rooms", "WiFi"],
     "DHA Sports Club": ["Parking", "Floodlights", "Cafeteria"],
     "Karachi Indoor Arena": ["Parking", "Washrooms", "WiFi"],
+    "Karachi Padel Club": ["Parking", "Changing Rooms", "Drinking Water"],
     "Islamabad Sports Center": ["Parking", "Floodlights", "First Aid", "Cafeteria"],
+    "Islamabad Cricket Hub": ["Parking", "Floodlights", "Washrooms"],
 }
 
 REJECTION_REASON = "Photos are too blurry — please re-upload clear, well-lit court photos."
@@ -547,7 +590,7 @@ EQUIPMENT = {
     "Arena Hub Gulberg Lahore": [
         ("Football", "Standard size 5 match football", Decimal("200.00"), 8, 6, True),
         ("Padel Racket", "Carbon-fibre padel racket, per pair", Decimal("400.00"), 6, 5, True),
-        ("First Aid Kit", "On-court injury kit", Decimal("0.00"), 2, 2, True),
+        ("First Aid Kit", "On-court injury kit", Decimal("50.00"), 2, 2, True),
     ],
 }
 
@@ -691,6 +734,16 @@ async def _seed_arenas(
             print(
                 f"skip (already exists): {name}"
                 + (" — refreshed sport photos/amenities" if updated else "")
+            )
+            # Still record it: the manifest is rewritten on every run, so a
+            # skipped arena would otherwise vanish from it and the clear
+            # script could never remove it again.
+            manifest["arenas"].append(
+                {
+                    "id": str(arena.id),
+                    "name": name,
+                    "court_ids": [str(c.id) for c in existing_courts],
+                }
             )
             continue
 
@@ -839,10 +892,28 @@ async def _generate_slots_for_court(
 ) -> dict[tuple, TimeSlot]:
     """Generate one week back through two weeks forward of hourly slots for a
     court, mirroring the real slot-generation service. Returns a lookup of
-    (date, start_time) -> TimeSlot for the booking step to pick from."""
-    by_key: dict[tuple, TimeSlot] = {}
+    (date, start_time) -> TimeSlot for the booking step to pick from.
+
+    Idempotent: slots already in the DB (from an earlier seed run against
+    surviving arenas, or generated by the app itself) are reused, not
+    re-inserted — the unique (court, date, start) constraint would reject
+    duplicates."""
     cursor = TODAY - timedelta(days=days_back)
     last = TODAY + timedelta(days=days_fwd)
+    existing = (
+        (
+            await db.execute(
+                select(TimeSlot).where(
+                    TimeSlot.court_id == court.id,
+                    TimeSlot.date >= cursor,
+                    TimeSlot.date <= last,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_key: dict[tuple, TimeSlot] = {(s.date, s.start_time): s for s in existing}
     while cursor <= last:
         day_name = _WEEKDAY_NAMES[cursor.weekday()]
         hours = _HOURS.get(day_name)
@@ -850,6 +921,8 @@ async def _generate_slots_for_court(
             open_time = datetime.strptime(hours["open"], "%H:%M").time()
             close_time = datetime.strptime(hours["close"], "%H:%M").time()
             for start in _slots_for_day(open_time, close_time):
+                if (cursor, start) in by_key:
+                    continue
                 end = (datetime.combine(date.min, start) + timedelta(hours=1)).time()
                 price = resolve_peak_price(
                     court.base_price, pricing_rules, cursor.isoweekday(), start
@@ -1919,6 +1992,601 @@ async def _seed_player_flow_v2(
     )
 
 
+# Receiving accounts shown to players at bank-transfer checkout — one per
+# approved arena (DHA Lahore gets a second, non-default account to exercise
+# the multi-account UI). Created by `_seed_showcase_v3`, gated by the
+# "flow_seeded_v3" manifest flag.
+# arena name -> [(label, bank, account_title, account_number, iban, is_default)]
+BANK_DETAILS_V3: dict[str, list[tuple[str | None, str, str, str, str, bool]]] = {
+    "Arena Hub DHA Lahore": [
+        (
+            "Meezan Main",
+            "Meezan Bank",
+            "Demo Owner",
+            "0101234567890",
+            "PK36MEZN0001012345678901",
+            True,
+        ),
+        (
+            "HBL Backup",
+            "HBL",
+            "Demo Owner",
+            "1234567890123",
+            "PK55HABB0012345678901234",
+            False,
+        ),
+    ],
+    "Arena Hub Gulberg Lahore": [
+        (None, "HBL", "Demo Owner", "2234567890123", "PK21HABB0022345678901234", True),
+    ],
+    "Multan Sports Complex": [
+        (None, "UBL", "Ali Raza", "3234567890123", "PK47UNIL0032345678901234", True),
+    ],
+    "Lahore Arena": [
+        (None, "Bank Alfalah", "Ahmed Sheikh", "4234567890123", "PK62ALFH0042345678901234", True),
+    ],
+    "Karachi Indoor Arena": [
+        (None, "Meezan Bank", "Usman Farooq", "5234567890123", "PK83MEZN0052345678901234", True),
+    ],
+    "Islamabad Sports Center": [
+        (None, "MCB", "Bilal Chaudhry", "6234567890123", "PK19MUCB0062345678901234", True),
+    ],
+}
+
+
+async def _seed_showcase_v3(
+    db: AsyncSession, arenas_by_name: dict[str, Arena], manifest: dict
+) -> None:
+    """Everything the dashboards show that bookings alone don't cover:
+    arena bank accounts, admin-side complaints, "Play" matches with
+    participants, in-app notifications, liked arenas, and audit-log entries
+    — so no screen on any of the three sides opens onto an empty table."""
+    players = await _get_or_create_players(db)
+    by_email = {p.email: p for p in players}
+    ahmed_raza = by_email["ahmed.raza@example.com"]
+    sara = by_email["sara.khan@example.com"]
+    bilal_a = by_email["bilal.ahmed@example.com"]
+    hina = by_email["hina.malik@example.com"]
+    usman_t = by_email["usman.tariq@example.com"]
+    ayesha = by_email["ayesha.siddiqui@example.com"]
+    kamran = by_email["kamran.malik@example.com"]
+    sadia = by_email["sadia.yousuf@example.com"]
+    fahad = by_email["fahad.iqbal@example.com"]
+    mehwish = by_email["mehwish.anwar@example.com"]
+    junaid = by_email["junaid.khalid@example.com"]
+    sana = by_email["sana.riaz@example.com"]
+    waqas = by_email["waqas.ahmed@example.com"]
+    iqra = by_email["iqra.noor@example.com"]
+    hamza = by_email["hamza.sheikh@example.com"]
+
+    admin = (await db.execute(select(User).where(User.email == ADMIN_EMAIL))).scalar_one()
+    owners_by_email = {
+        u.email: u
+        for u in (await db.execute(select(User).where(User.role == UserRole.owner))).scalars().all()
+    }
+
+    async def court_of(arena_name: str, court_name: str) -> Court:
+        arena = arenas_by_name[arena_name]
+        return (
+            await db.execute(
+                select(Court).where(Court.arena_id == arena.id, Court.name == court_name)
+            )
+        ).scalar_one()
+
+    def days_ago(n: int, hour: int = 12) -> datetime:
+        return datetime.combine(TODAY - timedelta(days=n), time(hour, 0))
+
+    def days_ago_utc(n: int, hour: int = 12) -> datetime:
+        return days_ago(n, hour).replace(tzinfo=UTC)
+
+    # -- Bank accounts for bank-transfer checkout ------------------------
+    bank_rows: list[ArenaBankDetails] = []
+    for arena_name, accounts in BANK_DETAILS_V3.items():
+        arena = arenas_by_name[arena_name]
+        for label, bank, title, account_number, iban, is_default in accounts:
+            row = ArenaBankDetails(
+                arena_id=arena.id,
+                label=label,
+                bank_name=bank,
+                account_title=title,
+                account_number=account_number,
+                iban=iban,
+                payment_instructions=(
+                    "Transfer the exact amount and upload a clear photo of the "
+                    "receipt. Bookings are confirmed once the owner verifies it."
+                ),
+                is_default=is_default,
+                is_active=True,
+            )
+            db.add(row)
+            bank_rows.append(row)
+    await db.flush()
+    bank_detail_ids = [str(r.id) for r in bank_rows]
+
+    # -- Complaints (admin support inbox) --------------------------------
+    complaints = [
+        Complaint(
+            player_id=ahmed_raza.id,
+            category=ComplaintCategory.payment_issue,
+            description=(
+                "I was charged twice for my futsal booking at Arena Hub DHA "
+                "Lahore on Friday. Please refund the duplicate charge."
+            ),
+            status=ComplaintStatus.open,
+            created_at=days_ago(1, 10),
+            updated_at=days_ago(1, 10),
+        ),
+        Complaint(
+            player_id=sara.id,
+            category=ComplaintCategory.arena_quality,
+            description=(
+                "Half the floodlights at Arena Hub Gulberg Lahore were out "
+                "during our evening cricket booking — hard to see the ball."
+            ),
+            status=ComplaintStatus.open,
+            created_at=days_ago(2, 20),
+            updated_at=days_ago(2, 20),
+        ),
+        Complaint(
+            player_id=iqra.id,
+            category=ComplaintCategory.booking_issue,
+            description=(
+                "The app showed the 7 PM badminton slot as available but my "
+                "booking was rejected an hour later. Why was it listed?"
+            ),
+            status=ComplaintStatus.open,
+            created_at=days_ago(0, 9),
+            updated_at=days_ago(0, 9),
+        ),
+        Complaint(
+            player_id=fahad.id,
+            category=ComplaintCategory.owner_behavior,
+            description=(
+                "The staff at the badminton court cut our session 15 minutes "
+                "short even though we paid for the full hour."
+            ),
+            status=ComplaintStatus.under_review,
+            assigned_to=admin.id,
+            created_at=days_ago(4, 18),
+            updated_at=days_ago(3, 11),
+        ),
+        Complaint(
+            player_id=mehwish.id,
+            category=ComplaintCategory.technical_problem,
+            description=(
+                "The app crashes every time I open the payment screen on my "
+                "phone after selecting JazzCash."
+            ),
+            status=ComplaintStatus.under_review,
+            assigned_to=admin.id,
+            created_at=days_ago(3, 14),
+            updated_at=days_ago(2, 9),
+        ),
+        Complaint(
+            player_id=junaid.id,
+            category=ComplaintCategory.booking_issue,
+            description=(
+                "My tennis booking disappeared from the app after I "
+                "rescheduled it. The court says they never got it."
+            ),
+            status=ComplaintStatus.resolved,
+            assigned_to=admin.id,
+            admin_response=(
+                "The reschedule had failed silently — we restored your booking "
+                "and added a free hour as an apology. The bug is fixed."
+            ),
+            resolved_at=days_ago_utc(6, 15),
+            created_at=days_ago(8, 12),
+            updated_at=days_ago(6, 15),
+        ),
+        Complaint(
+            player_id=sana.id,
+            category=ComplaintCategory.payment_issue,
+            description="My refund for the cancelled badminton slot never arrived.",
+            status=ComplaintStatus.resolved,
+            assigned_to=admin.id,
+            admin_response=(
+                "The refund was stuck at the gateway; it has been re-issued "
+                "and should reach your account within 3 working days."
+            ),
+            resolved_at=days_ago_utc(7, 10),
+            created_at=days_ago(9, 16),
+            updated_at=days_ago(7, 10),
+        ),
+        Complaint(
+            player_id=usman_t.id,
+            category=ComplaintCategory.other,
+            description="Please add hockey as a sport filter — several grounds near me offer it.",
+            status=ComplaintStatus.resolved,
+            assigned_to=admin.id,
+            admin_response="Thanks for the suggestion — it's on our roadmap for a future update.",
+            resolved_at=days_ago_utc(10, 13),
+            created_at=days_ago(12, 8),
+            updated_at=days_ago(10, 13),
+        ),
+    ]
+    db.add_all(complaints)
+    await db.flush()
+    complaint_ids = [str(c.id) for c in complaints]
+
+    # -- "Play" matches with participants --------------------------------
+    async def make_match(
+        creator: User,
+        arena_name: str,
+        court_name: str,
+        sport: str,
+        day_offset: int,
+        start_hour: int,
+        duration_hours: int,
+        max_players: int,
+        status: MatchStatus,
+        joiners: list[User],
+    ) -> Match:
+        court = await court_of(arena_name, court_name)
+        match = Match(
+            creator_id=creator.id,
+            arena_id=arenas_by_name[arena_name].id,
+            court_id=court.id,
+            sport=sport,
+            match_date=TODAY + timedelta(days=day_offset),
+            start_time=time(start_hour, 0),
+            end_time=time(start_hour + duration_hours, 0),
+            max_players=max_players,
+            status=status,
+        )
+        db.add(match)
+        await db.flush()
+        # The creator is always the first participant (mirrors match creation
+        # in the app), then everyone who joined after.
+        for player in [creator, *joiners]:
+            db.add(MatchParticipant(match_id=match.id, player_id=player.id))
+        return match
+
+    matches = [
+        await make_match(
+            ahmed_raza,
+            "Arena Hub DHA Lahore",
+            "Court 1",
+            "futsal",
+            2,
+            20,
+            1,
+            10,
+            MatchStatus.open,
+            [hina, usman_t, bilal_a, hamza],
+        ),
+        await make_match(
+            waqas,
+            "DHA Sports Club",
+            "Cricket Ground",
+            "cricket",
+            4,
+            16,
+            2,
+            22,
+            MatchStatus.open,
+            [sara, ayesha, sadia, usman_t, hamza, kamran],
+        ),
+        await make_match(
+            bilal_a,
+            "Arena Hub DHA Lahore",
+            "Court 4",
+            "padel",
+            1,
+            18,
+            1,
+            4,
+            MatchStatus.open,
+            [hina, mehwish],
+        ),
+        await make_match(
+            fahad,
+            "Lahore Arena",
+            "Badminton Court A",
+            "badminton",
+            3,
+            19,
+            1,
+            4,
+            MatchStatus.full,
+            [mehwish, sana, iqra],
+        ),
+        await make_match(
+            hamza,
+            "Islamabad Sports Center",
+            "Football Court 1",
+            "futsal",
+            -3,
+            21,
+            1,
+            10,
+            MatchStatus.completed,
+            [waqas, iqra, ahmed_raza, usman_t, kamran],
+        ),
+        await make_match(
+            sadia,
+            "Multan Sports Complex",
+            "Cricket Ground",
+            "cricket",
+            5,
+            17,
+            2,
+            22,
+            MatchStatus.cancelled,
+            [kamran],
+        ),
+    ]
+    match_ids = [str(m.id) for m in matches]
+
+    # -- In-app notifications (players + owners) -------------------------
+    # Titles/bodies mirror EVENT_META in app/modules/notification/service.py
+    # so the seeded rows render exactly like ones the app produces.
+    def notif(
+        user: User,
+        event: str,
+        title: str,
+        body: str,
+        days_back: int,
+        hour: int,
+        read: bool,
+    ) -> Notification:
+        created = days_ago_utc(days_back, hour)
+        return Notification(
+            user_id=user.id,
+            event=event,
+            title=title,
+            body=body,
+            data={},
+            read_at=created + timedelta(hours=2) if read else None,
+            created_at=created,
+        )
+
+    confirmed_body = "Your booking is confirmed. See you on the court!"
+    notifications = [
+        notif(ahmed_raza, "booking_confirmed", "Booking confirmed", confirmed_body, 0, 9, False),
+        notif(
+            ahmed_raza,
+            "booking_reminder_24h",
+            "Upcoming booking tomorrow",
+            "You have a booking starting in about 24 hours.",
+            1,
+            18,
+            True,
+        ),
+        notif(sara, "booking_confirmed", "Booking confirmed", confirmed_body, 1, 11, False),
+        notif(
+            sara,
+            "booking_reminder_1h",
+            "Booking starting soon",
+            "You have a booking starting in about 1 hour.",
+            2,
+            15,
+            True,
+        ),
+        notif(
+            bilal_a,
+            "booking_cancelled",
+            "Booking cancelled",
+            "Your booking has been cancelled.",
+            3,
+            10,
+            True,
+        ),
+        notif(
+            sana,
+            "refund_initiated",
+            "Refund initiated",
+            "A refund of PKR 1500 has been initiated for your booking.",
+            2,
+            12,
+            False,
+        ),
+        notif(
+            kamran,
+            "balance_paid",
+            "Balance paid",
+            "Your outstanding balance has been paid. Your booking is fully settled.",
+            4,
+            17,
+            True,
+        ),
+        notif(iqra, "booking_confirmed", "Booking confirmed", confirmed_body, 0, 8, False),
+        notif(
+            mehwish,
+            "booking_payment_failed",
+            "Payment failed",
+            "Payment for your booking could not be completed.",
+            1,
+            20,
+            False,
+        ),
+        notif(
+            hamza,
+            "booking_reminder_24h",
+            "Upcoming booking tomorrow",
+            "You have a booking starting in about 24 hours.",
+            0,
+            7,
+            False,
+        ),
+    ]
+    for owner_email, count, days_back in [
+        (OWNER_EMAIL, 3, 0),
+        ("ali.owner@arenahub.pk", 2, 1),
+        ("ahmed.owner@arenahub.pk", 1, 1),
+        ("usman.owner@arenahub.pk", 1, 2),
+        ("bilal.owner@arenahub.pk", 2, 0),
+    ]:
+        notifications.append(
+            notif(
+                owners_by_email[owner_email],
+                "new_confirmed_booking",
+                "New booking received",
+                f"You have {count} new confirmed booking(s).",
+                days_back,
+                9,
+                False,
+            )
+        )
+    db.add_all(notifications)
+    await db.flush()
+    notification_ids = [str(n.id) for n in notifications]
+
+    # -- Liked arenas (mobile bookmarks) ---------------------------------
+    likes = [
+        ArenaLike(player_id=player.id, arena_id=arenas_by_name[arena_name].id)
+        for player, arena_name in [
+            (ahmed_raza, "Arena Hub DHA Lahore"),
+            (ahmed_raza, "Arena Hub Gulberg Lahore"),
+            (sara, "Arena Hub DHA Lahore"),
+            (sara, "DHA Sports Club"),
+            (bilal_a, "Arena Hub DHA Lahore"),
+            (hina, "Arena Hub Gulberg Lahore"),
+            (ayesha, "Karachi Indoor Arena"),
+            (kamran, "Multan Sports Complex"),
+            (sadia, "Multan Sports Complex"),
+            (fahad, "Lahore Arena"),
+            (junaid, "Karachi Indoor Arena"),
+            (waqas, "Islamabad Sports Center"),
+            (hamza, "Islamabad Sports Center"),
+        ]
+    ]
+    db.add_all(likes)
+    await db.flush()
+    like_ids = [str(x.id) for x in likes]
+
+    # -- Audit-log entries mirroring the arenas' actual moderation state --
+    audit_rows = [
+        AuditLog(
+            actor_id=admin.id,
+            action="arena.approve",
+            target_type="arena",
+            target_id=str(arenas_by_name["Multan Sports Complex"].id),
+            details={},
+            created_at=days_ago(9, 11),
+            updated_at=days_ago(9, 11),
+        ),
+        AuditLog(
+            actor_id=admin.id,
+            action="arena.approve",
+            target_type="arena",
+            target_id=str(arenas_by_name["Lahore Arena"].id),
+            details={},
+            created_at=days_ago(8, 16),
+            updated_at=days_ago(8, 16),
+        ),
+        AuditLog(
+            actor_id=admin.id,
+            action="arena.reject",
+            target_type="arena",
+            target_id=str(arenas_by_name["Arena Hub Johar Town Lahore"].id),
+            details={"reason": REJECTION_REASON},
+            created_at=days_ago(7, 14),
+            updated_at=days_ago(7, 14),
+        ),
+    ]
+    db.add_all(audit_rows)
+    await db.flush()
+    audit_ids = [str(a.id) for a in audit_rows]
+
+    # -- Align bank-transfer payments awaiting owner approval ------------
+    # The lifecycle-status migration backfilled from the coarse status, which
+    # leaves receipt-uploaded payments at `pending`; the app would have moved
+    # them to `pending_approval` when the receipt was uploaded.
+    pending_groups = (
+        (
+            await db.execute(
+                select(Booking.booking_group_id).where(
+                    Booking.status == BookingStatus.pending_approval
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if pending_groups:
+        await db.execute(
+            update(Payment)
+            .where(
+                Payment.booking_group_id.in_(pending_groups),
+                Payment.payment_method == PaymentMethod.bank_transfer,
+                Payment.lifecycle_status == PaymentLifecycleStatus.pending,
+            )
+            .values(lifecycle_status=PaymentLifecycleStatus.pending_approval)
+        )
+
+    manifest["bank_details_v3"] = bank_detail_ids
+    manifest["complaints_v3"] = complaint_ids
+    manifest["matches_v3"] = match_ids
+    manifest["notifications_v3"] = notification_ids
+    manifest["arena_likes_v3"] = like_ids
+    manifest["audit_logs_v3"] = audit_ids
+    manifest["flow_seeded_v3"] = True
+    print(
+        f"created: {len(bank_detail_ids)} bank accounts, {len(complaint_ids)} complaints, "
+        f"{len(match_ids)} matches, {len(notification_ids)} notifications, "
+        f"{len(like_ids)} liked arenas, {len(audit_ids)} audit-log entries"
+    )
+
+
+async def _refresh_transaction_timestamps(db: AsyncSession, manifest: dict) -> None:
+    """Seeded bookings/payments get `created_at = the moment the seed first
+    ran`, so the owner revenue-trend chart (which buckets by payment
+    `created_at`) drains to zero as that day recedes into the past. Re-anchor
+    every seeded row to just before its booking's play date — clamped to now
+    for future-dated bookings — so the last-7-days analytics always show
+    activity no matter how long ago the data was seeded. Runs on every seed
+    invocation and only touches manifested rows, never UI-created ones."""
+    booking_ids = [
+        uuid.UUID(b) for b in manifest.get("bookings", []) + manifest.get("bookings_v2", [])
+    ]
+    payment_groups = [
+        uuid.UUID(g)
+        for g in manifest.get("payment_booking_groups", [])
+        + manifest.get("payment_booking_groups_v2", [])
+    ]
+    if not booking_ids:
+        return
+
+    now = datetime.now()
+    bookings = (
+        (await db.execute(select(Booking).where(Booking.id.in_(booking_ids)))).scalars().all()
+    )
+    anchor_by_group: dict[uuid.UUID, datetime] = {}
+    for booking in bookings:
+        anchor = datetime.combine(booking.booking_date, booking.start_time)
+        existing = anchor_by_group.get(booking.booking_group_id)
+        if existing is None or anchor < existing:
+            anchor_by_group[booking.booking_group_id] = anchor
+        booked_at = min(anchor - timedelta(hours=26), now - timedelta(hours=2))
+        booking.created_at = booked_at
+        booking.updated_at = booked_at
+
+    if payment_groups:
+        payments = (
+            (await db.execute(select(Payment).where(Payment.booking_group_id.in_(payment_groups))))
+            .scalars()
+            .all()
+        )
+        for payment in payments:
+            group_anchor = anchor_by_group.get(payment.booking_group_id)
+            if group_anchor is None:
+                continue
+            paid_at = min(group_anchor - timedelta(hours=25), now - timedelta(hours=1))
+            payment.created_at = paid_at
+            payment.updated_at = paid_at
+    await db.flush()
+
+
+async def _manifest_complaints_still_exist(db: AsyncSession, complaint_ids: list[str]) -> bool:
+    """Same spot-check as `_manifest_bookings_still_exist`, for the v3 flow."""
+    if not complaint_ids:
+        return False
+    ids = [uuid.UUID(c) for c in complaint_ids]
+    result = await db.execute(select(Complaint.id).where(Complaint.id.in_(ids)))
+    return len(result.scalars().all()) == len(ids)
+
+
 async def _manifest_bookings_still_exist(db: AsyncSession, booking_ids: list[str]) -> bool:
     """A manifest flag like `flow_seeded` only means "we created these rows at
     some point" — if the DB was since wiped/recreated (e.g. clear_dummy_data.py,
@@ -2000,6 +2668,34 @@ async def seed() -> None:
             await _seed_player_flow_v2(db, all_arenas_by_name, manifest)
             await db.commit()
 
+        flow_seeded_v3 = existing_manifest.get(
+            "flow_seeded_v3"
+        ) and await _manifest_complaints_still_exist(db, existing_manifest.get("complaints_v3", []))
+        if flow_seeded_v3:
+            print("skip (already exists): showcase data (complaints/matches/notifications/likes)")
+            manifest.update(
+                {
+                    k: existing_manifest[k]
+                    for k in (
+                        "bank_details_v3",
+                        "complaints_v3",
+                        "matches_v3",
+                        "notifications_v3",
+                        "arena_likes_v3",
+                        "audit_logs_v3",
+                        "flow_seeded_v3",
+                    )
+                    if k in existing_manifest
+                }
+            )
+        else:
+            await _seed_showcase_v3(db, all_arenas_by_name, manifest)
+            await db.commit()
+
+        await _refresh_transaction_timestamps(db, manifest)
+        await db.commit()
+        print("refreshed: booking/payment timestamps re-anchored to booking dates")
+
         # Always recomputed so the manifest reflects the full current player
         # roster (v2 adds players to PLAYERS that v1's skip-branch above
         # wouldn't otherwise pick up).
@@ -2013,6 +2709,7 @@ async def seed() -> None:
         not manifest["arenas"]
         and not manifest.get("flow_seeded")
         and not manifest.get("flow_seeded_v2")
+        and not manifest.get("flow_seeded_v3")
     ):
         print("\nNothing new to seed — all demo data already exists.")
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, default=str))
