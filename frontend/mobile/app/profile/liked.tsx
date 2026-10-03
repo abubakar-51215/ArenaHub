@@ -2,13 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { Text } from '@/components/ui/text';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ArenaCard } from "@/components/arena-card";

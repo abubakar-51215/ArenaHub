@@ -1,7 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { Text } from '@/components/ui/text';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, Shadow } from "@/constants/theme";

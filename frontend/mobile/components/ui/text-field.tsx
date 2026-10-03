@@ -1,4 +1,6 @@
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, View, type TextInputProps } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/ui/text-input';
 
 import { Colors } from '@/constants/theme';
 

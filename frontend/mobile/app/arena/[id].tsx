@@ -3,16 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ActivityIndicator,
-  FlatList,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, FlatList, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from '@/components/ui/text';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ArenaCard } from "@/components/arena-card";
