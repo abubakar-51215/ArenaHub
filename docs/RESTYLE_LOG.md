@@ -68,3 +68,38 @@ Decisions made along the way:
 - **The now-line owns its own 60s tick internally** (`now-line.tsx`),
   isolated from the rest of the grid, so the sweeping clock never
   triggers a re-render of anything above it.
+
+---
+
+## Player app — Archivo width axis dropped (known visual deviation)
+
+`arena-hub-player-app.html` uses Archivo's variable `wdth` axis (76 for
+scoreboard numerals, 125 for eyebrows). React Native 0.81 has no
+`fontVariationSettings` style (only `fontVariant`), and
+`@expo-google-fonts/archivo` ships static weights only, so the axis can't be
+expressed on device.
+
+Decision (Muhammad): option 1. Archivo static weights (heavy for numerals) and
+Inter Tight static 400–700. Eyebrows are uppercase with wide `letterSpacing`
+(the prototype's `.16em`). Not using `archivo-narrow` (a different design) and
+not instancing custom fonts. Numerals will read wider and eyebrows narrower than
+the prototype. That difference is accepted and is not a regression.
+
+## Player app — first mobile baseline and the web boot fixes it needed
+
+`frontend/mobile` had never been installed or run on web in this repo. Two
+fixes were needed before any screen rendered, both outside the restyle:
+
+- `import.meta` crash: zustand's ESM build reads `import.meta.env`, which
+  Metro's web bundle can't parse. Added `babel.config.js` with
+  `unstable_transformImportMeta` and `babel-preset-expo` as a devDependency.
+- Auth store never rehydrated on web: the `localStorage` fallback was
+  synchronous, so persist rehydrated inside `create()` before `useAuthStore`
+  existed and `hydrated` stayed false (endless spinner). Made the web storage
+  async, with `window` guards for Expo's Node render pass. Native uses async
+  SecureStore and was unaffected.
+
+Baselines: `design/baselines/mobile/` holds 23 screens at 390x844 @2x
+(`01-login` to `23-profile-change-password`). They depend on dev-DB fixtures
+(relative dates, seeded bookings), so expect date text to drift. They're a
+"before" reference for the restyle, not a strict pixel-diff gate.
