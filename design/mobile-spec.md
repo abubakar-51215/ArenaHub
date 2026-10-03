@@ -1283,3 +1283,39 @@ Decision (Muhammad): the app copies the prototype's design, not its rendering bu
 
 Not defects (intended): frames whose content continues below the fold, because the screens scroll in the prototype (`-full` references show everything); horizontal-scroll rows (chips, day strip, venue cards) clipped at the right edge; 3-line paragraphs in 262px columns.
 
+## 8. Tab bar (bottom navigation)
+
+`.m-tabs`/`.m-tab` are already rows in section 4's component table (one row
+per distinct class list), but that table has no column for icon colour, and
+nothing in this document said in prose that the active tab's icon and its
+label are two different colours. That is the gap this section closes.
+Measured with Playwright (`getBoundingClientRect`/`getComputedStyle`) against
+`arena-hub-player-app.html` at 390×844 @2x; the frame's own content width is
+298px (the prototype's mock-phone, not the 390px device), and, as with every
+other measurement in this spec, the raw CSS px below are used 1:1 as React
+Native `dp`.
+
+| Element | Size | Padding | Border | Background | Font | Colour (inactive) | Colour (active) |
+|---|---|---|---|---|---|---|---|
+| `div.m-tabs` (bar) | 298×60.25 | 7px 6px 16px | top 1px solid `#E2E6E1` (--line) | `#FFFFFF` (--card) | — | — | — |
+| `button.m-tab` (per tab) | 57.2×36.25 | — | — | — | Inter Tight 600, 9.5px / lh 14.25px | `#79857E` (--muted) | `#0F1A15` (--ink, --text) |
+| `svg` (icon, per tab) | 19×19 | — | — | — | — | `#79857E` (--muted) | `#7FA30F` (--lime-deep) |
+
+The active tab's **label and icon are different colours** (label ink, icon
+lime-deep) — confirmed by sampling `getComputedStyle(svg).color` against the
+button's own `color` on every `is-on` instance across all 5 tab screens. A
+single `tabBarActiveTintColor` cannot express this split; the icon's colour
+has to be set independently of the label's.
+
+Bar height (60.25px) is not a declared CSS property — `.m-tabs` has no
+`height` rule, so the box is sized by its content:
+`7` (padding-top) + `19` (icon) + `3` (gap) + `14.25` (label line-height) +
+`16` (padding-bottom) + `1` (border-top) = `60.25`. Recorded as measured, not
+estimated.
+
+**Platform adaptation (not a deviation):** the prototype's 16px bottom padding
+stands in for the phone's home-indicator safe area, which a browser mock has
+none of. On a real device the two occupy the same space, so the padding
+should be `max(16, safe-area-bottom-inset)`, not the full 16px stacked on top
+of the inset.
+
