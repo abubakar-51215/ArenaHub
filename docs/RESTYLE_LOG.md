@@ -143,3 +143,43 @@ Archivo 650 (headers, e.g. "Filters", wght 650) also uses Bold 700 so the
 hierarchy stays consistent; the static Archivo files have no 650, and 600 and 700
 each differ by about 1.7% in width. This is the second known visual deviation,
 next to the dropped Archivo width axis.
+
+---
+
+## Player app — G0a-2 interim-value checklist (must be empty before the restyle closes)
+
+G0a-2 replaced the 21 `Colors.light.card` fills with `lineSoft` in bulk so the
+unconverted screens stay usable. Several are not `lineSoft` in the prototype
+(`design/mobile-spec.md`). **Each group's report ticks off the items in its
+screens. The final group cannot close while any item is open.** Line numbers are
+as of commit `8fad721`.
+
+| ☐ | Where | Interim value | Spec value | Group |
+|---|---|---|---|---|
+| ☐ | `app/(tabs)/index.tsx:214` Home `searchBar` | lineSoft | white (`card`) with a `1px line` border, radius 12, pad 10/13 | G2 |
+| ☐ | `app/(tabs)/index.tsx:223` Home `sportChip` | lineSoft | white (`card`) with a `1px line` border, radius 12; active = ink | G2 |
+| ☐ | `app/booking/confirmation/[bookingId].tsx:112` confirmation `card` | lineSoft | white (`card`) with a `1px line` border, radius 15 | G4 |
+| ☐ | `app/booking/[courtId].tsx:266` booking-summary `card` | lineSoft | white (`card`) with a `1px line` border, radius 15 | G4 |
+| ☐ | `app/play/[matchId].tsx:153` match-detail `card` | lineSoft | white (`card`) with a `1px line` border, radius 15 | G6 |
+| ☐ | `app/payment/[groupId].tsx:275` payment `bankCard` | lineSoft | white (`card`) with a `1px line` border, radius 15 (no frame: composed) | G4 |
+| ☐ | `app/arena/[id].tsx:126` hero image fallback | lineSoft | ink `#0F1A15` (`.m-vis`) | G3 |
+| ☐ | `components/arena-card.tsx:51` image fallback | lineSoft | ink `#0F1A15` (`.m-vis`) | G2 |
+| ☐ | `components/booking-card.tsx:144` image fallback | lineSoft | ink `#0F1A15` (`.m-vis`) | G5 |
+| ☐ | `app/booking/reschedule/[bookingId].tsx:202` `slotDisabled` | lineSoft | `slotOpen`, dashed `line` border, line-through text | G3 |
+| ☐ | `app/court/[id]/slots.tsx:244` `slotDisabled` | lineSoft | `slotOpen`, dashed `line` border, line-through text | G3 |
+| ☐ | `app/(tabs)/bookings.tsx:106` My bookings `tab` | lineSoft per tab | `lineSoft` track (radius 11, pad 3); inactive buttons transparent; active = white button with the `0 1px 2px` shadow | G5 |
+| ☐ | `app/(tabs)/play.tsx:162` Play `tab` | lineSoft per tab | same segmented control as above | G6 |
+| ☐ | `app/arena/[id].tsx:322` `sportPill` | lineSoft | `lineSoft` (`.tag`); confirm radius 6, pad 2/7, 11px/600 `text-2` | G3 |
+| ☐ | `app/arena/[id]/reviews.tsx:207` `breakdownBarTrack` | lineSoft | `lineSoft` (`.score-track`), height 5, radius 3; confirm | G7 |
+| ☐ | `app/arena/[id]/reviews.tsx:220` `ownerResponse` | lineSoft | no frame: decide | G7 |
+| ☐ | `app/booking/confirmation/[bookingId].tsx:116` QR placeholder | lineSoft | deleted (QR removed) | G4 |
+| ☐ | `app/payment/[groupId].tsx:285` `receiptPreview` | lineSoft | no frame: decide | G4 |
+| ☐ | `app/profile/edit.tsx:155` `avatarImage` | lineSoft | no frame: decide | G8 |
+| ☐ | `components/match-card.tsx:100` icon circle | lineSoft | prototype match cards have no icon circle: remove or decide | G6 |
+| ☐ | `components/static-map.tsx:96` map background | lineSoft | no frame: decide | G3 |
+
+Also open from G0a-2 (not part of the 21): the 22 remaining `#fff` literals
+(white text on filled surfaces, icon colours) get exact `onInk`/paper handling
+when the primitives land, the confirmation screen's hardcoded green/amber
+`LinearGradient` is replaced in G4, and the five blue literals (`#EFF6FF` ×3,
+`#E5EDFF`, `#0a7ea4`) are repointed in the group that restyles each screen.
