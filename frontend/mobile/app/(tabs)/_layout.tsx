@@ -1,9 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { PlatformPressable } from '@react-navigation/elements';
 import { Tabs } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,11 +22,7 @@ const ICON_SIZE = 19;
 // its own icon, 3px gap and label, with its own 7px-top/16px-bottom padding,
 // bypassing the library's icon/label slot math entirely. Same component on
 // web, Android and iOS — nothing here is web-only.
-function makeTabButton(
-  iconName: React.ComponentProps<typeof Ionicons>['name'],
-  label: string,
-  theme: (typeof Colors)['light'],
-) {
+function makeTabButton(iconName: IconName, label: string, theme: (typeof Colors)['light']) {
   return function TabButton(props: BottomTabBarButtonProps) {
     // `rest` still carries `children` (the library's own broken icon+label
     // composition, see the comment above) — spread onto PlatformPressable
@@ -48,7 +44,7 @@ function makeTabButton(
           props.onPressIn?.(ev);
         }}>
         <View style={styles.content}>
-          <Ionicons name={iconName} size={ICON_SIZE} color={iconColor} />
+          <Icon name={iconName} size={ICON_SIZE} color={iconColor} />
           <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>
             {label}
           </Text>
@@ -110,19 +106,19 @@ export default function TabLayout() {
         name="bookings"
         options={{
           title: 'Bookings',
-          tabBarButton: makeTabButton('calendar', 'Bookings', theme),
+          tabBarButton: makeTabButton('cal', 'Bookings', theme),
         }}
       />
       <Tabs.Screen
         name="play"
         options={{
           title: 'Play',
-          tabBarButton: makeTabButton('game-controller', 'Play', theme),
+          tabBarButton: makeTabButton('play', 'Play', theme),
         }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarButton: makeTabButton('person', 'Profile', theme) }}
+        options={{ title: 'Profile', tabBarButton: makeTabButton('user', 'Profile', theme) }}
       />
     </Tabs>
   );
