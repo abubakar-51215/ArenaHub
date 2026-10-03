@@ -1,11 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Brand, Colors, Shadow } from "@/constants/theme";
+import { Colors, Shadow } from "@/constants/theme";
 import { logout } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
@@ -58,12 +57,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <LinearGradient
-        colors={Brand.gradientHero}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
+      <View style={styles.header}>
         <Pressable
           style={styles.editBtn}
           hitSlop={12}
@@ -86,7 +80,7 @@ export default function ProfileScreen() {
         )}
         <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
-      </LinearGradient>
+      </View>
 
       <View style={styles.menu}>
         {MENU_ITEMS.map((item) => (
@@ -125,13 +119,14 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
     alignItems: "center",
     paddingTop: 24,
     paddingBottom: 32,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+    backgroundColor: Colors.light.ink,
   },
   editBtn: {
     position: "absolute",
@@ -148,7 +143,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.light.card,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,

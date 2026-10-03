@@ -42,13 +42,13 @@ export function ArenaCard({ arena, width }: { arena: Arena; width?: number }) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.light.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.border,
     overflow: 'hidden',
     ...Shadow.card,
   },
-  image: { width: '100%', height: 110, backgroundColor: Colors.light.card },
+  image: { width: '100%', height: 110, backgroundColor: Colors.light.lineSoft },
   body: { padding: 10, gap: 4 },
   name: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },

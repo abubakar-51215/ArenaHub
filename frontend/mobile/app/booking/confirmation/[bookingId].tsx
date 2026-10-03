@@ -88,7 +88,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
   iconHalo: {
@@ -109,10 +109,10 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '700', color: Colors.light.text },
   subtitle: { fontSize: 14, color: Colors.light.muted, textAlign: 'center', marginTop: 8, marginBottom: 24 },
-  card: { width: '100%', backgroundColor: Colors.light.card, borderRadius: 14, padding: 16, gap: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.light.border },
+  card: { width: '100%', backgroundColor: Colors.light.lineSoft, borderRadius: 14, padding: 16, gap: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.light.border },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   rowLabel: { fontSize: 13, color: Colors.light.muted },
   rowValue: { fontSize: 13, fontWeight: '600', color: Colors.light.text, textTransform: 'capitalize' },
-  qr: { width: 160, height: 160, marginTop: 20, borderRadius: 12, backgroundColor: Colors.light.card },
+  qr: { width: 160, height: 160, marginTop: 20, borderRadius: 12, backgroundColor: Colors.light.lineSoft },
   actions: { width: '100%', gap: 12, marginTop: 28 },
 });

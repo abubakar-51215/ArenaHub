@@ -139,7 +139,7 @@ export default function MatchDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
   content: { flex: 1, paddingHorizontal: 20 },
-  card: { backgroundColor: Colors.light.card, borderRadius: 12, padding: 14, gap: 4, marginBottom: 16 },
+  card: { backgroundColor: Colors.light.lineSoft, borderRadius: 12, padding: 14, gap: 4, marginBottom: 16 },
   sport: { fontSize: 18, fontWeight: '700', color: Colors.light.text, textTransform: 'capitalize' },
   arenaName: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
   meta: { fontSize: 12, color: Colors.light.muted },

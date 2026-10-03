@@ -208,7 +208,7 @@ export default function SlotSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  slotDisabled: { backgroundColor: Colors.light.card, borderColor: Colors.light.border },
+  slotDisabled: { backgroundColor: Colors.light.lineSoft, borderColor: Colors.light.border },
   slotActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   slotPeak: { borderColor: Colors.light.warning },
   slotText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.light.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.light.border,
   },

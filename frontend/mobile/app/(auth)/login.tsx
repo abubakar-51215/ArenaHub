@@ -95,7 +95,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: Colors.light.background },
   container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
   logo: { fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 32 },
   title: { fontSize: 24, fontWeight: '700', color: Colors.light.text },

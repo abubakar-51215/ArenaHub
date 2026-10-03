@@ -186,7 +186,7 @@ function ReviewRow({ review }: { review: Review }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   breakdown: { marginTop: 16, gap: 6 },
   breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   breakdownLabel: { fontSize: 11, color: Colors.light.muted, width: 24 },
-  breakdownBarTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: Colors.light.card },
+  breakdownBarTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: Colors.light.lineSoft },
   breakdownBarFill: { height: 6, borderRadius: 3, backgroundColor: '#F59E0B' },
   breakdownCount: { fontSize: 11, color: Colors.light.muted, width: 20, textAlign: 'right' },
   composer: { marginTop: 20, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.light.border, gap: 10 },
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   reviewerName: { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   reviewDate: { fontSize: 11, color: Colors.light.muted },
   reviewText: { fontSize: 13, color: Colors.light.text, marginTop: 2, lineHeight: 18 },
-  ownerResponse: { marginTop: 6, padding: 10, backgroundColor: Colors.light.card, borderRadius: 8 },
+  ownerResponse: { marginTop: 6, padding: 10, backgroundColor: Colors.light.lineSoft, borderRadius: 8 },
   ownerResponseLabel: { fontSize: 11, fontWeight: '700', color: Colors.light.tint },
   ownerResponseText: { fontSize: 12, color: Colors.light.text, marginTop: 2 },
   empty: { textAlign: 'center', color: Colors.light.muted, marginTop: 16 },

@@ -188,7 +188,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   headerTopRow: {
     flexDirection: "row",
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
     borderRadius: 12,
     paddingHorizontal: 14,
     height: 46,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   searchPlaceholder: { color: Colors.light.muted, fontSize: 14 },
   sportsRow: { gap: 8, paddingBottom: 16 },
   sportChip: {
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,

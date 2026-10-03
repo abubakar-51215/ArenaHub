@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { MatchCard } from '@/components/match-card';
-import { Brand, Colors, Shadow } from '@/constants/theme';
+import { Colors, Shadow } from '@/constants/theme';
 import { useMyMatches, useOpenMatches } from '@/hooks/useMatches';
 import { ApiError } from '@/lib/api';
 import { joinMatch } from '@/services/matches';
@@ -49,11 +48,7 @@ export default function PlayScreen() {
         </Pressable>
       </View>
 
-      <LinearGradient
-        colors={Brand.gradientHero}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}>
+      <View style={styles.hero}>
         <View style={styles.heroIcon}>
           <Ionicons name="people" size={22} color="#fff" />
         </View>
@@ -61,7 +56,7 @@ export default function PlayScreen() {
           <Text style={styles.heroTitle}>Find players. Join matches.</Text>
           <Text style={styles.heroSubtitle}>Team up and play together!</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       <View style={styles.tabs}>
         {(['open', 'mine'] as const).map((t) => (
@@ -127,7 +122,7 @@ export default function PlayScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -144,6 +139,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     padding: 16,
     borderRadius: 16,
+    backgroundColor: Colors.light.ink,
     ...Shadow.brand,
   },
   heroIcon: {
@@ -163,7 +159,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
   },
   tabActive: { backgroundColor: Colors.light.tint },
   tabText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },

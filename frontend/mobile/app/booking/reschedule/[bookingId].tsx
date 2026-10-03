@@ -164,7 +164,7 @@ export default function RescheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  slotDisabled: { backgroundColor: Colors.light.card, borderColor: Colors.light.border },
+  slotDisabled: { backgroundColor: Colors.light.lineSoft, borderColor: Colors.light.border },
   slotActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   slotText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   slotTextActive: { color: '#fff' },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.light.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.light.border,
   },
