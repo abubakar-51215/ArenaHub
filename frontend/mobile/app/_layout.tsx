@@ -16,7 +16,7 @@ import { ActivityIndicator, View } from "react-native";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
-import { Colors } from "@/constants/theme";
+import { Colors, Font } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { fetchMe } from "@/services/auth";
@@ -39,6 +39,20 @@ const NavigationTheme = {
     text: Colors.light.text,
     border: Colors.light.border,
     notification: Colors.light.destructive,
+  },
+  // Covers any screen/header React Navigation renders text for directly
+  // (e.g. the default header title on `modal` and `health`, the only two
+  // screens left with headerShown: true) — components/ui/text.tsx can't
+  // reach those, since the library renders them itself. fontWeight is
+  // 'normal' throughout: these are named static-weight font files, not a
+  // variable family, so the weight has to come from which face is picked,
+  // not from the fontWeight the library would otherwise set alongside it
+  // (components/ui/text.tsx "React Native does not honour fontWeight...").
+  fonts: {
+    regular: { fontFamily: Font.body, fontWeight: "normal" as const },
+    medium: { fontFamily: Font.bodyMedium, fontWeight: "normal" as const },
+    bold: { fontFamily: Font.bodyBold, fontWeight: "normal" as const },
+    heavy: { fontFamily: Font.bodyBold, fontWeight: "normal" as const },
   },
 };
 

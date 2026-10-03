@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
