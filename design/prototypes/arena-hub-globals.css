@@ -1,0 +1,242 @@
+/* ============================================================================
+   ArenaHub — design tokens
+   Drop-in replacement for frontend/web/src/app/globals.css
+
+   Everything downstream (shadcn/ui components, your own Tailwind classes)
+   reads these variables, so changing this one file restyles both dashboards.
+
+   Palette rationale:
+     ink   #0F1A15  night pitch — nav, headings, primary actions
+     paper #F1F2EF  chalk — app canvas
+     lime  #C4F546  floodlight — accent, used ONLY for live / primary action
+   Colour carries meaning, never decoration:
+     lime = live or primary   amber = pending   red = cancelled
+   ============================================================================ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   1. Tailwind v4 theme mapping — makes bg-background, text-primary etc. work
+   --------------------------------------------------------------------------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* semantic status colours — use these instead of raw green-500 / amber-500 */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-danger-muted: var(--danger-muted);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ---------------------------------------------------------------------------
+   2. Light theme
+   --------------------------------------------------------------------------- */
+:root {
+  --radius: 0.75rem;
+
+  --background: #f1f2ef;
+  --foreground: #0f1a15;
+
+  --card: #ffffff;
+  --card-foreground: #0f1a15;
+  --popover: #ffffff;
+  --popover-foreground: #0f1a15;
+
+  /* primary is ink, NOT lime — lime is the accent, and using it for every
+     button is what makes an accent stop meaning anything */
+  --primary: #0f1a15;
+  --primary-foreground: #f1f2ef;
+
+  --secondary: #edefeb;
+  --secondary-foreground: #0f1a15;
+
+  --muted: #edefeb;
+  --muted-foreground: #79857e;
+
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+
+  --destructive: #cf4141;
+  --destructive-foreground: #ffffff;
+
+  --border: #e2e6e1;
+  --input: #e2e6e1;
+  --ring: #7fa30f;
+
+  --success: #7fa30f;
+  --success-foreground: #ffffff;
+  --success-muted: #f2fbda;
+  --warning: #d9930b;
+  --warning-foreground: #ffffff;
+  --warning-muted: #fdf3dc;
+  --danger-muted: #fbe9e9;
+
+  /* charts: one lime, then a disciplined grey ramp. Never a rainbow. */
+  --chart-1: #c4f546;
+  --chart-2: #0f1a15;
+  --chart-3: #5a6b61;
+  --chart-4: #93a29a;
+  --chart-5: #c6cfc9;
+
+  /* the rail is always ink, in both themes — it anchors the whole product */
+  --sidebar: #0f1a15;
+  --sidebar-foreground: #a9b5ae;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #182620;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #22322a;
+  --sidebar-ring: #c4f546;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Dark theme
+   --------------------------------------------------------------------------- */
+.dark {
+  --background: #0a100d;
+  --foreground: #e9efe9;
+
+  --card: #121a16;
+  --card-foreground: #e9efe9;
+  --popover: #121a16;
+  --popover-foreground: #e9efe9;
+
+  /* in dark, lime becomes the primary — ink would vanish into the canvas */
+  --primary: #c4f546;
+  --primary-foreground: #0f1a15;
+
+  --secondary: #1b2520;
+  --secondary-foreground: #e9efe9;
+
+  --muted: #1b2520;
+  --muted-foreground: #7c8981;
+
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+
+  --destructive: #e05a5a;
+  --destructive-foreground: #0a100d;
+
+  --border: #232f28;
+  --input: #232f28;
+  --ring: #c4f546;
+
+  --success: #a5d321;
+  --success-foreground: #0f1a15;
+  --success-muted: #1e2a11;
+  --warning: #e8b93f;
+  --warning-foreground: #0f1a15;
+  --warning-muted: #2a2210;
+  --danger-muted: #2c1616;
+
+  --chart-1: #c4f546;
+  --chart-2: #8fbf16;
+  --chart-3: #6d7d73;
+  --chart-4: #46534c;
+  --chart-5: #2b3831;
+
+  --sidebar: #0d1410;
+  --sidebar-foreground: #8a968e;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #16201a;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #1e2a23;
+  --sidebar-ring: #c4f546;
+}
+
+/* ---------------------------------------------------------------------------
+   4. Base
+   --------------------------------------------------------------------------- */
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03";
+    letter-spacing: -0.005em;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* numbers in tables and metrics must line up */
+  table, .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* ---------------------------------------------------------------------------
+   5. The typographic signature — one family at two width extremes.
+      Archivo condensed for scoreboard numerals, Archivo expanded for
+      micro-labels. This is the thing that stops it looking like a template.
+   --------------------------------------------------------------------------- */
+@utility metric {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 76, "wght" 700;
+  font-size: 2.375rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+@utility metric-sm {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 76, "wght" 700;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 125, "wght" 600;
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+@utility heading {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 88, "wght" 700;
+  letter-spacing: -0.02em;
+}
