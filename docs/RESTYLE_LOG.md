@@ -134,3 +134,12 @@ identically to 700 in the prototype (the page loads discrete 400/500/600/700
 faces), so Inter Tight Bold is an exact match. Archivo 650 is a true midpoint of
 the variable axis; the static 600 and 700 files each differ in width by about
 1.7%.
+
+## Player app — second platform limit: weight 650
+
+The prototype uses weight 650 (38 places). Decision (Muhammad): Inter Tight
+uses Bold 700 (the browser already renders 650 as 700, measured identical).
+Archivo 650 (headers, e.g. "Filters", wght 650) also uses Bold 700 so the
+hierarchy stays consistent; the static Archivo files have no 650, and 600 and 700
+each differ by about 1.7% in width. This is the second known visual deviation,
+next to the dropped Archivo width axis.

@@ -1269,9 +1269,17 @@ Frame 300×628; scroll height 681 (visible 544). Reference: `design/references/p
 - **Inherited metrics**: `body` sets `letter-spacing:-.005em` at 14px, which computes to **-0.07px** and is inherited as an absolute length by every descendant that does not override it (all Inter Tight text). `line-height:1.5` is inherited as a ratio (line-height = 1.5 × each element's font-size) unless overridden.
 - **Fractional font sizes** (10.5, 11.5, 12.5, 13.5, 9.5, 8.5) are valid in React Native `fontSize`.
 
-### Defects in the prototype itself
+### Defects in the prototype itself: fixed, not replicated
 
-- **Log in frame**: the `mail` and `lock` icons inside `.m-search` have no width/height and no `.m-search svg` rule, so they render at 100% of the field (≈250px), as the prototype's own PNG export also shows. Intended size is unknown (the other `.m-search` icons are 15px).
-- **Profile frame**: the `set` (gear) icon in the hero has no size rule and renders **0×0**, so the gear is invisible in the prototype render (the prototype's own PNG export shows none either).
-- Frames 3, 5, 6 and 7 have content that is cut off at the frame bottom in the static render (the screens scroll in the prototype); the `-full` reference images show the complete content.
-- Frame 11 (Equipment) item names wrap one word per line at 300px because the name column is squeezed by the price column and button.
+Decision (Muhammad): the app copies the prototype's design, not its rendering bugs. Found by script (cramped-wrap, text-overflow, off-frame and icon-size checks over all 14 frames). The mobile screens use the intended layout below; the reference PNGs still show the defect.
+
+| Frame | Defect in the prototype | Mobile treatment |
+|---|---|---|
+| 1 Log in | The `mail` and `lock` icons in `.m-search` have no size, so they render 169px and 112px and squeeze the placeholder ("Email or phone" wraps to 2 lines in 57px) | 15px icons like every other `.m-search` icon; placeholder on one line |
+| 11 Equipment | Name and description columns are squeezed to 41–74px by the price column and button: "Match football", "Football boots", "Badminton racket" wrap to 2 lines, "Size 5 · premium grade" to 3 | Name and description get the flexible width (`flex:1`, `minWidth:0`) so names do not wrap one word per line; long text truncates at 2 lines |
+| 9 My bookings | "Green Field Nets" wraps to 3 lines (52px) beside the "Awaiting payment" badge; "Ace Badminton Court" wraps to 2 | Name column takes the remaining width (`flex:1`, `minWidth:0`); the name truncates to 2 lines rather than splitting words |
+| 3 Search & filters | The "✓ Parking" tag breaks after the check mark (2 lines in 72px) | Tags never wrap (single line). The amenity tags are removed from the app anyway |
+| 13 Profile | The `set` (gear) icon has no size and renders 0×0, so it is invisible | Omitted |
+
+Not defects (intended): frames whose content continues below the fold, because the screens scroll in the prototype (`-full` references show everything); horizontal-scroll rows (chips, day strip, venue cards) clipped at the right edge; 3-line paragraphs in 262px columns.
+
