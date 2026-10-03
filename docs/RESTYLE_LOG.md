@@ -103,3 +103,34 @@ Baselines: `design/baselines/mobile/` holds 23 screens at 390x844 @2x
 (`01-login` to `23-profile-change-password`). They depend on dev-DB fixtures
 (relative dates, seeded bookings), so expect date text to drift. They're a
 "before" reference for the restyle, not a strict pixel-diff gate.
+
+---
+
+## Player app — governing rule: match `arena-hub-player-app.html` exactly
+
+Decision (project owner): the mobile app must look exactly like the prototype.
+This supersedes the earlier idea of darkening link/success/muted/amber/red for
+legibility. Prototype values are used as drawn. The only allowed deviations are
+platform limits (the Archivo width axis; Archivo weight 650, which has no static
+file) and requirement-driven removals. The extracted values live in
+`design/mobile-spec.md`; reference frames are in `design/references/player-app/`.
+
+Known contrast properties of the prototype (documentation, not changes; WCAG,
+computed from the token values):
+
+| Pair | Ratio |
+|---|---|
+| lime-deep `#7FA30F` text on white | 2.94:1 |
+| lime-deep on lime-wash `#F2FBDA` (ok badges) | 2.74:1 |
+| muted `#79857E` on white | 3.84:1 |
+| muted on paper `#F1F2EF` | 3.42:1 |
+| amber `#D9930B` on amber-wash `#FDF3DC` (pending badge) | 2.34:1 |
+| red `#CF4141` on red-wash `#FBE9E9` (cancelled badge) | 4.00:1 |
+| text-2 `#46534C` on paper | 7.18:1 |
+| ink on lime / paper on ink (buttons) | 13.99:1 / 15.85:1 |
+
+Verified font facts (measured, not assumed): Inter Tight weight 650 renders
+identically to 700 in the prototype (the page loads discrete 400/500/600/700
+faces), so Inter Tight Bold is an exact match. Archivo 650 is a true midpoint of
+the variable axis; the static 600 and 700 files each differ in width by about
+1.7%.
