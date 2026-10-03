@@ -47,12 +47,6 @@ export const Shadow = {
   brand: {},
 };
 
-/** Flat ink, as in the prototype's heroes and primary buttons. */
-export const Brand = {
-  gradient: [Palette.ink, Palette.ink] as const,
-  gradientHero: [Palette.ink, Palette.ink] as const,
-};
-
 const light = {
   ...Palette,
   // Existing keys, mapped to the prototype's roles.

@@ -123,7 +123,7 @@ export default function ArenaDetailScreen() {
             />
           ) : (
             <View
-              style={[styles.heroImage, { backgroundColor: Colors.light.card }]}
+              style={[styles.heroImage, { backgroundColor: Colors.light.lineSoft }]}
             />
           )}
           <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -288,7 +288,7 @@ export default function ArenaDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
   heroImage: { width: 400, height: 220 },
   backButton: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.light.card,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.light.card,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 13, color: Colors.light.muted },
   sportsRow: { flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" },
   sportPill: {
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,

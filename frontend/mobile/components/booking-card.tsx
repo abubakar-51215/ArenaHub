@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   balanceText: { fontSize: 12, color: Colors.light.warning },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.light.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.border,
     borderRadius: 12,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     ...Shadow.card,
   },
-  image: { width: 90, backgroundColor: Colors.light.card },
+  image: { width: 90, backgroundColor: Colors.light.lineSoft },
   body: { flex: 1, padding: 12, gap: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arenaName: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.light.text },

@@ -150,9 +150,9 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   avatarSection: { alignItems: 'center', gap: 6, marginBottom: 6 },
-  avatarImage: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.light.card },
+  avatarImage: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.light.lineSoft },
   avatarPlaceholder: {
     width: 88,
     height: 88,

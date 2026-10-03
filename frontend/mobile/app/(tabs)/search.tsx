@@ -283,7 +283,7 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
   title: { fontSize: 20, fontWeight: "700", color: Colors.light.text },
   parsedRow: {

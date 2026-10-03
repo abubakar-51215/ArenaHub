@@ -100,10 +100,10 @@ export default function BookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   title: { fontSize: 20, fontWeight: '700', color: Colors.light.text, paddingHorizontal: 20, paddingTop: 12 },
   tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 14 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.light.card },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.light.lineSoft },
   tabActive: { backgroundColor: Colors.light.tint },
   tabText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   tabTextActive: { color: '#fff' },

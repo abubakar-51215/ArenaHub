@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
   },
   tile: { position: 'absolute', width: TILE_SIZE, height: TILE_SIZE },
   pin: { position: 'absolute' },

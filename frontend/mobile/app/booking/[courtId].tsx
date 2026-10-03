@@ -252,7 +252,7 @@ export default function BookingSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
   content: { padding: 20, paddingBottom: 24, gap: 4 },
-  card: { backgroundColor: Colors.light.card, borderRadius: 12, padding: 14, marginBottom: 12 },
+  card: { backgroundColor: Colors.light.lineSoft, borderRadius: 12, padding: 14, marginBottom: 12 },
   arenaName: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
   arenaLocation: { fontSize: 12, color: Colors.light.muted, marginTop: 2 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },

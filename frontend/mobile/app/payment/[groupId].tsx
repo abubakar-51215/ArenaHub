@@ -253,7 +253,7 @@ export default function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   header: { padding: 20, paddingBottom: 8 },
   title: { fontSize: 20, fontWeight: '700', color: Colors.light.text },
   content: { flex: 1, padding: 20, gap: 4 },
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   methodLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.light.text },
   receiptSection: { marginTop: 8 },
   bankCard: {
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
     borderRadius: 10,
     padding: 14,
     gap: 8,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   bankRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   bankLabel: { fontSize: 12, color: Colors.light.muted },
   bankValue: { fontSize: 13, fontWeight: '600', color: Colors.light.text, flexShrink: 1, textAlign: 'right' },
-  receiptPreview: { width: '100%', height: 160, borderRadius: 10, marginBottom: 10, backgroundColor: Colors.light.card },
+  receiptPreview: { width: '100%', height: 160, borderRadius: 10, marginBottom: 10, backgroundColor: Colors.light.lineSoft },
   receiptButton: {
     flexDirection: 'row',
     alignItems: 'center',

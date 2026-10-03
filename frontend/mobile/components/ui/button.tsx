@@ -1,7 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native';
 
-import { Brand, Colors, Shadow } from '@/constants/theme';
+import { Colors, Shadow } from '@/constants/theme';
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
@@ -25,7 +24,7 @@ export function Button({ title, variant = 'primary', loading, disabled, ...props
     </Text>
   );
 
-  // Primary uses a real brand gradient with soft elevation; other variants stay flat.
+  // Primary is a flat ink fill; other variants stay flat.
   if (variant === 'primary') {
     return (
       <Pressable
@@ -37,13 +36,7 @@ export function Button({ title, variant = 'primary', loading, disabled, ...props
           isDisabled && styles.disabled,
           pressed && !isDisabled && styles.pressed,
         ]}>
-        <LinearGradient
-          colors={Brand.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fill}>
-          {label}
-        </LinearGradient>
+        <View style={styles.fill}>{label}</View>
       </Pressable>
     );
   }
@@ -76,6 +69,7 @@ const styles = StyleSheet.create({
   padded: { paddingHorizontal: 16 },
   fill: {
     flex: 1,
+    backgroundColor: Colors.light.ink,
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',

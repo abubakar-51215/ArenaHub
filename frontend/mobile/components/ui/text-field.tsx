@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 15,
     color: Colors.light.text,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.light.card,
   },
   inputError: { borderColor: Colors.light.destructive },
   error: { fontSize: 12, color: Colors.light.destructive },

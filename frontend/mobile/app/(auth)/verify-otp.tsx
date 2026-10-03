@@ -95,7 +95,7 @@ export default function VerifyOtpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.light.background,
     padding: 24,
     justifyContent: "center",
     gap: 16,
