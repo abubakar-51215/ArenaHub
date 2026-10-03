@@ -126,6 +126,26 @@ before any demo that pays by card.
 
 ---
 
+## HIGH PRIORITY backend ask — `GET /arenas` needs `avg_rating`, `review_count`, `min_price`
+
+The arena list/search response (`GET /arenas`, `/arenas/trending`,
+`/recommendations`, `/arenas/liked`) has no rating, review count or price. The
+approved designs show all three on every arena card and row ("4.6 (230)",
+"₨ 1,200/hr"). Getting them today means one `reviews/summary` call and one
+courts call per arena, which hits the 429 rate limiter and is slow, so the
+mobile list cards **omit them** (nothing is faked) until the list returns:
+
+- `avg_rating` (nullable), `review_count`, and `min_price` (lowest court
+  `base_price`) on every arena in list responses.
+
+Distance ("2.3 km") is omitted entirely: the app has no user location beyond
+the detected city. Without these fields the Home, Search, Liked and Trending
+cards lose their two most visible elements. Small change, owned by whoever owns
+the arena list. Arena details and Booking summary still show rating and price
+because they load a single arena.
+
+---
+
 ## Player app — wireframe-vs-backend gaps (for Umer)
 
 Decision (Muhammad): no dead controls. Where the approved wireframe
@@ -136,7 +156,9 @@ mobile restyle leaves current behavior as it is and logs the gap here.
 |---|---|---|
 | 1 Login / Signup | Google and Apple sign-in buttons | No OAuth endpoint in `auth/api.py` (register, verify-otp, resend-otp, login, refresh, logout, forgot/reset-password only). |
 | 3 Search & Filters | Search radius, time-of-day, amenity filters | `GET /arenas` takes only `q`, `city`, `sport`, `price_min`, `price_max`, `sort`. No radius, time-of-day or amenity parameter. Amenities exist on the arena response but aren't filterable. |
-| 8 Booking Confirmation | "Add to Calendar" | No calendar/ICS endpoint. |
+| 8 Booking Confirmation | "Add to Calendar" | **Not a gap.** Device feature: implemented client-side with `expo-calendar` (SDK 54 bundled), in its own diff in the booking-flow group. Listed here only because the wireframe-vs-backend table originally had it. |
+| 6 Booking Summary, 7 Payment | "Taxes & Fees" / "Tax & service" line (wireframe and prototype) | No tax or service-fee concept in booking pricing (`slots_subtotal + equipment_total − discount_amount = total`). The line is removed from the mobile screens. |
+| 2 Home, 3 Search | "Football" sport chip | The backend's sport values are free text (`sports_offered: list[str]`, no enum). The dev data has `futsal` (9 arenas), `cricket`, `padel`, `badminton`, `tennis`, and no `football`; `GET /arenas?sport=football` returns 0. The docs list Football and Futsal as separate sports, and only the NLP search aliases football→futsal. The mobile chips use the backend's own values. Needs a decision on the sport taxonomy. |
 | 13 Profile & Settings | "My Addresses" | No addresses entity. Stays the existing "Coming soon" alert, as do Help & Support and Terms. |
 
 Dropped from the HTML prototype because the wireframe doesn't show them (not
