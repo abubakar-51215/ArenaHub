@@ -142,6 +142,19 @@ function RootNavigator() {
         />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="booking/reschedule/[bookingId]"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="play/[matchId]" options={{ headerShown: false }} />
+        <Stack.Screen name="play/create" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="profile/change-password"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="profile/liked" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/payments" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen
         name="modal"
