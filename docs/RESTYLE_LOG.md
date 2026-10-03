@@ -183,3 +183,47 @@ Also open from G0a-2 (not part of the 21): the 22 remaining `#fff` literals
 when the primitives land, the confirmation screen's hardcoded green/amber
 `LinearGradient` is replaced in G4, and the five blue literals (`#EFF6FF` ×3,
 `#E5EDFF`, `#0a7ea4`) are repointed in the group that restyles each screen.
+
+---
+
+## G0b-2: tab bar label layout bug in `@react-navigation/bottom-tabs`
+
+`tabBarStyle` padding (`paddingTop`/`paddingBottom`) does not add to the tab
+button's box the way normal CSS/RN padding would — on this library version's
+web renderer it is subtracted from a fixed internal height budget instead,
+which starved the label's reserved space down to 0 and left it invisible
+(correct text and colour still in the DOM, just rendered at 0 height).
+Bisected by reloading the live Expo web render after each isolated change:
+no `tabBarStyle` → label 10px tall; `{ paddingTop: 7 }` alone → 3px (exactly
+`10 − 7`); `{ paddingBottom: 16 }` alone → label 0px **and** the whole tab's
+box height drops from 48 to 32 (exactly `48 − 16`). Reproducible with
+`tabBarStyle` padding alone, independent of whether an explicit `height` is
+also set.
+
+Fix: stopped handing padding to `tabBarStyle` at all. `app/(tabs)/_layout.tsx`
+now supplies a custom `tabBarButton` per screen (`makeTabButton`) that draws
+its own icon, 3px gap and label inside a plain `View`/`Text`, with its own
+7px-top / `max(16, safe-area-bottom)`-bottom padding — bypassing the
+library's icon/label slot math entirely. `tabBarStyle` is now limited to
+what doesn't trigger the bug: background, top border, horizontal padding,
+and an explicit total height. Verified with a regression assertion in
+`frontend/mobile/scripts/capture-tabbar.mjs` (every tab label's bounding
+height must be `> 0` and visible) so this can't regress silently in a later
+restyle group.
+
+**Native is unverified.** This bug, its bisection, and the fix were all
+checked against `expo start --web` only — no iOS/Android device or simulator
+was used this session. The underlying bug might be web-only (a different
+code path in bottom-tabs' native renderer), or the custom-button fix could
+behave differently on-device in ways web can't catch (e.g. Android's ripple,
+iOS's large-content-viewer accessibility text, safe-area insets on a real
+notch/gesture-nav phone). On-device check needed before this is trusted:
+with Expo Go, open each of the 5 tabs and confirm (1) all 5 labels are
+visible, not just icons; (2) the bar's total height looks like ~60px plus
+whatever the device's home-indicator/gesture-bar inset adds, not stacked on
+top of the full 16px twice; (3) the active tab's label is ink/near-black and
+its icon is the yellow-green lime-deep, with the other 4 tabs' icon and
+label both in muted grey; (4) on a phone with gesture navigation (no
+physical home button), the bar's bottom spacing sits flush with the
+gesture-bar area rather than leaving a visible gap or getting cut off
+under it.

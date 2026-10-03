@@ -83,15 +83,11 @@ fs.mkdirSync(OUT, { recursive: true });
         },
         tabs: tabs.map((t) => {
           const r = t.getBoundingClientRect();
-          const kids = [...t.children];
-          // kids[0] wraps BOTH the focused and unfocused icon (react-navigation
-          // crossfades them); pick whichever has non-zero opacity. kids[last]
-          // is the label, rendered as a sibling of the icon wrapper, not nested
-          // under it.
-          const iconStates = [...kids[0].children];
-          const visibleIconWrap = iconStates.find((el) => parseFloat(getComputedStyle(el).opacity || "1") > 0.5) ?? iconStates[0];
-          const icon = visibleIconWrap.querySelector('[class*="css-text"]') ?? visibleIconWrap;
-          const label = kids[kids.length - 1];
+          // Our custom tabBarButton (app/(tabs)/_layout.tsx, G0b-2) renders a
+          // single content View with [icon, label] as its only two children —
+          // no crossfade wrapper, unlike the library's own default button.
+          const content = t.children[0];
+          const [icon, label] = [...content.children];
           const ics = getComputedStyle(icon);
           const lcs = getComputedStyle(label);
           const ir = icon.getBoundingClientRect();
@@ -102,6 +98,8 @@ fs.mkdirSync(OUT, { recursive: true });
             iconBox: `${ir.width.toFixed(1)}x${ir.height.toFixed(1)}`,
             iconColor: ics.color,
             labelBox: `${lr.width.toFixed(1)}x${lr.height.toFixed(1)}`,
+            labelHeight: lr.height,
+            labelVisible: lcs.visibility !== "hidden" && lcs.display !== "none" && lcs.opacity !== "0",
             labelFont: `${lcs.fontFamily.split(",")[0]} ${lcs.fontSize}/${lcs.lineHeight} w${lcs.fontWeight} ls ${lcs.letterSpacing}`,
             labelColor: lcs.color,
           };
@@ -120,7 +118,32 @@ fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify({ report, errors }, null, 2));
   console.log(JSON.stringify(report, null, 2));
   console.log("console errors:", errors.length, errors.join(" | "));
+
+  // Regression guard for the bug this harness exists to catch (G0b-2,
+  // docs/RESTYLE_LOG.md "Tab bar label layout bug"): react-navigation's own
+  // tabBarStyle padding silently collapsed every label to 0 height while
+  // leaving its text and colour in the DOM — nothing else about the render
+  // signalled failure, so a human had to notice icons-only in a screenshot.
+  // Assert it here so a later group can't reintroduce it silently.
+  const labelFailures = [];
+  for (const [screen, data] of Object.entries(report)) {
+    if (!data) {
+      labelFailures.push(`${screen}: no tab bar found at all`);
+      continue;
+    }
+    for (const t of data.tabs) {
+      if (!(t.labelHeight > 0)) labelFailures.push(`${screen}/${t.text}: label height is ${t.labelHeight} (must be > 0)`);
+      if (!t.labelVisible) labelFailures.push(`${screen}/${t.text}: label is hidden (visibility/display/opacity)`);
+      if (!t.text || !t.text.trim()) labelFailures.push(`${screen}/${t.text}: label text is empty`);
+    }
+  }
   await browser.close();
+  if (labelFailures.length) {
+    console.error("TAB BAR LABEL ASSERTION FAILED:");
+    labelFailures.forEach((f) => console.error("  -", f));
+    process.exit(1);
+  }
+  console.log(`Label assertion passed: ${Object.values(report).reduce((n, d) => n + (d ? d.tabs.length : 0), 0)} tabs checked across ${Object.keys(report).length} screens.`);
 })().catch((e) => {
   console.error("FAILED", e);
   process.exit(1);
