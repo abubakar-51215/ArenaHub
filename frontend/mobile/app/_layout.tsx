@@ -1,7 +1,16 @@
+import { Archivo_600SemiBold, Archivo_700Bold } from "@expo-google-fonts/archivo";
+import {
+  InterTight_400Regular,
+  InterTight_500Medium,
+  InterTight_600SemiBold,
+  InterTight_700Bold,
+} from "@expo-google-fonts/inter-tight";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { useEffect } from "react";
@@ -16,6 +25,21 @@ import { useAuthStore } from "@/store/auth";
 
 export const unstable_settings = {
   anchor: "(tabs)",
+};
+
+SplashScreen.preventAutoHideAsync();
+
+const NavigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.light.tint,
+    background: Colors.light.background,
+    card: Colors.light.card,
+    text: Colors.light.text,
+    border: Colors.light.border,
+    notification: Colors.light.destructive,
+  },
 };
 
 // Show an in-app banner + play a sound when a push arrives while the app is
@@ -129,9 +153,26 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Archivo_600SemiBold,
+    Archivo_700Bold,
+    InterTight_400Regular,
+    InterTight_500Medium,
+    InterTight_600SemiBold,
+    InterTight_700Bold,
+  });
+  const fontsSettled = fontsLoaded || !!fontError;
+
+  useEffect(() => {
+    if (fontsSettled) SplashScreen.hideAsync();
+  }, [fontsSettled]);
+
+  // A font failure falls through to system fonts rather than blocking the app.
+  if (!fontsSettled) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={DefaultTheme}>
+      <ThemeProvider value={NavigationTheme}>
         <RootNavigator />
         <StatusBar style="dark" />
       </ThemeProvider>
