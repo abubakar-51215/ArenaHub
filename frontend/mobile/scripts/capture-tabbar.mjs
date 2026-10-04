@@ -50,6 +50,25 @@ fs.mkdirSync(OUT, { recursive: true });
     tokens,
   );
 
+  // Same fix as capture-baselines.mjs: wait for every <img> to settle
+  // (bounded, so a genuinely broken image can't hang the capture forever)
+  // and for fonts, instead of guessing a fixed delay is enough.
+  async function waitForImagesAndFonts(timeoutMs = 8000) {
+    try {
+      await page.waitForFunction(
+        () => {
+          const imgs = Array.from(document.images);
+          const imgsReady = imgs.every((img) => img.complete);
+          const fontsReady = document.fonts ? document.fonts.status === "loaded" : true;
+          return imgsReady && fontsReady;
+        },
+        { timeout: timeoutMs },
+      );
+    } catch {
+      // proceed anyway after the timeout
+    }
+  }
+
   const report = {};
   for (const [name, route] of [
     ["home", "/"],
@@ -60,6 +79,8 @@ fs.mkdirSync(OUT, { recursive: true });
   ]) {
     await page.goto(WEB + route, { waitUntil: "networkidle", timeout: 240000 });
     await page.waitForTimeout(3000);
+    await waitForImagesAndFonts();
+    await page.waitForTimeout(300);
     await page.screenshot({ path: path.join(OUT, `screen-${name}.png`) });
 
     const m = await page.evaluate(() => {
