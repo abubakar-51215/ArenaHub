@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
+import { resolveMediaUrl } from '@/lib/media';
 import { updateProfile } from '@/services/auth';
 import { uploadImage } from '@/services/uploads';
 import { useAuthStore } from '@/store/auth';
@@ -31,7 +32,9 @@ export default function EditProfileScreen() {
   const [pickedAvatarUri, setPickedAvatarUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const avatarPreview = pickedAvatarUri ?? user?.profile_picture ?? null;
+  // A freshly-picked local URI (file://, blob:, data:) must stay as-is --
+  // only the server's own relative path needs resolveMediaUrl's prefix.
+  const avatarPreview = pickedAvatarUri ?? resolveMediaUrl(user?.profile_picture) ?? null;
 
   async function pickAvatar() {
     const result = await ImagePicker.launchImageLibraryAsync({
