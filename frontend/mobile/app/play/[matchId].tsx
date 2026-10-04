@@ -115,7 +115,7 @@ export default function MatchDetailScreen() {
         {isCreator ? (
           <Button
             title="Cancel Match"
-            variant="outline"
+            variant="ghost"
             loading={cancelMutation.isPending}
             onPress={() =>
               Alert.alert('Cancel this match?', 'This cancels it for everyone who joined.', [
@@ -127,7 +127,7 @@ export default function MatchDetailScreen() {
         ) : isParticipant ? (
           <Button
             title="Leave Match"
-            variant="outline"
+            variant="ghost"
             loading={leaveMutation.isPending}
             onPress={() => leaveMutation.mutate()}
           />

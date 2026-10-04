@@ -72,7 +72,7 @@ export default function BookingConfirmationScreen() {
 
         <View style={styles.actions}>
           <Button title="View My Bookings" onPress={() => router.replace('/(tabs)/bookings')} />
-          <Button title="Back to Home" variant="outline" onPress={() => router.replace('/(tabs)')} />
+          <Button title="Back to Home" variant="ghost" onPress={() => router.replace('/(tabs)')} />
         </View>
       </View>
     </SafeAreaView>
