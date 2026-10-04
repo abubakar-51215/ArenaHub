@@ -1,10 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator, FlatList, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Text } from '@/components/ui/text';
+import { ArenaImage } from '@/components/ui/arena-image';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ArenaCard } from "@/components/arena-card";
@@ -105,18 +105,10 @@ export default function ArenaDetailScreen() {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               keyExtractor={(uri, i) => `${uri}-${i}`}
-              renderItem={({ item }) => (
-                <Image
-                  source={{ uri: item }}
-                  style={styles.heroImage}
-                  contentFit="cover"
-                />
-              )}
+              renderItem={({ item }) => <ArenaImage photo={item} style={styles.heroImage} />}
             />
           ) : (
-            <View
-              style={[styles.heroImage, { backgroundColor: Colors.light.lineSoft }]}
-            />
+            <ArenaImage photo={null} style={styles.heroImage} />
           )}
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={22} color={Colors.light.text} />

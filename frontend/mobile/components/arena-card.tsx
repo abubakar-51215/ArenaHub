@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { ArenaImage } from '@/components/ui/arena-image';
 
 import { Colors, Shadow } from '@/constants/theme';
 import type { Arena } from '@/types';
@@ -12,12 +12,7 @@ export function ArenaCard({ arena, width }: { arena: Arena; width?: number }) {
     <Pressable
       style={[styles.card, width ? { width } : undefined]}
       onPress={() => router.push(`/arena/${arena.id}`)}>
-      <Image
-        source={arena.images[0] ? { uri: arena.images[0] } : undefined}
-        style={styles.image}
-        contentFit="cover"
-        transition={150}
-      />
+      <ArenaImage photo={arena.images[0]} style={styles.image} transition={150} />
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
           {arena.name}
@@ -49,7 +44,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Shadow.card,
   },
-  image: { width: '100%', height: 110, backgroundColor: Colors.light.lineSoft },
+  image: { width: '100%', height: 110 },
   body: { padding: 10, gap: 4 },
   name: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },

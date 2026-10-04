@@ -1,8 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { Text } from '@/components/ui/text';
+import { ArenaImage } from '@/components/ui/arena-image';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, Shadow } from "@/constants/theme";
@@ -66,19 +66,15 @@ export default function ProfileScreen() {
         >
           <Ionicons name="create-outline" size={20} color="#fff" />
         </Pressable>
-        {user?.profile_picture ? (
-          <Image
-            source={{ uri: user.profile_picture }}
-            style={styles.avatar}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={styles.avatar}>
+        <ArenaImage
+          photo={user?.profile_picture}
+          style={styles.avatar}
+          fallback={
             <Text style={styles.avatarInitial}>
               {user?.full_name?.[0]?.toUpperCase() ?? "?"}
             </Text>
-          </View>
-        )}
+          }
+        />
         <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
       </View>

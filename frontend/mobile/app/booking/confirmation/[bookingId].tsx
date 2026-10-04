@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Colors, Shadow } from '@/constants/theme';
+import { resolveMediaUrl } from '@/lib/media';
 import { getBooking } from '@/services/bookings';
 
 export default function BookingConfirmationScreen() {
@@ -67,7 +68,7 @@ export default function BookingConfirmationScreen() {
         </View>
 
         {booking.qr_code_url ? (
-          <Image source={{ uri: booking.qr_code_url }} style={styles.qr} />
+          <Image source={{ uri: resolveMediaUrl(booking.qr_code_url) }} style={styles.qr} />
         ) : null}
 
         <View style={styles.actions}>

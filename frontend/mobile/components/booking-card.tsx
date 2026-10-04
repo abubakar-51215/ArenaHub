@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { ArenaImage } from '@/components/ui/arena-image';
 
 import { Button } from '@/components/ui/button';
 import { Colors, Shadow } from '@/constants/theme';
@@ -42,11 +42,7 @@ export function BookingCard({
 
   return (
     <View style={styles.card}>
-      <Image
-        source={arena.data?.images[0] ? { uri: arena.data.images[0] } : undefined}
-        style={styles.image}
-        contentFit="cover"
-      />
+      <ArenaImage photo={arena.data?.images[0]} style={styles.image} />
       <View style={styles.body}>
         <View style={styles.headerRow}>
           <Text style={styles.arenaName} numberOfLines={1}>
@@ -142,7 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     ...Shadow.card,
   },
-  image: { width: 90, backgroundColor: Colors.light.lineSoft },
+  image: { width: 90 },
   body: { flex: 1, padding: 12, gap: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arenaName: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.light.text },

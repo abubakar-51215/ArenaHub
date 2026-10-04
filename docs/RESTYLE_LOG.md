@@ -227,3 +227,18 @@ label both in muted grey; (4) on a phone with gesture navigation (no
 physical home button), the bar's bottom spacing sits flush with the
 gesture-bar area rather than leaving a visible gap or getting cut off
 under it.
+
+---
+
+## G0c-2c: the confirmation-screen QR fix is interim
+
+`app/booking/confirmation/[bookingId].tsx`'s `booking.qr_code_url` was
+bypassing `resolveMediaUrl`, the same bug class as the avatar 404 — fixed as
+a one-line change (wrap the `uri` in the resolver) alongside the rest of
+G0c-2c's media-URL audit. This screen's whole QR block is already slated for
+removal: `RESTYLE_FOLLOWUPS.md`'s "Dropped from the HTML prototype" list
+names "QR / works offline" explicitly, and the G0a-2 checklist already has
+this exact element logged for deletion in G4. The one-line fix is correct
+and harmless to keep in the meantime (a real broken-image bug, live right
+now, worth not shipping broken) — it just has a known, already-scheduled
+expiry; G4 removes the fix along with the block it's fixing.
