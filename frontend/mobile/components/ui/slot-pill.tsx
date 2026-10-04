@@ -15,40 +15,41 @@ interface SlotPillProps extends Omit<PressableProps, 'style'> {
   state?: SlotPillState;
 }
 
+const LABEL_COLOR: Record<SlotPillState, string> = {
+  open: Colors.light.text,
+  selected: Colors.light.paper,
+  taken: Colors.light.muted,
+  deal: Colors.light.text,
+};
+
+const SUBLABEL_COLOR: Record<SlotPillState, string> = {
+  open: Colors.light.muted,
+  selected: Colors.light.lime,
+  taken: Colors.light.muted,
+  deal: Colors.light.limeDeep,
+};
+
 export function SlotPill({ label, sublabel, state = 'open', ...props }: SlotPillProps) {
-  const disabled = state === 'taken';
+  const taken = state === 'taken';
   return (
     <Pressable
       {...props}
-      disabled={disabled || props.disabled}
+      disabled={taken || props.disabled}
+      // Unified with DayChip (same single-select-from-a-set pattern). The
+      // radiogroup wrapper belongs at each call site — the view that maps
+      // the slot-grid (app/court/[id]/slots.tsx, app/booking/reschedule/
+      // [bookingId].tsx) — not added here speculatively.
+      accessibilityRole="radio"
+      accessibilityState={{ checked: state === 'selected', disabled: taken }}
       style={[
         styles.base,
         state === 'selected' && styles.selected,
-        state === 'taken' && styles.taken,
+        taken && styles.taken,
         state === 'deal' && styles.deal,
       ]}>
-      <Text
-        style={[
-          styles.label,
-          state === 'taken' && styles.takenText,
-          { color: state === 'selected' ? Colors.light.paper : state === 'taken' ? Colors.light.muted : Colors.light.text },
-        ]}>
-        {label}
-      </Text>
+      <Text style={[styles.label, taken && styles.takenText, { color: LABEL_COLOR[state] }]}>{label}</Text>
       {sublabel ? (
-        <Text
-          style={[
-            styles.sublabel,
-            state === 'taken' && styles.takenText,
-            {
-              color:
-                state === 'selected' || state === 'deal'
-                  ? state === 'selected'
-                    ? Colors.light.lime
-                    : Colors.light.limeDeep
-                  : Colors.light.muted,
-            },
-          ]}>
+        <Text style={[styles.sublabel, taken && styles.takenText, { color: SUBLABEL_COLOR[state] }]}>
           {sublabel}
         </Text>
       ) : null}

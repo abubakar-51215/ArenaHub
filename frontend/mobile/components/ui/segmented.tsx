@@ -12,13 +12,15 @@ interface SegmentedProps<T extends string> {
 
 export function Segmented<T extends string>({ options, value, onChange }: SegmentedProps<T>) {
   return (
-    <View style={styles.track}>
+    <View style={styles.track} accessibilityRole="tablist">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
           <Pressable
             key={opt.value}
             onPress={() => onChange(opt.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
             style={[styles.button, active && styles.active]}>
             <Text style={[styles.label, { color: active ? Colors.light.text : Colors.light.muted }]}>
               {opt.label}

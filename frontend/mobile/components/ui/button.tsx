@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type TextStyle } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { Text } from '@/components/ui/text';
@@ -22,7 +22,7 @@ const VARIANTS: Record<ButtonVariant, { bg: string; border: string; text: string
   lime: { bg: Colors.light.lime, border: Colors.light.lime, text: '#0F1A15' },
 };
 
-export function Button({ title, variant = 'ink', loading, disabled, ...props }: ButtonProps) {
+export function Button({ title, variant = 'ink', loading, disabled, onPress, ...props }: ButtonProps) {
   const v = VARIANTS[variant];
   const isDisabled = disabled || loading;
 
@@ -30,6 +30,16 @@ export function Button({ title, variant = 'ink', loading, disabled, ...props }: 
     <Pressable
       {...props}
       disabled={isDisabled}
+      // The prototype's own press feedback is the opacity+scale below — a
+      // Material ripple would add a visual the prototype doesn't draw, so
+      // unlike the tab bar (PlatformPressable, G0b-2, where a ripple/
+      // highlight is the platform-native expectation for a nav item) this
+      // deliberately stays a plain Pressable with no android_ripple. Same
+      // reasoning applies to the other primitives below.
+      onPress={isDisabled ? undefined : onPress}
+      accessibilityRole={props.accessibilityRole ?? 'button'}
+      accessibilityState={{ ...props.accessibilityState, disabled: isDisabled, busy: !!loading }}
+      accessibilityLabel={props.accessibilityLabel ?? title}
       style={({ pressed }) => [
         styles.base,
         { backgroundColor: v.bg, borderColor: v.border },
@@ -42,7 +52,9 @@ export function Button({ title, variant = 'ink', loading, disabled, ...props }: 
       ]}>
       {loading ? (
         // Added state, not in the prototype (a static mockup can't show a
-        // spinner; G1's submit flow needs one): the variant's own text colour.
+        // spinner; G1's submit flow needs one): the variant's own text
+        // colour. accessibilityLabel above still announces the original
+        // title so a screen reader doesn't lose it while busy.
         <View style={styles.loadingRow}>
           <ActivityIndicator color={v.text} />
         </View>
@@ -67,5 +79,9 @@ const styles = StyleSheet.create({
   loadingRow: { height: 20.25 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   disabled: { opacity: 0.5 },
-  text: { fontSize: 13.5, fontWeight: '650' as '600' },
+  // 650 isn't a value RN's TextStyle['fontWeight'] union accepts, but it's
+  // what the prototype declares and components/ui/text.tsx's
+  // normalizeWeight() reads the raw string directly (Number('650') >= 650 ->
+  // Bold) rather than relying on RN to understand it.
+  text: { fontSize: 13.5, fontWeight: '650' } as unknown as TextStyle,
 });
