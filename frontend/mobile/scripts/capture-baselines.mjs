@@ -83,10 +83,39 @@ async function api(p, token, opts = {}) {
   });
   page.on("requestfailed", (r) => failed.push(`${r.method()} ${r.url()} ${r.failure()?.errorText}`));
 
+  // Waits for every <img> on the page to finish loading (naturalWidth > 0,
+  // or `complete` with a failed/0x0 image counted as settled rather than
+  // hung on forever — e.g. the known avatar 404) and for web fonts to be
+  // ready, polling up to `timeoutMs` rather than a fixed guess. Fixes the
+  // flake where a screenshot could land mid-image-load: the gray background
+  // placeholder would get captured instead of the photo, producing a large,
+  // spurious diff against a capture taken a few hundred ms later or earlier
+  // (seen on 04-home between two otherwise-identical runs).
+  async function waitForImagesAndFonts(timeoutMs = 8000) {
+    try {
+      await page.waitForFunction(
+        () => {
+          const imgs = Array.from(document.images);
+          const imgsReady = imgs.every((img) => img.complete);
+          const fontsReady = document.fonts ? document.fonts.status === "loaded" : true;
+          return imgsReady && fontsReady;
+        },
+        { timeout: timeoutMs },
+      );
+    } catch {
+      // Proceed anyway after the timeout — a genuinely broken image (404)
+      // would otherwise hang every capture forever.
+    }
+  }
+
   async function shot(name, url, { wait = 1800, full = false } = {}) {
     try {
       if (url) await page.goto(WEB + url, { waitUntil: "networkidle", timeout: 90000 });
       await page.waitForTimeout(wait);
+      await waitForImagesAndFonts();
+      // Settle delay after images/fonts resolve, for the layout reflow they
+      // can trigger (an image finishing loading can change its box size).
+      await page.waitForTimeout(300);
       await page.screenshot({ path: path.join(OUT, name + ".png"), fullPage: full });
       log("shot", `${name} ${page.url().replace(WEB, "")}`);
     } catch (e) {
