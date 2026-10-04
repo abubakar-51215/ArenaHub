@@ -1,46 +1,30 @@
 import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps } from 'react-native';
+
+import { Colors } from '@/constants/theme';
 import { Text } from '@/components/ui/text';
 
-import { Colors, Shadow } from '@/constants/theme';
+// Values from design/prototypes/arena-hub-player-app.html .m-btn / .ghost /
+// .lime (the CSS rules themselves, not the instance-measured table — those
+// rows capture one call site's override, not the class's own declared
+// style). The prototype has no `outline` variant; existing `outline` call
+// sites are repointed to `ghost`, the closest match (secondary, unfilled).
+export type ButtonVariant = 'ink' | 'ghost' | 'lime';
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
-  variant?: 'primary' | 'outline' | 'ghost';
+  variant?: ButtonVariant;
   loading?: boolean;
 }
 
-export function Button({ title, variant = 'primary', loading, disabled, ...props }: ButtonProps) {
+const VARIANTS: Record<ButtonVariant, { bg: string; border: string; text: string }> = {
+  ink: { bg: Colors.light.ink, border: Colors.light.ink, text: Colors.light.paper },
+  ghost: { bg: Colors.light.card, border: Colors.light.line, text: Colors.light.text },
+  lime: { bg: Colors.light.lime, border: Colors.light.lime, text: '#0F1A15' },
+};
+
+export function Button({ title, variant = 'ink', loading, disabled, ...props }: ButtonProps) {
+  const v = VARIANTS[variant];
   const isDisabled = disabled || loading;
-
-  const label = loading ? (
-    <ActivityIndicator color={variant === 'primary' ? '#fff' : Colors.light.tint} />
-  ) : (
-    <Text
-      style={[
-        styles.text,
-        variant === 'primary' && styles.textPrimary,
-        variant !== 'primary' && styles.textOther,
-      ]}>
-      {title}
-    </Text>
-  );
-
-  // Primary is a flat ink fill; other variants stay flat.
-  if (variant === 'primary') {
-    return (
-      <Pressable
-        {...props}
-        disabled={isDisabled}
-        style={({ pressed }) => [
-          styles.base,
-          Shadow.brand,
-          isDisabled && styles.disabled,
-          pressed && !isDisabled && styles.pressed,
-        ]}>
-        <View style={styles.fill}>{label}</View>
-      </Pressable>
-    );
-  }
 
   return (
     <Pressable
@@ -48,39 +32,40 @@ export function Button({ title, variant = 'primary', loading, disabled, ...props
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        styles.padded,
-        variant === 'outline' && styles.outline,
-        variant === 'ghost' && styles.ghost,
-        isDisabled && styles.disabled,
+        { backgroundColor: v.bg, borderColor: v.border },
+        // Added state, not in the prototype (a static mockup draws no press
+        // feedback): opacity 0.9 + scale 0.99, the same minimal, token-free
+        // feedback the pre-G0c-2b interim Button used.
         pressed && !isDisabled && styles.pressed,
+        // Added state, not in the prototype: opacity 0.5, same reasoning.
+        isDisabled && styles.disabled,
       ]}>
-      {label}
+      {loading ? (
+        // Added state, not in the prototype (a static mockup can't show a
+        // spinner; G1's submit flow needs one): the variant's own text colour.
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={v.text} />
+        </View>
+      ) : (
+        <Text style={[styles.text, { color: v.text }]}>{title}</Text>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    width: '100%',
+    padding: 12,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    borderWidth: 1,
   },
-  padded: { paddingHorizontal: 16 },
-  fill: {
-    flex: 1,
-    backgroundColor: Colors.light.ink,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  outline: { borderWidth: 1.5, borderColor: Colors.light.tint, backgroundColor: 'transparent' },
-  ghost: { backgroundColor: 'transparent' },
-  disabled: { opacity: 0.5 },
+  loadingRow: { height: 20.25 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
-  text: { fontSize: 16, fontWeight: '600' },
-  textPrimary: { color: '#fff' },
-  textOther: { color: Colors.light.tint },
+  disabled: { opacity: 0.5 },
+  text: { fontSize: 13.5, fontWeight: '650' as '600' },
 });

@@ -72,7 +72,7 @@ export function MatchCard({
       ) : (
         <Button
           title="Join"
-          variant="outline"
+          variant="ghost"
           loading={joining}
           onPress={() => onJoin?.(match)}
         />

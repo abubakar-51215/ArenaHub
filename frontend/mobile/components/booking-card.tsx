@@ -87,7 +87,7 @@ export function BookingCard({
         {RESCHEDULABLE.includes(booking.status) && !hasStarted(booking) ? (
           <Button
             title="Reschedule"
-            variant="outline"
+            variant="ghost"
             onPress={() =>
               router.push({
                 pathname: '/booking/reschedule/[bookingId]',
@@ -99,7 +99,7 @@ export function BookingCard({
         {CANCELLABLE.includes(booking.status) ? (
           <Button
             title="Cancel"
-            variant="outline"
+            variant="ghost"
             loading={cancelling}
             onPress={() => onCancel(booking)}
           />
@@ -107,7 +107,7 @@ export function BookingCard({
         {HAS_RECEIPT.includes(booking.status) && onDownloadReceipt ? (
           <Button
             title="Download Receipt"
-            variant="outline"
+            variant="ghost"
             loading={downloadingReceipt}
             onPress={() => onDownloadReceipt(booking)}
           />
@@ -115,7 +115,7 @@ export function BookingCard({
         {booking.status === 'completed' ? (
           <Button
             title="Write a Review"
-            variant="outline"
+            variant="ghost"
             onPress={() =>
               router.push({
                 pathname: '/arena/[id]/reviews',
