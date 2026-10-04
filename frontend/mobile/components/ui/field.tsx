@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StyleSheet, View, type TextInputProps } from 'react-native';
+import { forwardRef, useState } from 'react';
+import { StyleSheet, View, type TextInput as RNTextInput, type TextInputProps } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { TextInput } from '@/components/ui/text-input';
@@ -12,12 +12,23 @@ import { TextInput } from '@/components/ui/text-input';
 //     action, so focus uses the same ink the rest of the UI uses for
 //     emphasis, e.g. the primary button).
 //   error: border -> destructive red, an existing token, no new colour.
+//
+// FieldProps extends TextInputProps, and everything not destructured below
+// spreads onto the underlying TextInput — onSubmitEditing, returnKeyType,
+// blurOnSubmit, autoComplete, textContentType and importantForAutofill all
+// already pass through that way; none needed adding. The one real gap was
+// the ref itself: nothing outside Field could reach the input to call
+// .focus(), which G1's autofocus-first-field and return-key-to-next-field
+// both need. forwardRef fixes that.
 interface FieldProps extends TextInputProps {
   icon?: React.ReactNode;
   error?: boolean;
 }
 
-export function Field({ icon, error, style, onFocus, onBlur, ...props }: FieldProps) {
+export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
+  { icon, error, style, onFocus, onBlur, ...props },
+  ref,
+) {
   const [focused, setFocused] = useState(false);
   return (
     <View
@@ -28,6 +39,7 @@ export function Field({ icon, error, style, onFocus, onBlur, ...props }: FieldPr
       ]}>
       {icon}
       <TextInput
+        ref={ref}
         {...props}
         style={[styles.input, style]}
         placeholderTextColor={Colors.light.muted}
@@ -42,7 +54,7 @@ export function Field({ icon, error, style, onFocus, onBlur, ...props }: FieldPr
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   base: {

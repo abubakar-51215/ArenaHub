@@ -12,7 +12,16 @@ interface DayChipProps extends Omit<PressableProps, 'style'> {
 
 export function DayChip({ weekday, day, active, ...props }: DayChipProps) {
   return (
-    <Pressable {...props} style={[styles.base, active && styles.active]}>
+    <Pressable
+      {...props}
+      // Unified with SlotPill (same single-select-from-a-set pattern): a
+      // radio, not a tab — a tab switches views, this picks one value from
+      // a visible set. The radiogroup wrapper belongs at the call site
+      // (the view that maps a week of DayChips — none exists yet, DayChip
+      // isn't wired into a screen in this diff), not added here speculatively.
+      accessibilityRole="radio"
+      accessibilityState={{ checked: !!active }}
+      style={[styles.base, active && styles.active]}>
       <Text style={[styles.weekday, { color: active ? Colors.light.lime : Colors.light.muted }]}>{weekday}</Text>
       <Text
         variant="archivo"

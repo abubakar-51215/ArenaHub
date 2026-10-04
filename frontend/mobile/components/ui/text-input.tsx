@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { StyleSheet, TextInput as RNTextInput, type TextInputProps, type TextStyle } from 'react-native';
 
 import { BodyLetterSpacing, Font } from '@/constants/theme';
@@ -23,7 +24,11 @@ function bodyFace(weight: number): string {
   return Font.body;
 }
 
-export function TextInput({ style, ...rest }: TextInputProps) {
+// forwardRef so components/ui/field.tsx (G0c-2b-fix) can reach the
+// underlying RNTextInput — needed for G1's autofocus-first-field and
+// return-key-moves-to-next-field, neither of which works without a ref to
+// call .focus() on.
+export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, ...rest }, ref) {
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   const { fontFamily: explicitFamily, fontWeight, letterSpacing, ...restStyle } = flat;
 
@@ -32,8 +37,9 @@ export function TextInput({ style, ...rest }: TextInputProps) {
 
   return (
     <RNTextInput
+      ref={ref}
       style={[restStyle, { fontFamily, letterSpacing: resolvedLetterSpacing }]}
       {...rest}
     />
   );
-}
+});
