@@ -120,8 +120,8 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
                 <p className="flex items-center gap-2 font-medium text-foreground">
                   {a.label || a.bank_name}
                   {a.is_default && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                      <Star className="size-3 fill-emerald-600" /> Default
+                    <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+                      <Star className="size-3 fill-success" /> Default
                     </span>
                   )}
                   {!a.is_active && (
@@ -156,7 +156,7 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
                 <button
                   type="button"
                   onClick={() => update.mutate({ id: a.id, input: { is_default: true } })}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
                 >
                   Make default
                 </button>
@@ -164,7 +164,7 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
               <button
                 type="button"
                 onClick={() => update.mutate({ id: a.id, input: { is_active: !a.is_active } })}
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
               >
                 {a.is_active ? "Deactivate" : "Activate"}
               </button>
@@ -273,7 +273,7 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
             <Button
               type="submit"
               disabled={pending}
-              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="bg-primary text-primary-foreground transition-all hover:opacity-95"
             >
               <Check className="size-4" /> {pending ? "Saving…" : "Save Account"}
             </Button>

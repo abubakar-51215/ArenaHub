@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
+import { useDashboardSummary } from "@/hooks/useDashboard";
 import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { logout } from "@/services/auth";
@@ -29,24 +30,62 @@ interface NavItem {
   label: string;
   href?: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Renders as a disabled placeholder (not yet built) instead of a link. */
+  disabled?: boolean;
+  disabledTooltip?: string;
 }
 
-// In-scope routes have an href; the rest render as disabled placeholders so the
-// shell matches the wireframe without implying features that aren't built yet.
-const NAV: NavItem[] = [
-  { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
-  { label: "Arenas", href: "/owner/arenas", icon: Building2 },
-  { label: "Courts", href: "/owner/courts", icon: LayoutGrid },
-  { label: "Equipment", href: "/owner/equipment", icon: Dumbbell },
-  { label: "Bookings", href: "/owner/bookings", icon: CalendarCheck },
-  { label: "Calendar", href: "/owner/calendar", icon: CalendarDays },
-  { label: "Pricing", href: "/owner/pricing", icon: Tag },
-  { label: "Payment Config", href: "/owner/payments", icon: CreditCard },
-  { label: "Earnings", href: "/owner/revenue", icon: Wallet },
-  { label: "Reports", icon: BarChart3 },
-  { label: "Reviews", href: "/owner/reviews", icon: Star },
-  { label: "Notifications", href: "/owner/notifications", icon: Bell },
-  { label: "Profile", href: "/owner/profile", icon: Settings },
+interface NavGroup {
+  /** null renders as an unlabelled section — for items that don't cleanly
+   * belong to any of the labelled groups below (design/prototypes' IA only
+   * covers a subset of this app's real nav; forcing every item into a
+   * labelled group would stretch the labels past what they actually mean). */
+  label: string | null;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Today",
+    items: [
+      { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
+      { label: "Bookings", href: "/owner/bookings", icon: CalendarCheck },
+      { label: "Calendar", href: "/owner/calendar", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Venue",
+    items: [
+      { label: "Arenas", href: "/owner/arenas", icon: Building2 },
+      { label: "Courts", href: "/owner/courts", icon: LayoutGrid },
+      { label: "Equipment", href: "/owner/equipment", icon: Dumbbell },
+    ],
+  },
+  {
+    label: "Money",
+    items: [
+      { label: "Pricing", href: "/owner/pricing", icon: Tag },
+      { label: "Payment Config", href: "/owner/payments", icon: CreditCard },
+      { label: "Earnings", href: "/owner/revenue", icon: Wallet },
+    ],
+  },
+  {
+    label: "Reputation",
+    items: [{ label: "Reviews", href: "/owner/reviews", icon: Star }],
+  },
+  {
+    label: null,
+    items: [
+      { label: "Notifications", href: "/owner/notifications", icon: Bell },
+      { label: "Profile", href: "/owner/profile", icon: Settings },
+      {
+        label: "Reports",
+        icon: BarChart3,
+        disabled: true,
+        disabledTooltip: "Coming in a later sprint",
+      },
+    ],
+  },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -55,6 +94,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { refreshToken, clear } = useAuthStore();
   const { data: notifications } = useNotifications();
   const unread = notifications?.unread_count ?? 0;
+
+  // Sidebar count badge for Bookings — first caller of useDashboardSummary
+  // in the app. Adds one lightweight fetch per dashboard load; accepted
+  // because a missing count badge is worse than the fetch cost.
+  const { data: summary } = useDashboardSummary();
+  const pendingBookings = summary?.pending_approvals;
 
   async function onLogout() {
     try {
@@ -72,58 +117,79 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex h-16 items-center border-b border-border/60 px-5">
         <Logo />
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-        {NAV.map((item) => {
-          const active =
-            item.href &&
-            (item.href === "/owner" ? pathname === "/owner" : pathname.startsWith(item.href));
-          const Icon = item.icon;
-          if (!item.href) {
-            return (
-              <span
-                key={item.label}
-                title="Coming in a later sprint"
-                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground/50"
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </span>
-            );
-          }
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
-                active
-                  ? "bg-brand-gradient text-white shadow-brand"
-                  : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-4 transition-transform duration-200 group-hover:scale-110",
-                  active
-                    ? "text-white"
-                    : "text-muted-foreground group-hover:text-accent-foreground",
-                )}
-              />
-              <span className="flex-1">{item.label}</span>
-              {item.label === "Notifications" && unread > 0 && (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
-                    active ? "bg-white text-primary" : "bg-primary text-white",
-                  )}
-                >
-                  {unread > 99 ? "99+" : unread}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 py-3">
+        {NAV_GROUPS.map((group, groupIndex) => (
+          <div key={group.label ?? `group-${groupIndex}`} className={cn(groupIndex > 0 && "mt-4")}>
+            {group.label && <p className="eyebrow px-3 pb-1.5">{group.label}</p>}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active =
+                  item.href &&
+                  (item.href === "/owner"
+                    ? pathname === "/owner"
+                    : pathname.startsWith(item.href));
+                const Icon = item.icon;
+
+                if (item.disabled || !item.href) {
+                  return (
+                    <span
+                      key={item.label}
+                      title={item.disabledTooltip}
+                      className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground"
+                    >
+                      <Icon className="size-4 text-muted-foreground/60" />
+                      {item.label}
+                    </span>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "size-4 transition-transform duration-200 group-hover:scale-110",
+                        active
+                          ? "text-primary-foreground"
+                          : "text-muted-foreground group-hover:text-accent-foreground",
+                      )}
+                    />
+                    <span className="flex-1">{item.label}</span>
+                    {item.label === "Bookings" && !!pendingBookings && (
+                      <span
+                        title={`${pendingBookings} booking${pendingBookings === 1 ? "" : "s"} awaiting approval`}
+                        className="rounded-full bg-warning-muted px-1.5 py-0.5 text-[10px] font-bold leading-none text-warning"
+                      >
+                        {pendingBookings}
+                      </span>
+                    )}
+                    {item.label === "Notifications" && unread > 0 && (
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                          active
+                            ? "bg-primary-foreground text-primary"
+                            : "bg-primary text-primary-foreground",
+                        )}
+                      >
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
       <div className="border-t border-border p-3">
         <button
