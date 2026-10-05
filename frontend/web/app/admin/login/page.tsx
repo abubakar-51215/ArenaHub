@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
-import { AuthShell } from "@/components/auth/auth-shell";
+import { SplitAuthShell } from "@/components/auth/split-auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,22 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <AuthShell>
+    <SplitAuthShell
+      variant="admin"
+      imageSrc="/images/court-signup.jpg"
+      imageAlt="Bright aerial view of a two-court tennis stadium"
+      credit="Admin console"
+      quote={{
+        eyebrow: "Arena Hub for admins",
+        title: "Oversee the platform.",
+        desc: "Verify arenas, manage owners, and keep ArenaHub trustworthy.",
+      }}
+      stats={[
+        { value: "Review", label: "Pending arenas" },
+        { value: "Manage", label: "Owners and users" },
+        { value: "Resolve", label: "Complaints" },
+      ]}
+    >
       <h1 className="text-2xl font-bold text-foreground">Welcome Back!</h1>
       <p className="mt-1 text-sm text-muted-foreground">Sign in to your admin account</p>
 
@@ -108,6 +123,6 @@ export default function AdminLoginPage() {
       <p className="mt-10 text-center text-xs text-muted-foreground">
         © 2026 Arena Hub. All rights reserved.
       </p>
-    </AuthShell>
+    </SplitAuthShell>
   );
 }
