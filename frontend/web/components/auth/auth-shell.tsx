@@ -22,7 +22,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         }}
       >
         {/* Soft brand glow to tie the photo to the palette */}
-        <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-[color:var(--lime)]/30 blur-3xl" />
+        <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-lime/30 blur-3xl" />
         <div className="pointer-events-none absolute bottom-10 -left-20 size-64 rounded-full bg-emerald-500/20 blur-3xl" />
 
         <div className="animate-fade-in-up absolute inset-x-0 top-[60%] flex flex-col items-center px-14 text-center text-white [animation-delay:0.15s]">
