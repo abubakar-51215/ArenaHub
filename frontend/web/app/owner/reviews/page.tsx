@@ -28,7 +28,7 @@ function Stars({ rating }: { rating: number }) {
         <Star
           key={i}
           className={
-            i < rating ? "size-4 fill-amber-400 text-amber-400" : "size-4 text-muted-foreground/30"
+            i < rating ? "size-4 fill-rating text-rating" : "size-4 text-muted-foreground/30"
           }
         />
       ))}
@@ -44,7 +44,7 @@ function Avatar({ name }: { name: string }) {
     .join("")
     .toUpperCase();
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
       {initials || "?"}
     </span>
   );
@@ -147,7 +147,7 @@ export default function ReviewsPage() {
                       <span className="font-medium text-foreground">{review.reviewer_name}</span>
                       {review.is_flagged && (
                         <span title="Reported by a user">
-                          <Flag className="size-3.5 text-red-500" />
+                          <Flag className="size-3.5 rounded-md p-1.5 text-destructive hover:bg-danger-muted hover:text-destructive" />
                         </span>
                       )}
                     </div>
@@ -168,7 +168,7 @@ export default function ReviewsPage() {
                     {formatDate(review.created_at.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                       {!review.owner_response && (
                         <Button
                           variant="ghost"
@@ -176,7 +176,7 @@ export default function ReviewsPage() {
                           title="Respond"
                           onClick={() => setResponding(review)}
                         >
-                          <MessageSquareReply className="size-4 text-blue-600" />
+                          <MessageSquareReply className="size-4 text-muted-foreground hover:text-foreground" />
                         </Button>
                       )}
                     </div>

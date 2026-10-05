@@ -26,7 +26,7 @@ import type { ModerationReview } from "@/types";
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span className="text-amber-500" aria-label={`${rating} out of 5`}>
+    <span className="text-rating" aria-label={`${rating} out of 5`}>
       {"★".repeat(rating)}
       <span className="text-muted-foreground/40">{"★".repeat(5 - rating)}</span>
     </span>
@@ -121,7 +121,7 @@ export default function AdminReviewsPage() {
                     {r.flagged_at ? formatDate(r.flagged_at.slice(0, 10)) : "—"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                       <Button
                         variant="ghost"
                         size="sm"

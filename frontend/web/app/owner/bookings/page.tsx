@@ -271,7 +271,7 @@ export default function BookingsPage() {
                             disabled={approve.isPending}
                             onClick={() => onApprove(row)}
                           >
-                            <CheckCircle2 className="size-4 text-emerald-600" />
+                            <CheckCircle2 className="size-4 text-success" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -312,7 +312,7 @@ export default function BookingsPage() {
                   size="icon-sm"
                   className={
                     p === page
-                      ? "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+                      ? "bg-primary text-primary-foreground transition-all hover:opacity-95"
                       : ""
                   }
                   onClick={() => setPage(p)}

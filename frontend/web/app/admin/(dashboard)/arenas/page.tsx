@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/owner/status-badge";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -23,11 +23,22 @@ import type { Arena, ArenaStatus } from "@/types";
 export default function AdminArenasPage() {
   const [status, setStatus] = useState<ArenaStatus>("pending");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useArenaQueue(status, page);
+  const { data, isLoading, isFetching } = useArenaQueue(status, page);
   const { approve, reject } = useArenaVerification();
 
   const [rejecting, setRejecting] = useState<Arena | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // The tab label shows the live pending-queue depth, not a per-tab-switch
+  // recomputation — it only updates when a *pending* fetch actually resolves
+  // (gated on !isFetching so a stale cached value isn't briefly shown while a
+  // background refetch is in flight), so it stays correct while viewing
+  // Approved/Rejected instead of reading 0 (no pending data is in memory on
+  // those tabs) or undercounting from a single page of items.
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (status === "pending" && data && !isFetching) setPendingCount(data.total);
+  }, [status, data, isFetching]);
 
   const arenas = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
@@ -46,18 +57,21 @@ export default function AdminArenasPage() {
   return (
     <>
       <PageHeader title="Arena Verification">
-        <Select
+        <Tabs
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as ArenaStatus);
+          onValueChange={(v) => {
+            setStatus(v as ArenaStatus);
             setPage(1);
           }}
-          className="w-40"
         >
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </Select>
+          <TabsList variant="line">
+            <TabsTrigger value="pending">
+              Pending{pendingCount !== null && ` (${pendingCount})`}
+            </TabsTrigger>
+            <TabsTrigger value="approved">Approved</TabsTrigger>
+            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </PageHeader>
 
       <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
@@ -105,7 +119,7 @@ export default function AdminArenasPage() {
                         <>
                           <Button
                             size="sm"
-                            className="bg-emerald-600 text-white shadow-xs transition-all hover:bg-emerald-700"
+                            className="bg-accent text-accent-foreground shadow-xs transition-all hover:bg-accent/90"
                             disabled={approve.isPending}
                             onClick={() => approve.mutate(a.id)}
                           >

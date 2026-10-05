@@ -42,7 +42,7 @@ function PaymentsInner() {
             setFormOpen(true);
           }}
           disabled={!arenaId}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="bg-primary text-primary-foreground transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Discount Code
         </Button>
@@ -96,7 +96,10 @@ function PaymentsInner() {
             </div>
             <p className="text-xs text-muted-foreground">
               Edit these from the arena&apos;s edit form on the{" "}
-              <a href={`/owner/arenas`} className="text-blue-600 hover:underline">
+              <a
+                href={`/owner/arenas`}
+                className="text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+              >
                 Arenas
               </a>{" "}
               page.

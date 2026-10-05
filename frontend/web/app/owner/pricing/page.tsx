@@ -68,7 +68,7 @@ export default function PricingPage() {
             setFormOpen(true);
           }}
           disabled={courtList.length === 0}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="bg-primary text-primary-foreground transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Pricing Rule
         </Button>
@@ -135,7 +135,7 @@ export default function PricingPage() {
                       <StatusBadge status={rule.is_active ? "active" : "inactive"} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                         <Button
                           variant="ghost"
                           size="icon-sm"

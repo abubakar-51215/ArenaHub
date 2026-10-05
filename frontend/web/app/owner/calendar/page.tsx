@@ -13,15 +13,14 @@ import { listCourts } from "@/services/courts";
 import { getCalendar } from "@/services/dashboard";
 import type { CalendarBooking } from "@/types";
 
-/** Pastel chip styles per court, assigned deterministically — matches the
- * wireframe's colored booking blocks. */
+/** Grey-ramp chip styles per court, assigned deterministically. A matching
+ * left border carries the identity distinction (the wireframe shows 3
+ * courts get 3 distinct fills); the tint alone is deliberately subtle so it
+ * reads as atmosphere, not a fourth semantic colour. */
 const CHIP_STYLES = [
-  "bg-blue-100 text-blue-800",
-  "bg-emerald-100 text-emerald-800",
-  "bg-purple-100 text-purple-800",
-  "bg-orange-100 text-orange-800",
-  "bg-teal-100 text-teal-800",
-  "bg-pink-100 text-pink-800",
+  "bg-[color:var(--chart-3)]/15 border-l-2 border-[color:var(--chart-3)] text-foreground",
+  "bg-[color:var(--chart-4)]/20 border-l-2 border-[color:var(--chart-4)] text-foreground",
+  "bg-[color:var(--chart-5)]/30 border-l-2 border-[color:var(--chart-5)] text-foreground",
 ] as const;
 
 function chipStyle(courtId: string): string {
@@ -203,7 +202,7 @@ export default function CalendarPage() {
                 className={cn(
                   "px-4 py-1.5 text-sm font-medium capitalize transition-colors",
                   view === v
-                    ? "bg-brand-gradient text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-card text-foreground hover:bg-muted",
                 )}
               >
@@ -222,7 +221,9 @@ export default function CalendarPage() {
                   key={d.toISOString()}
                   className={cn(
                     "border-b border-l border-border px-2 py-2 text-center text-sm font-medium",
-                    toDateInput(d) === todayIso ? "text-blue-600" : "text-foreground",
+                    toDateInput(d) === todayIso
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground",
                   )}
                 >
                   {DAY_NAMES[d.getDay()]} {d.getDate()}
@@ -286,7 +287,7 @@ export default function CalendarPage() {
                       className={cn(
                         "px-1 text-xs",
                         iso === todayIso
-                          ? "font-bold text-blue-600"
+                          ? "inline-block rounded-full bg-accent px-1.5 font-bold text-accent-foreground"
                           : inMonth
                             ? "text-foreground"
                             : "text-muted-foreground",

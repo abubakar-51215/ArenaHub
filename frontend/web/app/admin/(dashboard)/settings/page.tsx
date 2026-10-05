@@ -62,9 +62,9 @@ function SaveBar({
 }) {
   return (
     <div className="flex items-center justify-end gap-3 pt-2">
-      {saved && <span className="text-sm text-emerald-600">Saved.</span>}
+      {saved && <span className="text-sm text-success">Saved.</span>}
       <Button
-        className="bg-emerald-600 text-white hover:bg-emerald-700"
+        className="bg-success text-success-foreground hover:bg-success/90"
         disabled={pending}
         onClick={onSave}
       >
@@ -478,7 +478,7 @@ export default function AdminSettingsPage() {
               onClick={() => setTab(t)}
               className={`px-3 py-2 text-sm font-medium ${
                 tab === t
-                  ? "border-b-2 border-blue-600 text-blue-600"
+                  ? "border-b-2 border-primary text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

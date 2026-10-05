@@ -2,14 +2,12 @@
 
 import { useMemo, useState } from "react";
 
-import { Clock, TrendingUp, Wallet } from "lucide-react";
-
 import { EarningsByArenaDonut, RevenueTrendChart } from "@/components/owner/charts";
 import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { StatCard } from "@/components/ui/stat-card";
+import { numericDelta, StatCard } from "@/components/ui/stat-card";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useDashboardAnalytics, useRevenue } from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, toDateInput } from "@/lib/format";
@@ -128,21 +126,16 @@ export default function EarningsPage() {
           <StatCard
             label="Total Earnings"
             value={isLoading ? "—" : formatRs(totalEarnings)}
-            delta={analytics?.revenue_change_pct}
-            icon={Wallet}
-            tone="green"
+            delta={numericDelta(analytics?.revenue_change_pct, "%", "vs last period")}
+            history={trend.map((t) => t.amount)}
           />
           <StatCard
             label="Collected So Far"
             value={isLoading ? "—" : formatRs(collectedPayout)}
-            icon={TrendingUp}
-            tone="blue"
           />
           <StatCard
             label="Pending Payout"
             value={isLoading ? "—" : formatRs(pendingPayout)}
-            icon={Clock}
-            tone="amber"
           />
         </div>
 

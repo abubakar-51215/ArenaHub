@@ -42,7 +42,7 @@ export default function ArenasPage() {
       <PageHeader title="Manage Arenas">
         <Button
           onClick={openCreate}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="bg-primary text-primary-foreground transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Arena
         </Button>
@@ -92,7 +92,7 @@ export default function ArenasPage() {
                   <TableCell>
                     <Link
                       href={`/owner/courts?arena=${a.id}`}
-                      className="text-sm font-medium text-blue-600 hover:underline"
+                      className="text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
                     >
                       Manage
                     </Link>
@@ -101,7 +101,7 @@ export default function ArenasPage() {
                     <StatusBadge status={!a.is_active ? "inactive" : a.status} />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                       <Button
                         variant="ghost"
                         size="icon-sm"
