@@ -79,7 +79,7 @@ export default function RegisterPage() {
       variant="owner"
       imageSrc="/images/court-signup.jpg"
       imageAlt=""
-      credit="328 arenas already listed"
+      credit="For arena owners"
       quote={{
         eyebrow: "Join the network",
         title: (
@@ -90,9 +90,9 @@ export default function RegisterPage() {
         desc: "List your courts, set your prices, and start taking real-time bookings the same day you sign up.",
       }}
       stats={[
-        { value: "2 min", label: "Average setup time" },
-        { value: "0%", label: "Setup fees" },
-        { value: "24/7", label: "Booking availability" },
+        { value: "List", label: "Courts and amenities" },
+        { value: "Price", label: "Peak and off-peak rules" },
+        { value: "Earn", label: "Real-time bookings" },
       ]}
     >
       {step === "form" ? (

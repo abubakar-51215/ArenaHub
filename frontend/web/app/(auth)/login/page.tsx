@@ -56,7 +56,7 @@ export default function LoginPage() {
       variant="owner"
       imageSrc="/images/court-login.jpg"
       imageAlt=""
-      credit="328 arenas live tonight"
+      credit="Owner console"
       quote={{
         eyebrow: "Arena Hub for owners",
         title: (
@@ -67,9 +67,9 @@ export default function LoginPage() {
         desc: "Track tonight's bookings as they land, approve requests in a tap, and watch your occupancy climb.",
       }}
       stats={[
-        { value: "328", label: "Arenas listed" },
-        { value: "0%", label: "Setup fees" },
-        { value: "24/7", label: "Booking availability" },
+        { value: "Live", label: "Booking board" },
+        { value: "Instant", label: "Booking approvals" },
+        { value: "Local", label: "Payment methods" },
       ]}
     >
       <h1 className="text-2xl font-bold text-foreground">Welcome Back!</h1>
