@@ -13,6 +13,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: #0f1a15;
+  --color-paper: #f1f2ef;
+  --color-lime: #c4f546;
+  --color-lime-deep: #7fa30f;
   --font-sans: var(--font-body-face);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-heading-face);
