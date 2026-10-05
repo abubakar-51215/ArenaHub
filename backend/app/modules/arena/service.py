@@ -28,6 +28,7 @@ from app.modules.arena.schema import (
     ArenaBankDetailsResponse,
     ArenaBankDetailsUpdate,
     ArenaCreate,
+    ArenaListItem,
     ArenaResponse,
     ArenaUpdate,
     BlockedDateCreate,
@@ -178,6 +179,24 @@ async def set_status(
 # ---- public discovery ---------------------------------------------------
 
 
+async def _list_items(db: AsyncSession, arenas: list) -> list[ArenaListItem]:
+    """List-card items: each arena plus its rating, review count and from-price.
+    One summary query covers the whole page."""
+    summaries = await repo.arena_summaries(db, [a.id for a in arenas])
+    items: list[ArenaListItem] = []
+    for arena in arenas:
+        summary = summaries.get(arena.id)
+        items.append(
+            ArenaListItem(
+                **ArenaResponse.model_validate(arena).model_dump(),
+                avg_rating=summary.avg_rating if summary else None,
+                review_count=summary.review_count if summary else 0,
+                min_price=summary.min_price if summary else None,
+            )
+        )
+    return items
+
+
 async def search_arenas(
     db: AsyncSession,
     *,
@@ -200,13 +219,13 @@ async def search_arenas(
         offset=params.offset,
         limit=params.page_size,
     )
-    items = [ArenaResponse.model_validate(a) for a in arenas]
+    items = await _list_items(db, arenas)
     return paginated(items, total, params)
 
 
 async def get_trending_arenas(
     db: AsyncSession, *, days: int, city: ArenaCity | None, limit: int
-) -> list[ArenaResponse]:
+) -> list[ArenaListItem]:
     """Arenas ranked by booking volume over the last ``days`` days. Falls
     back to the rating-ranked "popular" sort when the window has no bookings
     at all (a cold-start dataset, or an unlucky city filter) — an empty
@@ -217,7 +236,7 @@ async def get_trending_arenas(
         arenas, _ = await repo.search_public_arenas(
             db, q=None, city=city, sport=None, sort="rating_desc", offset=0, limit=limit
         )
-    return [ArenaResponse.model_validate(a) for a in arenas]
+    return await _list_items(db, arenas)
 
 
 async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
@@ -252,7 +271,7 @@ async def list_liked_arenas(db: AsyncSession, user: User, params: PaginationPara
     arenas, total = await repo.list_liked_arenas(
         db, user.id, offset=params.offset, limit=params.page_size
     )
-    items = [ArenaResponse.model_validate(a) for a in arenas]
+    items = await _list_items(db, arenas)
     return paginated(items, total, params)
 
 

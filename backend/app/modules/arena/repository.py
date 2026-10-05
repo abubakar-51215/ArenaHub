@@ -8,9 +8,18 @@ serialization never triggers a lazy load on the async session.
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import cast
+from typing import NamedTuple, cast
 
-from sqlalchemy import CursorResult, Select, UnaryExpression, func, or_, select, update
+from sqlalchemy import (
+    CursorResult,
+    Select,
+    UnaryExpression,
+    func,
+    literal_column,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,7 +34,7 @@ from app.modules.arena.model import (
     DiscountCode,
 )
 from app.modules.booking.model import Booking, BookingStatus
-from app.modules.court.model import Court
+from app.modules.court.model import Court, CourtPricingRule
 from app.modules.review.model import Review
 
 # ---- arenas -------------------------------------------------------------
@@ -77,12 +86,82 @@ async def list_owner_arena_ids(
     return list(result.scalars().all())
 
 
-_MIN_PRICE_SUBQ = (
-    select(func.min(Court.base_price)).where(Court.arena_id == Arena.id).scalar_subquery()
-)
-_AVG_RATING_SUBQ = (
-    select(func.avg(Review.rating)).where(Review.arena_id == Arena.id).scalar_subquery()
-)
+def _review_summary():
+    """Per arena: average rating and count over non-flagged reviews."""
+    return (
+        select(
+            Review.arena_id.label("arena_id"),
+            func.avg(Review.rating).label("avg_rating"),
+            func.count(Review.id).label("review_count"),
+        )
+        .where(Review.is_flagged.is_(False))
+        .group_by(Review.arena_id)
+        .subquery("review_summary")
+    )
+
+
+def _price_summary():
+    """Per arena: the "from" price, the lowest price a slot can be quoted at.
+
+    Each available court's slot price is ``base_price`` times the lowest active
+    pricing multiplier, capped at 1 (peak rules never lower a price below base,
+    discount rules can). A court with no active rules keeps its base price.
+    The arena's from-price is the lowest court price, rounded to 2 places.
+    """
+    rule_factor = func.least(
+        literal_column("1"),
+        func.coalesce(
+            func.min(CourtPricingRule.price_multiplier).filter(
+                CourtPricingRule.is_active.is_(True)
+            ),
+            literal_column("1"),
+        ),
+    )
+    per_court = (
+        select(Court.arena_id.label("arena_id"), (Court.base_price * rule_factor).label("price"))
+        .select_from(Court)
+        .outerjoin(CourtPricingRule, CourtPricingRule.court_id == Court.id)
+        .where(Court.is_available.is_(True))
+        .group_by(Court.id)
+        .subquery("court_price")
+    )
+    return (
+        select(
+            per_court.c.arena_id.label("arena_id"),
+            func.round(func.min(per_court.c.price), 2).label("min_price"),
+        )
+        .group_by(per_court.c.arena_id)
+        .subquery("price_summary")
+    )
+
+
+class ArenaSummary(NamedTuple):
+    avg_rating: float | None
+    review_count: int
+    min_price: Decimal | None
+
+
+async def arena_summaries(
+    db: AsyncSession, arena_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, ArenaSummary]:
+    """Rating, review count and from-price for a page of arenas, in one query."""
+    if not arena_ids:
+        return {}
+    reviews, prices = _review_summary(), _price_summary()
+    result = await db.execute(
+        select(Arena.id, reviews.c.avg_rating, reviews.c.review_count, prices.c.min_price)
+        .outerjoin(reviews, reviews.c.arena_id == Arena.id)
+        .outerjoin(prices, prices.c.arena_id == Arena.id)
+        .where(Arena.id.in_(arena_ids))
+    )
+    return {
+        row.id: ArenaSummary(
+            avg_rating=round(float(row.avg_rating), 1) if row.avg_rating is not None else None,
+            review_count=int(row.review_count or 0),
+            min_price=row.min_price,
+        )
+        for row in result
+    }
 
 
 async def search_public_arenas(
@@ -105,7 +184,13 @@ async def search_public_arenas(
     ``name``, ``price_asc``/``price_desc`` (by cheapest court), and
     ``rating_desc`` (by average review rating, unrated arenas sort last).
     """
-    base = select(Arena).where(Arena.status == ArenaStatus.approved, Arena.is_active.is_(True))
+    reviews, prices = _review_summary(), _price_summary()
+    base = (
+        select(Arena)
+        .outerjoin(reviews, reviews.c.arena_id == Arena.id)
+        .outerjoin(prices, prices.c.arena_id == Arena.id)
+        .where(Arena.status == ArenaStatus.approved, Arena.is_active.is_(True))
+    )
     if q:
         like = f"%{q.lower()}%"
         base = base.where(func.lower(Arena.name).like(like))
@@ -115,9 +200,9 @@ async def search_public_arenas(
         # sports_offered is a JSONB array of strings.
         base = base.where(Arena.sports_offered.contains([sport]))
     if price_min is not None:
-        base = base.where(price_min <= _MIN_PRICE_SUBQ)
+        base = base.where(price_min <= prices.c.min_price)
     if price_max is not None:
-        base = base.where(price_max >= _MIN_PRICE_SUBQ)
+        base = base.where(price_max >= prices.c.min_price)
 
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
 
@@ -125,11 +210,11 @@ async def search_public_arenas(
     if sort == "name":
         order = (Arena.name.asc(),)
     elif sort == "price_asc":
-        order = (_MIN_PRICE_SUBQ.asc().nulls_last(),)
+        order = (prices.c.min_price.asc().nulls_last(),)
     elif sort == "price_desc":
-        order = (_MIN_PRICE_SUBQ.desc().nulls_last(),)
+        order = (prices.c.min_price.desc().nulls_last(),)
     elif sort == "rating_desc":
-        order = (_AVG_RATING_SUBQ.desc().nulls_last(),)
+        order = (reviews.c.avg_rating.desc().nulls_last(),)
     else:
         order = (Arena.created_at.desc(),)
 

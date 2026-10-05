@@ -72,7 +72,9 @@ async def list_flagged_reviews(
 async def get_rating_summary(db: AsyncSession, arena_id: uuid.UUID) -> tuple[float | None, int]:
     """Live-computed ``(average_rating, review_count)`` for an arena."""
     result = await db.execute(
-        select(func.avg(Review.rating), func.count(Review.id)).where(Review.arena_id == arena_id)
+        select(func.avg(Review.rating), func.count(Review.id)).where(
+            Review.arena_id == arena_id, Review.is_flagged.is_(False)
+        )
     )
     average, count = result.one()
     return (float(average) if average is not None else None), count
