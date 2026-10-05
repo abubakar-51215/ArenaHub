@@ -1,12 +1,13 @@
 import * as React from "react";
 
+import { ScrollCue } from "@/components/ui/scroll-cue";
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="relative w-full overflow-x-auto">
+    <ScrollCue>
       <table className={cn("w-full caption-bottom text-sm", className)} {...props} />
-    </div>
+    </ScrollCue>
   );
 }
 
@@ -37,7 +38,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       className={cn(
-        "h-10 px-4 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground uppercase",
+        "h-10 px-4 max-lg:px-3 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground uppercase",
         className,
       )}
       {...props}
@@ -46,7 +47,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return <td className={cn("px-[18px] py-3 align-middle", className)} {...props} />;
+  return <td className={cn("px-[18px] py-3 align-middle max-lg:px-3", className)} {...props} />;
 }
 
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };

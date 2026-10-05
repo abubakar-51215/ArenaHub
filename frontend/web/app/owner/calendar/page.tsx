@@ -5,6 +5,7 @@ import { useQueries } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { PageHeader } from "@/components/owner/page-header";
+import { ScrollCue } from "@/components/ui/scroll-cue";
 import { Button } from "@/components/ui/button";
 import { useMyArenas } from "@/hooks/useArenas";
 import { cn } from "@/lib/utils";
@@ -213,7 +214,7 @@ export default function CalendarPage() {
         </div>
 
         {view === "week" ? (
-          <div className="shadow-card overflow-x-auto rounded-xl border border-border bg-card">
+          <ScrollCue className="shadow-card rounded-xl border border-border bg-card">
             <div className="grid min-w-225 grid-cols-[64px_repeat(7,1fr)]">
               <div className="border-b border-border" />
               {weekDays.map((d) => (
@@ -259,9 +260,9 @@ export default function CalendarPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </ScrollCue>
         ) : (
-          <div className="shadow-card overflow-x-auto rounded-xl border border-border bg-card">
+          <ScrollCue className="shadow-card rounded-xl border border-border bg-card">
             <div className="grid min-w-[900px] grid-cols-7">
               {DAY_NAMES.map((name) => (
                 <div
@@ -311,7 +312,7 @@ export default function CalendarPage() {
                 );
               })}
             </div>
-          </div>
+          </ScrollCue>
         )}
       </div>
     </>
