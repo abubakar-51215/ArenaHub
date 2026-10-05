@@ -89,14 +89,18 @@ def create_app() -> FastAPI:
     else:
         cors_origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
 
+    # Starlette wraps each middleware added after the earlier ones, so the last
+    # one added is outermost. CORS is added last so that its headers are also
+    # present on the 429 responses the rate limiter returns.
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Retry-After"],
     )
-    app.add_middleware(RateLimitMiddleware)
 
     register_exception_handlers(app)
 

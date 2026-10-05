@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # "https://app.arenahub.pk,https://admin.arenahub.pk"). Dev ignores this
     # and uses an explicit localhost allowlist instead (see main.py).
     cors_allowed_origins: str = Field(default="", alias="CORS_ALLOWED_ORIGINS")
+    # Per-minute request budgets for the rate limiter. Defaults are unchanged;
+    # a local .env can raise them so manual testing is not throttled.
+    rate_limit_auth_per_minute: int = Field(default=20, alias="RATE_LIMIT_AUTH_PER_MINUTE")
+    rate_limit_api_per_minute: int = Field(default=100, alias="RATE_LIMIT_API_PER_MINUTE")
 
     # Webhook signing secrets — JazzCash/EasyPaisa callbacks must be verified
     # via HMAC-SHA256 over the raw body before being trusted (see
