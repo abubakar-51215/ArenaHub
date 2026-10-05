@@ -1196,6 +1196,7 @@
   border-color: var(--muted-foreground);
 }
 [data-admin] [data-slot="label"] {
+  line-height: 1.5;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-2);
@@ -1444,5 +1445,128 @@
     min-height: 44px;
     display: grid;
     place-items: center;
+  }
+}
+
+/* Admin sign-in (prototype .auth). */
+[data-admin].ah-auth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  background: var(--card);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+[data-admin] .ah-auth-form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 8vw;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+[data-admin] .ah-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 44px;
+}
+[data-admin] .ah-auth-title {
+  font-size: 34px;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+[data-admin] .ah-pw-wrap {
+  position: relative;
+}
+[data-admin] .ah-pw-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+  color: var(--muted-foreground);
+  display: block;
+  height: 30px;
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+[data-admin] .ah-signin {
+  justify-content: center;
+  padding: 11px;
+  font-size: 14px;
+}
+[data-admin] .ah-auth-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--red-wash);
+  color: var(--red);
+  font-size: 13px;
+}
+[data-admin] .ah-auth-foot {
+  font-size: 11.5px;
+  margin: 0;
+  margin-top: auto;
+  padding-top: 36px;
+}
+[data-admin] .ah-auth-side {
+  position: relative;
+  background: #07100b;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 38px;
+}
+[data-admin] .ah-pitch-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+[data-admin] .ah-auth-quote {
+  position: relative;
+  z-index: 2;
+  max-width: 400px;
+}
+[data-admin] .ah-auth-quote h3 {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 84, "wght" 700;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  margin: 0 0 12px;
+}
+[data-admin] .ah-auth-quote h3 em {
+  font-style: normal;
+  color: var(--lime);
+}
+[data-admin] .ah-auth-quote p {
+  color: #8fa096;
+  font-size: 13.5px;
+  margin: 0;
+  max-width: 330px;
+}
+@media (max-width: 760px) {
+  [data-admin].ah-auth {
+    grid-template-columns: 1fr;
+  }
+  [data-admin] .ah-auth-side {
+    display: none;
+  }
+  [data-admin] .ah-auth-form {
+    padding: 34px 24px;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-pw-toggle {
+    width: 44px;
+    height: 44px;
+    right: 0;
   }
 }
