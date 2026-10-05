@@ -138,6 +138,18 @@ class ArenaResponse(BaseModel):
     created_at: datetime
 
 
+class ArenaListItem(ArenaResponse):
+    """An arena as shown on a list card: the arena plus three summary fields.
+
+    Only the list endpoints return this. The arena detail and owner responses
+    keep returning ArenaResponse unchanged.
+    """
+
+    avg_rating: float | None = None
+    review_count: int = 0
+    min_price: Decimal | None = None
+
+
 class BlockedDateCreate(BaseModel):
     blocked_date: date
     reason: str | None = Field(default=None, max_length=255)
