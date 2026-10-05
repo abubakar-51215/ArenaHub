@@ -112,6 +112,22 @@ async def report_review(
 # ---- owner ------------------------------------------------------------------
 
 
+@owner_router.get(
+    "/arenas/{arena_id}/reviews",
+    summary="List reviews for one of my arenas (includes deactivated arenas)",
+)
+async def list_owner_arena_reviews(
+    arena_id: uuid.UUID,
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows, total = await service.list_owner_arena_reviews(
+        db, user, arena_id, offset=params.offset, limit=params.page_size
+    )
+    return success(data=paginated(rows, total, params), message="Reviews retrieved.")
+
+
 @owner_router.post("/reviews/{review_id}/response", summary="Respond to a review on my arena")
 async def respond_to_review(
     review_id: uuid.UUID,

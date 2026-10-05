@@ -91,6 +91,19 @@ async def list_arena_reviews(
     return [_to_response(review, name) for review, name in rows], total
 
 
+async def list_owner_arena_reviews(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, *, offset: int, limit: int
+) -> tuple[list[ReviewResponse], int]:
+    """Reviews for one of the owner's own arenas. Unlike the public list, this
+    also serves deactivated and unapproved arenas, so the owner can still read
+    them. Other owners get the same 404 as an unknown arena."""
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Arena not found.")
+    rows, total = await repo.list_arena_reviews(db, arena_id, offset=offset, limit=limit)
+    return [_to_response(review, name) for review, name in rows], total
+
+
 async def get_rating_summary(db: AsyncSession, arena_id: uuid.UUID) -> tuple[float | None, int]:
     return await repo.get_rating_summary(db, arena_id)
 
