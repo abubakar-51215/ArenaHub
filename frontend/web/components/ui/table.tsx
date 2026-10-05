@@ -21,7 +21,13 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
-      className={cn("border-b transition-colors hover:bg-muted/40", className)}
+      // `group` enables the row-actions-fade pattern on descendant cells:
+      // opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
+      // Callers with primary-action rows (approve/reject queues, where the
+      // action must be visible at rest — e.g. admin/arenas, owner/bookings'
+      // pending-approval actions) should omit the fade classes and let
+      // those actions render always-visible instead.
+      className={cn("group border-b transition-colors hover:bg-muted/40", className)}
       {...props}
     />
   );
@@ -40,7 +46,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return <td className={cn("px-4 py-3 align-middle", className)} {...props} />;
+  return <td className={cn("px-[18px] py-3 align-middle", className)} {...props} />;
 }
 
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };

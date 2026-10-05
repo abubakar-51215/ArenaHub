@@ -23,12 +23,12 @@ export function DashboardShell({
   const close = () => setOpen(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div data-theme="arena" className="flex h-screen overflow-hidden bg-background">
       {/* Backdrop (mobile only) */}
       <div
         onClick={close}
         className={cn(
-          "fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
+          "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />

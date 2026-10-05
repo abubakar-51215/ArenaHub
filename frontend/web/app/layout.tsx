@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, Geist, Geist_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
@@ -11,6 +11,22 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// Dashboard typography (consumed starting Step 6, scoped to
+// [data-theme="arena"] in globals.css — nothing reads these yet). `axes`
+// must explicitly include "wdth", or next/font only loads the default
+// weight axis and the "wdth" 76 / "wdth" 125 font-variation-settings in
+// globals.css silently fall back to the default width.
+const archivo = Archivo({
+  variable: "--font-archivo",
+  subsets: ["latin"],
+  axes: ["wdth"],
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
   subsets: ["latin"],
 });
 
@@ -26,7 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${interTight.variable} antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>
