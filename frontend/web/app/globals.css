@@ -18,7 +18,7 @@
   --color-lime: #c4f546;
   --color-lime-deep: #7fa30f;
   --font-sans: var(--font-body-face);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-display: var(--font-heading-face);
   --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -119,16 +119,10 @@
   --shadow-card-hover:
     0 4px 12px -4px oklch(0.21 0.02 260 / 0.1), 0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
 
-  /* Typography indirection for --font-display/--font-heading and any future
-     consumer — NOT used by the body rule below (see its comment for why).
-     These still evaluate at :root (<html>), an ancestor of <body> where
-     next/font's --font-geist-sans actually lives, so --font-geist-sans is
-     genuinely unresolvable here. That's fine as long as the fallback is
-     var()'s own argument (degrades gracefully) rather than a comma-list
-     item (a comma-list makes the *whole* value invalid if any item is,
-     which is the bug this replaces). */
-  --font-body-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
-  --font-heading-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+  /* Typography indirection for --font-display/--font-heading. Body and heading
+     faces are Inter Tight and Archivo (next/font variables set in layout.tsx). */
+  --font-body-face: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
 }
 
 .dark {
@@ -164,8 +158,8 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 
-  --font-body-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
-  --font-heading-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+  --font-body-face: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
 }
 
 /* ---------------------------------------------------------------------------
@@ -339,17 +333,11 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* Reads --font-geist-sans directly, NOT through --font-sans/--font-body-face
-     — that indirection exists for --font-display/--font-heading (see :root)
-     and evaluates at :root/<html>, an ancestor of <body> where next/font's
-     variables actually live, so it can't be trusted here. Geist is exposed
-     via next/font's `.variable` class on <body> (see layout.tsx); this is
-     the global default and stays Geist for every page. Dashboards get
-     Inter Tight from [data-theme="arena"]'s own font-family declaration in
-     Step 6, which wins by inheritance from that element downward. */
+  /* Body text is Inter Tight everywhere. next/font exposes the variable on
+     <body> (see layout.tsx), so the family is read from that variable. */
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+    font-family: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
   }
   /* numbers in tables and metrics must line up */
   table,
@@ -518,7 +506,7 @@
    Archivo condensed for scoreboard numerals, Archivo expanded for
    micro-labels. Inert outside [data-theme="arena"] until applied to
    dashboard markup (Step 5/6) — resolves through --font-display, which is
-   Geist Sans outside the dashboards, so nothing else picks this up.
+   Archivo everywhere, so nothing else picks this up.
 --------------------------------------------------------------------------- */
 @utility metric {
   font-family: var(--font-display);
