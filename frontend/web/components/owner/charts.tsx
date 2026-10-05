@@ -35,6 +35,7 @@ import {
 
 import { compactNumber, formatHour, formatRs } from "@/lib/format";
 
+// Fallback only: these match the arena theme tokens and apply if the runtime read fails.
 const FALLBACK_COLORS = {
   chart1: "#c4f546",
   chart2: "#0f1a15",
