@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import { Clock, Percent, TrendingUp, Wallet } from "lucide-react";
-
 import { BookingsByTimeChart, RevenueTrendChart } from "@/components/owner/charts";
+import { LiveBoard } from "@/components/owner/live-board";
 import { PageHeader } from "@/components/owner/page-header";
 import { StatusBadge } from "@/components/owner/status-badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { StatCard } from "@/components/ui/stat-card";
+import { numericDelta, StatCard } from "@/components/ui/stat-card";
 import { useDashboardAnalytics } from "@/hooks/useDashboard";
 import { formatDateShort, formatHour, formatRs, formatTime, toDateInput } from "@/lib/format";
 import { ARENA_CITIES } from "@/types";
@@ -65,20 +64,19 @@ export default function DashboardPage() {
       </PageHeader>
 
       <div className="animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
+        <LiveBoard />
+
         <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Revenue"
             value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)}
-            delta={data?.revenue_change_pct}
-            icon={Wallet}
-            tone="green"
+            delta={numericDelta(data?.revenue_change_pct, "%", "vs last period")}
+            history={trend.map((t) => t.amount)}
           />
           <StatCard
             label="Total Bookings"
             value={isLoading ? "—" : String(data?.total_bookings ?? 0)}
-            delta={data?.bookings_change_pct}
-            icon={TrendingUp}
-            tone="blue"
+            delta={numericDelta(data?.bookings_change_pct, "%", "vs last period")}
           />
           <StatCard
             label="Peak Hours"
@@ -89,16 +87,13 @@ export default function DashboardPage() {
                   ? `${formatHour(data.peak_hours.start_hour)} – ${formatHour(data.peak_hours.end_hour)}`
                   : "—"
             }
-            subtitle="Most booked window"
-            icon={Clock}
-            tone="amber"
+            delta={{ context: "Most booked window" }}
+            size="sm"
           />
           <StatCard
             label="Occupancy Rate"
             value={isLoading ? "—" : data?.occupancy_rate != null ? `${data.occupancy_rate}%` : "—"}
-            delta={data?.occupancy_change_pts}
-            icon={Percent}
-            tone="violet"
+            delta={numericDelta(data?.occupancy_change_pts, "pts", "vs last period")}
           />
         </div>
 

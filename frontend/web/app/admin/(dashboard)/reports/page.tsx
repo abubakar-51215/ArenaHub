@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-import { Building2, CalendarCheck, Users, Wallet } from "lucide-react";
-
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,26 +49,18 @@ export default function AdminReportsPage() {
           <StatCard
             label="Total Bookings"
             value={isLoading ? "—" : String(data?.bookings_all_time ?? 0)}
-            icon={CalendarCheck}
-            tone="blue"
           />
           <StatCard
             label="Total Revenue"
             value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)}
-            icon={Wallet}
-            tone="green"
           />
           <StatCard
             label="Active Users"
             value={isLoading ? "—" : String((data?.total_players ?? 0) + (data?.total_owners ?? 0))}
-            icon={Users}
-            tone="violet"
           />
           <StatCard
             label="Total Arenas"
             value={isLoading ? "—" : String(data?.total_arenas ?? 0)}
-            icon={Building2}
-            tone="amber"
           />
         </div>
 

@@ -43,7 +43,7 @@ function CourtsInner() {
             setFormOpen(true);
           }}
           disabled={!arenaId}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="bg-primary text-primary-foreground transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Court
         </Button>
@@ -83,7 +83,7 @@ function CourtsInner() {
               className="card-elevated overflow-hidden rounded-xl border border-border bg-card"
             >
               <div
-                className="h-36 w-full bg-linear-to-br from-emerald-800 to-slate-900 bg-cover bg-center"
+                className="h-36 w-full bg-muted bg-cover bg-center"
                 style={court.images[0] ? { backgroundImage: `url(${court.images[0]})` } : undefined}
               />
               <div className="space-y-2 p-4">

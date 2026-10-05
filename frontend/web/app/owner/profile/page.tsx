@@ -115,7 +115,7 @@ function OtpDialog({
           </Button>
           <Button
             type="button"
-            className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+            className="bg-primary text-primary-foreground transition-all hover:opacity-95"
             disabled={pending || code.length !== 6}
             onClick={() => onConfirm(code)}
           >
@@ -215,7 +215,7 @@ export default function OwnerProfilePage() {
       <PageHeader title="Profile & Settings" subtitle="Manage your account and business details" />
       <div className="mx-auto max-w-2xl animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="shadow-card flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-card p-6">
-          <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-2xl font-bold text-white shadow-brand">
+          <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
             {user.full_name?.[0]?.toUpperCase() ?? "?"}
           </span>
           <div className="min-w-0">
@@ -237,9 +237,9 @@ export default function OwnerProfilePage() {
             </div>
             <ErrorText message={nameMutation.isError ? errMessage(nameMutation.error) : null} />
             <div className="flex items-center justify-between">
-              {nameMutation.isSuccess && <span className="text-sm text-emerald-600">Saved.</span>}
+              {nameMutation.isSuccess && <span className="text-sm text-success">Saved.</span>}
               <Button
-                className="ml-auto bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+                className="ml-auto bg-primary text-primary-foreground transition-all hover:opacity-95"
                 disabled={
                   nameMutation.isPending || !fullName.trim() || fullName.trim() === user.full_name
                 }
@@ -322,7 +322,7 @@ export default function OwnerProfilePage() {
             <ErrorText message={passwordError} />
             <div className="flex justify-end">
               <Button
-                className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+                className="bg-primary text-primary-foreground transition-all hover:opacity-95"
                 disabled={requestPasswordMutation.isPending || !currentPassword || !passwordsMatch}
                 onClick={() => requestPasswordMutation.mutate()}
               >

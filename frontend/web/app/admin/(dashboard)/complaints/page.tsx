@@ -166,7 +166,7 @@ export default function AdminComplaintsPage() {
                     {formatDate(c.created_at.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                       <Button variant="ghost" size="sm" onClick={() => openRespond(c)}>
                         {c.status === "resolved" ? "View" : "Respond"}
                       </Button>
@@ -255,7 +255,7 @@ export default function AdminComplaintsPage() {
               Cancel
             </Button>
             <Button
-              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="bg-primary text-primary-foreground transition-all hover:opacity-95"
               disabled={respond.isPending || !response.trim()}
               onClick={onRespond}
             >

@@ -41,7 +41,7 @@ function EquipmentInner() {
             setFormOpen(true);
           }}
           disabled={!arenaId}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="bg-primary text-primary-foreground transition-all hover:opacity-95"
         >
           <Plus className="size-4" /> Add Equipment
         </Button>

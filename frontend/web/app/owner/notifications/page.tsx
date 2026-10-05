@@ -12,15 +12,15 @@ const EVENT_ICON: Record<
   string,
   { icon: React.ComponentType<{ className?: string }>; tone: string }
 > = {
-  new_confirmed_booking: { icon: CalendarCheck, tone: "text-emerald-600 bg-emerald-600/10" },
-  booking_confirmed: { icon: CalendarCheck, tone: "text-emerald-600 bg-emerald-600/10" },
+  new_confirmed_booking: { icon: CalendarCheck, tone: "text-success bg-success/10" },
+  booking_confirmed: { icon: CalendarCheck, tone: "text-success bg-success/10" },
   booking_cancelled: { icon: CalendarX, tone: "text-destructive bg-destructive/10" },
   booking_payment_failed: { icon: AlertCircle, tone: "text-destructive bg-destructive/10" },
-  refund_initiated: { icon: Wallet, tone: "text-blue-600 bg-blue-600/10" },
-  booking_reminder_24h: { icon: Clock, tone: "text-amber-600 bg-amber-600/10" },
-  booking_reminder_1h: { icon: Clock, tone: "text-amber-600 bg-amber-600/10" },
+  refund_initiated: { icon: Wallet, tone: "text-muted-foreground bg-muted" },
+  booking_reminder_24h: { icon: Clock, tone: "text-warning bg-warning/10" },
+  booking_reminder_1h: { icon: Clock, tone: "text-warning bg-warning/10" },
 };
-const DEFAULT_ICON = { icon: Bell, tone: "text-blue-600 bg-blue-600/10" };
+const DEFAULT_ICON = { icon: Bell, tone: "text-muted-foreground bg-muted" };
 
 function timeAgo(iso: string): string {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
@@ -73,7 +73,7 @@ export default function OwnerNotificationsPage() {
               onClick={() => onOpen(n)}
               className={cn(
                 "flex w-full items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted/50",
-                !n.read_at && "border-blue-600/30 bg-blue-600/[0.03]",
+                !n.read_at && "border-muted-foreground/30 bg-muted/30",
               )}
             >
               <span className={cn("mt-0.5 rounded-full p-2", tone)}>
@@ -82,7 +82,7 @@ export default function OwnerNotificationsPage() {
               <span className="flex-1">
                 <span className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">{n.title}</span>
-                  {!n.read_at && <span className="size-2 rounded-full bg-blue-600" />}
+                  {!n.read_at && <span className="size-2 rounded-full bg-muted-foreground" />}
                 </span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">{n.body}</span>
               </span>

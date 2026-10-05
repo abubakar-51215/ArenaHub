@@ -9,8 +9,8 @@ import { useAuthStore } from "@/store/auth";
 
 /**
  * Admin shell + client-side auth guard, mirroring the owner layout. Lives in
- * a route group so ``/admin/login`` (a sibling, not nested here) never
- * inherits this guard.
+ * a route group so ``/admin/login`` and ``/admin/login1`` (siblings, not
+ * nested here) never inherit this guard.
  */
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
   useEffect(() => {
     if (hydrated && (!accessToken || user?.role !== "admin")) {
-      router.replace("/admin/login");
+      router.replace("/admin/login1");
     }
   }, [hydrated, user, accessToken, router]);
 

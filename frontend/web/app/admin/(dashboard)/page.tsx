@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, CalendarCheck, Users, Wallet } from "lucide-react";
 
 import { PageHeader } from "@/components/admin/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -32,26 +31,18 @@ export default function AdminDashboardPage() {
           <StatCard
             label="Total Users"
             value={isLoading ? "—" : String((data?.total_players ?? 0) + (data?.total_owners ?? 0))}
-            icon={Users}
-            tone="blue"
           />
           <StatCard
             label="Total Bookings"
             value={isLoading ? "—" : String(data?.bookings_all_time ?? 0)}
-            icon={CalendarCheck}
-            tone="violet"
           />
           <StatCard
             label="Total Revenue"
             value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)}
-            icon={Wallet}
-            tone="green"
           />
           <StatCard
             label="Active Arenas"
             value={isLoading ? "—" : String(data?.approved_arenas ?? 0)}
-            icon={Building2}
-            tone="amber"
           />
         </div>
 
