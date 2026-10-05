@@ -18,7 +18,7 @@ import {
 import { useMyArenas } from "@/hooks/useArenas";
 import { formatDate } from "@/lib/format";
 import { ApiError } from "@/services/api";
-import { listArenaReviews, respondToReview } from "@/services/reviews";
+import { listOwnerArenaReviews, respondToReview } from "@/services/reviews";
 import type { Review } from "@/types";
 
 function Stars({ rating }: { rating: number }) {
@@ -70,7 +70,7 @@ export default function ReviewsPage() {
     queries: arenas.map((a) => ({
       queryKey: ["reviews", a.id, pageSize],
       queryFn: async (): Promise<{ items: TaggedReview[]; total: number }> => {
-        const page = await listArenaReviews(a.id, 1, pageSize);
+        const page = await listOwnerArenaReviews(a.id, 1, pageSize);
         return { items: page.items.map((r) => ({ ...r, arena_name: a.name })), total: page.total };
       },
     })),
