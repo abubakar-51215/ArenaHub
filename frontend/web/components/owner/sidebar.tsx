@@ -78,12 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Notifications", href: "/owner/notifications", icon: Bell },
       { label: "Profile", href: "/owner/profile", icon: Settings },
-      {
-        label: "Reports",
-        icon: BarChart3,
-        disabled: true,
-        disabledTooltip: "Coming in a later sprint",
-      },
+      { label: "Reports", href: "/owner/reports", icon: BarChart3 },
     ],
   },
 ];
