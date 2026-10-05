@@ -15,13 +15,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from app.cache import redis as redis_cache
+from app.core.config import get_settings
 from app.shared.response import error
 
 log = structlog.get_logger()
 
 WINDOW_SECONDS = 60
-DEFAULT_LIMIT = 100
-AUTH_LIMIT = 20
 
 _AUTH_PREFIX = "/api/v1/auth"
 _API_PREFIX = "/api/v1"
@@ -39,10 +38,11 @@ def _limit_for(path: str) -> int | None:
     """Return the request budget for a path, or None if it isn't rate-limited."""
     if request_is_exempt(path):
         return None
+    settings = get_settings()
     if path.startswith(_AUTH_PREFIX):
-        return AUTH_LIMIT
+        return settings.rate_limit_auth_per_minute
     if path.startswith(_API_PREFIX):
-        return DEFAULT_LIMIT
+        return settings.rate_limit_api_per_minute
     return None
 
 
