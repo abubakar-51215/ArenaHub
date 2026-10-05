@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
         </>
       ) : (
         <>
-          <MailCheck className="size-10 text-blue-600" />
+          <MailCheck className="size-10 text-foreground" />
           <h1 className="mt-4 text-2xl font-bold text-foreground">Check your email</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             If <span className="font-medium text-foreground">{email}</span> is registered,
@@ -93,7 +93,7 @@ export default function ForgotPasswordPage() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Remembered your password?{" "}
-        <Link href="/login" className="font-medium text-blue-600 hover:underline">
+        <Link href="/login" className="font-medium text-foreground hover:underline">
           Sign in
         </Link>
       </p>
