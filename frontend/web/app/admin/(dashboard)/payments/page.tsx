@@ -69,7 +69,7 @@ export default function AdminPaymentsPage() {
         </Select>
       </PageHeader>
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="animate-fade-in space-y-4">
         <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>

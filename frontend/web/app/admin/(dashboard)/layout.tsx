@@ -31,8 +31,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   }
 
   return (
-    <DashboardShell sidebar={(close) => <AdminSidebar onNavigate={close} />}>
-      {children}
+    <DashboardShell variant="admin" sidebar={(close) => <AdminSidebar onNavigate={close} />}>
+      <div className="ah-canvas">{children}</div>
     </DashboardShell>
   );
 }

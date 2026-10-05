@@ -68,7 +68,7 @@ export default function AdminReviewsPage() {
     <>
       <PageHeader title="Review Moderation" subtitle="Moderate user reviews and ratings" />
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="animate-fade-in space-y-4">
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
         )}

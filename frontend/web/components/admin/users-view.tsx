@@ -52,7 +52,7 @@ export function UsersView({
   return (
     <>
       <PageHeader title={title} subtitle={subtitle} />
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="animate-fade-in space-y-4">
         <Input
           placeholder="Search by name or email…"
           value={search}

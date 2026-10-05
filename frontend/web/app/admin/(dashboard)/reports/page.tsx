@@ -44,7 +44,7 @@ export default function AdminReportsPage() {
   return (
     <>
       <PageHeader title="Reports &amp; Analytics" subtitle="Insights and performance overview" />
-      <div className="animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="animate-fade-in space-y-6">
         <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Bookings"
