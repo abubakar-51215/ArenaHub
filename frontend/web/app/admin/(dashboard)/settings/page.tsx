@@ -470,7 +470,7 @@ export default function AdminSettingsPage() {
   return (
     <>
       <PageHeader title="System Settings" subtitle="Manage system configuration and preferences" />
-      <div className="animate-fade-in space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="animate-fade-in space-y-6">
         <div className="flex gap-1 border-b border-border">
           {TABS.map((t) => (
             <button

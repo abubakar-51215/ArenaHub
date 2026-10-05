@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
 
+import { AdminBrandMark } from "@/components/admin/brand";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
@@ -11,19 +12,28 @@ import { cn } from "@/lib/utils";
  * - Desktop (xl+): the sidebar is static in the flex row.
  * - Mobile/tablet: the sidebar slides in as an overlay drawer, toggled from a
  *   compact top bar; navigating closes it.
+ * `variant="admin"` sets [data-admin], which scopes the admin prototype's
+ * shell styles (globals.css), and uses the prototype's topbar and brand mark.
+ * The owner variant renders exactly as before.
  */
 export function DashboardShell({
   sidebar,
   children,
+  variant = "owner",
 }: {
   sidebar: (closeMobile: () => void) => React.ReactNode;
   children: React.ReactNode;
+  variant?: "owner" | "admin";
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
   return (
-    <div data-theme="arena" className="flex h-screen overflow-hidden bg-background">
+    <div
+      data-theme="arena"
+      data-admin={variant === "admin" ? "" : undefined}
+      className="flex h-screen overflow-hidden bg-background"
+    >
       {/* Backdrop (mobile only) */}
       <div
         onClick={close}
@@ -45,16 +55,25 @@ export function DashboardShell({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 xl:hidden">
-          <button
-            onClick={() => setOpen(true)}
-            aria-label="Open menu"
-            className="flex size-9 max-md:size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Menu className="size-5" />
-          </button>
-          <Logo />
-        </header>
+        {variant === "admin" ? (
+          <header className="ah-topbar xl:hidden">
+            <button onClick={() => setOpen(true)} aria-label="Open menu" className="ah-icon-btn">
+              <Menu strokeWidth={1.9} />
+            </button>
+            <AdminBrandMark />
+          </header>
+        ) : (
+          <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 xl:hidden">
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              className="flex size-9 max-md:size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Menu className="size-5" />
+            </button>
+            <Logo />
+          </header>
+        )}
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
       </div>
