@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
-import { AuthShell } from "@/components/auth/auth-shell";
+import { SplitAuthShell } from "@/components/auth/split-auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +53,26 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell>
+    <SplitAuthShell
+      variant="owner"
+      imageSrc="/images/court-login.jpg"
+      imageAlt=""
+      credit="328 arenas live tonight"
+      quote={{
+        eyebrow: "Arena Hub for owners",
+        title: (
+          <>
+            Every court, every hour, <em>in one view.</em>
+          </>
+        ),
+        desc: "Track tonight's bookings as they land, approve requests in a tap, and watch your occupancy climb.",
+      }}
+      stats={[
+        { value: "328", label: "Arenas listed" },
+        { value: "0%", label: "Setup fees" },
+        { value: "24/7", label: "Booking availability" },
+      ]}
+    >
       <h1 className="text-2xl font-bold text-foreground">Welcome Back!</h1>
       <p className="mt-1 text-sm text-muted-foreground">Sign in to your Arena Hub account</p>
 
@@ -96,7 +115,7 @@ export default function LoginPage() {
           <div className="mt-1.5 text-right">
             <Link
               href="/forgot-password"
-              className="text-sm font-medium text-blue-600 hover:underline"
+              className="text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
             >
               Forgot Password?
             </Link>
@@ -111,7 +130,7 @@ export default function LoginPage() {
           type="submit"
           size="lg"
           disabled={submitting}
-          className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="h-11 w-full"
         >
           {submitting ? "Signing in…" : "Sign In"}
         </Button>
@@ -119,13 +138,16 @@ export default function LoginPage() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="font-medium text-blue-600 hover:underline">
+        <Link
+          href="/register"
+          className="font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+        >
           Sign up
         </Link>
       </p>
       <p className="mt-10 text-center text-xs text-muted-foreground">
         © 2026 Arena Hub. All rights reserved.
       </p>
-    </AuthShell>
+    </SplitAuthShell>
   );
 }

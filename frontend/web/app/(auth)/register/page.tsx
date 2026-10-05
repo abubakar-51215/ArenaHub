@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { AuthShell } from "@/components/auth/auth-shell";
+import { SplitAuthShell } from "@/components/auth/split-auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,7 +75,26 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthShell>
+    <SplitAuthShell
+      variant="owner"
+      imageSrc="/images/court-signup.jpg"
+      imageAlt=""
+      credit="328 arenas already listed"
+      quote={{
+        eyebrow: "Join the network",
+        title: (
+          <>
+            Get seen by players <em>the moment</em> you go live.
+          </>
+        ),
+        desc: "List your courts, set your prices, and start taking real-time bookings the same day you sign up.",
+      }}
+      stats={[
+        { value: "2 min", label: "Average setup time" },
+        { value: "0%", label: "Setup fees" },
+        { value: "24/7", label: "Booking availability" },
+      ]}
+    >
       {step === "form" ? (
         <>
           <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
@@ -160,7 +179,7 @@ export default function RegisterPage() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="h-11 w-full"
             >
               {submitting ? "Creating account…" : "Create Account"}
             </Button>
@@ -201,7 +220,7 @@ export default function RegisterPage() {
               type="submit"
               size="lg"
               disabled={submitting || code.length !== 6}
-              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="h-11 w-full"
             >
               {submitting ? "Verifying…" : "Verify & Continue"}
             </Button>
@@ -212,7 +231,7 @@ export default function RegisterPage() {
                 setStep("form");
                 setError(null);
               }}
-              className="w-full text-center text-sm font-medium text-blue-600 hover:underline"
+              className="w-full text-center text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
             >
               Wrong email? Go back
             </button>
@@ -222,10 +241,13 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-blue-600 hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+        >
           Sign in
         </Link>
       </p>
-    </AuthShell>
+    </SplitAuthShell>
   );
 }
