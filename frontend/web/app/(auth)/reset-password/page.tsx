@@ -59,7 +59,7 @@ function ResetPasswordInner() {
         </p>
         <Button
           size="lg"
-          className="mt-6 h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="mt-6 h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
           onClick={() => router.replace("/login")}
         >
           Go to Sign In
@@ -123,7 +123,7 @@ function ResetPasswordInner() {
           type="submit"
           size="lg"
           disabled={submitting}
-          className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
         >
           {submitting ? "Resetting…" : "Reset Password"}
         </Button>

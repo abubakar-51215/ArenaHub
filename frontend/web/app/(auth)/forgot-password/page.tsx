@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
             >
               {submitting ? "Sending…" : "Send Reset Link"}
             </Button>
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
           <Link href="/reset-password" className="mt-6 block">
             <Button
               size="lg"
-              className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
             >
               I have my reset link
             </Button>

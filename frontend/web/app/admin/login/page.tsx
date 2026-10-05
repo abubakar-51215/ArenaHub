@@ -99,7 +99,7 @@ export default function AdminLoginPage() {
           type="submit"
           size="lg"
           disabled={submitting}
-          className="h-11 w-full bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+          className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
         >
           {submitting ? "Signing in…" : "Sign In"}
         </Button>
