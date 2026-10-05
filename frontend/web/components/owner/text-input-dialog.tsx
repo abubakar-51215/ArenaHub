@@ -83,7 +83,7 @@ export function TextInputDialog({
             className={
               destructive
                 ? ""
-                : "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+                : "bg-primary text-primary-foreground transition-all hover:opacity-95"
             }
           >
             {pending ? "Saving…" : confirmLabel}
