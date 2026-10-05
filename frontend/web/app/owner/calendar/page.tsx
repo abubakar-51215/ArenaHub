@@ -201,7 +201,7 @@ export default function CalendarPage() {
                 key={v}
                 onClick={() => setView(v)}
                 className={cn(
-                  "px-4 py-1.5 text-sm font-medium capitalize transition-colors",
+                  "px-4 py-1.5 max-md:py-3 text-sm font-medium capitalize transition-colors",
                   view === v
                     ? "bg-primary text-primary-foreground"
                     : "bg-card text-foreground hover:bg-muted",

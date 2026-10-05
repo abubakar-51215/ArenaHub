@@ -298,13 +298,13 @@ export default function Home() {
               </Link>
               <Link
                 href="/login"
-                className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                className="inline-flex h-9 max-md:h-11 items-center justify-center rounded-full border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
-                className="group inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-xs transition-transform hover:-translate-y-0.5 hover:bg-accent/90"
+                className="group inline-flex h-9 max-md:h-11 items-center justify-center gap-1.5 rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-xs transition-transform hover:-translate-y-0.5 hover:bg-accent/90"
               >
                 Get Started
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -314,7 +314,7 @@ export default function Home() {
             <button
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               onClick={() => setMenuOpen((o) => !o)}
-              className="inline-flex size-9 items-center justify-center rounded-lg text-foreground lg:hidden"
+              className="inline-flex size-9 max-md:size-11 items-center justify-center rounded-lg text-foreground lg:hidden"
             >
               {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
@@ -426,7 +426,7 @@ export default function Home() {
                 <button
                   aria-label="Previous slide"
                   onClick={() => setSlide((s) => (s - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
-                  className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+                  className="flex size-9 max-md:size-11 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
@@ -436,7 +436,7 @@ export default function Home() {
                       key={s.tag}
                       aria-label={`Go to slide ${i + 1}`}
                       onClick={() => setSlide(i)}
-                      className={`flex size-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                      className={`flex size-8 max-md:size-11 items-center justify-center rounded-full text-xs font-bold transition-all ${
                         i === slide
                           ? "bg-accent text-accent-foreground shadow-xs"
                           : "border border-border text-muted-foreground hover:text-foreground"
@@ -449,7 +449,7 @@ export default function Home() {
                 <button
                   aria-label="Next slide"
                   onClick={() => setSlide((s) => (s + 1) % HERO_SLIDES.length)}
-                  className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+                  className="flex size-9 max-md:size-11 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
                 >
                   <ChevronRight className="size-4" />
                 </button>

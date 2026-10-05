@@ -49,7 +49,7 @@ export function DashboardShell({
           <button
             onClick={() => setOpen(true)}
             aria-label="Open menu"
-            className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-9 max-md:size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Menu className="size-5" />
           </button>
