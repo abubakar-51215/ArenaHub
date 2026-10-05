@@ -47,7 +47,7 @@ export default function HealthPage() {
                   return (
                     <li key={key} className="flex items-center justify-between">
                       <span className="font-medium">{label}</span>
-                      <span className={status === "ok" ? "text-green-600" : "text-destructive"}>
+                      <span className={status === "ok" ? "text-lime-deep" : "text-destructive"}>
                         {status}
                       </span>
                     </li>

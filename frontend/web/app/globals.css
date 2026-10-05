@@ -17,6 +17,10 @@
   --color-paper: #f1f2ef;
   --color-lime: #c4f546;
   --color-lime-deep: #7fa30f;
+  /* light text on the ink photo panels (auth pages) */
+  --color-on-ink: #c8d6cd;
+  --color-on-ink-muted: #b8c7be;
+  --color-on-ink-faint: #93a69a;
   --font-sans: var(--font-body-face);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-display: var(--font-heading-face);
@@ -75,7 +79,6 @@
   --card-foreground: oklch(0.21 0.02 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0.02 260);
-  /* Brand blue (#2563EB / blue-600) as the primary across the platform. */
   --primary: #0f1a15;
   --primary-foreground: #f1f2ef;
   --secondary: oklch(0.968 0.006 247);

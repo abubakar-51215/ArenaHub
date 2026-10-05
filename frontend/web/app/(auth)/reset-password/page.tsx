@@ -52,7 +52,7 @@ function ResetPasswordInner() {
   if (done) {
     return (
       <AuthShell>
-        <CheckCircle2 className="size-10 text-emerald-600" />
+        <CheckCircle2 className="size-10 text-lime-deep" />
         <h1 className="mt-4 text-2xl font-bold text-foreground">Password reset</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your password has been updated. Sign in with your new password to continue.
