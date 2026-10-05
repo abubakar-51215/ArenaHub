@@ -1,3 +1,9 @@
+/* NOTE: Turbopack's dev-server file watcher does not reliably hot-reload
+   edits to this file. Restart the dev server to verify changes to any
+   custom property here. Discovered while proving the useArenaColors hook
+   in charts.tsx (Step 5 charts pass) — a token edit that appeared to have
+   no visual effect turned out to be a watcher miss, not a hook bug. */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,9 +13,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-body-face);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-display: var(--font-heading-face);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -27,8 +34,15 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-rating: var(--rating);
+  --color-danger-muted: var(--danger-muted);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -69,6 +83,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --success: oklch(0.627 0.17 149.2);
   --warning: oklch(0.705 0.16 70);
+  --rating: var(--warning);
   --border: oklch(0.922 0.006 247);
   --input: oklch(0.922 0.006 247);
   --ring: oklch(0.546 0.215 262.9);
@@ -99,6 +114,17 @@
   --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04), 0 4px 16px -8px oklch(0.21 0.02 260 / 0.08);
   --shadow-card-hover:
     0 4px 12px -4px oklch(0.21 0.02 260 / 0.1), 0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
+
+  /* Typography indirection for --font-display/--font-heading and any future
+     consumer — NOT used by the body rule below (see its comment for why).
+     These still evaluate at :root (<html>), an ancestor of <body> where
+     next/font's --font-geist-sans actually lives, so --font-geist-sans is
+     genuinely unresolvable here. That's fine as long as the fallback is
+     var()'s own argument (degrades gracefully) rather than a comma-list
+     item (a comma-list makes the *whole* value invalid if any item is,
+     which is the bug this replaces). */
+  --font-body-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
 }
 
 .dark {
@@ -133,17 +159,198 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --font-body-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+/* ---------------------------------------------------------------------------
+   ArenaHub dashboard theme (owner + admin consoles only).
+
+   Scoped under [data-theme="arena"] — set on the root element of
+   components/ui/dashboard-shell.tsx (both dashboard layouts) and of
+   components/auth/split-auth-shell.tsx (used by /login, /register, and the
+   retired /login1, /signup1, /admin/login1 prototypes). Everything else —
+   the marketing site, /admin/login, /forgot-password, /reset-password —
+   still renders through the old AuthShell and keeps :root's blue tokens.
+
+   Palette: ink #0F1A15 (sidebar, headings, primary), paper #F1F2EF (canvas),
+   lime #C4F546 (accent — live status / approve only), amber #D9930B
+   (pending), red #CF4141 (cancelled/destructive). Colour carries meaning,
+   never decoration.
+--------------------------------------------------------------------------- */
+[data-theme="arena"] {
+  --radius: 0.75rem;
+
+  --background: #f1f2ef;
+  --foreground: #0f1a15;
+
+  --card: #ffffff;
+  --card-foreground: #0f1a15;
+  --popover: #ffffff;
+  --popover-foreground: #0f1a15;
+
+  /* primary is ink, NOT lime — lime is the accent, and using it for every
+     button is what makes an accent stop meaning anything */
+  --primary: #0f1a15;
+  --primary-foreground: #f1f2ef;
+
+  --secondary: #edefeb;
+  --secondary-foreground: #0f1a15;
+
+  --muted: #edefeb;
+  --muted-foreground: #79857e;
+  /* Prototype's --text-2 — a secondary text weight between --foreground and
+     --muted-foreground, used only by form field labels. No existing token
+     matched this value or role (checked every dashboard form first — all
+     labels currently render at full --foreground via the one shared Label
+     component); this is a genuine gap, not a naming mismatch. Applied at
+     call sites in auth forms, not by changing Label's own default — that
+     would recolor every label in both dashboards. */
+  --label-foreground: #46534c;
+
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+
+  --destructive: #cf4141;
+  --destructive-foreground: #ffffff;
+
+  --border: #e2e6e1;
+  --input: #e2e6e1;
+  --ring: #7fa30f;
+
+  --success: #7fa30f;
+  --success-foreground: #ffffff;
+  --success-muted: #f2fbda;
+  --warning: #d9930b;
+  --warning-foreground: #ffffff;
+  --warning-muted: #fdf3dc;
+  --rating: var(--warning);
+  --danger-muted: #fbe9e9;
+
+  /* charts: one lime, then a disciplined grey ramp. Never a rainbow. */
+  --chart-1: #c4f546;
+  --chart-2: #0f1a15;
+  --chart-3: #5a6b61;
+  --chart-4: #93a29a;
+  --chart-5: #c6cfc9;
+
+  /* the rail is always ink, in both themes — it anchors the whole product */
+  --sidebar: #0f1a15;
+  --sidebar-foreground: #a9b5ae;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #182620;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #22322a;
+  --sidebar-ring: #c4f546;
+
+  --font-body-face: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
+
+  /* --font-display is declared once at :root inside @theme inline
+     (--font-display: var(--font-heading-face)) and its computed value is
+     fixed there, using :root's own --font-heading-face — the arena
+     override above never reaches it via inheritance alone (same class of
+     bug as the Step 4 body-font finding, one indirection hop deeper).
+     Re-declaring it here fixes .metric/.eyebrow/.heading, which all read
+     font-family from --font-display. */
+  --font-display: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
+
+  /* --font-heading is intentionally left unmapped here — no dashboard
+     element currently consumes it. If CardTitle or another shadcn
+     primitive starts needing Archivo, add: --font-heading: var(--font-archivo); */
+
+  /* Applies the token as a real property on the arena-scoped element itself.
+     <body>'s font-sans rule can't do this job: it resolves at <body>, which
+     sits outside [data-theme="arena"], so the arena override on
+     --font-body-face has nothing to attach to there (Step 4 finding).
+     Declaring it here, at the element that actually carries the scope,
+     is what makes dashboard body text become Inter Tight. */
+  font-family: var(--font-body-face);
+
+  font-feature-settings: "cv02", "cv03";
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Dark-mode companion for the dashboard theme — inert today (nothing in the
+   app toggles .dark), included for parity with the prototype so a future
+   dark-mode pass doesn't need to revisit token values. */
+[data-theme="arena"].dark {
+  --background: #0a100d;
+  --foreground: #e9efe9;
+
+  --card: #121a16;
+  --card-foreground: #e9efe9;
+  --popover: #121a16;
+  --popover-foreground: #e9efe9;
+
+  /* in dark, lime becomes the primary — ink would vanish into the canvas */
+  --primary: #c4f546;
+  --primary-foreground: #0f1a15;
+
+  --secondary: #1b2520;
+  --secondary-foreground: #e9efe9;
+
+  --muted: #1b2520;
+  --muted-foreground: #7c8981;
+
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+
+  --destructive: #e05a5a;
+  --destructive-foreground: #0a100d;
+
+  --border: #232f28;
+  --input: #232f28;
+  --ring: #c4f546;
+
+  --success: #a5d321;
+  --success-foreground: #0f1a15;
+  --success-muted: #1e2a11;
+  --warning: #e8b93f;
+  --warning-foreground: #0f1a15;
+  --warning-muted: #2a2210;
+  --rating: var(--warning);
+  --danger-muted: #2c1616;
+
+  --chart-1: #c4f546;
+  --chart-2: #8fbf16;
+  --chart-3: #6d7d73;
+  --chart-4: #46534c;
+  --chart-5: #2b3831;
+
+  --sidebar: #0d1410;
+  --sidebar-foreground: #8a968e;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #16201a;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #1e2a23;
+  --sidebar-ring: #c4f546;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  /* The Geist font variable is scoped to <body> via next/font's `.variable`
-     class in layout.tsx; custom properties don't flow up to ancestors, so
-     font-sans must be applied here (not on <html>) or it can't resolve it. */
+  /* Reads --font-geist-sans directly, NOT through --font-sans/--font-body-face
+     — that indirection exists for --font-display/--font-heading (see :root)
+     and evaluates at :root/<html>, an ancestor of <body> where next/font's
+     variables actually live, so it can't be trusted here. Geist is exposed
+     via next/font's `.variable` class on <body> (see layout.tsx); this is
+     the global default and stays Geist for every page. Dashboards get
+     Inter Tight from [data-theme="arena"]'s own font-family declaration in
+     Step 6, which wins by inheritance from that element downward. */
   body {
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+  }
+  /* numbers in tables and metrics must line up */
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -162,6 +369,19 @@
   }
   .text-gradient-brand {
     background-image: linear-gradient(120deg, oklch(0.55 0.21 263) 0%, oklch(0.63 0.17 173) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Marketing-only gradient heading accent — ink→lime, app/page.tsx only.
+     Kept separate from the dashboard typographic primitives on purpose: a
+     gradient-text heading is exactly the decoration-for-its-own-sake the
+     arena system's restraint exists to prevent, if it ever reached a
+     dashboard. Hardcoded hex, not var(), so it doesn't read as an
+     arena-theme-dependent utility even though nothing physically stops it
+     being applied elsewhere. */
+  .text-gradient-marketing {
+    background-image: linear-gradient(120deg, #0f1a15 0%, #c4f546 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -287,4 +507,57 @@
   .card-elevated:hover {
     transform: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard typographic signature — one family at two width extremes.
+   Archivo condensed for scoreboard numerals, Archivo expanded for
+   micro-labels. Inert outside [data-theme="arena"] until applied to
+   dashboard markup (Step 5/6) — resolves through --font-display, which is
+   Geist Sans outside the dashboards, so nothing else picks this up.
+--------------------------------------------------------------------------- */
+@utility metric {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 76, "wght" 700;
+  font-size: 2.375rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+@utility metric-sm {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 76, "wght" 700;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+@utility metric-lg {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 76, "wght" 700;
+  font-size: 3.5rem; /* 56px, matches design/prototypes' .metric.lg */
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 125, "wght" 600;
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+/* Heavier eyebrow treatment for hero-level / major-section-opening labels
+   on the marketing page only. Composes on top of base .eyebrow
+   (className="eyebrow eyebrow-marketing") rather than editing it — .eyebrow
+   is shared with the dashboards, and changing its base definition risks a
+   silent-bleed regression into dashboard headings. */
+@utility eyebrow-marketing {
+  color: var(--foreground);
+  font-size: 0.75rem;
+}
+@utility heading {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 88, "wght" 700;
+  letter-spacing: -0.02em;
 }
