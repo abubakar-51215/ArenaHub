@@ -2,15 +2,39 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
 
-import { SplitAuthShell } from "@/components/auth/split-auth-shell";
+import { AdminBrandMark } from "@/components/admin/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
 import { fetchMe, login } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
+
+// The prototype's sign-in illustration: a fixed set of lime nodes, joined when
+// they are closer than 260 units (design/prototypes/arena-hub-admin.html).
+const DOTS: [number, number][] = [
+  [150, 210],
+  [420, 170],
+  [300, 330],
+  [190, 470],
+  [470, 430],
+  [330, 600],
+  [120, 660],
+  [500, 640],
+];
+const LINES = DOTS.flatMap((p, i) =>
+  DOTS.slice(i + 1)
+    .filter((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 260)
+    .map((q) => [p, q] as const),
+);
+
+const EyeIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -48,80 +72,112 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <SplitAuthShell
-      variant="admin"
-      imageSrc="/images/court-signup.jpg"
-      imageAlt="Bright aerial view of a two-court tennis stadium"
-      credit="Admin console"
-      quote={{
-        eyebrow: "Arena Hub for admins",
-        title: "Oversee the platform.",
-        desc: "Verify arenas, manage owners, and keep ArenaHub trustworthy.",
-      }}
-      stats={[
-        { value: "Review", label: "Pending arenas" },
-        { value: "Manage", label: "Owners and users" },
-        { value: "Resolve", label: "Complaints" },
-      ]}
-    >
-      <h1 className="text-2xl font-bold text-foreground">Welcome Back!</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Sign in to your admin account</p>
-
-      <form onSubmit={onSubmit} className="mt-7 space-y-4">
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="admin@arenahub.pk"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-              placeholder="••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground max-md:w-11 max-md:justify-center max-md:pr-0"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
+    <div data-theme="arena" data-admin="" className="ah-auth">
+      <div className="ah-auth-form">
+        <div className="ah-auth-brand">
+          <AdminBrandMark />
+          <div className="ah-brand-name" style={{ color: "var(--text)" }}>
+            Arena Hub<small>Platform admin</small>
           </div>
         </div>
+        <p className="ah-eyebrow" style={{ margin: "0 0 10px" }}>
+          Restricted access
+        </p>
+        <h1 className="ah-h1 ah-auth-title">Control tower.</h1>
+        <p className="ah-mute" style={{ margin: "0 0 28px", fontSize: 14 }}>
+          Approvals, payouts and disputes across every arena on the network.
+        </p>
 
-        {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
-        )}
+        <form onSubmit={onSubmit} className="ah-stack" style={{ gap: 16, maxWidth: 410 }}>
+          <div className="ah-field">
+            <Label htmlFor="email">Work email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="admin@arenahub.pk"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
 
-        <Button
-          type="submit"
-          size="lg"
-          disabled={submitting}
-          className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
-        >
-          {submitting ? "Signing in…" : "Sign In"}
-        </Button>
-      </form>
+          <div className="ah-field">
+            <Label htmlFor="password">Password</Label>
+            <div className="ah-pw-wrap">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="ah-pw-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {EyeIcon}
+              </button>
+            </div>
+          </div>
 
-      <p className="mt-10 text-center text-xs text-muted-foreground">
-        © 2026 Arena Hub. All rights reserved.
-      </p>
-    </SplitAuthShell>
+          {error && (
+            <p role="alert" className="ah-auth-error">
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" disabled={submitting} className="ah-signin">
+            {submitting ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+
+        <p className="ah-mute ah-auth-foot">© 2026 Arena Hub · Internal use only</p>
+      </div>
+
+      <div className="ah-auth-side" aria-hidden="true">
+        <svg className="ah-pitch-art" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <radialGradient id="ah-l1" cx="50%" cy="50%">
+              <stop offset="0%" stopColor="#C4F546" stopOpacity=".3" />
+              <stop offset="100%" stopColor="#C4F546" stopOpacity="0" />
+            </radialGradient>
+            <linearGradient id="ah-tf" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0C1F16" />
+              <stop offset="100%" stopColor="#050B08" />
+            </linearGradient>
+          </defs>
+          <rect width="600" height="800" fill="url(#ah-tf)" />
+          <ellipse cx="300" cy="300" rx="340" ry="300" fill="url(#ah-l1)" />
+          <g stroke="#C4F546" strokeOpacity=".22" strokeWidth="1">
+            {LINES.map(([p, q], i) => (
+              <line key={i} x1={p[0]} y1={p[1]} x2={q[0]} y2={q[1]} />
+            ))}
+          </g>
+          <g>
+            {DOTS.map((p, i) => (
+              <circle
+                key={i}
+                cx={p[0]}
+                cy={p[1]}
+                r={i % 3 === 0 ? 6 : 3.5}
+                fill="#C4F546"
+                fillOpacity={i % 3 === 0 ? 0.9 : 0.45}
+              />
+            ))}
+          </g>
+        </svg>
+        <div className="ah-auth-quote">
+          <h3>
+            One network. <em>One set of rules.</em>
+          </h3>
+          <p>Every arena that joins is verified here before a single slot goes on sale.</p>
+        </div>
+      </div>
+    </div>
   );
 }
