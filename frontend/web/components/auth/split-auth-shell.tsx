@@ -50,14 +50,13 @@ const BRAND_SUBTITLE: Record<AuthVariant, string> = {
 };
 
 function BrandMark({ variant }: { variant: AuthVariant }) {
-  const square = variant === "admin" ? "#C4F546" : "#0F1A15";
-  const mark = variant === "admin" ? "#0F1A15" : "#C4F546";
+  const admin = variant === "admin";
   return (
     <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className="size-8 shrink-0">
-      <rect width="32" height="32" rx="9" fill={square} />
-      <path d="M9 22.5 16 8l7 14.5" stroke={mark} strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M12.4 19h7.2" stroke={mark} strokeWidth="2.4" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="1.9" fill={mark} />
+      <rect width="32" height="32" rx="9" className={admin ? "fill-lime" : "fill-ink"} />
+      <path d="M9 22.5 16 8l7 14.5" strokeWidth="2.4" strokeLinejoin="round" className={admin ? "stroke-ink" : "stroke-lime"} />
+      <path d="M12.4 19h7.2" strokeWidth="2.4" strokeLinecap="round" className={admin ? "stroke-ink" : "stroke-lime"} />
+      <circle cx="16" cy="16" r="1.9" className={admin ? "fill-ink" : "fill-lime"} />
     </svg>
   );
 }
