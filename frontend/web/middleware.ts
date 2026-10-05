@@ -14,11 +14,16 @@ export function middleware(request: NextRequest) {
   const role = request.cookies.get("session_role")?.value;
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/admin") && pathname !== "/admin/login" && role !== "admin") {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+  if (
+    pathname.startsWith("/admin") &&
+    pathname !== "/admin/login" &&
+    pathname !== "/admin/login1" &&
+    role !== "admin"
+  ) {
+    return NextResponse.redirect(new URL("/admin/login1", request.url));
   }
   if (pathname.startsWith("/owner") && role !== "owner") {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login1", request.url));
   }
 
   return NextResponse.next();
