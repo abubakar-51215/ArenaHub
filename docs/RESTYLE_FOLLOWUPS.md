@@ -283,3 +283,25 @@ The third commit replaces the remote workspace with an older snapshot, so
 its web and design files differ from this branch. Nothing has been pushed
 and nothing has been reconciled. Decide how to reconcile before anything
 goes to `main`.
+
+---
+
+## Web: chart fallback colours are literal hex (left as is)
+
+`components/owner/charts.tsx` keeps `FALLBACK_COLORS` as literal hex values.
+They match the arena theme tokens and are only used if the runtime read of
+the tokens fails, so they were left unchanged. A one-line comment now says so.
+
+## Web: login lands on /login1 after a successful sign-in (root cause found)
+
+Cause: each login page calls `router.prefetch` for its dashboard when it
+loads. At that moment there is no session cookie, so the middleware answers
+that request with a 307 to `/login1` (or `/admin/login1`), and the router
+caches that redirect. After a successful sign-in, `router.replace("/owner")`
+(or `/admin`) uses the cached redirect and lands on the login page.
+Proved by blocking only the pre-login request: owner and admin then land on
+`/owner` and `/admin`. Moving the middleware targets to `/login` alone would
+only cache a redirect to `/login`. The fix is to stop the early request (or
+make it after sign-in) and to point the redirects at `/login` and
+`/admin/login`; the client guards in `owner/layout.tsx` and the admin
+dashboard layout also still send visitors to `/login1`.
