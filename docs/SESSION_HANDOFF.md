@@ -23,7 +23,7 @@ currently in flight, and exactly what to do next.
   Python).
 - Backend runs on port 8000, web frontend dev server on port 3000.
 - Git branch for all restyle work: `feat/ui-restyle`. Not yet merged to
-  main — merge is gated on Umer's sign-off (see "What's next" at bottom).
+  main — merge is gated on sign-off (see "What's next" at bottom).
 
 ### Start commands
 ```
