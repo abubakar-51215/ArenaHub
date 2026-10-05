@@ -105,7 +105,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground max-md:w-11 max-md:justify-center max-md:pr-0"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -114,7 +114,7 @@ export default function LoginPage() {
           <div className="mt-1.5 text-right">
             <Link
               href="/forgot-password"
-              className="text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+              className="inline-block text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:py-3"
             >
               Forgot Password?
             </Link>

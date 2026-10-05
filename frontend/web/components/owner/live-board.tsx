@@ -30,7 +30,7 @@ export function LiveBoard() {
               aria-label="Previous arena"
               disabled={clampedIndex === 0}
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              className="flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+              className="flex size-7 max-md:size-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -45,7 +45,7 @@ export function LiveBoard() {
               aria-label="Next arena"
               disabled={clampedIndex === arenas.length - 1}
               onClick={() => setIndex((i) => Math.min(arenas.length - 1, i + 1))}
-              className="flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+              className="flex size-7 max-md:size-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
             >
               <ChevronRight className="size-4" />
             </button>

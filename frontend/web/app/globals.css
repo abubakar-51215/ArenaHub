@@ -556,3 +556,29 @@
   font-variation-settings: "wdth" 88, "wght" 700;
   letter-spacing: -0.02em;
 }
+
+/* ---------------------------------------------------------------------------
+   Phone type floor (below 768px only; desktop is untouched).
+   Body copy, table cells, badges and helper text are never smaller than 14px.
+   Documented exception: uppercase tracked overline labels (the .eyebrow
+   utility and any .uppercase label, including table header cells) stay small,
+   at 12px. These rules are unlayered on purpose so they win over the
+   one-off text-xs / text-[Npx] utilities spread through the components.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .text-xs,
+  [class*="text-[8"],
+  [class*="text-[10"],
+  [class*="text-[11"],
+  [class*="text-[0.8rem"] {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .eyebrow,
+  .uppercase,
+  th {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+}

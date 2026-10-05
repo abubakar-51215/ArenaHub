@@ -92,7 +92,7 @@ export default function ArenasPage() {
                   <TableCell>
                     <Link
                       href={`/owner/courts?arena=${a.id}`}
-                      className="text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+                      className="inline-flex text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:min-h-11 max-md:items-center"
                     >
                       Manage
                     </Link>
