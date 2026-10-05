@@ -261,3 +261,25 @@ and falls back to a generic message.
 Ask: add `Access-Control-Expose-Headers: Retry-After` to the CORS middleware
 configuration. Native apps are unaffected, since they ignore CORS and read the
 header directly.
+
+---
+
+## Node version mismatch (decision: leave engines as is)
+
+`package.json` declares `"engines": { "node": ">=20 <21" }`, but the working
+machine runs Node 22.22. Installs and builds work on 22, so the mismatch is
+only a declaration problem. Left unchanged for now. Decide whether to move
+the engine range to 22 or to pin Node 20 for the team.
+
+## DECISION NEEDED before any push to main — remote main diverges
+
+The remote `dest/main` has three commits this branch does not have:
+
+- `3c7af33` Merge pull request #2 from Castro-Qadri/prototype-screens-merged
+- `a669f87` Merge prototype-screens into main (keep main files, add prototype screenshots)
+- `a6fb12c` Snapshot: overwrite remote with current workspace
+
+The third commit replaces the remote workspace with an older snapshot, so
+its web and design files differ from this branch. Nothing has been pushed
+and nothing has been reconciled. Decide how to reconcile before anything
+goes to `main`.

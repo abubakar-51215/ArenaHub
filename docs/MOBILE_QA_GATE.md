@@ -171,3 +171,16 @@ with how the OS reports the setting). This caveat doesn't block any
 individual group's gate — it's a standing reminder that "passed the web
 gate" and "verified on-device" are different claims, and only the second one
 means the restyle is actually done.
+
+## Verification safety
+
+These rules apply to every check, in every area (mobile and web):
+
+- No junctions or symlinks into the real working tree. A verification
+  worktree installs its own dependencies (`npm ci` in each app folder).
+- Remove a verification worktree only with `git worktree remove`, run from
+  the main tree. Never delete a worktree folder by hand.
+- Never recursively delete a directory that might contain a link. If a
+  cleanup fails, stop and report it; do not retry with a stronger delete.
+- Scratch files go outside the repo. Delete only files you created in this
+  session, one by one.
