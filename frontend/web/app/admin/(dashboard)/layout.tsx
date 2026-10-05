@@ -16,6 +16,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   const router = useRouter();
   const { hydrated, user, accessToken } = useAuthStore();
 
+  // Dialogs render in a portal under <body>, outside the shell. Marking
+  // <body> while an admin page is open lets the [data-admin]-scoped styles in
+  // globals.css reach them too. Removed again when the admin layout unmounts.
+  useEffect(() => {
+    document.body.setAttribute("data-admin", "");
+    return () => document.body.removeAttribute("data-admin");
+  }, []);
+
   useEffect(() => {
     if (hydrated && (!accessToken || user?.role !== "admin")) {
       router.replace("/admin/login");

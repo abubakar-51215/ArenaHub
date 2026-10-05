@@ -39,6 +39,7 @@ export function DashboardShell({
         onClick={close}
         className={cn(
           "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300 xl:hidden",
+          variant === "admin" && "ah-drawer-overlay",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
