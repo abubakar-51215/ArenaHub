@@ -132,10 +132,8 @@ Confirmed: `/login` + `/register` are real live routes, still on the old
 blue theme, correctly untouched by the restyle (never in scope before).
 **Resolved (current state):** the marketing page (`app/page.tsx`) now links
 to `/login` and `/register` (13 CTAs) and has no `login1`/`signup1` links.
-`/login1`, `/signup1` and `/admin/login1` are still experiment routes, and
-the middleware still redirects to `/login1` and `/admin/login1`. Removing
-those routes and fixing the redirects is an open item (W1 in the audit),
-not yet done.
+`/login1`, `/signup1` and `/admin/login1` were experiment routes. They are
+now deleted and the redirects point to `/login` and `/admin/login` (W1, done).
 
 ### Item 2 — "dashboard doesn't look restyled"
 **Closed, confirmed not a bug.** Logged in fresh, landed on `/owner`,

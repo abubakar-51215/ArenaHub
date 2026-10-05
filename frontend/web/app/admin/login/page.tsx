@@ -22,7 +22,6 @@ export default function AdminLoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    router.prefetch("/admin");
     if (hydrated && user?.role === "admin") router.replace("/admin");
   }, [hydrated, user, router]);
 

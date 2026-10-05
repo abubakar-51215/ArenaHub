@@ -18,7 +18,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (hydrated && (!accessToken || user?.role !== "owner")) {
-      router.replace("/login1");
+      router.replace("/login");
     }
   }, [hydrated, user, accessToken, router]);
 

@@ -305,3 +305,7 @@ only cache a redirect to `/login`. The fix is to stop the early request (or
 make it after sign-in) and to point the redirects at `/login` and
 `/admin/login`; the client guards in `owner/layout.tsx` and the admin
 dashboard layout also still send visitors to `/login1`.
+
+**Resolved.** The two `router.prefetch` calls are removed, the middleware and both client guards
+redirect to `/login` and `/admin/login`, and the `login1`, `signup1` and `admin/login1` experiment
+routes are deleted.
