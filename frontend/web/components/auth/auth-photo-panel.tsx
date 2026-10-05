@@ -101,7 +101,7 @@ export function AuthPhotoPanel({ imageSrc, imageAlt, credit, quote, stats }: Aut
       {/* venue credit — small, honest, keeps the photo from feeling like stock filler */}
       <div className="absolute top-[26px] right-[30px] z-[3] flex items-center gap-[7px] rounded-full border border-[rgba(234,246,216,.14)] bg-[rgba(7,16,11,.55)] px-[11px] py-[6px] backdrop-blur-[6px]">
         <span className="size-[6px] rounded-full bg-accent shadow-[0_0_0_3px_rgba(196,245,70,.2)]" />
-        <span className="text-[10.5px] tracking-[0.02em] text-[#C8D6CD]">{credit ?? "ArenaHub"}</span>
+        <span className="text-[10.5px] tracking-[0.02em] text-on-ink">{credit ?? "ArenaHub"}</span>
       </div>
 
       <div className="relative z-[2] max-w-[400px]">
@@ -109,7 +109,7 @@ export function AuthPhotoPanel({ imageSrc, imageAlt, credit, quote, stats }: Aut
         <h3 className="heading mb-2.5 text-[27px] leading-[1.18] tracking-[-0.02em] text-white [text-shadow:0_1px_20px_rgba(0,0,0,.45)] [&_em]:not-italic [&_em]:text-accent">
           {resolvedQuote.title}
         </h3>
-        <p className="max-w-[330px] text-[13.5px] text-[#B8C7BE] [text-shadow:0_1px_12px_rgba(0,0,0,.4)]">
+        <p className="max-w-[330px] text-[13.5px] text-on-ink-muted [text-shadow:0_1px_12px_rgba(0,0,0,.4)]">
           {resolvedQuote.desc}
         </p>
       </div>
@@ -118,7 +118,7 @@ export function AuthPhotoPanel({ imageSrc, imageAlt, credit, quote, stats }: Aut
         {resolvedStats.map((stat) => (
           <div key={stat.label}>
             <b className="metric-sm block text-white">{stat.value}</b>
-            <span className="text-[10.5px] tracking-[0.04em] text-[#93A69A]">{stat.label}</span>
+            <span className="text-[10.5px] tracking-[0.04em] text-on-ink-faint">{stat.label}</span>
           </div>
         ))}
       </div>
