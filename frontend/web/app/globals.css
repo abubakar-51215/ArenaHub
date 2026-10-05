@@ -76,8 +76,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0.02 260);
   /* Brand blue (#2563EB / blue-600) as the primary across the platform. */
-  --primary: oklch(0.546 0.215 262.9);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #0f1a15;
+  --primary-foreground: #f1f2ef;
   --secondary: oklch(0.968 0.006 247);
   --secondary-foreground: oklch(0.28 0.02 260);
   --muted: oklch(0.968 0.006 247);
@@ -90,7 +90,7 @@
   --rating: var(--warning);
   --border: oklch(0.922 0.006 247);
   --input: oklch(0.922 0.006 247);
-  --ring: oklch(0.546 0.215 262.9);
+  --ring: #0f1a15;
   /* Chart palette — mirrors the wireframe donut/line/bar hues. */
   --chart-1: oklch(0.546 0.215 262.9); /* blue   */
   --chart-2: oklch(0.627 0.17 149.2); /* emerald */
@@ -100,7 +100,7 @@
   --radius: 0.7rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.32 0.02 260);
-  --sidebar-primary: oklch(0.546 0.215 262.9);
+  --sidebar-primary: #0f1a15;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.955 0.02 255);
   --sidebar-accent-foreground: oklch(0.42 0.14 262.9);
@@ -114,7 +114,7 @@
     oklch(0.97 0.02 255) 0%,
     oklch(0.955 0.03 262) 100%
   );
-  --shadow-brand: 0 10px 30px -12px oklch(0.546 0.215 262.9 / 0.45);
+  --shadow-brand: 0 10px 30px -12px rgb(15 26 21 / 0.25);
   --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04), 0 4px 16px -8px oklch(0.21 0.02 260 / 0.08);
   --shadow-card-hover:
     0 4px 12px -4px oklch(0.21 0.02 260 / 0.1), 0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
