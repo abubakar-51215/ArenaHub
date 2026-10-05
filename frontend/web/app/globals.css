@@ -604,6 +604,14 @@
   --text: #0f1a15;
   --text-2: #46534c;
   --shadow: 0 1px 2px rgba(15, 26, 21, 0.05);
+  --shadow-lg: 0 18px 40px -18px rgba(15, 26, 21, 0.28);
+  --ink-soft: #1c2b23;
+  --lime-deep: #7fa30f;
+  --lime-wash: #f2fbda;
+  --amber: #d9930b;
+  --amber-wash: #fdf3dc;
+  --red: #cf4141;
+  --red-wash: #fbe9e9;
   --rail: #0f1a15;
   --rail-text: #a9b5ae;
   --rail-active: #ffffff;
@@ -886,5 +894,555 @@
   }
   [data-admin] .ah-nav-item {
     min-height: 44px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Admin building blocks. Values copied from the admin prototype
+   (design/prototypes/arena-hub-admin.html: .tbl, .tag, .avatar, .badge, .btn,
+   .input, .select, .tabs/.tab, .card, .kpi, .empty, .field, .tbl-foot, .pager,
+   .cmdk-box for modals). They restyle the shared components (Table, Button,
+   Input, Select, Tabs, Badge, Dialog, Label) only under [data-admin], which
+   the admin shell sets on its root and, while an admin page is open, on
+   <body> so portalled dialogs are covered too. Owner pages never carry it.
+   These rules are unlayered so they win over the components' utilities;
+   the 44px phone targets are restated at the end for the same reason.
+   --------------------------------------------------------------------------- */
+
+/* tables -------------------------------------------------------------------- */
+[data-admin] [data-slot="table"] {
+  font-size: 13px;
+  border-collapse: collapse;
+}
+[data-admin] [data-slot="table-header"] {
+  background: transparent;
+}
+[data-admin] [data-slot="table-head"] {
+  height: auto;
+  padding: 9px 18px;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 118, "wght" 600;
+  font-weight: 700;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+[data-admin] [data-slot="table-row"] {
+  border-bottom: 0;
+  transition: background 0.12s;
+}
+[data-admin] [data-slot="table-body"] [data-slot="table-row"]:hover {
+  background: var(--line-soft);
+}
+[data-admin] [data-slot="table-cell"] {
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 400;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] [data-slot="table-body"] [data-slot="table-row"]:last-child [data-slot="table-cell"] {
+  border-bottom: 0;
+}
+[data-admin] .ah-r {
+  text-align: right;
+}
+[data-admin] .ah-money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+[data-admin] .ah-strong {
+  font-weight: 600;
+}
+[data-admin] .ah-sub {
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  margin-top: 1px;
+}
+[data-admin] .ah-mute {
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-t2 {
+  color: var(--text-2);
+}
+[data-admin] .ah-tbl-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pager {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+[data-admin] .ah-pager button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+[data-admin] .ah-pager button:hover:not(:disabled) {
+  background: var(--line-soft);
+}
+[data-admin] .ah-pager button.is-on {
+  background: var(--ink);
+  color: var(--paper);
+}
+[data-admin] .ah-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* tag, avatar, badges --------------------------------------------------------- */
+[data-admin] .ah-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--line-soft);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+[data-admin] .ah-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--line-soft);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+[data-admin] .ah-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2.5px 8px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+[data-admin] .ah-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+[data-admin] .ah-b-ok {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-admin] .ah-b-wait {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+[data-admin] .ah-b-off {
+  background: var(--red-wash);
+  color: var(--red);
+}
+[data-admin] .ah-b-idle {
+  background: var(--line-soft);
+  color: var(--muted-foreground);
+}
+
+/* buttons ----------------------------------------------------------------------
+   Variant map: outline/secondary -> .btn, default -> .btn-primary,
+   ghost -> .btn-ghost, size sm/xs -> .btn-sm. */
+[data-admin] [data-slot="button"] {
+  height: auto;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: normal;
+  transition:
+    transform 0.1s,
+    background 0.14s,
+    border-color 0.14s;
+}
+[data-admin] [data-slot="button"] svg {
+  width: 15px;
+  height: 15px;
+}
+[data-admin] [data-slot="button"]:active:not(:disabled) {
+  transform: translateY(1px);
+}
+[data-admin] [data-slot="button"][data-variant="outline"],
+[data-admin] [data-slot="button"][data-variant="secondary"] {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="button"][data-variant="outline"]:hover:not(:disabled),
+[data-admin] [data-slot="button"][data-variant="secondary"]:hover:not(:disabled) {
+  border-color: var(--muted-foreground);
+  background: var(--card);
+}
+[data-admin] [data-slot="button"][data-variant="default"] {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
+}
+[data-admin] [data-slot="button"][data-variant="ghost"] {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-2);
+}
+[data-admin] [data-slot="button"][data-variant="ghost"]:hover:not(:disabled) {
+  background: var(--line-soft);
+  color: var(--text-2);
+}
+[data-admin] [data-slot="button"][data-variant="destructive"] {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--red);
+}
+[data-admin] [data-slot="button"][data-variant="destructive"]:hover:not(:disabled) {
+  background: var(--red-wash);
+}
+[data-admin] [data-slot="button"].ah-lime {
+  border: 1px solid var(--lime);
+  background: var(--lime);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="button"].ah-lime:hover:not(:disabled) {
+  background: #d2ff63;
+  border-color: #d2ff63;
+}
+[data-admin] [data-slot="button"][data-size="sm"],
+[data-admin] [data-slot="button"][data-size="xs"] {
+  padding: 5px 9px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+[data-admin] [data-slot="button"][data-size^="icon"] {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+/* inputs, selects, labels ------------------------------------------------------ */
+[data-admin] [data-slot="input"],
+[data-admin] [data-slot="textarea"] {
+  height: auto;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  font-size: 13.5px;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  transition:
+    border-color 0.14s,
+    box-shadow 0.14s;
+}
+[data-admin] [data-slot="input"]:focus,
+[data-admin] [data-slot="textarea"]:focus {
+  outline: none;
+  border-color: var(--lime-deep);
+  box-shadow: 0 0 0 3px var(--lime-wash);
+}
+[data-admin] [data-slot="input"]::placeholder,
+[data-admin] [data-slot="textarea"]::placeholder {
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="select"] {
+  height: auto;
+  appearance: none;
+  padding: 7px 28px 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2379857E' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="select"]:hover {
+  border-color: var(--muted-foreground);
+}
+[data-admin] [data-slot="label"] {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+[data-admin] .ah-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* tabs (underline) -------------------------------------------------------------- */
+[data-admin] [data-slot="tabs-list"],
+[data-admin] .ah-tabs {
+  display: flex;
+  width: 100%;
+  height: auto;
+  gap: 2px;
+  padding: 0 18px;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  justify-content: flex-start;
+}
+[data-admin] [data-slot="tabs-trigger"],
+[data-admin] .ah-tab {
+  flex: none;
+  height: auto;
+  padding: 11px 12px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="tabs-trigger"]::after {
+  display: none;
+}
+[data-admin] [data-slot="tabs-trigger"]:hover,
+[data-admin] .ah-tab:hover {
+  color: var(--text);
+}
+[data-admin] [data-slot="tabs-trigger"][data-state="active"],
+[data-admin] .ah-tab.is-on {
+  color: var(--text);
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: var(--lime-deep);
+}
+[data-admin] .ah-tab-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--line-soft);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* cards, KPI, empty state -------------------------------------------------------- */
+[data-admin] .ah-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+[data-admin] .ah-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-h2 {
+  margin: 0 auto 0 0;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 92, "wght" 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+[data-admin] .ah-card-body {
+  padding: 18px;
+}
+[data-admin] .ah-kpi {
+  padding: 15px 17px 13px;
+  position: relative;
+  overflow: hidden;
+}
+[data-admin] .ah-kpi .ah-metric {
+  margin: 9px 0 6px;
+}
+[data-admin] .ah-eyebrow {
+  margin: 0;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 125, "wght" 600;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-metric {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 76, "wght" 700;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+[data-admin] .ah-kpi-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-grid {
+  display: grid;
+  gap: 14px;
+}
+[data-admin] .ah-g-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+[data-admin] .ah-g-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+[data-admin] .ah-g-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+[data-admin] .ah-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-admin] .ah-empty {
+  text-align: center;
+  padding: 44px 20px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+[data-admin] .ah-empty svg {
+  width: 34px;
+  height: 34px;
+  color: var(--muted-foreground);
+  margin: 0 auto 10px;
+}
+
+/* modal (prototype .cmdk-box) and the drawer/modal overlay ---------------------- */
+[data-admin] [data-slot="dialog-overlay"] {
+  background: rgba(10, 16, 13, 0.42);
+  backdrop-filter: blur(3px);
+}
+[data-admin] [data-slot="dialog-content"] {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  padding: 22px;
+  gap: 14px;
+}
+[data-admin] [data-slot="dialog-title"] {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 92, "wght" 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+[data-admin] [data-slot="dialog-description"] {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="dialog-close"] {
+  border-radius: 7px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-drawer-overlay {
+  background: rgba(10, 16, 13, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+/* toast (prototype .toast). Our admin has no toasts today; kept here so a
+   future one uses the prototype style. */
+[data-admin] .ah-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 17px;
+  border-radius: 11px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 1180px) {
+  [data-admin] .ah-g-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1000px) {
+  [data-admin] .ah-g-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-g-4,
+  [data-admin] .ah-g-3,
+  [data-admin] .ah-g-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* phone standard below 768px, restated because the admin rules above are
+   unlayered and would otherwise beat the components' max-md utilities */
+@media (max-width: 767.98px) {
+  [data-admin] [data-slot="button"],
+  [data-admin] [data-slot="input"],
+  [data-admin] [data-slot="select"],
+  [data-admin] [data-slot="tabs-trigger"],
+  [data-admin] .ah-tab,
+  [data-admin] .ah-pager button {
+    min-height: 44px;
+  }
+  [data-admin] [data-slot="button"][data-size^="icon"],
+  [data-admin] .ah-pager button {
+    min-width: 44px;
+  }
+  [data-admin] [data-slot="input"],
+  [data-admin] [data-slot="textarea"],
+  [data-admin] [data-slot="select"],
+  [data-admin] [data-slot="table-cell"] {
+    font-size: 14px;
+  }
+  [data-admin] [data-slot="dialog-close"] {
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
   }
 }
