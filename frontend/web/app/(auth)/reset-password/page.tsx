@@ -131,7 +131,7 @@ function ResetPasswordInner() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don&apos;t have a token yet?{" "}
-        <Link href="/forgot-password" className="font-medium text-blue-600 hover:underline">
+        <Link href="/forgot-password" className="font-medium text-foreground hover:underline">
           Request a reset link
         </Link>
       </p>
