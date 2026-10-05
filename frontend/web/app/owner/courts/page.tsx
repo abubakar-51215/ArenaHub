@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { CourtForm } from "@/components/owner/court-form";
 import { PageHeader } from "@/components/owner/page-header";
+import { SlotsDialog } from "@/components/owner/slots-dialog";
 import { StatusBadge } from "@/components/owner/status-badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -27,6 +28,7 @@ function CourtsInner() {
     else if (!arenaId && arenas.length) setArenaId(arenas[0].id);
   }, [arenas, searchParams, arenaId]);
 
+  const [slotsFor, setSlotsFor] = useState<Court | null>(null);
   const { data: courts, isLoading } = useCourts(arenaId || null);
   const setAvailability = useSetCourtAvailability(arenaId);
   const removeCourt = useDeleteCourt(arenaId);
@@ -106,6 +108,9 @@ function CourtsInner() {
                     Available
                   </label>
                   <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setSlotsFor(court)}>
+                      <CalendarClock className="size-4" /> Slots
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -134,6 +139,15 @@ function CourtsInner() {
           ))}
         </div>
       </div>
+
+      {slotsFor && (
+        <SlotsDialog
+          key={slotsFor.id}
+          court={slotsFor}
+          open
+          onOpenChange={(open) => !open && setSlotsFor(null)}
+        />
+      )}
 
       {formOpen && arenaId && (
         <CourtForm
