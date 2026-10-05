@@ -22,10 +22,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Warm the dashboard route (compiles it ahead of time in dev) and skip the
-  // form if already signed in as an owner.
+  // Skip the form if already signed in. (No router.prefetch here: it runs before the
+  // session cookie exists, so the middleware's redirect gets cached and reused after login.)
   useEffect(() => {
-    router.prefetch("/owner");
     if (hydrated && user?.role === "owner") router.replace("/owner");
   }, [hydrated, user, router]);
 
