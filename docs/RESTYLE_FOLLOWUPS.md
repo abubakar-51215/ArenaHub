@@ -1,5 +1,19 @@
 # Restyle follow-ups
 
+## Stuck worktree directory needs manual cleanup
+
+`E:\summerr\ArenaHub-worktree-84442f0` (a `git worktree` created for G0c-2b-fix's
+numeric gallery re-check against the `84442f0` commit, holding its own
+`npm install` for that purpose) is already removed from git's own tracking
+(`git worktree remove` + `git worktree prune` both ran clean; `git worktree
+list` no longer shows it), but the directory itself won't delete —
+`frontend/mobile` inside it reports "Device or resource busy" on every
+retry, with no process found holding it (`Get-CimInstance Win32_Process`
+checked). Likely a transient Windows file-lock (antivirus scan, Explorer
+indexing) rather than anything real. Harmless either way: it's outside the
+repo's tracked paths and git no longer considers it a worktree. Needs a
+manual `rmdir /s` (or a reboot-then-delete) at some point, not urgent.
+
 ## Auth photo panel — admin's photo is a repurposed asset, not a purpose-built one
 
 Resolved during Item 1a's photo-panel rebuild: admin sign-in uses
@@ -188,3 +202,62 @@ and walking every screen (`design/baselines/mobile/`).
   Health screen for a moment before `router.replace('/(tabs)')` lands.
 - **Backend rate limiter (429) trips on scripted multi-call surveys.** Throttle
   any fixture or capture script.
+
+---
+
+## NEEDS UMER — login is case-sensitive on the email local-part
+
+Found during G1 auth investigation, confirmed live against the dev backend
+with two real register/login calls. Pydantic's `EmailStr` (`email-validator`)
+lowercases the domain and strips whitespace, but **preserves the local-part's
+case** — so `Sara.Khan@example.com` and `sara.khan@example.com` are stored and
+matched as different accounts/logins. Registering with one case and then
+logging in with another (a very ordinary thing for a user to do — email
+clients and autofill both vary case) fails with a normal "invalid
+credentials" error, indistinguishable from a real wrong password.
+
+The client must not lowercase or trim, as you found — that would just move
+the bug (two client installations could then disagree with each other, and
+it wouldn't fix already-registered mixed-case rows). This needs a server-side
+fix: lowercase the local-part (or the whole address) consistently at both
+register and login before it's used as a lookup/uniqueness key, plus a
+data-migration note for existing rows that were stored with mixed case under
+the current behavior (an existing user could otherwise be locked out once the
+server starts normalizing only at the comparison step, if two mixed-case rows
+for the same real address already exist). Flagging for you rather than fixing
+client-side since the correct fix is backend-owned.
+
+## Phone-number OTP is not implemented (FR-P-01 says "email or phone")
+
+`backend/app/modules/auth/service.py` only ever sends the OTP by email
+(`send_otp_email`); there is no SMS/phone-OTP code path anywhere in the auth
+module, and the Sign-up schema's phone field has no format validation beyond
+length. FR-P-01 describes verification as "email or phone" — today it's
+email-only. Not blocking the restyle (the OTP-verify prototype frame matches
+the email-only reality, not the FR doc), but logging the gap since the FR
+text and the implementation disagree.
+
+## Leftover test account — `CaseTest_g1@example.com`
+
+Created live against the dev database while empirically confirming the
+case-sensitivity bug above (one register + one login call, repeated with a
+different case). It's a real row in the dev `users` table now. Logging it
+here rather than deleting it — don't delete it without being told how
+(unsure whether dev-DB cleanup here is a raw delete, a soft-delete flag, or
+something that needs to go through a script so it doesn't desync anything
+else keyed off it).
+
+---
+
+## NEEDS UMER — expose Retry-After over CORS for web clients
+
+The rate limiter (`backend/app/middleware/rate_limit.py`) returns a 429 with a
+`Retry-After` header. Browsers only let JavaScript read a response header
+across origins if the server lists it in `Access-Control-Expose-Headers`, and
+the dev CORS setup doesn't. So a web client on another origin sees the 429 but
+gets no `Retry-After` value. The client then can't show "Try again in {n}s."
+and falls back to a generic message.
+
+Ask: add `Access-Control-Expose-Headers: Retry-After` to the CORS middleware
+configuration. Native apps are unaffected, since they ignore CORS and read the
+header directly.
