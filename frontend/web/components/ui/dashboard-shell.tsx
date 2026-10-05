@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Responsive dashboard chrome shared by the owner and admin shells.
- * - Desktop (lg+): the sidebar is static in the flex row.
+ * - Desktop (xl+): the sidebar is static in the flex row.
  * - Mobile/tablet: the sidebar slides in as an overlay drawer, toggled from a
  *   compact top bar; navigating closes it.
  */
@@ -28,7 +28,7 @@ export function DashboardShell({
       <div
         onClick={close}
         className={cn(
-          "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
+          "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300 xl:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
@@ -36,7 +36,7 @@ export function DashboardShell({
       {/* Sidebar — drawer on mobile, static on desktop */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-out lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-out xl:static xl:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -45,7 +45,7 @@ export function DashboardShell({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 lg:hidden">
+        <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 xl:hidden">
           <button
             onClick={() => setOpen(true)}
             aria-label="Open menu"
