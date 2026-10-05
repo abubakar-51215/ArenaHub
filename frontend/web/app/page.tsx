@@ -31,6 +31,7 @@ import {
   Phone,
   QrCode,
   ShieldCheck,
+  Sparkles,
   Star,
   TrendingUp,
   Users,
@@ -146,10 +147,11 @@ const STEPS = [
 ];
 
 const STATS = [
-  { icon: MapPin, value: "120+", label: "Verified Arenas" },
-  { icon: Calendar, value: "25K+", label: "Bookings Completed" },
-  { icon: Users, value: "8", label: "Cities Covered" },
-  { icon: Star, value: "4.8", label: "Average Rating" },
+  { icon: Calendar, value: "Instant booking", label: "No double bookings, ever" },
+  { icon: Wallet, value: "Local payments", label: "JazzCash, EasyPaisa and cards" },
+  { icon: Users, value: "Matchmaking", label: "Find players to play with" },
+  { icon: Volleyball, value: "Equipment rental", label: "Add gear when you book" },
+  { icon: Sparkles, value: "Smart picks", label: "Arenas suggested for you" },
 ];
 
 function AboutDialog({ trigger }: { trigger: React.ReactNode }) {
@@ -565,11 +567,11 @@ export default function Home() {
         {/* Stats                                                             */}
         {/* ---------------------------------------------------------------- */}
         <section className="bg-background py-16">
-          <div className="stagger mx-auto grid max-w-7xl grid-cols-2 gap-8 px-6 sm:grid-cols-4">
+          <div className="stagger mx-auto flex max-w-4xl flex-wrap justify-center gap-x-8 gap-y-10 px-6">
             {STATS.map((stat) => (
-              <div key={stat.label} className="text-center">
+              <div key={stat.label} className="w-[calc(50%-1rem)] text-center sm:w-[calc(33.333%-1.4rem)]">
                 <stat.icon className="mx-auto size-5 text-muted-foreground" />
-                <div className="mt-2 text-3xl font-extrabold text-foreground sm:text-4xl">
+                <div className="mt-2 text-xl font-extrabold text-foreground sm:text-2xl">
                   {stat.value}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
