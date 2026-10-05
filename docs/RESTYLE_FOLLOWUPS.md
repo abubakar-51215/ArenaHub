@@ -122,7 +122,7 @@ Same gap, same endpoint, same fix would cover both pages at once:
 
 ---
 
-## NEEDS UMER BEFORE DEMO — card payments return 500 (FR06)
+## NEEDS BACKEND FIX BEFORE DEMO — card payments return 500 (FR06)
 
 `POST /api/v1/payments/initiate` with `payment_method: "card"` returns
 `500 Internal server error` (empty `errors`) in the local dev environment. The
@@ -160,7 +160,7 @@ because they load a single arena.
 
 ---
 
-## Player app — wireframe-vs-backend gaps (for Umer)
+## Player app — wireframe-vs-backend gaps (backend and web)
 
 Decision (Muhammad): no dead controls. Where the approved wireframe
 (`design/wireframes/Users.PNG`) shows something the backend can't serve, the
@@ -185,7 +185,7 @@ off", referee/bibs chips, cash-at-arena, QR / "works offline", Cancelled tab,
 Pre-existing, not caused by the restyle. Found booting `npx expo start --web`
 and walking every screen (`design/baselines/mobile/`).
 
-- **Card payments 500** — see "NEEDS UMER BEFORE DEMO" above.
+- **Card payments 500** — see "NEEDS BACKEND FIX BEFORE DEMO" above.
 - **Dev CORS allowlist is `:3000` only** (`backend/app/main.py`). Mobile web on
   `:8081` is blocked. Native builds ignore CORS, so this only affects the web
   verification route. The baseline harness injects the headers instead of
@@ -205,7 +205,7 @@ and walking every screen (`design/baselines/mobile/`).
 
 ---
 
-## NEEDS UMER — login is case-sensitive on the email local-part
+## NEEDS BACKEND — login is case-sensitive on the email local-part
 
 Found during G1 auth investigation, confirmed live against the dev backend
 with two real register/login calls. Pydantic's `EmailStr` (`email-validator`)
@@ -249,7 +249,7 @@ else keyed off it).
 
 ---
 
-## NEEDS UMER — expose Retry-After over CORS for web clients
+## NEEDS BACKEND — expose Retry-After over CORS for web clients
 
 The rate limiter (`backend/app/middleware/rate_limit.py`) returns a 429 with a
 `Retry-After` header. Browsers only let JavaScript read a response header
