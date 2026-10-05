@@ -47,8 +47,8 @@ cd frontend/web && npm run dev -- --port 3000
 ### Test credentials (real, seeded, confirmed working via live login)
 | Panel | URL | Email | Password |
 |---|---|---|---|
-| Owner | `/login1` | `owner@arenahub.pk` | `Owner@1234` |
-| Admin | `/admin/login1` | `admin@arenahub.pk` | `StrongP@ss1` |
+| Owner | `/login` | `owner@arenahub.pk` | `Owner@1234` |
+| Admin | `/admin/login` | `admin@arenahub.pk` | `StrongP@ss1` |
 
 `owner@arenahub.pk` has 5 arenas (4 approved, 1 rejected), 13 courts, 4
 pricing rules, bookings across most statuses, 3 reviews (2 unresponded).
@@ -130,14 +130,12 @@ written yet.** Current state per item:
 ### Item 1 — restyle the *real* public `/login` and `/register`
 Confirmed: `/login` + `/register` are real live routes, still on the old
 blue theme, correctly untouched by the restyle (never in scope before).
-**Blocking issue found, not yet resolved:** the marketing page
-(`app/page.tsx`) links to `/login1` + `/signup1` everywhere (13 CTAs, zero
-links to `/login`/`/register`) — those were earlier throwaway/experimental
-redesigns from a prior part of this work. **Waiting on Muhammad to confirm
-which pair is canonical going forward.** If `login1`/`signup1` were meant
-to be throwaway, the marketing page currently links to the wrong pair —
-that becomes a bug fix bundled into this item, not a separate decision.
-**Do not restyle anything here until that answer comes back.**
+**Resolved (current state):** the marketing page (`app/page.tsx`) now links
+to `/login` and `/register` (13 CTAs) and has no `login1`/`signup1` links.
+`/login1`, `/signup1` and `/admin/login1` are still experiment routes, and
+the middleware still redirects to `/login1` and `/admin/login1`. Removing
+those routes and fixing the redirects is an open item (W1 in the audit),
+not yet done.
 
 ### Item 2 — "dashboard doesn't look restyled"
 **Closed, confirmed not a bug.** Logged in fresh, landed on `/owner`,
@@ -196,24 +194,18 @@ grid has what it needs. This is a new frontend component + a client-side
 timer for the now-line, not a new endpoint.
 
 **Both open design questions answered by the user:**
-- (a) Live board becomes the **new default landing page** at `/owner`,
-  displacing the current Dashboard. Reasoning given: "how full am I
-  tonight" is more urgent than aggregate KPIs, matches the prototype's
-  original intent. Current Dashboard moves to its own explicit route and
-  stays as a sibling nav item — **not removed**.
+- (a) **Superseded.** The later decision is a nav-level merge: the Live
+  Board sits above the Dashboard KPIs on `/owner`, there is no separate
+  dashboard route, and the sidebar has one Dashboard item. See
+  `docs/RESTYLE_LOG.md`. Do not move the Dashboard to its own route.
 - (b) **Single arena with a prev/next switcher**, not all arenas stacked
   (owner test account has 4 approved arenas). The now-line sweep is the
   component's whole visual hook; stacking four grids dilutes it.
 
-**What's still outstanding on item 4, and exactly where this session left
-off:** the user asked for nav-rename options to be proposed before any
-code — specifically, if Dashboard moves off `/owner` to its own route
-(candidates raised: `/owner/dashboard` or `/owner/analytics`), what should
-the sidebar nav item itself be relabeled to, so "Live board" and
-"Dashboard" don't read as unclear synonyms sitting next to each other in
-the Today group. **This proposal was never actually written and sent** —
-that's the very next thing to do. Then stop again; no code until Muhammad
-answers items 1 and 3b.
+**Status of item 4 (updated):** the nav-rename proposal is no longer needed,
+because the Dashboard stays on `/owner` as a merged page and the sidebar
+has one Dashboard item. The standalone analytics route is removed, with no
+redirect. Live Board is built. Nothing is outstanding on item 4.
 
 ## Working style established across this entire project (keep doing this)
 
