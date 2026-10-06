@@ -13,8 +13,9 @@ import { cn } from "@/lib/utils";
  * - Mobile/tablet: the sidebar slides in as an overlay drawer, toggled from a
  *   compact top bar; navigating closes it.
  * `variant="admin"` sets [data-admin], which scopes the admin prototype's
- * shell styles (globals.css), and uses the prototype's topbar and brand mark.
- * The owner variant renders exactly as before.
+ * shell styles (globals.css), uses the prototype's topbar and brand mark, and
+ * keeps the rail static from 1024px (lg) instead of 1280px (xl). The owner
+ * variant renders exactly as before.
  */
 export function DashboardShell({
   sidebar,
@@ -27,19 +28,20 @@ export function DashboardShell({
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const admin = variant === "admin";
 
   return (
     <div
       data-theme="arena"
-      data-admin={variant === "admin" ? "" : undefined}
+      data-admin={admin ? "" : undefined}
       className="flex h-screen overflow-hidden bg-background"
     >
       {/* Backdrop (mobile only) */}
       <div
         onClick={close}
         className={cn(
-          "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300 xl:hidden",
-          variant === "admin" && "ah-drawer-overlay",
+          "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300",
+          admin ? "ah-drawer-overlay lg:hidden" : "xl:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
@@ -47,7 +49,8 @@ export function DashboardShell({
       {/* Sidebar — drawer on mobile, static on desktop */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-out xl:static xl:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-out",
+          admin ? "lg:static lg:translate-x-0" : "xl:static xl:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -56,8 +59,8 @@ export function DashboardShell({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        {variant === "admin" ? (
-          <header className="ah-topbar xl:hidden">
+        {admin ? (
+          <header className="ah-topbar lg:hidden">
             <button onClick={() => setOpen(true)} aria-label="Open menu" className="ah-icon-btn">
               <Menu strokeWidth={1.9} />
             </button>

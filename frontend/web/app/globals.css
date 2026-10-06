@@ -830,7 +830,8 @@
   font-size: 14px;
   letter-spacing: -0.005em;
 }
-@media (min-width: 1280px) {
+/* the slim bar (menu button + brand mark) is for the drawer only: below 1024px */
+@media (min-width: 1024px) {
   [data-admin] .ah-topbar {
     display: none;
   }
