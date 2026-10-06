@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { AdminSidebar } from "@/components/admin/sidebar";
+import { AdminTopbar } from "@/components/admin/topbar";
 import { DashboardShell } from "@/components/ui/dashboard-shell";
 import { useAuthStore } from "@/store/auth";
 
@@ -14,6 +15,7 @@ import { useAuthStore } from "@/store/auth";
  */
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { hydrated, user, accessToken } = useAuthStore();
 
   // Dialogs render in a portal under <body>, outside the shell. Marking
@@ -40,6 +42,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
   return (
     <DashboardShell variant="admin" sidebar={(close) => <AdminSidebar onNavigate={close} />}>
+      {/* the top bar belongs to the Dashboard only (1024px and up, see CSS) */}
+      {pathname === "/admin" && <AdminTopbar />}
       <div className="ah-canvas">{children}</div>
     </DashboardShell>
   );
