@@ -631,29 +631,37 @@
 }
 
 [data-admin] .ah-rail {
-  width: 246px;
+  /* 80% of the prototype rail (.rail): 246px wide, 18/14/14 padding */
+  width: 196.8px;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  padding: 18px 14px 14px;
+  overflow: hidden;
+  padding: 14.4px 11.2px 11.2px;
   background: var(--rail);
   border-right: 1px solid var(--rail-line);
-  scrollbar-width: thin;
-  font-size: 14px;
+  font-size: 11.2px;
   line-height: 1.5;
   letter-spacing: -0.005em;
 }
 [data-admin] .ah-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 2px 8px 20px;
+  gap: 8px;
+  padding: 1.6px 6.4px 16px;
+  border-radius: 7.2px;
+  color: inherit;
+  text-decoration: none;
 }
 [data-admin] .ah-brand-mark {
   width: 30px;
   height: 30px;
   flex: none;
+}
+/* inside the rail, 80% of the prototype's 30px */
+[data-admin] .ah-rail .ah-brand-mark {
+  width: 24px;
+  height: 24px;
 }
 [data-admin] .ah-brand-name {
   font-family: var(--font-archivo), sans-serif;
@@ -672,15 +680,24 @@
   text-transform: uppercase;
   margin-top: 2px;
 }
+/* inside the rail, 80%: 15px -> 12px; 8.5px -> 6.8px, held at the 9px floor */
+[data-admin] .ah-rail .ah-brand-name {
+  font-size: 12px;
+}
+[data-admin] .ah-rail .ah-brand-name small {
+  font-size: 9px;
+  margin-top: 1.6px;
+}
 [data-admin] .ah-nav-group {
-  margin-bottom: 16px;
+  margin-bottom: 12.8px;
 }
 [data-admin] .ah-nav-label {
-  /* the prototype leaves this <p>'s default 1em margins in place */
-  margin: 1em 0;
-  padding: 0 10px 7px;
+  /* the prototype leaves this <p>'s default 1em (9px) margins; x0.8 */
+  margin: 7.2px 0;
+  padding: 0 8px 5.6px;
   font-family: var(--font-archivo), sans-serif;
   font-variation-settings: "wdth" 125, "wght" 600;
+  /* 9px x 0.8 = 7.2px, held at the 9px floor */
   font-size: 9px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -689,12 +706,12 @@
 [data-admin] .ah-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 9px;
+  padding: 6.4px 8px;
+  border-radius: 7.2px;
   color: var(--rail-text);
-  font-size: 13.5px;
+  font-size: 10.8px;
   font-weight: 500;
   line-height: 1.5;
   letter-spacing: normal;
@@ -704,8 +721,8 @@
     color 0.14s;
 }
 [data-admin] .ah-nav-item svg {
-  width: 17px;
-  height: 17px;
+  width: 13.6px;
+  height: 13.6px;
   flex: none;
   opacity: 0.85;
 }
@@ -724,12 +741,13 @@
 }
 [data-admin] .ah-nav-count {
   margin-left: auto;
-  font-size: 10.5px;
+  /* 10.5px x 0.8 = 8.4px, held at the 9px floor */
+  font-size: 9px;
   font-variant-numeric: tabular-nums;
   background: var(--rail-count);
   color: var(--rail-count-text);
-  padding: 1px 6px;
-  border-radius: 20px;
+  padding: 0.8px 4.8px;
+  border-radius: 16px;
 }
 [data-admin] .ah-nav-item.is-active .ah-nav-count {
   background: var(--lime);
@@ -737,21 +755,21 @@
 }
 [data-admin] .ah-rail-foot {
   margin-top: auto;
-  padding-top: 14px;
+  padding-top: 11.2px;
   border-top: 1px solid var(--rail-line);
 }
 [data-admin] .ah-owner {
   letter-spacing: normal;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 6.4px;
+  border-radius: 8px;
   width: 100%;
 }
 [data-admin] .ah-owner-av {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   flex: none;
   display: grid;
@@ -759,34 +777,36 @@
   background: var(--rail-avatar);
   color: var(--lime);
   font-weight: 700;
-  font-size: 11px;
+  /* 11px x 0.8 = 8.8px, held at the 9px floor */
+  font-size: 9px;
 }
 [data-admin] .ah-owner-name {
   color: var(--rail-hover-text);
-  font-size: 12.5px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
 }
 [data-admin] .ah-owner-role {
   color: var(--rail-label);
-  font-size: 10.5px;
+  /* 10.5px x 0.8 = 8.4px, held at the 9px floor */
+  font-size: 9px;
 }
 [data-admin] .ah-logout {
   margin-left: auto;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   flex: none;
-  border-radius: 9px;
+  border-radius: 7.2px;
   color: var(--rail-text);
   transition:
     background 0.14s,
     color 0.14s;
 }
 [data-admin] .ah-logout svg {
-  width: 16px;
-  height: 16px;
+  width: 12.8px;
+  height: 12.8px;
 }
 [data-admin] .ah-logout:hover {
   background: var(--rail-hover);
@@ -883,6 +903,13 @@
   [data-admin] .ah-page-actions {
     width: 100%;
     margin-left: 0;
+  }
+}
+/* The static rail never scrolls; the drawer (below 1024px, where the phone
+   44px targets make the list taller) may. */
+@media (max-width: 1023.98px) {
+  [data-admin] .ah-rail {
+    overflow-y: auto;
   }
 }
 /* phone standard: 44px targets below 768px */
