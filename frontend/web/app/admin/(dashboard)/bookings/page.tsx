@@ -3,8 +3,7 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
-import { Button } from "@/components/ui/button";
+import { AdminBadge, AdminEmpty, AdminPerson, AdminTableFoot, statusLabel } from "@/components/admin/ui";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -37,98 +36,81 @@ export default function AdminBookingsPage() {
 
   return (
     <>
-      <PageHeader title="Booking Monitoring" subtitle="Monitor all arena bookings">
+      <PageHeader title="Booking monitoring" subtitle="Every booking on the network">
         <Select
           value={status}
           onChange={(e) => {
             setStatus(e.target.value as BookingStatus | "");
             setPage(1);
           }}
-          className="w-44"
         >
-          <option value="">All Status</option>
+          <option value="">Any status</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s.replace(/_/g, " ")}
+              {statusLabel(s)}
             </option>
           ))}
         </Select>
       </PageHeader>
 
-      <div className="animate-fade-in space-y-4">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <section className="ah-card">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Player</TableHead>
                 <TableHead>Arena</TableHead>
                 <TableHead>Court</TableHead>
-                <TableHead>Date &amp; Time</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>Slot</TableHead>
+                <TableHead className="ah-r">Amount</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
+                  <TableCell className="ah-mute" colSpan={6}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && bookings.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    No bookings found.
+                  <TableCell colSpan={6} className="p-0">
+                    <AdminEmpty>No bookings found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {bookings.map((b) => (
                 <TableRow key={b.id}>
-                  <TableCell className="font-medium text-foreground">{b.player_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{b.arena_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{b.court_name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(b.booking_date)}, {formatTime(b.start_time)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatRs(b.total_amount)}
-                  </TableCell>
                   <TableCell>
-                    <StatusBadge status={b.status} />
+                    <AdminPerson name={b.player_name} />
+                  </TableCell>
+                  <TableCell>{b.arena_name}</TableCell>
+                  <TableCell className="ah-t2">{b.court_name}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatDate(b.booking_date)} · {formatTime(b.start_time)}
+                  </TableCell>
+                  <TableCell className="ah-r ah-money">{formatRs(b.total_amount)}</TableCell>
+                  <TableCell>
+                    <AdminBadge status={b.status} />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
     </>
   );
