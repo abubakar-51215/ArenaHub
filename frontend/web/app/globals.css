@@ -919,6 +919,7 @@
 }
 [data-admin] [data-slot="table-head"] {
   height: auto;
+  line-height: 1.5;
   padding: 9px 18px;
   font-family: var(--font-archivo), sans-serif;
   font-variation-settings: "wdth" 118, "wght" 600;
@@ -939,6 +940,7 @@
   background: var(--line-soft);
 }
 [data-admin] [data-slot="table-cell"] {
+  line-height: 1.5;
   padding: 12px 18px;
   font-size: 13px;
   font-weight: 400;
@@ -1222,6 +1224,7 @@
 }
 [data-admin] [data-slot="tabs-trigger"],
 [data-admin] .ah-tab {
+  line-height: 1.5;
   flex: none;
   height: auto;
   padding: 11px 12px;
@@ -1250,15 +1253,17 @@
   box-shadow: none;
   border-bottom-color: var(--lime-deep);
 }
+/* the count beside a tab label is the prototype's .tag, 5px from the label */
 [data-admin] .ah-tab-count {
   display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
+  margin-left: 5px;
+  padding: 2px 7px;
   border-radius: 6px;
   background: var(--line-soft);
   color: var(--text-2);
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.5;
 }
 
 /* cards, KPI, empty state -------------------------------------------------------- */
@@ -1614,4 +1619,23 @@
   [data-admin] .ah-metric.is-lg {
     font-size: 32px;
   }
+}
+
+/* Admin approvals: the prototype's arena thumbnail (.thumb). */
+[data-admin] .ah-thumb {
+  width: 34px;
+  height: 26px;
+  border-radius: 5px;
+  flex: none;
+  background: #0f1a15;
+  position: relative;
+  overflow: hidden;
+}
+[data-admin] .ah-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid var(--c, #c4f546);
+  border-radius: 2px;
+  opacity: 0.7;
 }
