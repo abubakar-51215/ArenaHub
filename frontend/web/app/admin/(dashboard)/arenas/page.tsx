@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
+import { AdminBadge, AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,70 +56,84 @@ export default function AdminArenasPage() {
 
   return (
     <>
-      <PageHeader title="Arena Verification">
-        <Tabs
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v as ArenaStatus);
-            setPage(1);
-          }}
-        >
-          <TabsList variant="line">
-            <TabsTrigger value="pending">
-              Pending{pendingCount !== null && ` (${pendingCount})`}
-            </TabsTrigger>
-            <TabsTrigger value="approved">Approved</TabsTrigger>
-            <TabsTrigger value="rejected">Rejected</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </PageHeader>
+      <PageHeader
+        title="Arena approvals"
+        subtitle="Verify documents and photos before an arena can sell slots"
+      />
 
-      <div className="animate-fade-in space-y-4">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <section className="ah-card">
+          <Tabs
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v as ArenaStatus);
+              setPage(1);
+            }}
+          >
+            <TabsList variant="line">
+              <TabsTrigger value="pending">
+                Pending
+                {pendingCount !== null && <span className="ah-tab-count">{pendingCount}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="approved">Approved</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Arena</TableHead>
                 <TableHead>City</TableHead>
                 <TableHead>Address</TableHead>
-                <TableHead>Submitted On</TableHead>
+                <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="ah-r">Decision</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
+                  <TableCell className="ah-mute" colSpan={6}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && arenas.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    No arenas in this queue.
+                  <TableCell colSpan={6} className="p-0">
+                    <AdminEmpty>No arenas in this queue.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {arenas.map((a) => (
                 <TableRow key={a.id}>
-                  <TableCell className="font-medium text-foreground">{a.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{a.city}</TableCell>
-                  <TableCell className="text-muted-foreground">{a.address}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <span className="ah-thumb" aria-hidden="true" />
+                      <div>
+                        <div className="ah-strong">{a.name}</div>
+                        {a.sports_offered?.length > 0 && (
+                          <div className="ah-sub capitalize">{a.sports_offered.join(", ")}</div>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{a.city}</TableCell>
+                  <TableCell className="ah-t2">{a.address}</TableCell>
+                  <TableCell className="ah-t2 tabular-nums">
                     {formatDate(a.created_at.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={a.status} />
+                    <AdminBadge status={a.status} />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
+                  <TableCell className="ah-r">
+                    <div className="flex justify-end gap-1.5">
                       {a.status === "pending" && (
                         <>
                           <Button
                             size="sm"
-                            className="bg-accent text-accent-foreground shadow-xs transition-all hover:bg-accent/90"
+                            className="ah-lime"
                             disabled={approve.isPending}
                             onClick={() => approve.mutate(a.id)}
                           >
@@ -136,34 +150,18 @@ export default function AdminArenasPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
 
       <TextInputDialog
