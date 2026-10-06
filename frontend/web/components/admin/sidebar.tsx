@@ -86,21 +86,21 @@ const ICONS = {
 
 type IconName = keyof typeof ICONS;
 
-interface NavItem {
+export interface NavItem {
   label: string;
   href: string;
   icon: IconName;
   count?: "pendingArenas";
 }
 
-interface NavGroup {
+export interface NavGroup {
   /** null renders as an unlabelled section (Reviews has no prototype group). */
   label: string | null;
   items: NavItem[];
 }
 
 // Labels and order follow the admin prototype's rail; routes are unchanged.
-const NAV_GROUPS: NavGroup[] = [
+export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Oversight",
     items: [

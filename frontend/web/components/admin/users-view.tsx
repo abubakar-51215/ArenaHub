@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { PageHeader } from "@/components/admin/page-header";
 import { AdminBadge, AdminEmpty, AdminPerson, AdminTableFoot, AdminTag } from "@/components/admin/ui";
@@ -39,8 +40,14 @@ export function UsersView({
   /** when set, the sub-line is the live total plus this noun, e.g. "registered accounts" */
   noun?: string;
 }) {
-  const [search, setSearch] = useState("");
+  // the command palette opens a person's row as /admin/users?search=<email>
   const [page, setPage] = useState(1);
+  const urlSearch = useSearchParams().get("search") ?? "";
+  const [search, setSearch] = useState(urlSearch);
+  useEffect(() => {
+    setSearch(urlSearch);
+    setPage(1);
+  }, [urlSearch]);
   const { data, isLoading } = useUsers({ role, search: search || undefined, page });
   const { suspend, reactivate, remove } = useUserActions();
 
