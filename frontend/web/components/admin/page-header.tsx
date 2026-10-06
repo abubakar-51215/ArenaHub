@@ -6,16 +6,22 @@
 export function PageHeader({
   title,
   subtitle,
+  eyebrow,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** small uppercase line above the title (prototype overview) */
+  eyebrow?: string;
   children?: React.ReactNode;
 }) {
   return (
     <div className="ah-page-head">
       <div>
-        <h1 className="ah-h1">{title}</h1>
+        {eyebrow && <p className="ah-eyebrow">{eyebrow}</p>}
+        <h1 className="ah-h1" style={eyebrow ? { marginTop: 5 } : undefined}>
+          {title}
+        </h1>
         {subtitle && <p className="ah-page-sub">{subtitle}</p>}
       </div>
       {children && <div className="ah-page-actions">{children}</div>}
