@@ -128,17 +128,20 @@ export function AdminKpi({
   value,
   foot,
   tone,
+  size = "sm",
 }: {
   label: string;
   value: React.ReactNode;
   foot?: React.ReactNode;
   tone?: "wait" | "off";
+  /** "lg" is the prototype's overview `.metric` (38px); "sm" its `.metric.sm` (26px) */
+  size?: "sm" | "lg";
 }) {
   return (
     <div className="ah-card ah-kpi">
       <p className="ah-eyebrow">{label}</p>
       <div
-        className="ah-metric"
+        className={cn("ah-metric", size === "lg" && "is-lg")}
         style={tone === "wait" ? { color: "var(--amber)" } : tone === "off" ? { color: "var(--red)" } : undefined}
       >
         {value}

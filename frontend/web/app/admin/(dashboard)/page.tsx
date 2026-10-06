@@ -3,95 +3,85 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatCard } from "@/components/ui/stat-card";
+import { AdminKpi } from "@/components/admin/ui";
 import { useDashboardMetrics } from "@/hooks/useAdmin";
 import { formatRs } from "@/lib/format";
 
-function MiniStat({ label, value, href }: { label: string; value: string; href: string }) {
+/** The prototype's decision-queue strip: one count per cell, each a link to
+ *  the screen that handles it. Our cells are the counts this page already had. */
+function QueueCell({ label, value, href }: { label: string; value: string; href: string }) {
   return (
-    <Link
-      href={href}
-      className="card-elevated rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/30"
-    >
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <p className="mt-2 text-xl font-bold text-foreground">{value}</p>
-      <span className="mt-1 block text-xs font-medium text-primary">View All →</span>
+    <Link href={href} className="ah-queue-cell">
+      <span className="ah-metric">{value}</span>
+      <span className="ah-queue-lbl">{label}</span>
     </Link>
   );
 }
 
+function todayLine(): string {
+  const d = new Date();
+  const weekday = d.toLocaleDateString("en-GB", { weekday: "long" });
+  const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+  return `${weekday}, ${date} · all cities`;
+}
+
 export default function AdminDashboardPage() {
   const { data, isLoading } = useDashboardMetrics();
+  const n = (v: number | undefined) => (isLoading ? "—" : (v ?? 0).toLocaleString("en-US"));
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Overview of system activities" />
-      <div className="animate-fade-in space-y-6">
-        <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total Users"
-            value={isLoading ? "—" : String((data?.total_players ?? 0) + (data?.total_owners ?? 0))}
+      <PageHeader eyebrow={todayLine()} title="Platform overview" />
+      <div className="animate-fade-in ah-stack">
+        <section className="ah-card">
+          <div className="ah-queue">
+            <QueueCell label="Arenas to verify" value={n(data?.pending_arenas)} href="/admin/arenas" />
+            <QueueCell label="Complaints open" value={n(data?.active_complaints)} href="/admin/complaints" />
+            <QueueCell label="Bookings today" value={n(data?.bookings_today)} href="/admin/bookings" />
+            <QueueCell
+              label="Bookings this month"
+              value={n(data?.bookings_this_month)}
+              href="/admin/bookings"
+            />
+          </div>
+        </section>
+
+        <div className="stagger ah-grid ah-g-4">
+          <AdminKpi
+            size="lg"
+            label="Total users"
+            value={isLoading ? "—" : n((data?.total_players ?? 0) + (data?.total_owners ?? 0))}
           />
-          <StatCard
-            label="Total Bookings"
-            value={isLoading ? "—" : String(data?.bookings_all_time ?? 0)}
+          <AdminKpi
+            size="lg"
+            label="Bookings"
+            value={n(data?.bookings_all_time)}
+            foot={isLoading ? undefined : `${n(data?.bookings_today)} today`}
           />
-          <StatCard
-            label="Total Revenue"
+          <AdminKpi
+            size="lg"
+            label="Total revenue"
             value={isLoading ? "—" : formatRs(data?.total_revenue ?? 0)}
           />
-          <StatCard
-            label="Active Arenas"
-            value={isLoading ? "—" : String(data?.approved_arenas ?? 0)}
+          <AdminKpi
+            size="lg"
+            label="Live arenas"
+            value={n(data?.approved_arenas)}
+            foot={isLoading ? undefined : `${n(data?.pending_arenas)} pending review`}
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MiniStat
-            label="Pending Arena Approvals"
-            value={isLoading ? "—" : String(data?.pending_arenas ?? 0)}
-            href="/admin/arenas"
-          />
-          <MiniStat
-            label="Open Complaints"
-            value={isLoading ? "—" : String(data?.active_complaints ?? 0)}
-            href="/admin/complaints"
-          />
-          <MiniStat
-            label="Today's Bookings"
-            value={isLoading ? "—" : String(data?.bookings_today ?? 0)}
-            href="/admin/bookings"
-          />
-          <MiniStat
-            label="This Month's Bookings"
-            value={isLoading ? "—" : String(data?.bookings_this_month ?? 0)}
-            href="/admin/bookings"
-          />
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="shadow-card rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-1 font-semibold text-foreground">Players</h3>
-            <p className="text-2xl font-bold text-foreground">
-              {isLoading ? "—" : data?.total_players}
-            </p>
-          </div>
-          <div className="shadow-card rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-1 font-semibold text-foreground">Arena Owners</h3>
-            <p className="text-2xl font-bold text-foreground">
-              {isLoading ? "—" : data?.total_owners}
-            </p>
-          </div>
-          <div className="shadow-card rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-1 font-semibold text-foreground">
-              Arenas (Pending / Approved / Rejected)
-            </h3>
-            <p className="text-2xl font-bold text-foreground">
-              {isLoading
+        <div className="ah-grid ah-g-3">
+          <AdminKpi label="Players" value={n(data?.total_players)} />
+          <AdminKpi label="Arena owners" value={n(data?.total_owners)} />
+          <AdminKpi
+            label="Arenas pending / approved / rejected"
+            value={
+              isLoading
                 ? "—"
-                : `${data?.pending_arenas} / ${data?.approved_arenas} / ${data?.rejected_arenas}`}
-            </p>
-          </div>
+                : `${data?.pending_arenas} / ${data?.approved_arenas} / ${data?.rejected_arenas}`
+            }
+          />
         </div>
       </div>
     </>
