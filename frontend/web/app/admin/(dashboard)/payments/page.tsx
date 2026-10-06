@@ -3,8 +3,14 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
-import { Button } from "@/components/ui/button";
+import {
+  AdminBadge,
+  AdminCard,
+  AdminEmpty,
+  AdminTableFoot,
+  AdminTag,
+  statusLabel,
+} from "@/components/admin/ui";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -20,6 +26,12 @@ import type { PaymentMethod, PaymentStatus } from "@/types";
 
 const STATUSES: PaymentStatus[] = ["pending", "completed", "failed", "refunded"];
 const METHODS: PaymentMethod[] = ["card", "jazzcash", "easypaisa", "bank_transfer"];
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  card: "Card",
+  jazzcash: "JazzCash",
+  easypaisa: "EasyPaisa",
+  bank_transfer: "Bank transfer",
+};
 
 export default function AdminPaymentsPage() {
   const [status, setStatus] = useState<PaymentStatus | "">("");
@@ -36,19 +48,18 @@ export default function AdminPaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Payment Monitoring" subtitle="Monitor all arena payments and transactions">
+      <PageHeader title="Payments" subtitle="Transactions and refunds">
         <Select
           value={method}
           onChange={(e) => {
             setMethod(e.target.value as PaymentMethod | "");
             setPage(1);
           }}
-          className="w-36"
         >
-          <option value="">All Methods</option>
+          <option value="">All methods</option>
           {METHODS.map((m) => (
             <option key={m} value={m}>
-              {m.replace(/_/g, " ")}
+              {METHOD_LABEL[m]}
             </option>
           ))}
         </Select>
@@ -58,27 +69,31 @@ export default function AdminPaymentsPage() {
             setStatus(e.target.value as PaymentStatus | "");
             setPage(1);
           }}
-          className="w-36"
         >
-          <option value="">All Status</option>
+          <option value="">Any status</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {statusLabel(s)}
             </option>
           ))}
         </Select>
       </PageHeader>
 
-      <div className="animate-fade-in space-y-4">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <AdminCard
+          title="Transactions"
+          actions={
+            data ? <AdminTag>{data.total.toLocaleString("en-US")} in total</AdminTag> : undefined
+          }
+        >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Transaction ID</TableHead>
+                <TableHead>Transaction</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead>Arena</TableHead>
-                <TableHead>Amount</TableHead>
                 <TableHead>Method</TableHead>
+                <TableHead className="ah-r">Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
@@ -86,67 +101,51 @@ export default function AdminPaymentsPage() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
+                  <TableCell className="ah-mute" colSpan={7}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && payments.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
-                    No transactions found.
+                  <TableCell colSpan={7} className="p-0">
+                    <AdminEmpty>No transactions found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {payments.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {p.gateway_transaction_id ?? p.id.slice(0, 8)}
+                  <TableCell className="ah-strong tabular-nums">
+                    <span className="ah-txid" title={p.gateway_transaction_id ?? p.id}>
+                      {p.gateway_transaction_id ?? p.id.slice(0, 8)}
+                    </span>
                   </TableCell>
-                  <TableCell className="font-medium text-foreground">{p.player_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.arena_name ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatRs(p.amount)}</TableCell>
-                  <TableCell className="text-muted-foreground capitalize">
-                    {p.payment_method.replace(/_/g, " ")}
-                  </TableCell>
+                  <TableCell>{p.player_name}</TableCell>
+                  <TableCell className="ah-t2">{p.arena_name ?? "—"}</TableCell>
+                  <TableCell>{METHOD_LABEL[p.payment_method] ?? p.payment_method}</TableCell>
+                  <TableCell className="ah-r ah-money">{formatRs(p.amount)}</TableCell>
                   <TableCell>
-                    <StatusBadge status={p.status} />
+                    <AdminBadge status={p.status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="ah-t2 tabular-nums">
                     {formatDate(p.created_at.slice(0, 10))}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </AdminCard>
       </div>
     </>
   );

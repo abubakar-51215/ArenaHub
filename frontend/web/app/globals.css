@@ -1282,6 +1282,7 @@
   border-bottom: 1px solid var(--line-soft);
 }
 [data-admin] .ah-h2 {
+  font-weight: 700;
   margin: 0 auto 0 0;
   font-family: var(--font-archivo), sans-serif;
   font-variation-settings: "wdth" 92, "wght" 650;
@@ -1666,4 +1667,14 @@
   [data-admin] .ah-search {
     width: 100%;
   }
+}
+
+/* Admin payments: long gateway transaction ids stay on one line. */
+[data-admin] .ah-txid {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
