@@ -31,7 +31,7 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <PageHeader eyebrow={todayLine()} title="Platform overview" />
+      <PageHeader eyebrow={todayLine()} title="Dashboard" />
       <div className="animate-fade-in ah-stack">
         <section className="ah-card">
           <div className="ah-queue">
