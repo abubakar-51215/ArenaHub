@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 /**
  * Admin brand mark and name, copied from the admin prototype's `.brand` block
  * (design/prototypes/arena-hub-admin.html): a lime rounded square with an ink
@@ -14,13 +16,20 @@ export function AdminBrandMark({ className = "ah-brand-mark" }: { className?: st
   );
 }
 
-export function AdminBrand() {
+/** The rail's brand block. It is a link to the Dashboard (/admin), reachable
+ *  by keyboard; `onNavigate` closes the drawer on small screens. */
+export function AdminBrand({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="ah-brand">
+    <Link
+      href="/admin"
+      className="ah-brand"
+      onClick={onNavigate}
+      aria-label="Arena Hub — go to Dashboard"
+    >
       <AdminBrandMark />
       <div className="ah-brand-name">
         Arena Hub<small>Platform admin</small>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -160,7 +160,7 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className="ah-rail">
-      <AdminBrand />
+      <AdminBrand onNavigate={onNavigate} />
       {NAV_GROUPS.map((group, groupIndex) => (
         <nav key={group.label ?? `group-${groupIndex}`} className="ah-nav-group">
           {group.label && <p className="ah-nav-label">{group.label}</p>}
