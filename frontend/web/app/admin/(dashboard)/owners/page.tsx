@@ -3,5 +3,5 @@
 import { UsersView } from "@/components/admin/users-view";
 
 export default function AdminOwnersPage() {
-  return <UsersView role="owner" title="Arena Owners" subtitle="Manage arena owners" />;
+  return <UsersView role="owner" title="Arena owners" noun="owners" />;
 }
