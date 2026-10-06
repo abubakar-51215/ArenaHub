@@ -104,7 +104,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Oversight",
     items: [
-      { label: "Overview", href: "/admin", icon: "overview" },
+      { label: "Dashboard", href: "/admin", icon: "overview" },
       { label: "Approvals", href: "/admin/arenas", icon: "approvals", count: "pendingArenas" },
       { label: "Bookings", href: "/admin/bookings", icon: "bookings" },
       { label: "Payments", href: "/admin/payments", icon: "payments" },
