@@ -3,5 +3,5 @@
 import { UsersView } from "@/components/admin/users-view";
 
 export default function AdminUsersPage() {
-  return <UsersView role="player" title="Users" subtitle="Manage platform users" />;
+  return <UsersView role="player" title="Players" noun="registered accounts" />;
 }

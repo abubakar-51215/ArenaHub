@@ -1639,3 +1639,31 @@
   border-radius: 2px;
   opacity: 0.7;
 }
+
+/* Admin players and owners: page-head search box and the prototype's
+   row actions (.row-actions: faint until the row is hovered or focused). */
+[data-admin] .ah-search {
+  width: 260px;
+}
+[data-admin] .ah-row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  opacity: 0.35;
+  transition: opacity 0.14s;
+}
+[data-admin] [data-slot="table-row"]:hover .ah-row-actions,
+[data-admin] .ah-row-actions:focus-within {
+  opacity: 1;
+}
+/* no hover on touch screens: keep the actions fully visible there */
+@media (hover: none), (max-width: 767.98px) {
+  [data-admin] .ah-row-actions {
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-search {
+    width: 100%;
+  }
+}

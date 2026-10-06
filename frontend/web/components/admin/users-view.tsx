@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
+import { AdminBadge, AdminEmpty, AdminPerson, AdminTableFoot, AdminTag } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,10 +31,13 @@ export function UsersView({
   role,
   title,
   subtitle,
+  noun,
 }: {
   role?: UserRole;
   title: string;
   subtitle?: string;
+  /** when set, the sub-line is the live total plus this noun, e.g. "registered accounts" */
+  noun?: string;
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -51,8 +54,10 @@ export function UsersView({
 
   return (
     <>
-      <PageHeader title={title} subtitle={subtitle} />
-      <div className="animate-fade-in space-y-4">
+      <PageHeader
+        title={title}
+        subtitle={noun ? (data ? `${data.total.toLocaleString("en-US")} ${noun}` : undefined) : subtitle}
+      >
         <Input
           placeholder="Search by name or email…"
           value={search}
@@ -60,51 +65,57 @@ export function UsersView({
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="max-w-sm"
+          className="ah-search"
         />
-
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      </PageHeader>
+      <div className="animate-fade-in">
+        <section className="ah-card">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>Contact</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Joined On</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="ah-r">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
+                  <TableCell className="ah-mute" colSpan={6}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && users.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
-                    No users found.
+                  <TableCell colSpan={6} className="p-0">
+                    <AdminEmpty>No users found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {users.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium text-foreground">{u.full_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                  <TableCell className="text-muted-foreground">{u.phone}</TableCell>
-                  <TableCell className="text-muted-foreground capitalize">{u.role}</TableCell>
                   <TableCell>
-                    <StatusBadge status={u.is_active ? "active" : "inactive"} />
+                    <AdminPerson name={u.full_name} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell>
+                    <div className="ah-t2">{u.email}</div>
+                    <div className="ah-sub tabular-nums">{u.phone}</div>
+                  </TableCell>
+                  <TableCell>
+                    <AdminTag>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</AdminTag>
+                  </TableCell>
+                  <TableCell>
+                    <AdminBadge status={u.is_active ? "active" : "suspended"} />
+                  </TableCell>
+                  <TableCell className="ah-t2 tabular-nums">
                     {formatDate(u.created_at.slice(0, 10))}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
+                  <TableCell className="ah-r">
+                    <div className="ah-row-actions">
                       {u.is_active ? (
                         <Button variant="ghost" size="sm" onClick={() => setSuspending(u)}>
                           Suspend
@@ -116,14 +127,13 @@ export function UsersView({
                           disabled={reactivate.isPending}
                           onClick={() => reactivate.mutate(u.id)}
                         >
-                          Reactivate
+                          Reinstate
                         </Button>
                       )}
                       {u.role !== "admin" && (
                         <Button
-                          variant="ghost"
+                          variant="destructive"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
                           onClick={() => {
                             setDeleting(u);
                             setDeleteError(null);
@@ -138,34 +148,18 @@ export function UsersView({
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
 
       <Dialog
@@ -231,13 +225,13 @@ export function UsersView({
           <DialogHeader>
             <DialogTitle>Delete {deleting?.full_name}?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+          <p className="ah-mute" style={{ margin: 0, fontSize: 13 }}>
             This removes the account from the active user list and permanently blocks it from
             logging in. Their bookings, payments, and reviews are kept for record-keeping, but
             personal details are scrubbed. This cannot be undone.
           </p>
           {deleteError && (
-            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p role="alert" className="ah-auth-error">
               {deleteError}
             </p>
           )}
