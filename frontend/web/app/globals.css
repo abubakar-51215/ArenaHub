@@ -1066,6 +1066,94 @@
     min-height: 44px;
   }
 }
+/* Alerts popover: prototype card surface (border, radius, --shadow-lg) with
+   .cmdk-item rows and the .q-ico chips used by the decision queue. */
+[data-admin] .ah-pop {
+  z-index: 70;
+  width: min(320px, 92vw);
+  padding: 7px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  animation: ah-rise 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-pop {
+    animation: none;
+  }
+}
+[data-admin] .ah-pop-head {
+  margin: 0;
+  padding: 9px 11px 6px;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pop-note {
+  margin: 0;
+  padding: 14px 11px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pop-note.is-error {
+  color: var(--red);
+}
+[data-admin] .ah-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  color: var(--text);
+  text-decoration: none;
+}
+[data-admin] .ah-pop-item:hover,
+[data-admin] .ah-pop-item:focus-visible {
+  background: var(--line-soft);
+  outline: none;
+}
+[data-admin] .ah-pop-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+[data-admin] .ah-pop-text small {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+[data-admin] .ah-alert-ico {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+[data-admin] .ah-alert-ico svg {
+  width: 15px;
+  height: 15px;
+}
+[data-admin] .ah-alert-arena {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-admin] .ah-alert-flag {
+  background: var(--red-wash);
+  color: var(--red);
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-pop-item {
+    min-height: 44px;
+  }
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
