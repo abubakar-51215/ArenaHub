@@ -1496,6 +1496,11 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* a table inside an overview card runs edge to edge, like the prototype's
+   .card > .tbl-wrap */
+[data-admin] .ah-card-flush > .ah-card-body:has([data-slot="table"]) {
+  padding: 0;
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
