@@ -181,7 +181,8 @@ export function AdminTableFoot({
   pageCount?: number;
   onPage?: (page: number) => void;
 }) {
-  const pages = pageCount && pageCount > 1 ? pagerItems(page ?? 1, pageCount) : [];
+  // the prototype always shows the pager, even for a single page (‹ 1 ›)
+  const pages = pageCount && pageCount >= 1 ? pagerItems(page ?? 1, pageCount) : [];
   return (
     <div className="ah-tbl-foot" data-table-foot>
       <span>
