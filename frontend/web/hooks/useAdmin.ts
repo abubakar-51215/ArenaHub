@@ -91,9 +91,20 @@ export function useUserActions() {
   return { suspend, reactivate, remove };
 }
 
-export function useAllBookings(params: { status?: BookingStatus; page: number }) {
+export function useAllBookings(params: {
+  status?: BookingStatus;
+  date_from?: string;
+  date_to?: string;
+  page: number;
+}) {
   return useQuery({
-    queryKey: ["admin-bookings", params.status ?? "", params.page],
+    queryKey: [
+      "admin-bookings",
+      params.status ?? "",
+      params.date_from ?? "",
+      params.date_to ?? "",
+      params.page,
+    ],
     queryFn: () => listAllBookings(params),
   });
 }
