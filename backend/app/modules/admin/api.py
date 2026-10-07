@@ -8,19 +8,20 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
 from app.modules.admin import service
+from app.modules.admin.overview import build_overview
 from app.modules.admin.schema import (
     PlatformSettingsRequest,
     RejectArenaRequest,
     SuspendUserRequest,
 )
-from app.modules.arena.model import ArenaStatus
+from app.modules.arena.model import ArenaCity, ArenaStatus
 from app.modules.booking.model import BookingStatus
 from app.modules.payment.model import PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
@@ -47,6 +48,19 @@ async def get_dashboard(
 
 
 # ---- arena verification --------------------------------------------------
+
+
+@router.get("/dashboard/overview", summary="Dashboard overview: KPIs, charts and queue")
+async def get_dashboard_overview(
+    city: ArenaCity | None = None,
+    range: Literal["30d", "quarter"] = "30d",  # noqa: A002 - public query name
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Read-only. Every card on the admin Dashboard, for one city (or all) over
+    the last 30 days or the current quarter, compared with the period before."""
+    data = await build_overview(db, city=city, range_=range)
+    return success(data=data, message="Dashboard overview retrieved.")
 
 
 @router.get("/arenas", summary="Arena verification queue")

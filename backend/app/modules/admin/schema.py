@@ -92,6 +92,83 @@ class DashboardMetrics(BaseModel):
     active_complaints: int
 
 
+class OverviewPeriod(BaseModel):
+    start: date
+    end: date
+    previous_start: date
+    previous_end: date
+    range: str
+
+
+class OverviewKpi(BaseModel):
+    """``value`` is the headline figure; ``delta_pct`` compares the current
+    period with the previous one (None when there is nothing to compare);
+    ``series`` is one point per day of the current period; ``extra`` is the
+    card's second figure (new sign-ups, bookings today, arenas pending)."""
+
+    value: float
+    delta_pct: float | None
+    series: list[float]
+    extra: int | None
+
+
+class OverviewKpis(BaseModel):
+    players: OverviewKpi
+    bookings: OverviewKpi
+    gross_value: OverviewKpi
+    live_arenas: OverviewKpi
+
+
+class DayPoint(BaseModel):
+    date: date
+    value: int
+
+
+class CityShare(BaseModel):
+    city: str
+    bookings: int
+    share_pct: float
+
+
+class HourPoint(BaseModel):
+    hour: int
+    used: int
+    total: int
+    pct: float
+
+
+class PeakWindow(BaseModel):
+    start_hour: int
+    end_hour: int
+
+
+class TopArena(BaseModel):
+    arena_id: uuid.UUID
+    name: str
+    city: str
+    bookings: int
+    value: float
+
+
+class QueueSummary(BaseModel):
+    pending_arenas: int
+    open_complaints: int
+    oldest_waiting_at: datetime | None
+
+
+class DashboardOverview(BaseModel):
+    period: OverviewPeriod
+    city: str | None
+    kpis: OverviewKpis
+    bookings_by_day: list[DayPoint]
+    previous_bookings_by_day: list[DayPoint]
+    by_city: list[CityShare]
+    utilisation_by_hour: list[HourPoint]
+    peak_window: PeakWindow | None
+    top_arenas: list[TopArena]
+    queue: QueueSummary
+
+
 # ---- platform settings --------------------------------------------------
 
 
