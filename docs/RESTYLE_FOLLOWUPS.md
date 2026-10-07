@@ -404,3 +404,72 @@ already waiting, reuses tested code, and closes the password-only gap in
 about a day. Plan (A) as the later upgrade for when there are more admins.
 Both need the existing auth rate limit (20/min) on the code step, a 10-minute
 expiry, 5-attempt lockout, and an audit row for each admin sign-in.
+
+## DECISION NEEDED — prototype palette contrast (admin)
+
+A WCAG sweep of every admin route, light and dark, plus the command palette,
+the alerts popover and a dialog (4.5:1 for text, 3:1 for large text) finds
+these failures. Every one comes from the admin prototype's own colours, which
+were copied exactly and are kept as they are until the owner decides.
+
+| Where | Text / background | Ratio | Theme |
+|---|---|---|---|
+| Muted text on cards: eyebrows, sub-lines, table heads, search placeholder, KPI foot, empty states | `--muted` #79857E on #FFFFFF | 3.84 | light |
+| Muted text on the page background: page sub-line, date eyebrow | #79857E on `--paper` #F1F2EF | 3.42 | light |
+| Muted text on a soft fill (hovered row, chips) | #79857E on `--line-soft` #EDEFEB | 3.32 | light |
+| Rail group labels ("Oversight") and "Admin" under the name | #5D6E64 on `--rail` #0F1A15 | 3.29 | light |
+| The same | #5D6E64 on dark `--rail` #0D1410 | 3.45 | dark |
+| "Pending" badge (`.b-wait`) | `--amber` #D9930B on `--amber-wash` #FDF3DC | 2.34 | light |
+| "Completed" / "Active" badge (`.b-ok`) | `--lime-deep` #7FA30F on `--lime-wash` #F2FBDA | 2.74 | light |
+| "Cancelled" badge (`.b-off`) | `--red` #CF4141 on `--red-wash` #FBE9E9 | 4.00 | light |
+| The same | #CF4141 on dark `--red-wash` #2C1616 | 3.64 | dark |
+| Destructive text button ("Delete User") | #CF4141 on dark `--card` #121A16 | 3.79 | dark |
+| Row actions at rest (`.row-actions{opacity:.35}` until hover or focus) | e.g. Suspend 1.79, Delete 1.67 light; 2.14 / 1.44 dark | <2.2 | both |
+| "Platform admin" under the brand on the sign-in page (`.brand-name small` keeps `--rail-text`) | #A9B5AE on #FFFFFF | 2.12 | light |
+
+Not counted as failures: disabled pager arrows (disabled controls are exempt)
+and the visually hidden "Close" label inside dialogs (sr-only).
+
+Fixed in our code (not prototype colours): the hint text on a selected
+palette row now uses `--text-2` (it was #7C8981 on #1B2520, 4.32, in dark;
+#79857E on #EDEFEB, 3.32, in light). The old Reviews page hides its row
+buttons at opacity 0 until hover; that is fixed when Reviews is restyled.
+
+Proposal for the owner (not applied): darken the muted text by a few points
+of lightness, keeping its hue.
+
+- `--muted` #79857E -> **#656F69**: 5.21 on white, 4.64 on paper, 4.50 on
+  line-soft. (#67716B is the lightest value that passes on white and paper.)
+- Rail labels #5D6E64 -> **#708579** (4.51 on #0F1A15) and **#6E8276** for
+  dark (4.55 on #0D1410).
+- Badge text: use a darker ink of each hue on its wash (for example amber
+  #8A5D05, which the prototype itself uses for `.blk-wait` and `.ev-c` text;
+  a lime-deep around #5C7A05; red around #B12F2F), or keep the badges as
+  they are, since each has a coloured dot and is not the only cue.
+- Row actions: show them at full opacity, or at least 0.6, which still
+  reads as quiet.
+
+## Existing bug — the web app crashes when browser storage is fully blocked
+
+With `localStorage` access blocked entirely (some privacy modes, or storage
+disabled by policy), every page throws on load:
+`TypeError: Cannot read properties of undefined (reading 'rehydrate')`.
+The auth store is created with zustand `persist(...)`; when storage is not
+available, `useAuthStore.persist` is undefined, and `components/providers.tsx`
+calls `useAuthStore.persist.rehydrate()` unconditionally. Found while proving
+that the admin dark theme survives blocked storage (the theme code itself
+wraps every storage access and does not throw). Fix needed (not applied):
+guard the call (`useAuthStore.persist?.rehydrate()`) and give the store a
+storage adapter that falls back to memory.
+
+## Decision — `viewport-fit=cover` is not enabled
+
+The admin slim bar and drawer pad themselves with
+`max(<normal>, env(safe-area-inset-*))`, so they respect the notch and the
+home indicator. Those insets are only non-zero on a page that sets
+`<meta name="viewport" content="..., viewport-fit=cover">`. That meta tag is
+app-wide in Next.js, and turning it on would let every owner and public page
+draw under the notch on iPhones, so it is left off. Without it the browser
+already keeps all content inside the safe area. If it is ever enabled, the
+admin padding is ready; the owner and public layouts would need the same
+padding first.
