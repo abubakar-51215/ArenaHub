@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { ArenaDetailDialog } from "@/components/admin/arena-detail";
 import { PageHeader } from "@/components/admin/page-header";
 import { AdminBadge, AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
@@ -27,6 +28,7 @@ export default function AdminArenasPage() {
   const { approve, reject } = useArenaVerification();
 
   const [rejecting, setRejecting] = useState<Arena | null>(null);
+  const [viewing, setViewing] = useState<Arena | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // The tab label shows the live pending-queue depth, not a per-tab-switch
@@ -114,7 +116,11 @@ export default function AdminArenasPage() {
                       <div>
                         <div className="ah-strong">{a.name}</div>
                         {a.sports_offered?.length > 0 && (
-                          <div className="ah-sub capitalize">{a.sports_offered.join(", ")}</div>
+                          <div className="ah-sub">
+                            {a.sports_offered
+                              .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                              .join(", ")}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -129,6 +135,9 @@ export default function AdminArenasPage() {
                   </TableCell>
                   <TableCell className="ah-r">
                     <div className="flex justify-end gap-1.5">
+                      <Button variant="ghost" size="sm" onClick={() => setViewing(a)}>
+                        View
+                      </Button>
                       {a.status === "pending" && (
                         <>
                           <Button
@@ -163,6 +172,33 @@ export default function AdminArenasPage() {
           )}
         </section>
       </div>
+
+      <ArenaDetailDialog
+        arena={viewing}
+        onOpenChange={(v) => !v && setViewing(null)}
+        actions={
+          viewing?.status === "pending" ? (
+            <>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setRejecting(viewing);
+                  setViewing(null);
+                }}
+              >
+                Reject
+              </Button>
+              <Button
+                className="ah-lime"
+                disabled={approve.isPending}
+                onClick={() => approve.mutate(viewing.id, { onSuccess: () => setViewing(null) })}
+              >
+                Approve
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
 
       <TextInputDialog
         open={!!rejecting}
