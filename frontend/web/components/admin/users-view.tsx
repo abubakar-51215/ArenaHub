@@ -116,7 +116,8 @@ export function UsersView({
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Role</TableHead>
+                {/* the prototype's owner table has no role column: every row is an owner */}
+                {role !== "owner" && <TableHead>Role</TableHead>}
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="ah-r">Actions</TableHead>
@@ -125,14 +126,14 @@ export function UsersView({
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="ah-mute" colSpan={6}>
+                  <TableCell className="ah-mute" colSpan={role === "owner" ? 5 : 6}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="p-0">
+                  <TableCell colSpan={role === "owner" ? 5 : 6} className="p-0">
                     <AdminEmpty>No users found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
@@ -147,9 +148,11 @@ export function UsersView({
                     {/* the prototype lists the phone under the email for owners only */}
                     {role !== "player" && <div className="ah-sub tabular-nums">{u.phone}</div>}
                   </TableCell>
-                  <TableCell>
-                    <AdminTag>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</AdminTag>
-                  </TableCell>
+                  {role !== "owner" && (
+                    <TableCell>
+                      <AdminTag>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</AdminTag>
+                    </TableCell>
+                  )}
                   <TableCell>
                     <AdminBadge status={u.is_active ? "active" : "suspended"} />
                   </TableCell>
