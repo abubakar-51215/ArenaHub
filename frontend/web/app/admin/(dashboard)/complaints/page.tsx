@@ -3,7 +3,13 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { AdminBadge, AdminEmpty, AdminTableFoot, AdminTag, statusLabel } from "@/components/admin/ui";
+import {
+  AdminBadge,
+  AdminEmpty,
+  AdminTableFoot,
+  AdminTag,
+  statusLabel,
+} from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,6 +43,17 @@ const CATEGORIES: ComplaintCategory[] = [
   "other",
 ];
 const STATUSES: ComplaintStatus[] = ["open", "under_review", "resolved"];
+
+/** Short ticket reference, in the same style as the booking reference (#BK-…). */
+function ticketRef(id: string): string {
+  return `CMP-${id.slice(0, 4).toUpperCase()}`;
+}
+
+/** The prototype's age column: hours under a day, then days. */
+function age(iso: string): string {
+  const hours = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000));
+  return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
+}
 
 export default function AdminComplaintsPage() {
   const [status, setStatus] = useState<ComplaintStatus | "">("");
@@ -120,32 +137,34 @@ export default function AdminComplaintsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Ticket</TableHead>
                 <TableHead>Raised by</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="w-2/5">Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Assigned to</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>Age</TableHead>
                 <TableHead className="ah-r">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="ah-mute" colSpan={7}>
+                  <TableCell className="ah-mute" colSpan={8}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && complaints.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     <AdminEmpty>No complaints found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {complaints.map((c) => (
                 <TableRow key={c.id}>
+                  <TableCell className="ah-strong tabular-nums">{ticketRef(c.id)}</TableCell>
                   <TableCell>{c.player_name}</TableCell>
                   <TableCell>
                     <AdminTag>{statusLabel(c.category)}</AdminTag>
@@ -162,13 +181,16 @@ export default function AdminComplaintsPage() {
                     <AdminBadge status={c.status} />
                   </TableCell>
                   <TableCell className="ah-t2">{c.assigned_to_name ?? "Unassigned"}</TableCell>
-                  <TableCell className="ah-t2 tabular-nums">
-                    {formatDate(c.created_at.slice(0, 10))}
+                  <TableCell
+                    className="ah-t2 tabular-nums"
+                    title={formatDate(c.created_at.slice(0, 10))}
+                  >
+                    {age(c.created_at)}
                   </TableCell>
                   <TableCell className="ah-r">
                     <div className="ah-row-actions">
                       <Button variant="ghost" size="sm" onClick={() => openRespond(c)}>
-                        {c.status === "resolved" ? "View" : "Respond"}
+                        Open
                       </Button>
                     </div>
                   </TableCell>
@@ -188,13 +210,14 @@ export default function AdminComplaintsPage() {
             />
           )}
         </section>
-
       </div>
 
       <Dialog open={!!responding} onOpenChange={(v) => !v && setResponding(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Complaint from {responding?.player_name}</DialogTitle>
+            <DialogTitle>
+              {responding ? `${ticketRef(responding.id)} · ${responding.player_name}` : ""}
+            </DialogTitle>
           </DialogHeader>
           <p className="ah-t2" style={{ margin: 0, fontSize: 13 }}>
             {responding?.description}
@@ -242,10 +265,7 @@ export default function AdminComplaintsPage() {
             >
               Cancel
             </Button>
-            <Button
-              disabled={respond.isPending || !response.trim()}
-              onClick={onRespond}
-            >
+            <Button disabled={respond.isPending || !response.trim()} onClick={onRespond}>
               {respond.isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
