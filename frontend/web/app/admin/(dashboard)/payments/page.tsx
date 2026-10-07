@@ -33,13 +33,35 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   bank_transfer: "Bank transfer",
 };
 
+type Period = "" | "this" | "last";
+
+/** Month bounds as Asia/Karachi wall-clock times (how payment times are stored). */
+function monthRange(period: Period): { date_from?: string; date_to?: string } {
+  if (!period) return {};
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date());
+  const [y, m] = today.split("-").map(Number);
+  const start =
+    period === "this" ? new Date(Date.UTC(y, m - 1, 1)) : new Date(Date.UTC(y, m - 2, 1));
+  const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+  const iso = (d: Date) => d.toISOString().slice(0, 19);
+  return { date_from: iso(start), date_to: iso(new Date(end.getTime() - 1000)) };
+}
+
+const PERIOD_TAG: Record<Period, string> = {
+  "": "in total",
+  this: "this month",
+  last: "last month",
+};
+
 export default function AdminPaymentsPage() {
   const [status, setStatus] = useState<PaymentStatus | "">("");
   const [method, setMethod] = useState<PaymentMethod | "">("");
+  const [period, setPeriod] = useState<Period>("");
   const [page, setPage] = useState(1);
   const { data, isLoading } = useAllPayments({
     status: status || undefined,
     method: method || undefined,
+    ...monthRange(period),
     page,
   });
 
@@ -50,7 +72,20 @@ export default function AdminPaymentsPage() {
     <>
       <PageHeader title="Payments" subtitle="Transactions and refunds">
         <Select
+          value={period}
+          aria-label="Period"
+          onChange={(e) => {
+            setPeriod(e.target.value as Period);
+            setPage(1);
+          }}
+        >
+          <option value="">Any time</option>
+          <option value="this">This month</option>
+          <option value="last">Last month</option>
+        </Select>
+        <Select
           value={method}
+          aria-label="Method"
           onChange={(e) => {
             setMethod(e.target.value as PaymentMethod | "");
             setPage(1);
@@ -65,6 +100,7 @@ export default function AdminPaymentsPage() {
         </Select>
         <Select
           value={status}
+          aria-label="Status"
           onChange={(e) => {
             setStatus(e.target.value as PaymentStatus | "");
             setPage(1);
@@ -83,7 +119,11 @@ export default function AdminPaymentsPage() {
         <AdminCard
           title="Transactions"
           actions={
-            data ? <AdminTag>{data.total.toLocaleString("en-US")} in total</AdminTag> : undefined
+            data ? (
+              <AdminTag>
+                {data.total.toLocaleString("en-US")} {PERIOD_TAG[period]}
+              </AdminTag>
+            ) : undefined
           }
         >
           <Table>
