@@ -1301,6 +1301,66 @@ html[data-theme="dark"] [data-admin] .ah-toast {
     min-height: 44px;
   }
 }
+/* Drawer (below 1024px): 44px targets everywhere in it, phone safe areas,
+   and the page behind it does not scroll while it is open. */
+@media (max-width: 1023.98px) {
+  [data-admin] .ah-rail .ah-nav-item,
+  [data-admin] .ah-rail .ah-brand {
+    min-height: 44px;
+  }
+  [data-admin] .ah-rail .ah-logout {
+    width: 44px;
+    height: 44px;
+  }
+  [data-admin] .ah-rail {
+    height: 100dvh;
+    padding-top: max(14.4px, env(safe-area-inset-top));
+    padding-bottom: max(11.2px, env(safe-area-inset-bottom));
+    padding-left: max(11.2px, env(safe-area-inset-left));
+    overscroll-behavior: contain;
+  }
+  [data-admin] .ah-topbar:not(.ah-topbar-desk) {
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+  [data-admin][data-drawer-open] main {
+    overflow: hidden;
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-topbar:not(.ah-topbar-desk) {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+}
+/* Wide but short screens (under 640px tall): tighten the rail's vertical
+   spacing with clamps, never the type, so every item stays visible. The
+   overflow is only a safety net for heights far below the tested 600px. */
+@media (min-width: 1024px) and (max-height: 639.98px) {
+  /* each value runs linearly from its normal size at 640px tall down to a
+     floor at 480px: v = normal - (640px - 100vh) * (normal - floor) / 160 */
+  [data-admin] .ah-rail {
+    overflow-y: auto;
+    padding-top: clamp(6px, calc(14.4px - (640px - 100vh) * 0.0525), 14.4px);
+    padding-bottom: clamp(6px, calc(11.2px - (640px - 100vh) * 0.0325), 11.2px);
+  }
+  [data-admin] .ah-rail .ah-brand {
+    padding-bottom: clamp(6px, calc(16px - (640px - 100vh) * 0.0625), 16px);
+  }
+  [data-admin] .ah-nav-label {
+    margin-top: clamp(2px, calc(7.2px - (640px - 100vh) * 0.0325), 7.2px);
+    margin-bottom: clamp(2px, calc(7.2px - (640px - 100vh) * 0.0325), 7.2px);
+  }
+  [data-admin] .ah-rail .ah-nav-item {
+    padding-top: clamp(3px, calc(6.4px - (640px - 100vh) * 0.02125), 6.4px);
+    padding-bottom: clamp(3px, calc(6.4px - (640px - 100vh) * 0.02125), 6.4px);
+  }
+  [data-admin] .ah-rail-foot {
+    padding-top: clamp(4px, calc(11.2px - (640px - 100vh) * 0.045), 11.2px);
+  }
+}
 
 /* ---------------------------------------------------------------------------
    Admin building blocks. Values copied from the admin prototype

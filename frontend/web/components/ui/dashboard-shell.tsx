@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 
 import { AdminBrandMark } from "@/components/admin/brand";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
+
+const ADMIN_STATIC_QUERY = "(min-width: 1024px)";
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Responsive dashboard chrome shared by the owner and admin shells.
@@ -14,8 +17,11 @@ import { cn } from "@/lib/utils";
  *   compact top bar; navigating closes it.
  * `variant="admin"` sets [data-admin], which scopes the admin prototype's
  * shell styles (globals.css), uses the prototype's topbar and brand mark, and
- * keeps the rail static from 1024px (lg) instead of 1280px (xl). The owner
- * variant renders exactly as before.
+ * keeps the rail static from 1024px (lg) instead of 1280px (xl). Below 1024px
+ * the admin drawer behaves as a modal: Escape and the backdrop close it, focus
+ * stays inside while it is open and goes back to the menu button after, the
+ * page behind it is inert and does not scroll, and crossing 1024px closes it.
+ * The owner variant renders exactly as before.
  */
 export function DashboardShell({
   sidebar,
@@ -30,15 +36,72 @@ export function DashboardShell({
   const close = () => setOpen(false);
   const admin = variant === "admin";
 
+  // admin only: is the rail a drawer right now (below 1024px)?
+  const [isDrawer, setIsDrawer] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const burgerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!admin) return;
+    const mq = window.matchMedia(ADMIN_STATIC_QUERY);
+    const sync = () => {
+      setIsDrawer(!mq.matches);
+      // resizing or rotating across 1024px never leaves the drawer open
+      setOpen(false);
+    };
+    setIsDrawer(!mq.matches);
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, [admin]);
+
+  const drawerOpen = admin && isDrawer && open;
+
+  // while open: focus inside, Escape closes, Tab wraps within the drawer
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const drawer = drawerRef.current;
+    const burger = burgerRef.current;
+    drawer?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !drawer) return;
+      const items = [...drawer.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inside = drawer.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      // back to the menu button (still there: we are below 1024px)
+      if (window.matchMedia(ADMIN_STATIC_QUERY).matches) return;
+      burger?.focus();
+    };
+  }, [drawerOpen]);
+
   return (
     <div
       data-theme="arena"
       data-admin={admin ? "" : undefined}
+      data-drawer-open={drawerOpen ? "" : undefined}
       className="flex h-screen overflow-hidden bg-background"
     >
       {/* Backdrop (mobile only) */}
       <div
         onClick={close}
+        aria-hidden={admin ? true : undefined}
         className={cn(
           "fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm transition-opacity duration-300",
           admin ? "ah-drawer-overlay lg:hidden" : "xl:hidden",
@@ -48,20 +111,34 @@ export function DashboardShell({
 
       {/* Sidebar — drawer on mobile, static on desktop */}
       <div
+        ref={drawerRef}
+        id={admin ? "ah-drawer" : undefined}
+        role={admin && isDrawer ? "dialog" : undefined}
+        aria-modal={admin && isDrawer ? true : undefined}
+        aria-label={admin && isDrawer ? "Menu" : undefined}
+        // a closed drawer is off screen: keep it out of the tab order too
+        inert={admin && isDrawer && !open ? true : undefined}
         className={cn(
           "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-out",
-          admin ? "lg:static lg:translate-x-0" : "xl:static xl:translate-x-0",
+          admin ? "ah-drawer lg:static lg:translate-x-0" : "xl:static xl:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {sidebar(close)}
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden" inert={drawerOpen ? true : undefined}>
         {/* Mobile top bar */}
         {admin ? (
           <header className="ah-topbar lg:hidden">
-            <button onClick={() => setOpen(true)} aria-label="Open menu" className="ah-icon-btn">
+            <button
+              ref={burgerRef}
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={drawerOpen}
+              aria-controls="ah-drawer"
+              className="ah-icon-btn"
+            >
               <Menu strokeWidth={1.9} />
             </button>
             <AdminBrandMark />
