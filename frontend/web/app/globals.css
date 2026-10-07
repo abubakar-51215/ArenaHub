@@ -1561,6 +1561,24 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   font-weight: 600;
   color: var(--lime-deep);
 }
+/* Reviews: rating stars in the prototype's amber (graphic only; the number
+   beside them carries the rating in readable --text-2) */
+[data-admin] .ah-stars {
+  color: var(--amber);
+  font-size: 13px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+[data-admin] .ah-stars-off {
+  color: var(--line);
+}
+[data-admin] .ah-stars-num {
+  margin-left: 6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  letter-spacing: normal;
+  font-variant-numeric: tabular-nums;
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
