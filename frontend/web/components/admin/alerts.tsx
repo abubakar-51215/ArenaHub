@@ -2,16 +2,17 @@
 
 /**
  * Alerts button + popover for the Dashboard top bar. Everything in it comes
- * from the dashboard counts the page already loads (same query key, so there
- * is no extra request): arenas awaiting approval and open complaints, each
- * linking to the page that handles it. The red dot shows only when something
- * is waiting.
+ * from the Dashboard overview the page already loads (the page starts on
+ * all cities / last 30 days, the same query key used here, so there is no
+ * extra request; the queue summary is network-wide whatever filter the page
+ * shows later): arenas awaiting approval and open complaints, each linking to
+ * the page that handles it. The red dot shows only when something is waiting.
  */
 import Link from "next/link";
 import { useState } from "react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
-import { useDashboardMetrics } from "@/hooks/useAdmin";
+import { useDashboardOverview } from "@/hooks/useAdminOverview";
 
 interface Alert {
   key: string;
@@ -27,7 +28,8 @@ function plural(n: number, one: string, many: string) {
 
 export function AdminAlerts() {
   const [open, setOpen] = useState(false);
-  const { data, isLoading, isError } = useDashboardMetrics();
+  const { data: overview, isLoading, isError } = useDashboardOverview({ range: "30d" });
+  const data = overview?.queue;
 
   const alerts: Alert[] = [];
   if (data && data.pending_arenas > 0) {
@@ -39,11 +41,11 @@ export function AdminAlerts() {
       href: "/admin/arenas",
     });
   }
-  if (data && data.active_complaints > 0) {
+  if (data && data.open_complaints > 0) {
     alerts.push({
       key: "complaints",
       tone: "flag",
-      title: `${plural(data.active_complaints, "open complaint", "open complaints")}`,
+      title: `${plural(data.open_complaints, "open complaint", "open complaints")}`,
       sub: "Open in Complaints",
       href: "/admin/complaints",
     });
