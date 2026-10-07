@@ -1,6 +1,22 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { AdminAlerts } from "@/components/admin/alerts";
+import { currentAdminTheme, toggleAdminTheme } from "@/lib/admin-theme";
+
+/** Follows html[data-theme] so the button stays right if another tab changes it. */
+function useIsDark() {
+  return useSyncExternalStore(
+    (notify) => {
+      const obs = new MutationObserver(notify);
+      obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      return () => obs.disconnect();
+    },
+    () => currentAdminTheme() === "dark",
+    () => false,
+  );
+}
 
 /**
  * The admin prototype's desktop top bar (design/prototypes/arena-hub-admin.html
@@ -11,11 +27,10 @@ import { AdminAlerts } from "@/components/admin/alerts";
  */
 export function AdminTopbar({
   onSearch,
-  onTheme,
 }: {
   onSearch?: () => void;
-  onTheme?: () => void;
 }) {
+  const dark = useIsDark();
   return (
     <header className="ah-topbar ah-topbar-desk">
       <button type="button" className="ah-searchbar" onClick={onSearch}>
@@ -27,7 +42,7 @@ export function AdminTopbar({
         <span className="ah-kbd">⌘K</span>
       </button>
       <div className="ah-topbar-right">
-        <button type="button" className="ah-icon-btn" aria-label="Switch theme" onClick={onTheme}>
+        <button type="button" className="ah-icon-btn" aria-label="Switch theme" aria-pressed={dark} onClick={() => toggleAdminTheme()}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
             <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
           </svg>

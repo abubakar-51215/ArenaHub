@@ -1154,6 +1154,85 @@
     min-height: 44px;
   }
 }
+/* ---------------------------------------------------------------------------
+   Admin dark theme. Values are copied from the admin prototype's
+   html[data-theme="dark"] block (design/prototypes/arena-hub-admin.html) and
+   its dark rules. The attribute is set on <html> only while an /admin route
+   is open (inline script in app/layout.tsx + AdminThemeSync), so owner and
+   public pages never see any of this. The selectors need the descendant
+   forms because [data-theme="arena"] and [data-admin] set these same tokens
+   directly on the shell root and on <body>, which would otherwise win over
+   values inherited from <html>.
+   --------------------------------------------------------------------------- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="dark"],
+html[data-theme="dark"] [data-theme="arena"],
+html[data-theme="dark"] [data-admin] {
+  /* prototype --paper, --text, --card, --line, --line-soft, --muted */
+  --background: #0a100d;
+  --foreground: #e9efe9;
+  --card: #121a16;
+  --card-foreground: #e9efe9;
+  --popover: #121a16;
+  --popover-foreground: #e9efe9;
+  --secondary: #1b2520;
+  --secondary-foreground: #e9efe9;
+  --muted: #1b2520;
+  --muted-foreground: #7c8981;
+  --label-foreground: #a9b6ae;
+  --border: #232f28;
+  --input: #232f28;
+  /* in dark the primary action is lime on ink (prototype .btn-primary) */
+  --primary: #c4f546;
+  --primary-foreground: #0f1a15;
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+  --ring: #c4f546;
+  --success-muted: #1e2a11;
+  --warning-muted: #2a2210;
+  --danger-muted: #2c1616;
+}
+html[data-theme="dark"] [data-admin] {
+  --ink: #e9efe9;
+  --ink-soft: #c8d3cb;
+  --paper: #0a100d;
+  --line: #232f28;
+  --line-soft: #1b2520;
+  --text: #e9efe9;
+  --text-2: #a9b6ae;
+  --rail: #0d1410;
+  --rail-text: #8a968e;
+  --rail-active: #ffffff;
+  --rail-line: #1e2a23;
+  --lime-wash: #1e2a11;
+  --amber-wash: #2a2210;
+  --red-wash: #2c1616;
+  --slot-open: #171f1a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 18px 40px -18px rgba(0, 0, 0, 0.7);
+}
+/* prototype: html[data-theme="dark"] .btn-primary / :hover */
+html[data-theme="dark"] [data-admin] [data-slot="button"][data-variant="default"] {
+  background: var(--lime);
+  color: #0f1a15;
+  border-color: var(--lime);
+}
+html[data-theme="dark"] [data-admin] [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
+  background: #d2ff63;
+  border-color: #d2ff63;
+}
+/* prototype: .pager button.is-on and .toast */
+html[data-theme="dark"] [data-admin] .ah-pager button.is-on {
+  background: var(--lime);
+  color: #0f1a15;
+}
+html[data-theme="dark"] [data-admin] .ah-toast {
+  background: var(--lime);
+  color: #0f1a15;
+}
+
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
