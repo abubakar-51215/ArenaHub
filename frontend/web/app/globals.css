@@ -1233,6 +1233,235 @@ html[data-theme="dark"] [data-admin] .ah-toast {
   color: #0f1a15;
 }
 
+/* Admin Dashboard: prototype .g-32, .spark, .chart-svg, .legend-list, .bars,
+   .rank, .q-ico, .delta, plus skeleton / error / empty states. */
+[data-admin] .ah-g-32 {
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+}
+[data-admin] .ah-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+[data-admin] .ah-delta {
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+[data-admin] .ah-delta.up {
+  color: var(--lime-deep);
+}
+[data-admin] .ah-delta.down {
+  color: var(--red);
+}
+[data-admin] .ah-spark {
+  width: 100%;
+  height: 34px;
+  display: block;
+}
+/* the prototype's KPI eyebrow is a plain <p>: it keeps the browser's 1em
+   (10px) margins, which set the card's rhythm */
+[data-admin] .ah-kpi > .ah-eyebrow {
+  margin: 10px 0;
+}
+[data-admin] .ah-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+[data-admin] .ah-legend-swatch {
+  width: 14px;
+  height: 2.5px;
+  display: inline-block;
+  border-radius: 2px;
+}
+[data-admin] .ah-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12.5px;
+  flex: 1;
+  padding: 0;
+  margin: 0;
+}
+[data-admin] .ah-legend-list li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  list-style: none;
+}
+[data-admin] .ah-legend-list i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+[data-admin] .ah-legend-list b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+[data-admin] .ah-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 132px;
+}
+[data-admin] .ah-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+[data-admin] .ah-bar {
+  width: 100%;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--line);
+  transition:
+    background 0.16s,
+    transform 0.16s;
+  transform-origin: bottom;
+}
+[data-admin] .ah-bar-col:hover .ah-bar {
+  background: var(--lime-deep);
+}
+[data-admin] .ah-bar.is-peak {
+  background: var(--ink);
+}
+[data-admin] .ah-bar-lbl {
+  font-size: 9.5px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+[data-admin] .ah-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+[data-admin] .ah-rank-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+}
+[data-admin] .ah-rank-bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+[data-admin] .ah-rank-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ink);
+}
+[data-admin] .ah-queue-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+[data-admin] .ah-queue-table td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+  line-height: 1.5;
+}
+[data-admin] .ah-queue-table tr:last-child td {
+  border-bottom: 0;
+}
+[data-admin] .ah-queue-table tr:hover {
+  background: var(--line-soft);
+}
+[data-admin] .ah-q-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--line-soft);
+  color: var(--text-2);
+}
+[data-admin] .ah-q-ico svg {
+  width: 15px;
+  height: 15px;
+}
+[data-admin] .ah-q-arena {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-admin] .ah-q-flag {
+  background: var(--red-wash);
+  color: var(--red);
+}
+[data-admin] .ah-skeleton {
+  border-radius: 9px;
+  background: linear-gradient(90deg, var(--line-soft) 0%, var(--paper) 50%, var(--line-soft) 100%);
+  background-size: 200% 100%;
+  animation: ah-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ah-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-skeleton {
+    animation: none;
+  }
+}
+[data-admin] .ah-card-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--red-wash);
+  color: var(--red);
+  font-size: 13px;
+}
+[data-admin] .ah-empty-line {
+  margin: 0;
+  padding: 28px 0;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+@media (max-width: 1180px) {
+  [data-admin] .ah-g-32 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-queue-table td:first-child {
+    display: none;
+  }
+}
+/* prototype: html[data-theme="dark"] .bar.is-peak / .rank-bar i */
+html[data-theme="dark"] [data-admin] .ah-bar.is-peak,
+html[data-theme="dark"] [data-admin] .ah-rank-bar i {
+  background: var(--lime);
+}
+
+
+/* page-header filters keep the prototype's auto width (.select), side by side */
+[data-admin] .ah-page-actions [data-slot="select"] {
+  width: auto;
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
