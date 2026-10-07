@@ -309,3 +309,98 @@ dashboard layout also still send visitors to `/login1`.
 **Resolved.** The two `router.prefetch` calls are removed, the middleware and both client guards
 redirect to `/login` and `/admin/login`, and the `login1`, `signup1` and `admin/login1` experiment
 routes are deleted.
+
+## BROKEN — `backend/scripts/seed_dummy_data.py` fails on the current schema
+
+Running it against a freshly migrated database stops at the equipment insert:
+
+```
+asyncpg.exceptions.CheckViolationError: new row for relation "equipment" violates
+check constraint "ck_equipment_ck_equipment_rental_price_positive"
+DETAIL:  Failing row contains (..., First Aid Kit, On-court injury kit, 0.00, 2, 2, t, ...)
+```
+
+Cause: the `equipment` table now has `CheckConstraint("rental_price > 0")`
+(`app/modules/equipment/model.py`), but the seed's `EQUIPMENT` table lists
+`("First Aid Kit", "On-court injury kit", Decimal("0.00"), 2, 2, True)`
+(`scripts/seed_dummy_data.py`, line 552). The check fires, the whole seed
+transaction rolls back, and nothing is seeded.
+
+Fix needed (not applied): either give the kit a real price (for example
+`Decimal("50.00")`), or drop the item from `EQUIPMENT`; free items are not
+allowed by the model. Check `EQUIPMENT_V2` for the same pattern. Until then
+the Dashboard was verified against a purpose-written seeder on the scratch
+database `arenahub_scratch` (never the dev database).
+
+## NEEDS BACKEND — admin cannot suspend, reactivate or delete an arena
+
+The admin Arenas page (`/admin/arenas/all`) only offers what the backend
+supports today: open the detail (`GET /admin/arenas/{id}`) and, for a pending
+arena, "Review" (goes to Approvals). There is no admin endpoint to suspend,
+reactivate or delete an arena. `arenas.is_active` exists, but the owner sets it
+(`deactivate_arena`, and the owner update request carries `is_active`), so an
+admin suspension stored there could be undone by the owner. Proposed design,
+not built:
+
+- **Routes.** `POST /admin/arenas/{id}/suspend` (body `{reason}`, required),
+  `POST /admin/arenas/{id}/reactivate`, `DELETE /admin/arenas/{id}`. Admin only,
+  same shape as the user suspend/reactivate/delete routes.
+- **Status values.** `ArenaStatus` (pending / approved / rejected) is unchanged: suspension and deletion are separate flags, so an approved arena can be suspended without losing its approval.
+- **Data.** One migration: `arenas.suspended_at` (timestamp, null),
+  `arenas.suspended_reason` (text, null), `arenas.deleted_at` (timestamp,
+  null). Public search, arena detail and booking creation add
+  `suspended_at IS NULL AND deleted_at IS NULL` next to the existing
+  `status == approved AND is_active` checks. The owner cannot clear these
+  columns.
+- **Effect on bookings.** Suspend: no new bookings; future confirmed or pending
+  bookings are cancelled through the existing `cancel_booking` path as a
+  platform cancellation with a 100% refund (not the arena's refund tiers),
+  each player notified. Past and completed bookings are untouched. Reactivate:
+  bookable again; cancelled bookings stay cancelled. Delete: same as suspend,
+  then a soft delete (`deleted_at`) so bookings, payments, refunds, reviews and
+  audit rows that reference the arena stay intact, as `delete_user` does for
+  accounts.
+- **Effect on the owner.** The owner account stays active; their other arenas
+  are unaffected. The owner still sees the arena in their panel, marked
+  "Suspended by Arena Hub" with the reason, read-only; a deleted arena
+  disappears from their list.
+- **Audit log.** `record_audit` with `arena.suspend` (reason in details),
+  `arena.reactivate`, `arena.delete`, target type `arena`, plus the count of
+  bookings cancelled.
+- **Notifications.** New owner templates `arena_suspended` (with reason),
+  `arena_reactivated`, `arena_deleted`; players with cancelled bookings get the
+  existing cancellation notification with refund details.
+- **Tests.** Admin-only access; owner cannot re-activate a suspended arena;
+  suspended arena hidden from search and unbookable; future bookings cancelled
+  with full refund, past bookings untouched; audit rows written; delete keeps
+  bookings and payments readable.
+
+## NEEDS BACKEND — no admin password reset for players or owners
+
+The Players and Arena owners pages offer View, Suspend/Reactivate and Delete.
+"Reset password" is left out: there is no admin endpoint for it. If wanted,
+the safe shape is `POST /admin/users/{id}/send-password-reset`, which sends the
+user the normal reset email/code (the admin never sees or sets a password),
+bumps the session epoch, and writes `user.password_reset_sent` to the audit
+log. It should land after the parked OTP reset work, which it reuses.
+
+## PROPOSAL — two-factor sign-in for the admin panel (not built)
+
+The admin login has Work email and Password only; the "Authenticator code"
+field is deliberately not added. Two options:
+
+| | (A) TOTP authenticator app | (B) Emailed 6-digit code |
+|---|---|---|
+| How it works | Admin scans a QR code once; each sign-in asks for the 30-second code from the app | After the password, a 6-digit code is emailed; the admin types it in |
+| Reuses | Nothing existing; new `pyotp` dependency | The OTP table and code path, with purpose `admin_login` |
+| Migrations | One: `users.totp_secret` (encrypted), `users.totp_enabled_at`, plus a recovery-codes table | None beyond the parked OTP purpose migration (`b7d2f4a9c1e3`); `purpose` is `String(20)`, so `admin_login` fits |
+| Screens | Enrolment (QR + confirm code + recovery codes), code step at sign-in, recovery-code entry, admin reset of a lost device | One code step at sign-in with resend and expiry message |
+| Effort | About 3–4 days with tests | About 1–1.5 days with tests |
+| Security | Strong: not phishable by email takeover; works offline; secret must be encrypted at rest | Weaker: as strong as the admin's mailbox; email delay; still blocks password-only attacks |
+| Operations | Lost phone needs a recovery path | No enrolment; nothing to lose |
+
+Recommendation: **(B) first**. It needs no new migration beyond the OTP work
+already waiting, reuses tested code, and closes the password-only gap in
+about a day. Plan (A) as the later upgrade for when there are more admins.
+Both need the existing auth rate limit (20/min) on the code step, a 10-minute
+expiry, 5-attempt lockout, and an audit row for each admin sign-in.
