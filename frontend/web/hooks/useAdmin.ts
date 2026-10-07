@@ -1,5 +1,5 @@
 /** TanStack Query hooks for the admin panel. */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   approveArena,
@@ -9,6 +9,7 @@ import {
   getUserDetail,
   listAllBookings,
   listAllPayments,
+  getAdminArena,
   listArenaQueue,
   listAuditLogs,
   listUsers,
@@ -37,6 +38,46 @@ export function useArenaQueue(status: ArenaStatus, page: number) {
   return useQuery({
     queryKey: ["admin-arenas", status, page],
     queryFn: () => listArenaQueue(status, page),
+  });
+}
+
+/** Every arena, for the Arenas directory. The queue endpoint lists one
+ *  status at a time, so this asks for each (up to 100 per status) and puts
+ *  them together. The keys sit under "admin-arenas", so approving or
+ *  rejecting refreshes them too. */
+export function useArenaDirectory() {
+  const statuses = ["approved", "pending", "rejected"] as const;
+  const results = useQueries({
+    queries: statuses.map((status) => ({
+      queryKey: ["admin-arenas", status, "directory"],
+      queryFn: () => listArenaQueue(status, 1, 100),
+    })),
+  });
+  const [approved, pending, rejected] = results;
+  const done = results.every((r) => r.data);
+  return {
+    arenas: results
+      .flatMap((r) => r.data?.items ?? [])
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    totals: done
+      ? {
+          approved: approved.data!.total,
+          pending: pending.data!.total,
+          rejected: rejected.data!.total,
+        }
+      : undefined,
+    truncated: results.some((r) => r.data && r.data.total > r.data.items.length),
+    isLoading: results.some((r) => r.isLoading),
+    isError: results.some((r) => r.isError),
+    refetch: () => results.forEach((r) => void r.refetch()),
+  };
+}
+
+export function useAdminArena(arenaId: string | null) {
+  return useQuery({
+    queryKey: ["admin-arena", arenaId],
+    queryFn: () => getAdminArena(arenaId as string),
+    enabled: !!arenaId,
   });
 }
 

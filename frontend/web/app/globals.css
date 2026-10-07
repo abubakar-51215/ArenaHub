@@ -1579,6 +1579,55 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   letter-spacing: normal;
   font-variant-numeric: tabular-nums;
 }
+/* Arenas directory: prototype .court-card / .court-vis / .court-badge /
+   .court-body / .court-meta / .court-foot */
+[data-admin] .ah-court-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+[data-admin] .ah-court-vis {
+  height: 118px;
+  position: relative;
+  background: var(--ink);
+  overflow: hidden;
+}
+[data-admin] .ah-court-vis svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+[data-admin] .ah-court-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+[data-admin] .ah-court-body {
+  padding: 13px 15px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+}
+[data-admin] .ah-court-name {
+  font-size: 14.5px;
+}
+[data-admin] .ah-court-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+[data-admin] .ah-court-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 11px;
+  border-top: 1px solid var(--line-soft);
+  justify-content: flex-end;
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
