@@ -52,9 +52,20 @@ export function useArenaVerification() {
   return { approve, reject };
 }
 
-export function useUsers(params: { role?: UserRole; search?: string; page: number }) {
+export function useUsers(params: {
+  role?: UserRole;
+  search?: string;
+  is_active?: boolean;
+  page: number;
+}) {
   return useQuery({
-    queryKey: ["admin-users", params.role ?? "", params.search ?? "", params.page],
+    queryKey: [
+      "admin-users",
+      params.role ?? "",
+      params.search ?? "",
+      params.is_active ?? "",
+      params.page,
+    ],
     queryFn: () => listUsers(params),
   });
 }

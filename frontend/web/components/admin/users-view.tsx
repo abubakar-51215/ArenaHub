@@ -4,16 +4,24 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { AdminBadge, AdminEmpty, AdminPerson, AdminTableFoot, AdminTag } from "@/components/admin/ui";
+import {
+  AdminBadge,
+  AdminEmpty,
+  AdminPerson,
+  AdminTableFoot,
+  AdminTag,
+} from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -23,7 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { useUserActions, useUsers } from "@/hooks/useAdmin";
+import { useUserActions, useUserDetail, useUsers } from "@/hooks/useAdmin";
 import { formatDate } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { AdminUser, UserRole } from "@/types";
@@ -48,7 +56,18 @@ export function UsersView({
     setSearch(urlSearch);
     setPage(1);
   }, [urlSearch]);
-  const { data, isLoading } = useUsers({ role, search: search || undefined, page });
+  const [status, setStatus] = useState<"" | "active" | "suspended">("");
+  const { data, isLoading } = useUsers({
+    role,
+    search: search || undefined,
+    is_active: status === "" ? undefined : status === "active",
+    page,
+  });
+  // "owner account" on the owners screen, "player account" on players
+  const account =
+    role === "owner" ? "owner account" : role === "player" ? "player account" : "account";
+  const [viewing, setViewing] = useState<AdminUser | null>(null);
+  const detail = useUserDetail(viewing?.id ?? null);
   const { suspend, reactivate, remove } = useUserActions();
 
   const [suspending, setSuspending] = useState<AdminUser | null>(null);
@@ -63,17 +82,32 @@ export function UsersView({
     <>
       <PageHeader
         title={title}
-        subtitle={noun ? (data ? `${data.total.toLocaleString("en-US")} ${noun}` : undefined) : subtitle}
+        subtitle={
+          noun ? (data ? `${data.total.toLocaleString("en-US")} ${noun}` : undefined) : subtitle
+        }
       >
         <Input
-          placeholder="Search by name or email…"
+          placeholder="Search name or email"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
           className="ah-search"
+          aria-label="Search"
         />
+        <Select
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value as "" | "active" | "suspended");
+            setPage(1);
+          }}
+          aria-label="Status"
+        >
+          <option value="">Any status</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+        </Select>
       </PageHeader>
       <div className="animate-fade-in">
         <section className="ah-card">
@@ -110,7 +144,8 @@ export function UsersView({
                   </TableCell>
                   <TableCell>
                     <div className="ah-t2">{u.email}</div>
-                    <div className="ah-sub tabular-nums">{u.phone}</div>
+                    {/* the prototype lists the phone under the email for owners only */}
+                    {role !== "player" && <div className="ah-sub tabular-nums">{u.phone}</div>}
                   </TableCell>
                   <TableCell>
                     <AdminTag>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</AdminTag>
@@ -123,6 +158,9 @@ export function UsersView({
                   </TableCell>
                   <TableCell className="ah-r">
                     <div className="ah-row-actions">
+                      <Button variant="ghost" size="sm" onClick={() => setViewing(u)}>
+                        View
+                      </Button>
                       {u.is_active ? (
                         <Button variant="ghost" size="sm" onClick={() => setSuspending(u)}>
                           Suspend
@@ -180,7 +218,11 @@ export function UsersView({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Suspend {suspending?.full_name}</DialogTitle>
+            <DialogTitle>Suspend {account}</DialogTitle>
+            <DialogDescription>
+              {suspending?.full_name} will be signed out and cannot sign in until the {account} is
+              reinstated. They are told the reason.
+            </DialogDescription>
           </DialogHeader>
           <Textarea
             value={reason}
@@ -213,7 +255,7 @@ export function UsersView({
                 );
               }}
             >
-              {suspend.isPending ? "Suspending…" : "Suspend"}
+              {suspend.isPending ? "Suspending…" : `Suspend ${account}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -230,12 +272,12 @@ export function UsersView({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {deleting?.full_name}?</DialogTitle>
+            <DialogTitle>Delete {account}?</DialogTitle>
           </DialogHeader>
           <p className="ah-mute" style={{ margin: 0, fontSize: 13 }}>
-            This removes the account from the active user list and permanently blocks it from
-            logging in. Their bookings, payments, and reviews are kept for record-keeping, but
-            personal details are scrubbed. This cannot be undone.
+            {deleting?.full_name}: this removes the {account} from the active list and permanently
+            blocks it from logging in. Their bookings, payments, and reviews are kept for
+            record-keeping, but personal details are scrubbed. This cannot be undone.
           </p>
           {deleteError && (
             <p role="alert" className="ah-auth-error">
@@ -261,7 +303,48 @@ export function UsersView({
                 });
               }}
             >
-              {remove.isPending ? "Deleting…" : "Delete User"}
+              {remove.isPending ? "Deleting…" : `Delete ${account}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!viewing} onOpenChange={(v) => !v && setViewing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{viewing?.full_name}</DialogTitle>
+            <DialogDescription>
+              {viewing
+                ? `${viewing.role.charAt(0).toUpperCase()}${viewing.role.slice(1)} account`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {viewing && (
+            <dl className="ah-detail">
+              <dt>Email</dt>
+              <dd>{viewing.email}</dd>
+              <dt>Phone</dt>
+              <dd className="tabular-nums">{viewing.phone}</dd>
+              <dt>Status</dt>
+              <dd>
+                <AdminBadge status={viewing.is_active ? "active" : "suspended"} />
+              </dd>
+              <dt>Email verified</dt>
+              <dd>{viewing.is_verified ? "Yes" : "No"}</dd>
+              <dt>Joined</dt>
+              <dd className="tabular-nums">{formatDate(viewing.created_at.slice(0, 10))}</dd>
+              <dt>Bookings</dt>
+              <dd className="tabular-nums">
+                {detail.isLoading
+                  ? "…"
+                  : detail.isError
+                    ? "Could not load"
+                    : (detail.data?.total_bookings ?? 0).toLocaleString("en-US")}
+              </dd>
+            </dl>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewing(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

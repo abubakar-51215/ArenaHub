@@ -1477,6 +1477,25 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 [data-admin] .ah-page-actions [data-slot="select"] {
   width: auto;
 }
+/* user detail in the View dialog: label / value pairs in the prototype's
+   field type (13px; labels in --muted, values in --text) */
+[data-admin] .ah-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 9px 18px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+[data-admin] .ah-detail dt {
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-detail dd {
+  margin: 0;
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
@@ -2352,8 +2371,9 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 
 /* Admin players and owners: page-head search box and the prototype's
    row actions (.row-actions: faint until the row is hovered or focused). */
+/* prototype: <input class="input" style="width:210px"> */
 [data-admin] .ah-search {
-  width: 260px;
+  width: 210px;
 }
 [data-admin] .ah-row-actions {
   display: flex;
