@@ -91,12 +91,16 @@ export function listAllBookings(params: {
 export function listAllPayments(params: {
   status?: PaymentStatus;
   method?: PaymentMethod;
+  date_from?: string;
+  date_to?: string;
   page?: number;
   page_size?: number;
 }): Promise<Page<AdminPayment>> {
   const q = new URLSearchParams();
   if (params.status) q.set("status", params.status);
   if (params.method) q.set("method", params.method);
+  if (params.date_from) q.set("date_from", params.date_from);
+  if (params.date_to) q.set("date_to", params.date_to);
   q.set("page", String(params.page ?? 1));
   q.set("page_size", String(params.page_size ?? 20));
   return api.get(`/admin/payments?${q.toString()}`);

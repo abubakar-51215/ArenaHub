@@ -112,10 +112,19 @@ export function useAllBookings(params: {
 export function useAllPayments(params: {
   status?: PaymentStatus;
   method?: PaymentMethod;
+  date_from?: string;
+  date_to?: string;
   page: number;
 }) {
   return useQuery({
-    queryKey: ["admin-payments", params.status ?? "", params.method ?? "", params.page],
+    queryKey: [
+      "admin-payments",
+      params.status ?? "",
+      params.method ?? "",
+      params.date_from ?? "",
+      params.date_to ?? "",
+      params.page,
+    ],
     queryFn: () => listAllPayments(params),
   });
 }
