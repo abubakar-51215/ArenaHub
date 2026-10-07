@@ -4,6 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { Donut, HourBars, LineChart, RankList, Sparkline } from "@/components/admin/charts";
+import {
+  Delta,
+  OverviewCard,
+  RANGE_LABEL,
+  dayLabels,
+  hourLabel,
+  hourRange,
+  money,
+} from "@/components/admin/overview-parts";
 import { PageHeader } from "@/components/admin/page-header";
 import { AdminBadge } from "@/components/admin/ui";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
@@ -17,11 +26,6 @@ import { ApiError } from "@/services/api";
 import type { DashboardOverview, OverviewKpi, OverviewRange } from "@/services/admin-overview";
 import { ARENA_CITIES, type Arena } from "@/types";
 
-const RANGE_LABEL: Record<OverviewRange, { now: string; prev: string; option: string }> = {
-  "30d": { now: "Last 30 days", prev: "Previous 30 days", option: "Last 30 days" },
-  quarter: { now: "This quarter", prev: "Previous quarter", option: "This quarter" },
-};
-
 function todayLine(city: string): string {
   const d = new Date();
   const weekday = d.toLocaleDateString("en-GB", { weekday: "long" });
@@ -29,80 +33,8 @@ function todayLine(city: string): string {
   return `${weekday}, ${date} · ${city || "all cities"}`;
 }
 
-/** "Rs. 7.84M" for millions (as in the prototype), full rupees below that. */
-function money(v: number): string {
-  if (v >= 1_000_000) return `Rs. ${(v / 1_000_000).toFixed(2)}M`;
-  return formatRs(Math.round(v));
-}
-
-function hourLabel(h: number): string {
-  const h12 = h % 12 || 12;
-  return `${h12}${h < 12 ? "a" : "p"}`;
-}
-
-function hourRange(start: number, end: number): string {
-  const fmt = (h: number) => `${h % 12 || 12}`;
-  const suffix = (h: number) => (h % 24 < 12 ? "AM" : "PM");
-  return `${fmt(start)}–${fmt(end)} ${suffix(end)}`;
-}
-
 function daysAgo(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
-}
-
-/* ---- card shell: loading skeleton, error with retry, empty ----------------- */
-function OverviewCard({
-  title,
-  actions,
-  state,
-  onRetry,
-  empty,
-  className,
-  children,
-}: {
-  title: React.ReactNode;
-  actions?: React.ReactNode;
-  state: "loading" | "error" | "empty" | "ready";
-  onRetry: () => void;
-  empty?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={cn("ah-card", className)}>
-      <div className="ah-card-head">
-        {typeof title === "string" ? <h2 className="ah-h2">{title}</h2> : title}
-        {state === "ready" && actions}
-      </div>
-      <div className="ah-card-body">
-        {state === "loading" && (
-          <div className="ah-skeleton" style={{ height: 160 }} aria-label="Loading" />
-        )}
-        {state === "error" && (
-          <div className="ah-card-error" role="alert">
-            <span>Could not load this card.</span>
-            <Button variant="outline" size="sm" onClick={onRetry}>
-              Try again
-            </Button>
-          </div>
-        )}
-        {state === "empty" && (
-          <p className="ah-empty-line">{empty ?? "No data for this period."}</p>
-        )}
-        {state === "ready" && children}
-      </div>
-    </section>
-  );
-}
-
-function Delta({ pct }: { pct: number | null }) {
-  if (pct === null) return null;
-  const up = pct >= 0;
-  return (
-    <span className={cn("ah-delta", up ? "up" : "down")}>
-      {up ? "▲" : "▼"} {Math.abs(pct)}%
-    </span>
-  );
 }
 
 function Kpi({
@@ -463,11 +395,7 @@ export default function AdminDashboardPage() {
 
   const now = data?.bookings_by_day.map((d) => d.value) ?? [];
   const prev = data?.previous_bookings_by_day.map((d) => d.value) ?? [];
-  const labels = (data?.bookings_by_day ?? []).map((d, i, all) => {
-    const day = new Date(d.date + "T00:00:00");
-    if (i === 0) return day.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-    return i % 3 === 0 || i === all.length - 1 ? String(day.getDate()) : "";
-  });
+  const labels = dayLabels(data?.bookings_by_day ?? []);
   const totalCity = data?.by_city.reduce((s, c) => s + c.bookings, 0) ?? 0;
   const hours = data?.utilisation_by_hour ?? [];
   const peakIdx = hours.length
