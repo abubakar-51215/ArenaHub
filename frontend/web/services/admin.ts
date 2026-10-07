@@ -28,6 +28,10 @@ export function listArenaQueue(status: ArenaStatus, page = 1, pageSize = 20): Pr
   return api.get<Page<Arena>>(`/admin/arenas?status=${status}&page=${page}&page_size=${pageSize}`);
 }
 
+export function getAdminArena(arenaId: string): Promise<Arena> {
+  return api.get<Arena>(`/admin/arenas/${arenaId}`);
+}
+
 export function approveArena(arenaId: string): Promise<Arena> {
   return api.post<Arena>(`/admin/arenas/${arenaId}/approve`);
 }

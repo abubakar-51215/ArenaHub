@@ -48,6 +48,12 @@ const ICONS = {
       <path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11.5a3 3 0 1 0-1.6-5.5M18 20a5.6 5.6 0 0 0-2-4.2" />
     </svg>
   ),
+  arenas: (
+    <svg {...svgProps}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M12 5v14M3 10h3v4H3M21 10h-3v4h3" />
+    </svg>
+  ),
   owners: (
     <svg {...svgProps} strokeLinejoin="round">
       <path d="M3 21V9l9-6 9 6v12" />
@@ -115,6 +121,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Players", href: "/admin/users", icon: "players" },
       { label: "Arena owners", href: "/admin/owners", icon: "owners" },
+      { label: "Arenas", href: "/admin/arenas/all", icon: "arenas" },
     ],
   },
   {
@@ -139,6 +146,14 @@ function initials(name: string | undefined): string {
 
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const activeHref = NAV_GROUPS.flatMap((g) => g.items)
+    .map((i) => i.href)
+    .filter((href) =>
+      href === "/admin"
+        ? pathname === "/admin"
+        : pathname === href || pathname.startsWith(href + "/"),
+    )
+    .sort((x, y) => y.length - x.length)[0];
   const router = useRouter();
   const { refreshToken, clear, user } = useAuthStore();
 
@@ -165,8 +180,8 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <nav key={group.label ?? `group-${groupIndex}`} className="ah-nav-group">
           {group.label && <p className="ah-nav-label">{group.label}</p>}
           {group.items.map((item) => {
-            const active =
-              item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            // the most specific item wins: /admin/arenas/all is Arenas, not Approvals
+            const active = item.href === activeHref;
             const count = item.count ? counts[item.count] : undefined;
             return (
               <Link
@@ -200,7 +215,13 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <div className="ah-owner-name truncate">{user?.full_name ?? "Admin"}</div>
             <div className="ah-owner-role">Admin</div>
           </div>
-          <button type="button" onClick={onLogout} className="ah-logout" aria-label="Log out" title="Log out">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="ah-logout"
+            aria-label="Log out"
+            title="Log out"
+          >
             {ICONS.logout}
           </button>
         </div>

@@ -506,6 +506,11 @@ export default function AdminDashboardPage() {
 
           <OverviewCard
             title={range === "30d" ? "Top arenas, last 30 days" : "Top arenas this quarter"}
+            actions={
+              <Button asChild variant="ghost" size="sm" style={{ marginLeft: "auto" }}>
+                <Link href="/admin/arenas/all">View all</Link>
+              </Button>
+            }
             state={state((data?.top_arenas.length ?? 0) > 0)}
             onRetry={retry}
             empty="No bookings in this period."
