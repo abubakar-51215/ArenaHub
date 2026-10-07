@@ -3,6 +3,7 @@ import { Archivo, Inter_Tight } from "next/font/google";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
+import { ADMIN_THEME_SCRIPT } from "@/lib/admin-theme";
 
 // Dashboard typography (consumed starting Step 6, scoped to
 // [data-theme="arena"] in globals.css — nothing reads these yet). `axes`
@@ -31,7 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* applies the admin dark theme before first paint, /admin routes only */}
+        <script dangerouslySetInnerHTML={{ __html: ADMIN_THEME_SCRIPT }} />
+      </head>
       <body
         className={`${archivo.variable} ${interTight.variable} antialiased`}
       >
