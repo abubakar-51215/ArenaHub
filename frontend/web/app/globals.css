@@ -628,6 +628,15 @@
   /* Text colour as a real property: without it, admin text inherits <body>'s
      colour, which comes from :root's blue-grey --foreground, not ink. */
   color: var(--foreground);
+  /* the prototype's body type: everything without its own size inherits it */
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+/* prototype: button, input, select and textarea inherit the font but keep
+   the browser's normal letter-spacing (font: inherit does not carry it) */
+[data-admin] :is(button, input, select, textarea) {
+  letter-spacing: normal;
 }
 
 [data-admin] .ah-rail {
@@ -1688,7 +1697,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 [data-admin] .ah-pager button {
   min-width: 28px;
   height: 28px;
-  padding: 0 6px;
+  padding: 0;
   border-radius: 7px;
   border: 1px solid transparent;
   font-size: 12.5px;
