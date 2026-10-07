@@ -2398,6 +2398,11 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   position: relative;
   z-index: 2;
   max-width: 400px;
+  /* the prototype's network counts (.auth-stats) sit under the quote; they
+     are left out (an unauthenticated page cannot show real counts), so
+     their 98px stays reserved and the quote keeps the prototype's place,
+     clear of the network art */
+  margin-bottom: 98px;
 }
 [data-admin] .ah-auth-quote h3 {
   font-family: var(--font-archivo), sans-serif;
