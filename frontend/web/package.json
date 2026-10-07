@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:no-admin-links": "node scripts/check-no-admin-links.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
