@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
+import { AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -15,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuditLogs, usePlatformSettings } from "@/hooks/useAdmin";
 import { formatDate } from "@/lib/format";
 import type { PlatformSettings } from "@/types";
@@ -24,8 +25,8 @@ const TABS = [
   "General",
   "Email",
   "SMS",
-  "Payment Gateways",
-  "Booking Settings",
+  "Payment gateways",
+  "Booking rules",
   "Notifications",
   "Security",
 ] as const;
@@ -48,34 +49,40 @@ function useSettingsForm() {
     setSaved(false);
   }
 
-  return { form, isLoading, saved, setSaved, set, update };
+  const discard = () => {
+    if (data) setForm(data);
+    setSaved(false);
+  };
+
+  return { form, isLoading, saved, setSaved, set, update, discard };
 }
 
 function SaveBar({
   saved,
   pending,
   onSave,
+  onDiscard,
 }: {
   saved: boolean;
   pending: boolean;
   onSave: () => void;
+  onDiscard: () => void;
 }) {
   return (
-    <div className="flex items-center justify-end gap-3 pt-2">
-      {saved && <span className="text-sm text-success">Saved.</span>}
-      <Button
-        className="bg-success text-success-foreground hover:bg-success/90"
-        disabled={pending}
-        onClick={onSave}
-      >
-        {pending ? "Saving…" : "Save Changes"}
+    <div className="ah-save-row">
+      <Button disabled={pending} onClick={onSave}>
+        {pending ? "Saving…" : "Save changes"}
       </Button>
+      <Button variant="ghost" disabled={pending} onClick={onDiscard}>
+        Discard
+      </Button>
+      {saved && <span className="ah-saved">Saved.</span>}
     </div>
   );
 }
 
 function EmailTab() {
-  const { form, isLoading, saved, setSaved, set, update } = useSettingsForm();
+  const { form, isLoading, saved, setSaved, set, update, discard } = useSettingsForm();
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
@@ -84,7 +91,7 @@ function EmailTab() {
         SMTP credentials are configured server-side (backend .env), not here — this only controls
         whether email notifications go out and what name they&apos;re sent from.
       </p>
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+      <div className="ah-setting-row">
         <div>
           <p className="text-sm font-medium text-foreground">Email notifications</p>
           <p className="text-xs text-muted-foreground">
@@ -96,7 +103,7 @@ function EmailTab() {
           onCheckedChange={(v) => set("email", { ...form.email, enabled: v })}
         />
       </div>
-      <div>
+      <div className="ah-field">
         <Label htmlFor="email-from-name">From name</Label>
         <Input
           id="email-from-name"
@@ -108,13 +115,14 @@ function EmailTab() {
         saved={saved}
         pending={update.isPending}
         onSave={() => update.mutate(form, { onSuccess: () => setSaved(true) })}
+        onDiscard={discard}
       />
     </div>
   );
 }
 
 function SmsTab() {
-  const { form, isLoading, saved, setSaved, set, update } = useSettingsForm();
+  const { form, isLoading, saved, setSaved, set, update, discard } = useSettingsForm();
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
@@ -123,7 +131,7 @@ function SmsTab() {
         No SMS gateway is wired up yet — OTP/verification delivery is email-only for now. This
         toggle records intent so it isn&apos;t lost once a provider is connected.
       </p>
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+      <div className="ah-setting-row">
         <div>
           <p className="text-sm font-medium text-foreground">SMS notifications</p>
           <p className="text-xs text-muted-foreground">Has no effect until a provider is wired.</p>
@@ -133,7 +141,7 @@ function SmsTab() {
           onCheckedChange={(v) => set("sms", { ...form.sms, enabled: v })}
         />
       </div>
-      <div>
+      <div className="ah-field">
         <Label htmlFor="sms-provider">Provider (informational)</Label>
         <Input
           id="sms-provider"
@@ -146,13 +154,14 @@ function SmsTab() {
         saved={saved}
         pending={update.isPending}
         onSave={() => update.mutate(form, { onSuccess: () => setSaved(true) })}
+        onDiscard={discard}
       />
     </div>
   );
 }
 
 function PaymentGatewaysTab() {
-  const { form, isLoading, saved, setSaved, set, update } = useSettingsForm();
+  const { form, isLoading, saved, setSaved, set, update, discard } = useSettingsForm();
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const gateways: { key: keyof PlatformSettings["payment_gateways"]; label: string }[] = [
@@ -169,10 +178,7 @@ function PaymentGatewaysTab() {
         control which payment methods players can choose at checkout.
       </p>
       {gateways.map((g) => (
-        <div
-          key={g.key}
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
-        >
+        <div key={g.key} className="ah-setting-row">
           <p className="text-sm font-medium text-foreground">{g.label}</p>
           <Switch
             checked={form.payment_gateways[g.key]}
@@ -186,13 +192,14 @@ function PaymentGatewaysTab() {
         saved={saved}
         pending={update.isPending}
         onSave={() => update.mutate(form, { onSuccess: () => setSaved(true) })}
+        onDiscard={discard}
       />
     </div>
   );
 }
 
 function BookingSettingsTab() {
-  const { form, isLoading, saved, setSaved, set, update } = useSettingsForm();
+  const { form, isLoading, saved, setSaved, set, update, discard } = useSettingsForm();
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
@@ -202,7 +209,7 @@ function BookingSettingsTab() {
         their own listing.
       </p>
       <div className="grid grid-cols-2 gap-4">
-        <div>
+        <div className="ah-field">
           <Label htmlFor="advance-pct">Default advance payment %</Label>
           <Input
             id="advance-pct"
@@ -218,7 +225,7 @@ function BookingSettingsTab() {
             }
           />
         </div>
-        <div>
+        <div className="ah-field">
           <Label htmlFor="auto-cancel-hours">Auto-cancel unpaid bookings after (hours)</Label>
           <Input
             id="auto-cancel-hours"
@@ -233,7 +240,7 @@ function BookingSettingsTab() {
             }
           />
         </div>
-        <div>
+        <div className="ah-field">
           <Label htmlFor="min-advance-hours">Minimum booking lead time (hours)</Label>
           <Input
             id="min-advance-hours"
@@ -248,7 +255,7 @@ function BookingSettingsTab() {
             }
           />
         </div>
-        <div>
+        <div className="ah-field">
           <Label htmlFor="max-advance-days">Maximum booking window (days)</Label>
           <Input
             id="max-advance-days"
@@ -268,13 +275,14 @@ function BookingSettingsTab() {
         saved={saved}
         pending={update.isPending}
         onSave={() => update.mutate(form, { onSuccess: () => setSaved(true) })}
+        onDiscard={discard}
       />
     </div>
   );
 }
 
 function NotificationsTab() {
-  const { form, isLoading, saved, setSaved, set, update } = useSettingsForm();
+  const { form, isLoading, saved, setSaved, set, update, discard } = useSettingsForm();
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const events: { key: keyof PlatformSettings["notifications"]; label: string }[] = [
@@ -290,10 +298,7 @@ function NotificationsTab() {
         preferences still apply on top of these.
       </p>
       {events.map((ev) => (
-        <div
-          key={ev.key}
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
-        >
+        <div key={ev.key} className="ah-setting-row">
           <p className="text-sm font-medium text-foreground">{ev.label}</p>
           <Switch
             checked={form.notifications[ev.key]}
@@ -305,38 +310,33 @@ function NotificationsTab() {
         saved={saved}
         pending={update.isPending}
         onSave={() => update.mutate(form, { onSuccess: () => setSaved(true) })}
+        onDiscard={discard}
       />
     </div>
   );
 }
 
 function GeneralTab() {
-  const { form, isLoading, saved, setSaved, set, update } = useSettingsForm();
+  const { form, isLoading, saved, setSaved, set, update, discard } = useSettingsForm();
 
-  if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading || !form) return <p className="ah-mute">Loading…</p>;
 
   return (
-    <div className="max-w-2xl space-y-4">
-      <div>
-        <Label htmlFor="site-name">Site name</Label>
-        <Input
-          id="site-name"
-          value={form.site_name}
-          onChange={(e) => set("site_name", e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="site-description">Site description</Label>
-        <Textarea
-          id="site-description"
-          value={form.site_description}
-          onChange={(e) => set("site_description", e.target.value)}
-          rows={2}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="site-email">Site email</Label>
+    <div>
+      {/* prototype General tab: a two-column field grid; description and
+          address span both columns. Default language, the logo and the
+          platform fee are not stored, so they are left out. */}
+      <div className="ah-grid ah-g-2" style={{ gap: 16 }}>
+        <div className="ah-field">
+          <Label htmlFor="site-name">Platform name</Label>
+          <Input
+            id="site-name"
+            value={form.site_name}
+            onChange={(e) => set("site_name", e.target.value)}
+          />
+        </div>
+        <div className="ah-field">
+          <Label htmlFor="site-email">Support email</Label>
           <Input
             id="site-email"
             type="email"
@@ -344,34 +344,54 @@ function GeneralTab() {
             onChange={(e) => set("site_email", e.target.value)}
           />
         </div>
-        <div>
-          <Label htmlFor="site-phone">Site phone</Label>
+        <div className="ah-field">
+          <Label htmlFor="site-phone">Support phone</Label>
           <Input
             id="site-phone"
             value={form.site_phone}
             onChange={(e) => set("site_phone", e.target.value)}
           />
         </div>
-      </div>
-      <div>
-        <Label htmlFor="address">Address</Label>
-        <Input id="address" value={form.address} onChange={(e) => set("address", e.target.value)} />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+        <div className="ah-field">
           <Label htmlFor="currency">Default currency</Label>
-          <Input
+          <Select
             id="currency"
             value={form.default_currency}
             onChange={(e) => set("default_currency", e.target.value)}
-          />
+          >
+            <option value="PKR">PKR (Rs.)</option>
+            {form.default_currency !== "PKR" && (
+              <option value={form.default_currency}>{form.default_currency}</option>
+            )}
+          </Select>
         </div>
-        <div>
+        <div className="ah-field">
           <Label htmlFor="timezone">Timezone</Label>
-          <Input
+          <Select
             id="timezone"
             value={form.timezone}
             onChange={(e) => set("timezone", e.target.value)}
+          >
+            <option value="Asia/Karachi">Asia/Karachi (UTC+05:00)</option>
+            {form.timezone !== "Asia/Karachi" && (
+              <option value={form.timezone}>{form.timezone}</option>
+            )}
+          </Select>
+        </div>
+        <div className="ah-field" style={{ gridColumn: "1 / -1" }}>
+          <Label htmlFor="site-description">Platform description</Label>
+          <Input
+            id="site-description"
+            value={form.site_description}
+            onChange={(e) => set("site_description", e.target.value)}
+          />
+        </div>
+        <div className="ah-field" style={{ gridColumn: "1 / -1" }}>
+          <Label htmlFor="address">Registered address</Label>
+          <Input
+            id="address"
+            value={form.address}
+            onChange={(e) => set("address", e.target.value)}
           />
         </div>
       </div>
@@ -380,6 +400,7 @@ function GeneralTab() {
         saved={saved}
         pending={update.isPending}
         onSave={() => update.mutate(form, { onSuccess: () => setSaved(true) })}
+        onDiscard={discard}
       />
     </div>
   );
@@ -393,8 +414,10 @@ function SecurityTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-foreground">Audit Log</h3>
-      <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <section className="ah-card">
+        <div className="ah-card-head">
+          <h2 className="ah-h2">Audit log</h2>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -407,59 +430,43 @@ function SecurityTab() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={4}>
+                <TableCell className="ah-mute" colSpan={4}>
                   Loading…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && logs.length === 0 && (
               <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={4}>
-                  No admin actions recorded yet.
+                <TableCell colSpan={4} className="p-0">
+                  <AdminEmpty>No admin actions recorded yet.</AdminEmpty>
                 </TableCell>
               </TableRow>
             )}
             {logs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell className="font-medium text-foreground">{log.actor_name}</TableCell>
-                <TableCell className="text-muted-foreground">{log.action}</TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="ah-strong">{log.actor_name}</TableCell>
+                <TableCell>{log.action}</TableCell>
+                <TableCell className="ah-t2 tabular-nums">
                   {log.target_type} · {log.target_id.slice(0, 8)}
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="ah-t2 tabular-nums">
                   {formatDate(log.created_at.slice(0, 10))}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </div>
-      {data && data.total > 0 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Showing {(page - 1) * data.page_size + 1}–{Math.min(page * data.page_size, data.total)}{" "}
-            of {data.total}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+        {data && data.total > 0 && (
+          <AdminTableFoot
+            from={(page - 1) * data.page_size + 1}
+            to={Math.min(page * data.page_size, data.total)}
+            total={data.total}
+            page={page}
+            pageCount={totalPages}
+            onPage={setPage}
+          />
+        )}
+      </section>
     </div>
   );
 }
@@ -469,31 +476,31 @@ export default function AdminSettingsPage() {
 
   return (
     <>
-      <PageHeader title="System Settings" subtitle="Manage system configuration and preferences" />
-      <div className="animate-fade-in space-y-6">
-        <div className="flex gap-1 border-b border-border">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-2 text-sm font-medium ${
-                tab === t
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {tab === "General" && <GeneralTab />}
-        {tab === "Email" && <EmailTab />}
-        {tab === "SMS" && <SmsTab />}
-        {tab === "Payment Gateways" && <PaymentGatewaysTab />}
-        {tab === "Booking Settings" && <BookingSettingsTab />}
-        {tab === "Notifications" && <NotificationsTab />}
-        {tab === "Security" && <SecurityTab />}
+      <PageHeader title="System settings" subtitle="Platform-wide configuration" />
+      <div className="animate-fade-in">
+        <section className="ah-card">
+          <div className="ah-tabs">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={tab === t ? "ah-tab is-on" : "ah-tab"}
+                aria-current={tab === t ? "page" : undefined}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <div className="ah-card-body">
+            {tab === "General" && <GeneralTab />}
+            {tab === "Email" && <EmailTab />}
+            {tab === "SMS" && <SmsTab />}
+            {tab === "Payment gateways" && <PaymentGatewaysTab />}
+            {tab === "Booking rules" && <BookingSettingsTab />}
+            {tab === "Notifications" && <NotificationsTab />}
+            {tab === "Security" && <SecurityTab />}
+          </div>
+        </section>
       </div>
     </>
   );
