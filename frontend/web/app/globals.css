@@ -3321,6 +3321,26 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   }
 }
 
+/* owner Arenas: the admin's note under the name, and the occupancy bar
+   (prototype: a 60px rank bar with the percentage beside it) */
+[data-owner] .ah-note {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-note-off {
+  color: var(--off-text);
+}
+[data-owner] .ah-occ {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+[data-owner] .ah-occ .ah-rank-bar {
+  width: 60px;
+}
+
 /* owner list pages (Bookings, Arenas): the table from 768px up; below that
    each row becomes a card, so the page never scrolls sideways */
 [data-owner] .ah-cards {
@@ -3350,6 +3370,10 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   [data-owner] .ah-cards .ah-sub,
   [data-owner] .ah-cards .ah-strong,
   [data-owner] .ah-cards .ah-note,
+  [data-owner] .ah-cards .ah-occ,
+  [data-owner] .ah-ocanvas [data-slot="button"],
+  [data-owner] .ah-ohead [data-slot="button"],
+  [data-owner] .ah-pager button,
   [data-owner] .ah-tbl-foot,
   [data-owner] .ah-page-sub {
     font-size: 14px;
@@ -3363,5 +3387,10 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   }
   [data-owner] .ah-cards .ah-row-actions {
     flex-wrap: wrap;
+  }
+  [data-owner] .ah-card-error .ah-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
