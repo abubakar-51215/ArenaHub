@@ -10,7 +10,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.modules.booking.model import BookingStatus, PaymentPlan
-from app.modules.payment.model import PaymentMethod
+from app.modules.payment.model import PaymentLifecycleStatus, PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import UserRole
 
@@ -86,6 +86,9 @@ class AdminPaymentResponse(BaseModel):
     payment_method: PaymentMethod
     gateway_transaction_id: str | None
     status: PayStatus
+    # the fine-grained lifecycle ("refunded" once refunds reach the amount;
+    # status stays "completed" then)
+    lifecycle_status: PaymentLifecycleStatus
     created_at: datetime
     # a refund against this payment is still waiting (gateway retry, or manual)
     refund_pending: bool = False

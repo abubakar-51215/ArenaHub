@@ -637,3 +637,25 @@ async def test_gateway_answering_pending_counts_as_a_try_until_manual(
     assert set(gateway.keys) == {str(refund.id)} and len(gateway.keys) == 6
     events = [n.event for n in await _events(db_session, player_user.id)]
     assert events.count("refund_needs_manual") == 1
+
+
+async def test_admin_payments_show_lifecycle_status(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A fully refunded payment keeps status "completed" but its lifecycle is
+    "refunded", so the admin list can label it Refunded."""
+    s = await _setup(client, db_session, "life1")
+    player, _ = await make_user(client, db_session, "life1-player@example.com")
+    slots = await _slot_ids(client, s["court_id"], s["day"])
+    await _paid_booking(client, player, s["court_id"], slots[0])
+
+    h = auth_header(s["admin"])
+    before = (await client.get(f"{API}/admin/payments", headers=h)).json()["data"]["items"]
+    [paid] = before
+    assert paid["lifecycle_status"] == "confirmed"
+
+    await _act(client, s["admin"], s["arena_id"], "suspend")
+    after = (await client.get(f"{API}/admin/payments", headers=h)).json()["data"]["items"]
+    [refunded] = after
+    assert refunded["status"] == "completed"
+    assert refunded["lifecycle_status"] == "refunded"
