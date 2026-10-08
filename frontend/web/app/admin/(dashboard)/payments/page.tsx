@@ -23,11 +23,19 @@ import {
 import { useAllPayments } from "@/hooks/useAdmin";
 import { formatDate, formatRs } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_METHODS } from "@/lib/payment-methods";
-import type { PaymentMethod, PaymentStatus } from "@/types";
+import type { AdminPayment, PaymentMethod, PaymentStatus } from "@/types";
 
 const STATUSES: PaymentStatus[] = ["pending", "completed", "failed", "refunded"];
 
 type Period = "" | "this" | "last";
+
+/** The status shown in the badge: a payment whose lifecycle reached
+ *  "refunded" (refunds equal the amount) reads "Refunded", even though its
+ *  coarse status stays "completed". A partial refund cannot be told apart
+ *  from the API's fields today. */
+function shownStatus(p: AdminPayment): string {
+  return p.lifecycle_status === "refunded" ? "refunded" : p.status;
+}
 
 /** Month bounds as Asia/Karachi wall-clock times (how payment times are stored). */
 function monthRange(period: Period): { date_from?: string; date_to?: string } {
@@ -162,7 +170,7 @@ export default function AdminPaymentsPage() {
                   <TableCell className="ah-r ah-money">{formatRs(p.amount)}</TableCell>
                   <TableCell>
                     <span className="ah-badges">
-                      <AdminBadge status={p.status} />
+                      <AdminBadge status={shownStatus(p)} />
                       {p.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
                     </span>
                   </TableCell>

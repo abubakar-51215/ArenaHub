@@ -366,6 +366,8 @@ export interface AdminBooking {
 export interface AdminPayment {
   /** a refund against this payment is still waiting (gateway retry, or manual) */
   refund_pending?: boolean;
+  /** fine-grained lifecycle; "refunded" once refunds reach the amount */
+  lifecycle_status?: string;
   id: string;
   player_id: string;
   player_name: string;

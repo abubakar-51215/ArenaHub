@@ -410,6 +410,7 @@ async def list_payments(
             payment_method=p.payment_method,
             gateway_transaction_id=p.gateway_transaction_id,
             status=p.status,
+            lifecycle_status=p.lifecycle_status,
             created_at=p.created_at,
             refund_pending=p.id in waiting,
         )
