@@ -2817,3 +2817,505 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* ---------------------------------------------------------------------------
+   Owner console. The owner shell sets [data-admin] (the shared design
+   system: rail, top bar, cards, tables, badges, buttons, dark theme) and
+   [data-owner] for the rules below, copied from the owner prototype
+   (design/prototypes/arena-hub-owner.html: .venue-pick, .owner, .pitch-*,
+   .slot, .blk-*, .now-line, .pitch-legend).
+   --------------------------------------------------------------------------- */
+/* prototype .venue-pick / .venue-dot: the arena picker in the top bar */
+[data-admin] .ah-venue-pick {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 260px;
+  padding: 6px 11px 6px 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: normal;
+}
+[data-admin] .ah-venue-pick:hover {
+  border-color: var(--muted-foreground);
+}
+[data-admin] .ah-venue-pick:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+[data-admin] .ah-venue-pick b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-admin] .ah-venue-pick svg {
+  flex: none;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-venue-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lime-deep);
+  box-shadow: 0 0 0 3px var(--lime-wash);
+}
+/* a small menu (owner card, arena picker): the alerts popover's surface */
+[data-admin] .ah-menu {
+  z-index: 70;
+  min-width: 190px;
+  max-width: min(320px, 92vw);
+  max-height: min(380px, 70vh);
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13.5px;
+  animation: ah-rise 0.16s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-menu {
+    animation: none;
+  }
+}
+[data-admin] .ah-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+}
+[data-admin] .ah-menu-item svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-menu-item[data-highlighted] {
+  background: var(--line-soft);
+}
+[data-admin] .ah-menu-check {
+  width: 12px;
+  flex: none;
+  color: var(--lime-deep);
+  font-weight: 700;
+}
+/* the rail foot's owner card is a button that opens the account menu */
+[data-admin] .ah-owner-btn {
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+[data-admin] .ah-owner-btn:hover,
+[data-admin] .ah-owner-btn[data-state="open"] {
+  background: var(--rail-hover);
+}
+[data-admin] .ah-owner-btn:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+/* bell popover: an unread dot per notification and the "See all" link */
+[data-admin] .ah-pop-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lime-deep);
+}
+[data-admin] .ah-pop-dot.is-read {
+  background: var(--line);
+}
+[data-admin] .ah-pop-all {
+  display: block;
+  margin-top: 4px;
+  padding: 9px 11px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+[data-admin] .ah-pop-all:hover,
+[data-admin] .ah-pop-all:focus-visible {
+  background: var(--line-soft);
+  border-radius: 9px;
+  outline: none;
+}
+/* below 1024px the arena picker gets a row under the slim bar */
+[data-admin] .ah-pickrow {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+[data-admin] .ah-pickrow .ah-venue-pick {
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+}
+/* owner page heading: lined up with the owner pages' content padding */
+[data-owner] .ah-ohead {
+  padding: 16px 16px 0;
+}
+@media (min-width: 640px) {
+  [data-owner] .ah-ohead {
+    padding: 24px 24px 0;
+  }
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-ohead {
+    padding: 28px 32px 0;
+  }
+}
+[data-owner] .ah-ohead .ah-page-head {
+  margin-bottom: 0;
+}
+/* the content block right after the heading starts at the heading's gap */
+[data-owner] .ah-ohead + * {
+  padding-top: 20px;
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-menu-item {
+    min-height: 44px;
+  }
+}
+/* card sub-line under a card title (prototype .card-head small text) and
+   an inline text button */
+[data-admin] .ah-card-sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-link {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* prototype .pitch: the Live Board's courts x hours grid */
+[data-admin] .ah-pitch {
+  padding: 4px 0 0;
+}
+[data-admin] .ah-pitch-scroll {
+  overflow-x: auto;
+  padding: 22px 18px 18px;
+}
+[data-admin] .ah-pitch-scroll:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: -2px;
+}
+[data-admin] .ah-pitch-inner {
+  position: relative;
+}
+[data-admin] .ah-pitch-hours {
+  display: grid;
+  margin-bottom: 6px;
+}
+[data-admin] .ah-pitch-hours span {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 112,
+    "wght" 600;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  text-align: center;
+  text-transform: uppercase;
+}
+[data-admin] .ah-pitch-row {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 3px;
+  align-items: stretch;
+}
+[data-admin] .ah-pitch-label {
+  padding-right: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+[data-admin] .ah-pitch-label b {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+[data-admin] .ah-pitch-label span {
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-slot {
+  height: 42px;
+  border-radius: 6px;
+  background: var(--slot-open);
+  border: 1px dashed var(--line);
+}
+[data-admin] .ah-blk {
+  height: 42px;
+  min-width: 0;
+  border-radius: 7px;
+  padding: 5px 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+[data-admin] .ah-blk b {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-admin] .ah-blk span {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-admin] .ah-blk-ok {
+  background: #0f1a15;
+  color: #eaf0ec;
+}
+[data-admin] .ah-blk-ok span {
+  color: #b5c2ba; /* prototype: 72% opacity of the block text */
+}
+[data-admin] .ah-blk-wait {
+  background: var(--amber-wash);
+  color: #8a5d05;
+  border: 1px solid #efd9a2;
+}
+[data-admin] .ah-blk-hold {
+  background: repeating-linear-gradient(135deg, var(--line-soft) 0 6px, transparent 6px 12px);
+  border: 1px dashed var(--line);
+  color: var(--muted-foreground);
+}
+html[data-theme="dark"] [data-admin] .ah-blk-ok {
+  background: #25352c;
+  color: #e7efe9;
+}
+html[data-theme="dark"] [data-admin] .ah-blk-wait {
+  border-color: #4a3a12;
+  color: #e8b93f;
+}
+/* the now line covers the hour columns (left = the label column) */
+[data-admin] .ah-now-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+[data-admin] .ah-now-line {
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  width: 2px;
+  background: var(--lime-deep);
+}
+[data-admin] .ah-now-line::before {
+  content: attr(data-t);
+  position: absolute;
+  top: -19px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--lime);
+  color: #0f1a15;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 112,
+    "wght" 700;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+[data-admin] .ah-pitch-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 2px 18px 16px;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pitch-legend i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+[data-admin] .ah-pitch-note {
+  padding: 0 18px 18px;
+}
+/* prototype --slot-open (light); the dark value is in the dark token block */
+[data-admin] {
+  --slot-open: #f6f7f4;
+}
+/* owner page body under the heading (the admin canvas, with the owner
+   pages' 16/24/32px side padding) */
+[data-owner] .ah-ocanvas {
+  padding: 20px 16px 50px;
+  max-width: 1560px;
+}
+@media (min-width: 640px) {
+  [data-owner] .ah-ocanvas {
+    padding: 20px 24px 60px;
+  }
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-ocanvas {
+    padding: 20px 32px 60px;
+  }
+}
+/* KPI foot with a delta line and a sparkline under it */
+[data-admin] .ah-kpi-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+/* a short list of rows: name and detail on the left, a badge on the right */
+[data-admin] .ah-attn {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-admin] .ah-attn li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-attn li:last-child {
+  border-bottom: 0;
+}
+[data-admin] .ah-attn b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+[data-admin] .ah-attn span:not(.ah-badge) {
+  display: block;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-attn .ah-badge {
+  margin-left: auto;
+  flex: none;
+}
+/* legend swatches reuse the block classes, so they match in both themes */
+[data-admin] .ah-pitch-legend i.ah-slot {
+  height: 11px;
+}
+/* page-header date inputs keep their own width, like the selects */
+[data-admin] .ah-page-actions [data-slot="input"] {
+  width: auto;
+}
+/* the owner rail at the prototype's full size when the window is tall
+   enough for its 13 items (860px); shorter windows keep the admin's 0.8
+   scale so the rail never scrolls */
+@media (min-height: 860px) {
+  [data-owner] .ah-rail {
+    width: 246px;
+    padding: 18px 14px 14px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-brand {
+    gap: 10px;
+    padding: 2px 8px 20px;
+  }
+  [data-owner] .ah-rail .ah-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+  [data-owner] .ah-rail .ah-brand-name {
+    font-size: 15px;
+  }
+  [data-owner] .ah-rail .ah-brand-name small {
+    font-size: 8.5px;
+    margin-top: 2px;
+  }
+  [data-owner] .ah-nav-group {
+    margin-bottom: 16px;
+  }
+  [data-owner] .ah-nav-label {
+    margin: 9px 0;
+    padding: 0 10px 7px;
+  }
+  [data-owner] .ah-nav-item {
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    font-size: 13.5px;
+  }
+  [data-owner] .ah-nav-item svg {
+    width: 17px;
+    height: 17px;
+  }
+  [data-owner] .ah-nav-count {
+    font-size: 10.5px;
+    padding: 1px 6px;
+  }
+  [data-owner] .ah-rail-foot {
+    padding-top: 14px;
+  }
+  [data-owner] .ah-owner {
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  [data-owner] .ah-owner-av {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+  [data-owner] .ah-owner-name {
+    font-size: 12.5px;
+  }
+  [data-owner] .ah-owner-role {
+    font-size: 10.5px;
+  }
+}
+/* owner phone standard: reading text at least 14px below 768px. Labels that
+   are part of the design (eyebrows, badges, tags, chart and axis labels, the
+   board's hour labels and legend) keep the prototype sizes. */
+@media (max-width: 767.98px) {
+  [data-owner] .ah-card-sub,
+  [data-owner] .ah-attn b,
+  [data-owner] .ah-attn span:not(.ah-badge),
+  [data-owner] .ah-empty-line,
+  [data-owner] .ah-kpi-foot,
+  [data-owner] .ah-pitch-label b,
+  [data-owner] .ah-card-error span {
+    font-size: 14px;
+  }
+  /* the rank list sets 13px inline */
+  [data-owner] .ah-rank-item b,
+  [data-owner] .ah-rank-item .ah-money {
+    font-size: 14px !important;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-pickrow .ah-venue-pick {
+    font-size: 14px;
+  }
+}

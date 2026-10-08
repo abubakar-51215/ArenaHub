@@ -1,69 +1,80 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+/**
+ * The Live Board card (owner prototype: "Court occupancy · <arena>" with the
+ * pitch grid). One arena at a time: the one chosen in the top bar's arena
+ * picker, or, with "All arenas", whichever the card's arrows step to
+ * (clamped at the ends, no wraparound).
+ */
 import { useState } from "react";
 
 import { LiveBoardGrid } from "@/components/owner/live-board-grid";
 import { useMyArenas } from "@/hooks/useArenas";
+import { useArenaParam } from "@/hooks/useArenaParam";
 
-/**
- * Courts×hours occupancy board for one arena at a time, with a prev/next
- * switcher (clamped at the ends, no wraparound) — not all arenas stacked,
- * so the now-line sweep stays the component's one clear visual hook.
- */
 export function LiveBoard() {
-  const { data, isLoading } = useMyArenas();
+  const { data, isLoading, isError, refetch } = useMyArenas();
   const arenas = data?.items ?? [];
+  const [arenaId] = useArenaParam();
   const [index, setIndex] = useState(0);
-  const clampedIndex = Math.min(index, Math.max(arenas.length - 1, 0));
-  const arena = arenas[clampedIndex];
+  const picked = arenas.find((a) => a.id === arenaId);
+  const clamped = Math.min(index, Math.max(arenas.length - 1, 0));
+  const arena = picked ?? arenas[clamped];
+  const stepping = !picked && arenas.length > 1;
 
   return (
-    <div className="shadow-card rounded-xl border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <h3 className="font-semibold text-foreground">Live Board</h3>
-
-        {arenas.length > 0 && (
-          <div className="flex items-center gap-2">
+    <section className="ah-card">
+      <div className="ah-card-head">
+        <div className="min-w-0">
+          <h2 className="ah-h2">Court occupancy{arena ? ` · ${arena.name}` : ""}</h2>
+          {arena && (
+            <p className="ah-card-sub">
+              Today{stepping ? ` · arena ${clamped + 1} of ${arenas.length}` : ""}
+            </p>
+          )}
+        </div>
+        {stepping && (
+          <div className="ah-row" style={{ marginLeft: "auto" }}>
             <button
               type="button"
+              className="ah-icon-btn"
               aria-label="Previous arena"
-              disabled={clampedIndex === 0}
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              className="flex size-7 max-md:size-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+              disabled={clamped === 0}
+              onClick={() => setIndex(Math.max(0, clamped - 1))}
             >
-              <ChevronLeft className="size-4" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="m15 6-6 6 6 6" />
+              </svg>
             </button>
-            <div className="text-center text-sm">
-              <span className="font-medium text-foreground">{arena?.name}</span>
-              <span className="ml-1.5 text-xs text-muted-foreground">
-                {clampedIndex + 1} of {arenas.length}
-              </span>
-            </div>
             <button
               type="button"
+              className="ah-icon-btn"
               aria-label="Next arena"
-              disabled={clampedIndex === arenas.length - 1}
-              onClick={() => setIndex((i) => Math.min(arenas.length - 1, i + 1))}
-              className="flex size-7 max-md:size-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+              disabled={clamped === arenas.length - 1}
+              onClick={() => setIndex(Math.min(arenas.length - 1, clamped + 1))}
             >
-              <ChevronRight className="size-4" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
             </button>
           </div>
         )}
       </div>
-
-      <div className="p-5">
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : arenas.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No arenas yet. List your first arena to see live occupancy here.
-          </p>
-        ) : (
-          <LiveBoardGrid arena={arena} />
-        )}
-      </div>
-    </div>
+      {isLoading && <div className="ah-skeleton" style={{ height: 160, margin: 18 }} aria-label="Loading" />}
+      {isError && (
+        <div className="ah-card-body">
+          <div className="ah-card-error" role="alert">
+            <span>Could not load your arenas.</span>
+            <button type="button" className="ah-link" onClick={() => void refetch()}>
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+      {!isLoading && !isError && !arena && (
+        <p className="ah-empty-line ah-pitch-note">Add an arena to see its courts here.</p>
+      )}
+      {arena && <LiveBoardGrid key={arena.id} arena={arena} />}
+    </section>
   );
 }
