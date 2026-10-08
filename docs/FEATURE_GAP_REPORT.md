@@ -1,6 +1,6 @@
 # ArenaHub — Feature Gap Report
 
-**Date:** 2026-10-05  **Branch:** `prototype-screens`  **Checked against:** commit `93beca6`
+**Date:** 2026-10-05 (admin update in section F: 2026-10-08)  **Branch:** `prototype-screens`  **Checked against:** commit `93beca6`; section F at `d18af68`
 
 This report lists what the backend can do that no screen uses, what the screens promise that the
 backend cannot yet deliver, and how the project measures up against `03_FUNCTIONAL_REQUIREMENTS.md`.
@@ -248,3 +248,50 @@ there changes how every screen looks, so it needs a decision before any change.
 The click-through of every action, and the forced loading, error, empty and long-content states
 (Playwright request interception). They come next.
 
+
+---
+
+## F. Admin panel update — 2026-10-08
+
+Branch `prototype-screens`, checked at commit `d18af68` (production build) against the scratch
+backend (`arenahub_scratch`, with migration `c5e8a1d4f2b9` applied). The dev database was not
+changed.
+
+### F1. What changed since section E
+
+| Area | Change |
+|---|---|
+| Arena moderation (new) | `POST /admin/arenas/{id}/suspend`, `POST /admin/arenas/{id}/reactivate`, `DELETE /admin/arenas/{id}` (soft delete), each with a required reason of 10 to 500 characters. Upcoming bookings are cancelled with a full refund; the owner is told the reason; each action is audited. Suspended and removed arenas disappear from player search, trending, recommendations and the liked list, and refuse bookings and new slots. Web: buttons and a reason dialog on `/admin/arenas/all`, a "Suspended" filter, and a note on the owner's Arenas list. |
+| Refund retry (new) | A gateway refund that does not complete stays pending and is retried every few minutes (waits of 5, 10, 20, 40, 80 minutes, six tries), then handed to manual handling and the player is told. Admin Bookings and Payments show an amber "Pending refund" badge. |
+| Payment options | One list everywhere on the web: Card, Bank transfer, JazzCash, EasyPaisa (see the scope lock for the provider mapping). |
+| Wording and charts | Singular and plural counts on every admin page; Analytics "Bookings by city" draws bars over a light track; utilisation hours with no bookings show a stub bar. |
+
+Requirement A-03 (arena verification) is unchanged: approve and reject still do not notify the
+owner. The new moderation notices (`arena_suspended`, `arena_reactivated`, `arena_deleted`) are
+separate from it.
+
+### F2. Final admin pass
+
+12 routes (Dashboard, Approvals, Bookings, Payments, Players, Arena owners, Arenas, Complaints,
+Analytics, System settings, Reviews, sign-in) at 1440, 1280, 1024, 768 and 390 px, light and dark:
+**120 page loads**.
+
+| Check | Result |
+|---|---|
+| Sideways page scroll | None on any load |
+| Console errors and failed calls | None on any load |
+| Touch targets at 390 px | All at least 44 px tall (inline links in running text exempt) |
+| Text contrast (4.5:1, 3:1 for large text) | 0 failures in both themes, on all 12 routes and 5 overlays: search, alerts, delete dialog, and the suspend dialog empty and filled |
+| Arena action dialog by keyboard | Opens with focus in the reason box; Tab stays inside; Escape closes and returns focus to the card button; confirm disabled until the reason is valid; fits at 390 px with 44 px buttons |
+| Click-through on real data | Suspend, reactivate and remove done from the UI by keyboard. After suspend and remove the arena is gone from player search and its public page answers 404; after reactivate it is back. The owner sees "Suspended by admin" or "Removed by admin" with the reason. |
+| Owner regression | Every owner route at five widths pixel-identical before and after (65 pairs) |
+
+Screenshots: `review-admin/final/<route>-<width>-<theme>.png`.
+
+### F3. Still open (see `RESTYLE_FOLLOWUPS.md`)
+
+- No theme switch, alerts bell or search button below 1024 px.
+- A fully refunded payment still reads "Completed" on admin Payments.
+- Open matches at a suspended or removed arena can still be joined.
+- Refunds for an arena action are sent inside the same database transaction as the
+  cancellations; a commit per booking is the later fix.
