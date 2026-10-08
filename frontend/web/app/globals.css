@@ -1354,6 +1354,8 @@ html[data-theme="dark"] [data-admin] .ah-toast {
 }
 [data-admin] .ah-bar {
   width: 100%;
+  /* an hour with slots but no bookings still shows a small stub */
+  min-height: 3px;
   border-radius: 4px 4px 2px 2px;
   background: var(--line);
   transition:
