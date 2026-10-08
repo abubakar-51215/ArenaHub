@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
 import { useDashboardOverview } from "@/hooks/useAdminOverview";
+import { plural } from "@/lib/format";
 
 interface Alert {
   key: string;
@@ -20,10 +21,6 @@ interface Alert {
   title: string;
   sub: string;
   href: string;
-}
-
-function plural(n: number, one: string, many: string) {
-  return `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 }
 
 export function AdminAlerts() {

@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useArenaQueue, useArenaVerification, useComplaints } from "@/hooks/useAdmin";
 import { useDashboardOverview } from "@/hooks/useAdminOverview";
-import { formatRs } from "@/lib/format";
+import { formatRs, plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/services/api";
 import type { DashboardOverview, OverviewKpi, OverviewRange } from "@/services/admin-overview";
@@ -265,11 +265,11 @@ function DecisionQueue({ overview, city }: { overview?: DashboardOverview; city:
       <div className="ah-queue ah-queue-2">
         <Link href="/admin/arenas" className="ah-queue-cell">
           <span className="ah-metric">{pendingArenas.toLocaleString("en-US")}</span>
-          <span className="ah-queue-lbl">Arenas to verify</span>
+          <span className="ah-queue-lbl">{pendingArenas === 1 ? "Arena" : "Arenas"} to verify</span>
         </Link>
         <Link href="/admin/complaints" className="ah-queue-cell">
           <span className="ah-metric">{openComplaints.toLocaleString("en-US")}</span>
-          <span className="ah-queue-lbl">Complaints open</span>
+          <span className="ah-queue-lbl">{openComplaints === 1 ? "Complaint" : "Complaints"} open</span>
         </Link>
       </div>
       {loading && (
@@ -503,7 +503,7 @@ export default function AdminDashboardPage() {
               data={hours.map((h) => ({
                 label: hourLabel(h.hour),
                 value: h.pct,
-                title: `${hourLabel(h.hour)}: ${h.pct}% booked (${h.used} of ${h.total} slots)`,
+                title: `${hourLabel(h.hour)}: ${h.pct}% booked (${h.used} of ${plural(h.total, "slot")})`,
               }))}
             />
           </OverviewCard>

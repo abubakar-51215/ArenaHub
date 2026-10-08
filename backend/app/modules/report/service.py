@@ -261,7 +261,7 @@ async def _admin_system_rows(db: AsyncSession) -> tuple[list[str], list[list[str
     by_hour = await admin_repo.platform_bookings_by_hour(db)
     peak_hours = sorted(by_hour.items(), key=lambda pair: pair[1], reverse=True)[:3]
     peak_label = (
-        ", ".join(f"{_hour_label(h)} ({n} bookings)" for h, n in peak_hours)
+        ", ".join(f"{_hour_label(h)} ({n} booking{'' if n == 1 else 's'})" for h, n in peak_hours)
         if peak_hours
         else "No confirmed bookings yet"
     )

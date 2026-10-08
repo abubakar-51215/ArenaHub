@@ -8,7 +8,7 @@ export default function AdminOwnersPage() {
   // UsersView reads ?search= (set by the command palette), so it needs Suspense
   return (
     <Suspense fallback={null}>
-      <UsersView role="owner" title="Arena owners" noun="owners" />
+      <UsersView role="owner" title="Arena owners" noun={["owner", "owners"]} />
     </Suspense>
   );
 }

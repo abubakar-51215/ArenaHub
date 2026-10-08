@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserActions, useUserDetail, useUsers } from "@/hooks/useAdmin";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { AdminUser, UserRole } from "@/types";
 
@@ -45,8 +45,9 @@ export function UsersView({
   role?: UserRole;
   title: string;
   subtitle?: string;
-  /** when set, the sub-line is the live total plus this noun, e.g. "registered accounts" */
-  noun?: string;
+  /** when set, the sub-line is the live total plus this noun, singular and
+   *  plural, e.g. ["registered account", "registered accounts"] */
+  noun?: [string, string];
 }) {
   // the command palette opens a person's row as /admin/users?search=<email>
   const [page, setPage] = useState(1);
@@ -83,7 +84,7 @@ export function UsersView({
       <PageHeader
         title={title}
         subtitle={
-          noun ? (data ? `${data.total.toLocaleString("en-US")} ${noun}` : undefined) : subtitle
+          noun ? (data ? plural(data.total, noun[0], noun[1]) : undefined) : subtitle
         }
       >
         <Input
