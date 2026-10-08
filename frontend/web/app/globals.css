@@ -3320,22 +3320,3 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
     font-size: 14px;
   }
 }
-/* a short window (under 860px tall) with the static rail: the owner rail
-   has two more items and one more group than the admin one, so its spacing
-   tightens (sizes stay) to keep all 13 items on screen without scrolling */
-@media (max-height: 859.98px) and (min-width: 1024px) {
-  [data-owner] .ah-nav-item {
-    padding-top: 4.4px;
-    padding-bottom: 4.4px;
-  }
-  [data-owner] .ah-nav-group {
-    margin-bottom: 6px;
-  }
-  [data-owner] .ah-nav-label {
-    margin: 4px 0 2px;
-    padding-bottom: 3px;
-  }
-  [data-owner] .ah-brand {
-    padding-bottom: 10px;
-  }
-}
