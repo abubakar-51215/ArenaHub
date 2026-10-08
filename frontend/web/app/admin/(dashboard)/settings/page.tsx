@@ -165,10 +165,11 @@ function PaymentGatewaysTab() {
   if (isLoading || !form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const gateways: { key: keyof PlatformSettings["payment_gateways"]; label: string }[] = [
-    { key: "card_enabled", label: "Card (Stripe)" },
+    // the four payment options, in the order and with the labels of lib/payment-methods
+    { key: "card_enabled", label: "Card" },
+    { key: "bank_transfer_enabled", label: "Bank transfer" },
     { key: "jazzcash_enabled", label: "JazzCash" },
     { key: "easypaisa_enabled", label: "EasyPaisa" },
-    { key: "bank_transfer_enabled", label: "Bank Transfer" },
   ];
 
   return (

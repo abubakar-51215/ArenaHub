@@ -22,16 +22,10 @@ import {
 } from "@/components/ui/table";
 import { useAllPayments } from "@/hooks/useAdmin";
 import { formatDate, formatRs } from "@/lib/format";
+import { PAYMENT_METHOD_LABEL, PAYMENT_METHODS } from "@/lib/payment-methods";
 import type { PaymentMethod, PaymentStatus } from "@/types";
 
 const STATUSES: PaymentStatus[] = ["pending", "completed", "failed", "refunded"];
-const METHODS: PaymentMethod[] = ["card", "jazzcash", "easypaisa", "bank_transfer"];
-const METHOD_LABEL: Record<PaymentMethod, string> = {
-  card: "Card",
-  jazzcash: "JazzCash",
-  easypaisa: "EasyPaisa",
-  bank_transfer: "Bank transfer",
-};
 
 type Period = "" | "this" | "last";
 
@@ -92,9 +86,9 @@ export default function AdminPaymentsPage() {
           }}
         >
           <option value="">All methods</option>
-          {METHODS.map((m) => (
+          {PAYMENT_METHODS.map(({ value: m }) => (
             <option key={m} value={m}>
-              {METHOD_LABEL[m]}
+              {PAYMENT_METHOD_LABEL[m]}
             </option>
           ))}
         </Select>
@@ -162,7 +156,9 @@ export default function AdminPaymentsPage() {
                   </TableCell>
                   <TableCell>{p.player_name}</TableCell>
                   <TableCell className="ah-t2">{p.arena_name ?? "—"}</TableCell>
-                  <TableCell>{METHOD_LABEL[p.payment_method] ?? p.payment_method}</TableCell>
+                  <TableCell>
+                    {PAYMENT_METHOD_LABEL[p.payment_method] ?? p.payment_method}
+                  </TableCell>
                   <TableCell className="ah-r ah-money">{formatRs(p.amount)}</TableCell>
                   <TableCell>
                     <span className="ah-badges">
