@@ -401,7 +401,8 @@ export default function AdminDashboardPage() {
   const labels = dayLabels(data?.bookings_by_day ?? []);
   const totalCity = data?.by_city.reduce((s, c) => s + c.bookings, 0) ?? 0;
   const hours = data?.utilisation_by_hour ?? [];
-  const peakIdx = hours.length
+  // no peak bar when nothing is booked (every hour a 0% stub)
+  const peakIdx = hours.some((h) => h.pct > 0)
     ? hours.reduce((best, h, i) => (h.pct > hours[best].pct ? i : best), 0)
     : -1;
 
