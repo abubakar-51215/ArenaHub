@@ -360,9 +360,12 @@ function DecisionQueue({ overview, city }: { overview?: DashboardOverview; city:
             : allFetched
               ? `Showing the ${items.length} oldest item${items.length === 1 ? "" : "s"}`
               : `Showing ${items.length} of ${waiting} waiting items`}
-          <Button asChild variant="ghost" size="sm" style={{ marginLeft: "auto" }}>
-            <Link href="/admin/arenas">See all {waiting}</Link>
-          </Button>
+          {/* nothing to see when nothing is waiting */}
+          {waiting > 0 && (
+            <Button asChild variant="ghost" size="sm" style={{ marginLeft: "auto" }}>
+              <Link href="/admin/arenas">See all {waiting}</Link>
+            </Button>
+          )}
         </div>
       )}
       <TextInputDialog
