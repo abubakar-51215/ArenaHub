@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
 import { AdminEmpty, AdminPerson, AdminTableFoot } from "@/components/admin/ui";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -136,17 +137,25 @@ export default function AdminReviewsPage() {
                   </TableCell>
                   <TableCell className="ah-r">
                     <div className="ah-row-actions">
-                      <Button
+                      <ActionButton
+                        tone="positive"
                         variant="ghost"
                         size="sm"
                         disabled={dismiss.isPending}
+                        busy={dismiss.isPending && dismiss.variables === r.id}
+                        failed={dismiss.isError}
                         onClick={() => onDismiss(r)}
                       >
                         Dismiss
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => setDeleting(r)}>
+                      </ActionButton>
+                      <ActionButton
+                        tone="negative"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleting(r)}
+                      >
                         Delete
-                      </Button>
+                      </ActionButton>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -181,9 +190,16 @@ export default function AdminReviewsPage() {
             <Button variant="outline" onClick={() => setDeleting(null)} disabled={remove.isPending}>
               Cancel
             </Button>
-            <Button variant="destructive" disabled={remove.isPending} onClick={onDelete}>
-              {remove.isPending ? "Deleting…" : "Delete Review"}
-            </Button>
+            <ActionButton
+              tone="negative"
+              variant="destructive"
+              busy={remove.isPending}
+              failed={remove.isError}
+              disabled={remove.isPending}
+              onClick={onDelete}
+            >
+              Delete Review
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -10,6 +10,7 @@ import {
   AdminTag,
   statusLabel,
 } from "@/components/admin/ui";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -265,9 +266,15 @@ export default function AdminComplaintsPage() {
             >
               Cancel
             </Button>
-            <Button disabled={respond.isPending || !response.trim()} onClick={onRespond}>
-              {respond.isPending ? "Saving…" : "Save"}
-            </Button>
+            <ActionButton
+              tone="positive"
+              busy={respond.isPending}
+              failed={!!error}
+              disabled={respond.isPending || !response.trim()}
+              onClick={onRespond}
+            >
+              Save
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

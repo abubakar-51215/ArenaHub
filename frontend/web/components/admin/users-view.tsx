@@ -11,6 +11,7 @@ import {
   AdminTableFoot,
   AdminTag,
 } from "@/components/admin/ui";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -166,21 +167,30 @@ export function UsersView({
                         View
                       </Button>
                       {u.is_active ? (
-                        <Button variant="ghost" size="sm" onClick={() => setSuspending(u)}>
+                        <ActionButton
+                          tone="negative"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSuspending(u)}
+                        >
                           Suspend
-                        </Button>
+                        </ActionButton>
                       ) : (
-                        <Button
+                        <ActionButton
+                          tone="positive"
                           variant="ghost"
                           size="sm"
                           disabled={reactivate.isPending}
+                          busy={reactivate.isPending && reactivate.variables === u.id}
+                          failed={reactivate.isError}
                           onClick={() => reactivate.mutate(u.id)}
                         >
                           Reinstate
-                        </Button>
+                        </ActionButton>
                       )}
                       {u.role !== "admin" && (
-                        <Button
+                        <ActionButton
+                          tone="negative"
                           variant="destructive"
                           size="sm"
                           onClick={() => {
@@ -189,7 +199,7 @@ export function UsersView({
                           }}
                         >
                           Delete
-                        </Button>
+                        </ActionButton>
                       )}
                     </div>
                   </TableCell>
@@ -243,8 +253,11 @@ export function UsersView({
             >
               Cancel
             </Button>
-            <Button
+            <ActionButton
+              tone="negative"
               variant="destructive"
+              busy={suspend.isPending}
+              failed={suspend.isError}
               disabled={suspend.isPending || !reason.trim()}
               onClick={() => {
                 if (!suspending) return;
@@ -259,8 +272,8 @@ export function UsersView({
                 );
               }}
             >
-              {suspend.isPending ? "Suspending…" : `Suspend ${account}`}
-            </Button>
+              {`Suspend ${account}`}
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -292,8 +305,11 @@ export function UsersView({
             <Button variant="outline" onClick={() => setDeleting(null)} disabled={remove.isPending}>
               Cancel
             </Button>
-            <Button
+            <ActionButton
+              tone="negative"
               variant="destructive"
+              busy={remove.isPending}
+              failed={!!deleteError}
               disabled={remove.isPending}
               onClick={() => {
                 if (!deleting) return;
@@ -307,8 +323,8 @@ export function UsersView({
                 });
               }}
             >
-              {remove.isPending ? "Deleting…" : `Delete ${account}`}
-            </Button>
+              {`Delete ${account}`}
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

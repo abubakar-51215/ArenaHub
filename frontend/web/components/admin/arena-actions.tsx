@@ -8,6 +8,7 @@
  */
 import { useEffect, useId, useRef, useState } from "react";
 
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -156,13 +157,16 @@ export function ArenaActionDialog({
           <Button variant="outline" onClick={onClose} disabled={moderate.isPending}>
             Cancel
           </Button>
-          <Button
+          <ActionButton
+            tone={target?.action === "reactivate" ? "positive" : "negative"}
             variant={target?.action === "reactivate" ? "default" : "destructive"}
             disabled={!valid || moderate.isPending}
+            busy={moderate.isPending}
+            failed={!!error}
             onClick={submit}
           >
-            {moderate.isPending ? copy?.busy : copy?.confirm}
-          </Button>
+            {copy?.confirm}
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -6,6 +6,7 @@ import { ArenaDetailDialog } from "@/components/admin/arena-detail";
 import { PageHeader } from "@/components/admin/page-header";
 import { AdminBadge, AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -140,17 +141,25 @@ export default function AdminArenasPage() {
                       </Button>
                       {a.status === "pending" && (
                         <>
-                          <Button
+                          <ActionButton
+                            tone="positive"
                             size="sm"
                             className="ah-lime"
                             disabled={approve.isPending}
+                            busy={approve.isPending && approve.variables === a.id}
+                            failed={approve.isError}
                             onClick={() => approve.mutate(a.id)}
                           >
                             Approve
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => setRejecting(a)}>
+                          </ActionButton>
+                          <ActionButton
+                            tone="negative"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setRejecting(a)}
+                          >
                             Reject
-                          </Button>
+                          </ActionButton>
                         </>
                       )}
                     </div>
@@ -179,7 +188,8 @@ export default function AdminArenasPage() {
         actions={
           viewing?.status === "pending" ? (
             <>
-              <Button
+              <ActionButton
+                tone="negative"
                 variant="destructive"
                 onClick={() => {
                   setRejecting(viewing);
@@ -187,14 +197,17 @@ export default function AdminArenasPage() {
                 }}
               >
                 Reject
-              </Button>
-              <Button
+              </ActionButton>
+              <ActionButton
+                tone="positive"
                 className="ah-lime"
                 disabled={approve.isPending}
+                busy={approve.isPending && approve.variables === viewing.id}
+                failed={approve.isError}
                 onClick={() => approve.mutate(viewing.id, { onSuccess: () => setViewing(null) })}
               >
                 Approve
-              </Button>
+              </ActionButton>
             </>
           ) : undefined
         }
@@ -208,6 +221,7 @@ export default function AdminArenasPage() {
         placeholder="Reason for rejection…"
         confirmLabel="Reject Arena"
         destructive
+        motion
         pending={reject.isPending}
         error={error}
         onSubmit={onReject}
