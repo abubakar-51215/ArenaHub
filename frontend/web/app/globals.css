@@ -3320,3 +3320,48 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
     font-size: 14px;
   }
 }
+
+/* owner list pages (Bookings, Arenas): the table from 768px up; below that
+   each row becomes a card, so the page never scrolls sideways */
+[data-owner] .ah-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-only-wide {
+    display: none;
+  }
+  [data-owner] .ah-cards {
+    display: block;
+  }
+  [data-owner] .ah-cards > li {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 14px;
+  }
+  [data-owner] .ah-cards > li:first-child {
+    border-top: 0;
+  }
+  [data-owner] .ah-cards .ah-sub,
+  [data-owner] .ah-cards .ah-strong,
+  [data-owner] .ah-cards .ah-note,
+  [data-owner] .ah-tbl-foot,
+  [data-owner] .ah-page-sub {
+    font-size: 14px;
+  }
+  [data-owner] .ah-card-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    min-width: 0;
+  }
+  [data-owner] .ah-cards .ah-row-actions {
+    flex-wrap: wrap;
+  }
+}
