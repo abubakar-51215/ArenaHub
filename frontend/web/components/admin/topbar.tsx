@@ -6,7 +6,7 @@ import { AdminAlerts } from "@/components/admin/alerts";
 import { currentAdminTheme, toggleAdminTheme } from "@/lib/admin-theme";
 
 /** Follows html[data-theme] so the button stays right if another tab changes it. */
-function useIsDark() {
+export function useIsDark() {
   return useSyncExternalStore(
     (notify) => {
       const obs = new MutationObserver(notify);
@@ -50,7 +50,7 @@ export function AdminTopbar({
   );
 }
 
-function ThemeButton({ dark }: { dark: boolean }) {
+export function ThemeButton({ dark }: { dark: boolean }) {
   return (
     <button type="button" className="ah-icon-btn" aria-label="Switch theme" aria-pressed={dark} onClick={() => toggleAdminTheme()}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">

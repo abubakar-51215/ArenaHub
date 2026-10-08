@@ -7,9 +7,9 @@ import { applyAdminTheme, isAdminPath, readAdminTheme } from "@/lib/admin-theme"
 
 /**
  * Keeps html[data-theme="dark"] in step with the route: on while an /admin
- * page is open (if the admin chose dark), removed everywhere else. This is
- * what keeps the owner and public pages light after a client-side navigation
- * away from the admin panel. The first paint is handled by the inline script
+ * or /owner page is open (if dark was chosen), removed everywhere else. This
+ * is what keeps the public and sign-in pages light after a client-side
+ * navigation away from a dashboard. The first paint is handled by the inline script
  * in the root layout.
  */
 export function AdminThemeSync() {

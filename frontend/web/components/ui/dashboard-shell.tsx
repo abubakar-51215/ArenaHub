@@ -4,40 +4,46 @@ import { useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 
 import { AdminBrandMark } from "@/components/admin/brand";
-import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
 const ADMIN_STATIC_QUERY = "(min-width: 1024px)";
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Responsive dashboard chrome shared by the owner and admin shells.
- * - Desktop (xl+): the sidebar is static in the flex row.
- * - Mobile/tablet: the sidebar slides in as an overlay drawer, toggled from a
- *   compact top bar; navigating closes it.
- * `variant="admin"` sets [data-admin], which scopes the admin prototype's
- * shell styles (globals.css), uses the prototype's topbar and brand mark, and
- * keeps the rail static from 1024px (lg) instead of 1280px (xl). Below 1024px
- * the admin drawer behaves as a modal: Escape and the backdrop close it, focus
- * stays inside while it is open and goes back to the menu button after, the
- * page behind it is inert and does not scroll, and crossing 1024px closes it.
- * The owner variant renders exactly as before.
+ * Responsive dashboard chrome shared by the admin and owner shells. Both set
+ * [data-admin], which scopes the prototypes' shared design system
+ * (globals.css; the two prototypes use the same rail, top bar and tokens);
+ * the owner shell adds [data-owner] for its own rules. The rail is static
+ * from 1024px. Below 1024px it is a drawer that behaves as a modal: Escape
+ * and the backdrop close it, focus stays inside while it is open and goes
+ * back to the menu button after, the page behind it is inert and does not
+ * scroll, and crossing 1024px closes it. A slim bar (menu button, brand
+ * mark, slimActions) replaces the top bar there; slimRow sits under it.
  */
 export function DashboardShell({
   sidebar,
   children,
   variant = "owner",
   slimActions,
+  slimRow,
+  brandMark,
 }: {
   sidebar: (closeMobile: () => void) => React.ReactNode;
   children: React.ReactNode;
   variant?: "owner" | "admin";
-  /** admin only: controls on the right of the slim bar (below 1024px) */
+  /** controls on the right of the slim bar (below 1024px) */
   slimActions?: React.ReactNode;
+  /** a row under the slim bar (below 1024px), e.g. the owner's arena picker */
+  slimRow?: React.ReactNode;
+  /** the slim bar's brand mark (default: the admin mark) */
+  brandMark?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  const admin = variant === "admin";
+  // both dashboards use the console shell; the name is kept from the admin
+  // restyle, where it started
+  const admin = true;
+  const owner = variant === "owner";
 
   // admin only: is the rail a drawer right now (below 1024px)?
   const [isDrawer, setIsDrawer] = useState(false);
@@ -102,6 +108,7 @@ export function DashboardShell({
     <div
       data-theme="arena"
       data-admin={admin ? "" : undefined}
+      data-owner={owner ? "" : undefined}
       data-drawer-open={drawerOpen ? "" : undefined}
       className="flex h-screen overflow-hidden bg-background"
     >
@@ -136,34 +143,22 @@ export function DashboardShell({
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden" inert={drawerOpen ? true : undefined}>
-        {/* Mobile top bar */}
-        {admin ? (
-          <header className="ah-topbar lg:hidden">
-            <button
-              ref={burgerRef}
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-              aria-expanded={drawerOpen}
-              aria-controls="ah-drawer"
-              className="ah-icon-btn"
-            >
-              <Menu strokeWidth={1.9} />
-            </button>
-            <AdminBrandMark />
-            {slimActions}
-          </header>
-        ) : (
-          <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 xl:hidden">
-            <button
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-              className="flex size-9 max-md:size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Menu className="size-5" />
-            </button>
-            <Logo />
-          </header>
-        )}
+        {/* Slim bar (below 1024px) */}
+        <header className="ah-topbar lg:hidden">
+          <button
+            ref={burgerRef}
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={drawerOpen}
+            aria-controls="ah-drawer"
+            className="ah-icon-btn"
+          >
+            <Menu strokeWidth={1.9} />
+          </button>
+          {brandMark ?? <AdminBrandMark />}
+          {slimActions}
+        </header>
+        {slimRow && <div className="lg:hidden">{slimRow}</div>}
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
       </div>

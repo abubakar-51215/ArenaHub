@@ -27,10 +27,9 @@ export function NowLine({ openMinutes, closeMinutes }: { openMinutes: number; cl
   if (now < openMinutes || now > closeMinutes || closeMinutes <= openMinutes) return null;
 
   const pct = ((now - openMinutes) / (closeMinutes - openMinutes)) * 100;
+  const h = Math.floor(now / 60);
+  const label = `NOW ${h % 12 || 12}:${String(now % 60).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 
-  return (
-    <div className="absolute inset-y-0 w-px bg-accent" style={{ left: `${pct}%` }}>
-      <span className="absolute -top-1.5 -left-[3px] size-2 rounded-full bg-accent shadow-[0_0_0_3px_rgba(196,245,70,0.25)]" />
-    </div>
-  );
+  // prototype .now-line: a lime-deep line with its time label on top
+  return <div className="ah-now-line" style={{ left: `${pct}%` }} data-t={label} aria-label={label} role="img" />;
 }

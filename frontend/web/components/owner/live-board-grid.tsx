@@ -1,138 +1,171 @@
 "use client";
 
+/**
+ * The owner prototype's pitch grid (`.pitch`): courts x hours for one arena,
+ * today, with a lime "now" line. Built from what the API already returns:
+ * the arena's courts, its opening hours and today's bookings (the calendar
+ * endpoint). A booking block spans its hours and shows its status and time
+ * (the calendar has no player names); confirmed and completed bookings are
+ * ink, bookings waiting for payment or approval amber; cancelled and
+ * rejected bookings leave the slot open. A court switched off reads "Not
+ * bookable" across its row. Open hours are the dashed cells.
+ */
 import { useMemo } from "react";
 
-import { ScrollCue } from "@/components/ui/scroll-cue";
 import { NowLine } from "@/components/owner/now-line";
-import { LABELS as STATUS_LABELS, STYLES as STATUS_STYLES } from "@/components/owner/status-badge";
 import { useCourts } from "@/hooks/useCourts";
 import { useCalendar } from "@/hooks/useDashboard";
-import { cn } from "@/lib/utils";
 import { formatHour, formatTime, toDateInput } from "@/lib/format";
 import type { Arena, CalendarBooking } from "@/types";
 
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-const MIN_COLUMN_WIDTH_PX = 44;
-const LABEL_COLUMN_WIDTH = "w-28";
+const LABEL_PX = 118;
+const MIN_HOUR_PX = 48;
 
-/** "19:00:00" or "06:00" → minutes since midnight. The trailing ":SS" on
- * booking times is simply unused by destructuring only [h, m]. */
-function parseHHMM(s: string): number {
+function minutes(s: string): number {
   const [h, m] = s.split(":").map(Number);
   return h * 60 + m;
 }
 
-export function LiveBoardGrid({ arena }: { arena: Arena }) {
-  const { data: courts, isLoading: courtsLoading } = useCourts(arena.id);
-  const today = useMemo(() => toDateInput(new Date()), []);
-  const { data: bookings, isLoading: bookingsLoading } = useCalendar(arena.id, today, today);
+const HIDDEN = new Set(["cancelled", "rejected"]);
+const WAITING = new Set(["pending_payment", "pending_approval"]);
+const STATUS_TEXT: Record<string, string> = {
+  confirmed: "Confirmed",
+  completed: "Completed",
+  pending_payment: "Awaiting payment",
+  pending_approval: "Awaiting approval",
+};
 
-  const todayKey = DAY_KEYS[new Date().getDay()];
-  const hours = arena.operating_hours[todayKey];
-  const openMinutes = hours ? parseHHMM(hours.open) : 0;
-  const closeMinutes = hours ? parseHHMM(hours.close) : 0;
+function shortTime(hms: string): string {
+  return formatTime(hms).replace(":00", "").replace(" ", "");
+}
+
+export function LiveBoardGrid({ arena }: { arena: Arena }) {
+  const { data: courts, isLoading: courtsLoading, isError: courtsError } = useCourts(arena.id);
+  const today = useMemo(() => toDateInput(new Date()), []);
+  const { data: bookings, isLoading: bookingsLoading, isError: bookingsError } = useCalendar(arena.id, today, today);
+
+  const hours = arena.operating_hours[DAY_KEYS[new Date().getDay()]];
+  const openMinutes = hours ? minutes(hours.open) : 0;
+  const closeMinutes = hours ? minutes(hours.close) : 0;
   const startHour = Math.floor(openMinutes / 60);
   const endHour = Math.ceil(closeMinutes / 60);
   const hourCount = Math.max(endHour - startHour, 0);
 
-  const bookingsByCourtId = useMemo(() => {
+  const byCourt = useMemo(() => {
     const map = new Map<string, CalendarBooking[]>();
     for (const b of bookings ?? []) {
-      const list = map.get(b.court_id) ?? [];
-      list.push(b);
-      map.set(b.court_id, list);
+      if (HIDDEN.has(b.status)) continue;
+      map.set(b.court_id, [...(map.get(b.court_id) ?? []), b]);
     }
     return map;
   }, [bookings]);
 
   if (courtsLoading || bookingsLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <div className="ah-skeleton" style={{ height: 160, margin: "0 18px 18px" }} aria-label="Loading" />;
   }
-
+  if (courtsError || bookingsError) {
+    return <p className="ah-empty-line ah-pitch-note">Could not load today&apos;s board.</p>;
+  }
   if (!courts || courts.length === 0) {
-    return <p className="text-sm text-muted-foreground">No courts yet for this arena.</p>;
+    return <p className="ah-empty-line ah-pitch-note">No courts yet for this arena.</p>;
   }
-
   if (!hours || hourCount === 0) {
-    return <p className="text-sm text-muted-foreground">{arena.name} is closed today.</p>;
+    return <p className="ah-empty-line ah-pitch-note">{arena.name} is closed today.</p>;
   }
 
-  const hourLabels = Array.from({ length: hourCount }, (_, i) => formatHour(startHour + i));
-
-  function pct(hms: string): number {
-    const mins = parseHHMM(hms);
-    return Math.max(0, Math.min(100, ((mins - openMinutes) / (closeMinutes - openMinutes)) * 100));
-  }
+  const columns = `${LABEL_PX}px repeat(${hourCount}, minmax(0, 1fr))`;
+  const hourIndex = (hms: string) => Math.floor(minutes(hms) / 60) - startHour;
 
   return (
-    <ScrollCue hint="Swipe to see more hours">
-      <div style={{ minWidth: `${hourCount * MIN_COLUMN_WIDTH_PX}px` }} className="relative">
-        {/* header */}
-        <div className="flex">
-          <div className={cn(LABEL_COLUMN_WIDTH, "sticky left-0 z-20 shrink-0 bg-card")} />
-          <div
-            className="grid flex-1"
-            style={{
-              gridTemplateColumns: `repeat(${hourCount}, minmax(${MIN_COLUMN_WIDTH_PX}px, 1fr))`,
-            }}
-          >
-            {hourLabels.map((label, i) => (
-              <div key={i} className="px-1 pb-2 text-center text-[11px] text-muted-foreground">
-                {label}
-              </div>
+    <div className="ah-pitch">
+      <div className="ah-pitch-scroll" tabIndex={0} aria-label="Today's courts by hour">
+        <div className="ah-pitch-inner" style={{ minWidth: LABEL_PX + hourCount * MIN_HOUR_PX }}>
+          <div className="ah-pitch-hours" style={{ gridTemplateColumns: columns }}>
+            <span />
+            {Array.from({ length: hourCount }, (_, i) => (
+              <span key={i}>{formatHour(startHour + i).replace(" ", "")}</span>
             ))}
           </div>
-        </div>
-
-        {/* court rows */}
-        <div className="relative space-y-1">
-          {courts.map((court) => (
-            <div key={court.id} className="flex items-center">
-              <div
-                className={cn(
-                  LABEL_COLUMN_WIDTH,
-                  "sticky left-0 z-20 shrink-0 truncate bg-card pr-2 text-sm font-medium text-foreground",
-                )}
-              >
-                {court.name}
-                {!court.is_available && (
-                  <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
-                    (Disabled)
-                  </span>
-                )}
+          {courts.map((court) => {
+            const list = court.is_available ? (byCourt.get(court.id) ?? []) : [];
+            // which hour cells a booking covers (a booking may span several)
+            const covered = new Map<number, CalendarBooking>();
+            for (const b of list) {
+              const from = Math.max(0, hourIndex(b.start_time));
+              const to = Math.min(hourCount, Math.ceil(minutes(b.end_time) / 60) - startHour);
+              for (let h = from; h < to; h++) covered.set(h, b);
+            }
+            const cells: React.ReactNode[] = [];
+            if (!court.is_available) {
+              cells.push(
+                <div key="off" className="ah-blk ah-blk-hold" style={{ gridColumn: `2 / span ${hourCount}` }}>
+                  <b>Not bookable</b>
+                  <span>Switched off</span>
+                </div>,
+              );
+            } else {
+              for (let h = 0; h < hourCount; ) {
+                const b = covered.get(h);
+                if (!b) {
+                  cells.push(<div key={`o${h}`} className="ah-slot" title={`${formatHour(startHour + h)} · open`} />);
+                  h += 1;
+                  continue;
+                }
+                let span = 1;
+                while (h + span < hourCount && covered.get(h + span) === b) span += 1;
+                const label = STATUS_TEXT[b.status] ?? b.status;
+                cells.push(
+                  <div
+                    key={b.id}
+                    className={`ah-blk ${WAITING.has(b.status) ? "ah-blk-wait" : "ah-blk-ok"}`}
+                    style={{ gridColumn: `span ${span}` }}
+                    title={`${formatTime(b.start_time)}–${formatTime(b.end_time)} · ${label}`}
+                  >
+                    <b>{label}</b>
+                    <span>
+                      {shortTime(b.start_time)}–{shortTime(b.end_time)}
+                    </span>
+                  </div>,
+                );
+                h += span;
+              }
+            }
+            return (
+              <div key={court.id} className="ah-pitch-row" style={{ gridTemplateColumns: columns }}>
+                <div className="ah-pitch-label">
+                  <b>{court.name}</b>
+                  {court.sport_types.length > 0 && (
+                    <span>{court.sport_types.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" · ")}</span>
+                  )}
+                </div>
+                {cells}
               </div>
-              <div
-                className={cn(
-                  "relative h-9 flex-1 rounded-md",
-                  court.is_available ? "bg-muted/50" : "bg-muted/20",
-                )}
-              >
-                {court.is_available &&
-                  (bookingsByCourtId.get(court.id) ?? []).map((b) => {
-                    const left = pct(b.start_time);
-                    const width = pct(b.end_time) - left;
-                    return (
-                      <div
-                        key={b.id}
-                        title={`${formatTime(b.start_time)}–${formatTime(b.end_time)} · ${STATUS_LABELS[b.status]}`}
-                        className={cn("absolute inset-y-0.5 rounded", STATUS_STYLES[b.status])}
-                        style={{ left: `${left}%`, width: `${width}%` }}
-                      />
-                    );
-                  })}
-              </div>
-            </div>
-          ))}
-
-          {/* left-28 must match LABEL_COLUMN_WIDTH's w-28 above — Tailwind
-              can't derive one from the other via string interpolation (JIT
-              purges dynamically-built class names), so this is a manual
-              sync point if the label column width ever changes. */}
-          <div className="pointer-events-none absolute inset-y-0 right-0 left-28 z-10">
-            <NowLine openMinutes={openMinutes} closeMinutes={closeMinutes} />
+            );
+          })}
+          <div className="ah-now-track" style={{ left: LABEL_PX }}>
+            <NowLine openMinutes={startHour * 60} closeMinutes={endHour * 60} />
           </div>
         </div>
       </div>
-    </ScrollCue>
+      <div className="ah-pitch-legend">
+        <span>
+          <i className="ah-blk-ok" />
+          Confirmed
+        </span>
+        <span>
+          <i className="ah-blk-wait" />
+          Awaiting payment or approval
+        </span>
+        <span>
+          <i className="ah-slot" />
+          Open
+        </span>
+        <span>
+          <i style={{ background: "var(--lime-deep)" }} />
+          Now
+        </span>
+      </div>
+    </div>
   );
 }
