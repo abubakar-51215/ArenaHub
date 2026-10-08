@@ -27,10 +27,13 @@ export function DashboardShell({
   sidebar,
   children,
   variant = "owner",
+  slimActions,
 }: {
   sidebar: (closeMobile: () => void) => React.ReactNode;
   children: React.ReactNode;
   variant?: "owner" | "admin";
+  /** admin only: controls on the right of the slim bar (below 1024px) */
+  slimActions?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -147,6 +150,7 @@ export function DashboardShell({
               <Menu strokeWidth={1.9} />
             </button>
             <AdminBrandMark />
+            {slimActions}
           </header>
         ) : (
           <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 xl:hidden">
