@@ -250,9 +250,7 @@ export default function Home() {
     <div
       data-theme="arena"
       className="min-h-screen p-3 sm:p-6"
-      style={{
-        background: "linear-gradient(135deg, var(--foreground) 0%, var(--background) 100%)",
-      }}
+      style={{ background: "linear-gradient(135deg, var(--foreground) 0%, var(--background) 100%)" }}
     >
       <div className="mx-auto overflow-hidden rounded-3xl bg-background text-foreground shadow-2xl">
         {/* ---------------------------------------------------------------- */}
@@ -541,9 +539,7 @@ export default function Home() {
             <div className="stagger mt-14 grid grid-cols-1 gap-8 sm:grid-cols-3">
               {STEPS.map((step) => (
                 <div key={step.n} className="relative text-center">
-                  <span className="text-gradient-marketing text-6xl font-black opacity-50">
-                    {step.n}
-                  </span>
+                  <span className="text-gradient-marketing text-6xl font-black opacity-50">{step.n}</span>
                   <h3 className="mt-2 text-lg font-bold text-foreground">{step.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{step.desc}</p>
                 </div>
@@ -558,10 +554,7 @@ export default function Home() {
         <section className="bg-background py-16">
           <div className="stagger mx-auto flex max-w-4xl flex-wrap justify-center gap-x-8 gap-y-10 px-6">
             {STATS.map((stat) => (
-              <div
-                key={stat.label}
-                className="w-[calc(50%-1rem)] text-center sm:w-[calc(33.333%-1.4rem)]"
-              >
+              <div key={stat.label} className="w-[calc(50%-1rem)] text-center sm:w-[calc(33.333%-1.4rem)]">
                 <stat.icon className="mx-auto size-5 text-muted-foreground" />
                 <div className="mt-2 text-xl font-extrabold text-foreground sm:text-2xl">
                   {stat.value}
@@ -578,7 +571,9 @@ export default function Home() {
         <section id="owners" className="relative overflow-hidden bg-card py-24">
           <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-2">
             <div>
-              <span className="eyebrow eyebrow-marketing">FOR ARENA OWNERS</span>
+              <span className="eyebrow eyebrow-marketing">
+                FOR ARENA OWNERS
+              </span>
               <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
                 Own an arena? <span className="text-gradient-marketing">Put it on the map.</span>
               </h2>
@@ -701,8 +696,8 @@ export default function Home() {
               <div className="col-span-2">
                 <Logo />
                 <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-                  Pakistan&apos;s sports arena management platform — the console for arena owners
-                  and platform administrators.
+                  Pakistan&apos;s sports arena management platform — the console for arena owners and
+                  platform administrators.
                 </p>
               </div>
               <div>
@@ -729,14 +724,10 @@ export default function Home() {
                 <h4 className="text-sm font-bold text-foreground">Company</h4>
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                   <li>
-                    <AboutDialog
-                      trigger={<button className="hover:text-foreground">About Us</button>}
-                    />
+                    <AboutDialog trigger={<button className="hover:text-foreground">About Us</button>} />
                   </li>
                   <li>
-                    <ContactDialog
-                      trigger={<button className="hover:text-foreground">Contact</button>}
-                    />
+                    <ContactDialog trigger={<button className="hover:text-foreground">Contact</button>} />
                   </li>
                   <li>
                     <Link href="/login" className="hover:text-foreground">
