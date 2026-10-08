@@ -3226,8 +3226,9 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
 [data-admin] .ah-pitch-legend i.ah-slot {
   height: 11px;
 }
-/* page-header date inputs keep their own width, like the selects */
-[data-admin] .ah-page-actions [data-slot="input"] {
+/* owner page-header date inputs keep their own width, like the selects
+   (owner only: the admin user search input keeps its set width) */
+[data-owner] .ah-page-actions [data-slot="input"] {
   width: auto;
 }
 /* the owner rail at the prototype's full size when the window is tall
