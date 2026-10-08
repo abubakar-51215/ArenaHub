@@ -65,6 +65,17 @@ async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Are
     return arena
 
 
+async def _editable_owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Arena:
+    """An owned arena the owner may still change. An arena removed by an
+    admin is read-only for its owner. A suspended one can still be edited
+    (to fix what led to the suspension); its suspension columns are never
+    written here, so nothing the owner does lifts it."""
+    arena = await _owned_arena(db, arena_id, user)
+    if arena.is_deleted:
+        raise ValidationError("This arena was removed by ArenaHub and can no longer be changed.")
+    return arena
+
+
 async def _resolve_amenities(db: AsyncSession, amenity_ids: list[uuid.UUID]) -> list:
     unique = list(dict.fromkeys(amenity_ids))
     amenities = await repo.get_amenities_by_ids(db, unique)
@@ -116,7 +127,7 @@ async def list_owner_arenas(db: AsyncSession, user: User, params: PaginationPara
 async def update_arena(
     db: AsyncSession, user: User, arena_id: uuid.UUID, data: ArenaUpdate
 ) -> ArenaResponse:
-    arena = await _owned_arena(db, arena_id, user)
+    arena = await _editable_owned_arena(db, arena_id, user)
     fields = data.model_dump(exclude_unset=True)
 
     for name in _SCALAR_UPDATE_FIELDS:
@@ -144,7 +155,7 @@ async def update_arena(
 async def deactivate_arena(db: AsyncSession, user: User, arena_id: uuid.UUID) -> None:
     """Owner takes an arena offline (soft): hidden from public search, kept for
     the owner. Reversible by re-activating through update in a later sprint."""
-    arena = await _owned_arena(db, arena_id, user)
+    arena = await _editable_owned_arena(db, arena_id, user)
     arena.is_active = False
     await db.commit()
 
@@ -153,7 +164,7 @@ async def resubmit_for_verification(
     db: AsyncSession, user: User, arena_id: uuid.UUID
 ) -> ArenaResponse:
     """Owner resubmits a rejected arena for review (rejected → pending)."""
-    arena = await _owned_arena(db, arena_id, user)
+    arena = await _editable_owned_arena(db, arena_id, user)
     if arena.status != ArenaStatus.rejected:
         raise ConflictError("Only a rejected arena can be resubmitted.")
     arena.status = ArenaStatus.pending
@@ -241,7 +252,7 @@ async def get_trending_arenas(
 
 async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
     arena = await repo.get_arena(db, arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     return ArenaResponse.model_validate(arena)
 
@@ -253,7 +264,7 @@ async def like_arena(db: AsyncSession, user: User, arena_id: uuid.UUID) -> None:
     """Idempotent: liking an already-liked arena is a no-op, not an error —
     a double-tapped heart shouldn't surface a 409."""
     arena = await repo.get_arena(db, arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     if await repo.get_like(db, user.id, arena_id) is None:
         await repo.add_like(db, user.id, arena_id)
@@ -481,7 +492,7 @@ async def get_bank_details_for_checkout(
     Returns every active account (default first) so the player can pick which
     to transfer to."""
     arena = await repo.get_arena(db, arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     rows = await repo.list_active_bank_details(db, arena_id)
     if not rows:

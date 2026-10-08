@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.modules.booking.model import BookingStatus, PaymentPlan
 from app.modules.payment.model import PaymentMethod
@@ -17,6 +17,18 @@ from app.modules.user.model import UserRole
 
 class RejectArenaRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
+
+
+class ArenaModerationRequest(BaseModel):
+    """Suspend, reactivate or remove an arena. The reason is mandatory: it goes
+    to the owner (suspend / remove) and into the audit log."""
+
+    reason: str = Field(min_length=10, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _trim(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
 
 
 # ---- user management --------------------------------------------------
@@ -60,6 +72,8 @@ class AdminBookingResponse(BaseModel):
     payment_type: PaymentPlan
     status: BookingStatus
     created_at: datetime
+    # a refund for this booking is still waiting (gateway retry, or manual)
+    refund_pending: bool = False
 
 
 class AdminPaymentResponse(BaseModel):
@@ -73,6 +87,8 @@ class AdminPaymentResponse(BaseModel):
     gateway_transaction_id: str | None
     status: PayStatus
     created_at: datetime
+    # a refund against this payment is still waiting (gateway retry, or manual)
+    refund_pending: bool = False
 
 
 # ---- dashboard --------------------------------------------------

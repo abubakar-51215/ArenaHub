@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import ArenaCity, ArenaStatus
+from app.modules.arena.model import ArenaCity
 from app.modules.court import repository as court_repo
 from app.modules.match import repository as repo
 from app.modules.match.model import Match, MatchParticipant, MatchStatus
@@ -66,7 +66,7 @@ def _to_detail(match: Match, arena_name: str, city: str, court_name: str) -> Mat
 
 async def create_match(db: AsyncSession, user: User, data: MatchCreate) -> MatchDetailResponse:
     arena = await arena_repo.get_arena(db, data.arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     court = await court_repo.get_court(db, data.court_id)
     if court is None or court.arena_id != arena.id:

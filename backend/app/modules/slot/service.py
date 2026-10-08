@@ -76,6 +76,11 @@ async def generate_slots(
     db: AsyncSession, user: User, court_id: uuid.UUID, data: SlotGenerateRequest
 ) -> SlotGenerateResult:
     court, arena = await _owned_court_and_arena(db, court_id, user)
+    # an admin-suspended or removed arena cannot put new slots on sale
+    if arena.is_suspended:
+        raise ValidationError("This arena is suspended by ArenaHub; slots cannot be generated.")
+    if arena.is_deleted:
+        raise ValidationError("This arena was removed by ArenaHub.")
     blocked_dates = {b.blocked_date for b in await arena_repo.list_blocked_dates(db, arena.id)}
     pricing_rules = await court_repo.list_pricing_rules(db, court_id)
 
@@ -152,6 +157,12 @@ async def list_public_slots(
 ) -> list[SlotResponse]:
     court = await court_repo.get_court(db, court_id)
     if court is None or not court.is_available:
+        raise NotFoundError("Court not found.")
+    # slots of an arena an admin suspended or removed are not offered, so the
+    # slots its cancelled bookings freed are not sold again (booking itself
+    # already requires a live arena)
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or arena.is_suspended or arena.is_deleted:
         raise NotFoundError("Court not found.")
     rows = await repo.list_slots(db, court_id, target_date)
     return [SlotResponse.model_validate(r) for r in rows]

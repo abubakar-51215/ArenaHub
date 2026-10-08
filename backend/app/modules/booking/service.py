@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cache.locking import acquire_slot_lock, release_slot_lock
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import ArenaStatus, DiscountCode
+from app.modules.arena.model import DiscountCode
 from app.modules.booking import repository as repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentPlan, PaymentStatus
 from app.modules.booking.schema import (
@@ -71,7 +71,7 @@ async def create_booking(
     if court is None or not court.is_available:
         raise NotFoundError("Court not found.")
     arena = await arena_repo.get_arena(db, court.arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
 
     if data.payment_type == PaymentPlan.advance and arena.require_full_payment:
@@ -295,6 +295,20 @@ async def cancel_booking(
             arena.refund_policy if arena else [], max(hours_before, Decimal("0"))
         )
 
+    await _apply_cancellation(db, booking, reason=reason, refund_percentage=refund_percentage)
+
+    await db.commit()
+    return BookingResponse.model_validate(booking)
+
+
+async def _apply_cancellation(
+    db: AsyncSession, booking: Booking, *, reason: str | None, refund_percentage: int
+):
+    """The cancellation itself, shared by a user's cancel and the platform's
+    (an admin suspending or removing an arena): free the slot, cancel the
+    booking, release equipment, refund what was captured at
+    ``refund_percentage`` and tell the player. The caller holds the row lock
+    and commits. Returns the refund, if one was created."""
     slot = await slot_repo.get_slot(db, booking.slot_id)
     if slot is not None and slot.status != SlotStatus.available:
         slot.status = SlotStatus.available
@@ -313,14 +327,37 @@ async def cancel_booking(
 
     # Payment module owns refund execution; it only does anything if money
     # was actually captured for this booking (no-op for pending_payment
-    # cancellations, where refund_percentage is always 0 above).
+    # cancellations, where refund_percentage is always 0).
     from app.modules.payment.service import create_refund_for_cancelled_booking
 
-    await create_refund_for_cancelled_booking(db, booking)
+    refund = await create_refund_for_cancelled_booking(db, booking)
     await notify_user(db, booking.player_id, "booking_cancelled", booking_id=str(booking.id))
+    return refund
 
-    await db.commit()
-    return BookingResponse.model_validate(booking)
+
+async def cancel_future_bookings_for_arena(
+    db: AsyncSession, arena_id: uuid.UUID, reason: str, now: datetime | None = None
+) -> tuple[int, int]:
+    """Platform cancellation when an admin suspends or removes an arena: every
+    booking whose slot has not started yet is cancelled through the same path
+    as a user's cancel, with a 100% refund of whatever was captured (nothing
+    is captured for pending_payment bookings, so they refund nothing). Past
+    and already-started bookings are left alone. The slots go back to
+    available, but the arena is no longer live, so they are not sold again
+    until it is reactivated. Does not commit. Returns (bookings cancelled,
+    refunds left pending)."""
+    from app.modules.payment.model import RefundStatus
+
+    bookings = await repo.list_future_live_bookings_for_update(
+        db, arena_id, _CANCELLABLE, now or datetime.now()
+    )
+    pending = 0
+    for booking in bookings:
+        percentage = 0 if booking.status == BookingStatus.pending_payment else 100
+        refund = await _apply_cancellation(db, booking, reason=reason, refund_percentage=percentage)
+        if refund is not None and refund.status == RefundStatus.pending:
+            pending += 1
+    return len(bookings), pending
 
 
 async def reschedule_booking(

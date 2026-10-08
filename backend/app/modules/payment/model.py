@@ -17,11 +17,13 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     String,
     Text,
@@ -156,6 +158,14 @@ class Refund(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Enum(RefundStatus, name="refund_status"), nullable=False, default=RefundStatus.pending
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    # A refund the gateway could not complete stays pending and is retried by
+    # the scheduler (payment.service.retry_pending_refunds) at next_attempt_at,
+    # with a growing delay; after the last try needs_manual is set. Manual
+    # (bank-transfer) refunds never get a next_attempt_at.
+    gateway_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True, index=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    needs_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     booking: Mapped["Booking"] = relationship()
     payment: Mapped["Payment"] = relationship(back_populates="refunds")

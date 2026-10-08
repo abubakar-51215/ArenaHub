@@ -136,7 +136,12 @@ async def count_users_by_role(db: AsyncSession, role: UserRole) -> int:
 
 
 async def count_arenas_by_status(db: AsyncSession, status: ArenaStatus) -> int:
-    return (await db.scalar(select(func.count()).where(Arena.status == status))) or 0
+    # removed (soft-deleted) arenas are not counted, as no admin list shows them
+    return (
+        await db.scalar(
+            select(func.count()).where(Arena.status == status, Arena.deleted_at.is_(None))
+        )
+    ) or 0
 
 
 async def count_bookings_since(db: AsyncSession, since: datetime | None) -> int:
