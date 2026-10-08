@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useReportedReviews, useReviewModeration } from "@/hooks/useAdmin";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { ModerationReview } from "@/types";
 
@@ -76,7 +76,7 @@ export default function AdminReviewsPage() {
         title="Reviews"
         subtitle={
           data
-            ? `${data.total.toLocaleString("en-US")} reported reviews`
+            ? plural(data.total, "reported review")
             : "Reported reviews waiting for a decision"
         }
       />

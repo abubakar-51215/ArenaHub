@@ -8,7 +8,7 @@ export default function AdminUsersPage() {
   // UsersView reads ?search= (set by the command palette), so it needs Suspense
   return (
     <Suspense fallback={null}>
-      <UsersView role="player" title="Players" noun="registered accounts" />
+      <UsersView role="player" title="Players" noun={["registered account", "registered accounts"]} />
     </Suspense>
   );
 }

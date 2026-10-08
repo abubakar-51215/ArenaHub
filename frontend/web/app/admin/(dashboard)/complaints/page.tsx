@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useComplaintActions, useComplaints } from "@/hooks/useAdmin";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { Complaint, ComplaintCategory, ComplaintStatus } from "@/types";
 
@@ -100,7 +100,7 @@ export default function AdminComplaintsPage() {
     <>
       <PageHeader
         title="Complaints"
-        subtitle={data ? `${data.total.toLocaleString("en-US")} complaints` : undefined}
+        subtitle={data ? plural(data.total, "complaint") : undefined}
       >
         <Select
           value={status}

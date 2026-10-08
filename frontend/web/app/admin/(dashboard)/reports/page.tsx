@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDashboardOverview } from "@/hooks/useAdminOverview";
+import { plural } from "@/lib/format";
 import type { OverviewRange } from "@/services/admin-overview";
 import { downloadAdminReport, type AdminReportType } from "@/services/reports";
 
@@ -114,7 +115,7 @@ export default function AdminAnalyticsPage() {
               value={dash ?? topCity?.city ?? "—"}
               foot={
                 topCity
-                  ? `${topCity.bookings.toLocaleString("en-US")} bookings · ${Math.round(topCity.share_pct)}%`
+                  ? `${plural(topCity.bookings, "booking")} · ${Math.round(topCity.share_pct)}%`
                   : undefined
               }
             />
