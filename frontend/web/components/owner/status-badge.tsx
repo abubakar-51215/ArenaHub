@@ -1,7 +1,15 @@
 import { cn } from "@/lib/utils";
 import type { ArenaStatus, BookingStatus, ComplaintStatus, PaymentStatus } from "@/types";
 
-export type Status = ArenaStatus | BookingStatus | PaymentStatus | ComplaintStatus | "active" | "inactive";
+export type Status =
+  | ArenaStatus
+  | BookingStatus
+  | PaymentStatus
+  | ComplaintStatus
+  | "active"
+  | "inactive"
+  | "suspended"
+  | "removed";
 
 export const STYLES: Record<Status, string> = {
   approved: "bg-success-muted text-success",
@@ -9,6 +17,9 @@ export const STYLES: Record<Status, string> = {
   rejected: "bg-danger-muted text-destructive",
   active: "bg-success-muted text-success",
   inactive: "bg-muted text-muted-foreground",
+  // set by an admin (owner Arenas list)
+  suspended: "bg-danger-muted text-destructive",
+  removed: "bg-muted text-muted-foreground",
   pending_payment: "bg-warning-muted text-warning",
   pending_approval: "bg-warning-muted text-warning",
   // Wireframe (ArenaOwners.PNG screen 5): Confirmed green, Cancelled red.
@@ -29,6 +40,8 @@ export const LABELS: Record<string, string> = {
   rejected: "Rejected",
   active: "Active",
   inactive: "Inactive",
+  suspended: "Suspended",
+  removed: "Removed",
   pending_payment: "Pending Payment",
   pending_approval: "Pending Approval",
   confirmed: "Confirmed",

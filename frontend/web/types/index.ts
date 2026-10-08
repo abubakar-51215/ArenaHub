@@ -346,6 +346,8 @@ export interface AdminUserDetail extends AdminUser {
 }
 
 export interface AdminBooking {
+  /** a refund for this booking is still waiting (gateway retry, or manual) */
+  refund_pending?: boolean;
   id: string;
   player_id: string;
   player_name: string;
@@ -362,6 +364,8 @@ export interface AdminBooking {
 }
 
 export interface AdminPayment {
+  /** a refund against this payment is still waiting (gateway retry, or manual) */
+  refund_pending?: boolean;
   id: string;
   player_id: string;
   player_name: string;

@@ -152,7 +152,10 @@ export default function AdminBookingsPage() {
                   </TableCell>
                   <TableCell className="ah-r ah-money">{formatRs(b.total_amount)}</TableCell>
                   <TableCell>
-                    <AdminBadge status={b.status} />
+                    <span className="ah-badges">
+                      <AdminBadge status={b.status} />
+                      {b.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
+                    </span>
                   </TableCell>
                   <TableCell className="ah-r">
                     <div className="ah-row-actions">
@@ -190,7 +193,10 @@ export default function AdminBookingsPage() {
             <dl className="ah-detail">
               <dt>Status</dt>
               <dd>
-                <AdminBadge status={viewing.status} />
+                <span className="ah-badges">
+                  <AdminBadge status={viewing.status} />
+                  {viewing.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
+                </span>
               </dd>
               <dt>Player</dt>
               <dd>{viewing.player_name}</dd>
