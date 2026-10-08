@@ -9,9 +9,11 @@ place that ever moves a booking group out of pending_payment.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
+import structlog
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -49,6 +51,52 @@ from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.qr import generate_booking_qr
 from app.websocket.manager import broadcast_slot_status
+
+log = structlog.get_logger()
+
+# Gateway refunds that fail are retried with a growing delay: 5, 10, 20, 40
+# and 80 minutes after each failure, six tries in all; after that the refund
+# is flagged for manual handling and the player is told.
+REFUND_RETRY_BASE = timedelta(minutes=5)
+REFUND_MAX_ATTEMPTS = 6
+
+
+def _next_refund_attempt(now: datetime, attempts: int) -> datetime:
+    return now + REFUND_RETRY_BASE * (2 ** (attempts - 1))
+
+
+async def _record_failed_try(
+    db: AsyncSession, refund: Refund, payment: Payment, booking: Booking, now: datetime, error: str
+) -> None:
+    """One gateway try that did not complete the refund: it raised, or it
+    answered with anything other than "processed". Counts toward the
+    REFUND_MAX_ATTEMPTS tries; schedules the next one, or after the last one
+    flags the refund for manual handling and tells the player."""
+    refund.status = RefundStatus.pending
+    refund.gateway_attempts += 1
+    refund.last_error = error[:500]
+    if refund.gateway_attempts >= REFUND_MAX_ATTEMPTS:
+        refund.needs_manual = True
+        refund.next_attempt_at = None
+        await state_machine.record_note(
+            db, payment, f"Refund of Rs. {refund.amount} needs manual handling."
+        )
+        await notify_user(
+            db,
+            booking.player_id,
+            "refund_needs_manual",
+            booking_id=str(booking.id),
+            amount=str(refund.amount),
+        )
+    else:
+        refund.next_attempt_at = _next_refund_attempt(now, refund.gateway_attempts)
+    log.warning(
+        "refund_gateway_try_failed",
+        refund_id=str(refund.id),
+        attempts=refund.gateway_attempts,
+        error=refund.last_error,
+    )
+
 
 _PROVIDER_NAME = {
     PaymentMethod.card: "stripe",
@@ -444,16 +492,38 @@ async def _issue_refund(
         amount=amount,
         reason=reason,
         status=RefundStatus.pending,
+        gateway_attempts=0,
     )
     await repo.add_refund(db, refund)
 
     provider = get_provider(payment.payment_method.value)
-    result = await provider.refund(
-        gateway_transaction_id=payment.gateway_transaction_id or "", amount=amount
-    )
-    refund.status = RefundStatus.processed if result.status == "processed" else RefundStatus.pending
-    if refund.status == RefundStatus.processed:
-        refund.processed_at = datetime.now()
+    try:
+        result = await provider.refund(
+            gateway_transaction_id=payment.gateway_transaction_id or "",
+            amount=amount,
+            idempotency_key=str(refund.id),
+        )
+    except Exception as exc:  # noqa: BLE001 - any gateway failure must not undo the cancellation
+        # The gateway could not take the refund right now (outage, bad key,
+        # ...). Keep it pending and let the scheduler retry; whatever
+        # cancelled the booking still goes through.
+        await _record_failed_try(
+            db, refund, payment, booking, datetime.now(), f"{type(exc).__name__}: {exc}"
+        )
+    else:
+        if result.status == "processed":
+            refund.status = RefundStatus.processed
+            refund.processed_at = datetime.now()
+        elif payment.payment_method == PaymentMethod.bank_transfer:
+            # a bank-transfer refund is pending by design: the owner sends the
+            # money and marks it processed; it is never retried automatically
+            refund.status = RefundStatus.pending
+        else:
+            # a gateway that answers "pending" (or anything but processed)
+            # counts as a try, so the refund cannot sit pending forever
+            await _record_failed_try(
+                db, refund, payment, booking, datetime.now(), f"gateway answered {result.status!r}"
+            )
     await state_machine.record_note(db, payment, f"Refund of Rs. {amount} issued ({kind}).")
     await _mark_refunded_if_fully(db, payment)
     await notify_user(
@@ -484,6 +554,72 @@ async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking
         reason=booking.cancellation_reason or "Booking cancelled.",
         kind="cancellation",
     )
+
+
+async def retry_pending_refunds(db: AsyncSession, now: datetime | None = None) -> int:
+    """Scheduler job: try again every gateway refund that is due. Safe to run
+    twice at once: due rows are taken with FOR UPDATE SKIP LOCKED and checked
+    again under the lock, a retry re-sends the same refund (never a new one),
+    and the gateway gets the refund's id as its idempotency key. Returns how
+    many refunds were tried."""
+    now = now or datetime.now()
+    rows = (
+        (
+            await db.execute(
+                select(Refund)
+                .where(
+                    Refund.status == RefundStatus.pending,
+                    Refund.needs_manual.is_(False),
+                    Refund.next_attempt_at.is_not(None),
+                    Refund.next_attempt_at <= now,
+                )
+                .order_by(Refund.next_attempt_at)
+                .limit(50)
+                .with_for_update(skip_locked=True)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for refund in rows:
+        payment = await repo.get_payment(db, refund.payment_id)
+        booking = await booking_repo.get_booking(db, refund.booking_id)
+        if payment is None or booking is None:
+            continue
+        provider = get_provider(payment.payment_method.value)
+        try:
+            result = await provider.refund(
+                gateway_transaction_id=payment.gateway_transaction_id or "",
+                amount=refund.amount,
+                idempotency_key=str(refund.id),
+            )
+        except Exception as exc:  # noqa: BLE001
+            await _record_failed_try(
+                db, refund, payment, booking, now, f"{type(exc).__name__}: {exc}"
+            )
+            continue
+        if result.status != "processed":
+            # "pending" or any other answer is a try that did not finish
+            await _record_failed_try(
+                db, refund, payment, booking, now, f"gateway answered {result.status!r}"
+            )
+            continue
+        refund.gateway_attempts += 1
+        refund.last_error = None
+        refund.next_attempt_at = None
+        refund.status = RefundStatus.processed
+        refund.processed_at = now
+        await state_machine.record_note(db, payment, f"Refund of Rs. {refund.amount} completed.")
+        await _mark_refunded_if_fully(db, payment)
+        await notify_user(
+            db,
+            booking.player_id,
+            "refund_completed",
+            booking_id=str(booking.id),
+            amount=str(refund.amount),
+        )
+    await db.commit()
+    return len(rows)
 
 
 async def refund_reschedule_overpayment(

@@ -74,6 +74,40 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "An administrator reactivated your account. You can sign in as usual.",
         "category": "account",
     },
+    "arena_suspended": {
+        "title": "Your arena has been suspended",
+        "body": (
+            "ArenaHub suspended {arena_name}. Players cannot find or book it, and its "
+            "upcoming bookings were cancelled with a full refund. Reason: {reason}"
+        ),
+        "category": "account",
+    },
+    "arena_reactivated": {
+        "title": "Your arena is live again",
+        "body": "ArenaHub lifted the suspension on {arena_name}. Players can find and book it.",
+        "category": "account",
+    },
+    "arena_deleted": {
+        "title": "Your arena has been removed",
+        "body": (
+            "ArenaHub removed {arena_name}. Its upcoming bookings were cancelled with a "
+            "full refund. Reason: {reason}"
+        ),
+        "category": "account",
+    },
+    "refund_completed": {
+        "title": "Refund completed",
+        "body": "Your refund of PKR {amount} has been completed.",
+        "category": "payment",
+    },
+    "refund_needs_manual": {
+        "title": "Your refund is being handled by our team",
+        "body": (
+            "We could not complete your refund of PKR {amount} automatically. Our team will "
+            "process it and contact you."
+        ),
+        "category": "payment",
+    },
 }
 
 DEFAULT_EVENT = {
