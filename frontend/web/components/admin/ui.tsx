@@ -142,7 +142,7 @@ export function AdminKpi({
       <p className="ah-eyebrow">{label}</p>
       <div
         className={cn("ah-metric", size === "lg" && "is-lg")}
-        style={tone === "wait" ? { color: "var(--amber)" } : tone === "off" ? { color: "var(--red)" } : undefined}
+        style={tone === "wait" ? { color: "var(--wait-text)" } : tone === "off" ? { color: "var(--off-text)" } : undefined}
       >
         {value}
       </div>
