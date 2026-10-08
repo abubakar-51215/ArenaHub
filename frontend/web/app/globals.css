@@ -619,7 +619,13 @@
   --rail-hover: #182620;
   --rail-hover-text: #e6ede8;
   --rail-on: #1e2e26;
-  --rail-label: #5d6e64;
+  /* text colours darkened to 4.5:1 on white and paper (owner-approved); the
+     prototype value is kept beside each. Fills, dots and borders keep the
+     prototype colours (--lime-deep, --amber, --red). */
+  --rail-label: #708579; /* prototype #5d6e64 */
+  --ok-text: #5d770b; /* prototype text was --lime-deep #7fa30f */
+  --wait-text: #956508; /* prototype text was --amber #d9930b */
+  --off-text: #c83333; /* prototype text was --red #cf4141 */
   --rail-count: #22332b;
   --rail-count-text: #9fb0a6;
   --rail-avatar: #2a3b32;
@@ -628,6 +634,7 @@
   /* Text colour as a real property: without it, admin text inherits <body>'s
      colour, which comes from :root's blue-grey --foreground, not ink. */
   color: var(--foreground);
+  --muted-foreground: #67716b; /* prototype --muted #79857e */
   /* the prototype's body type: everything without its own size inherits it */
   font-size: 14px;
   line-height: 1.5;
@@ -699,6 +706,12 @@
 [data-admin] .ah-rail .ah-brand-name {
   font-size: 12px;
 }
+[data-admin].ah-auth .ah-brand-name small {
+  color: #697a70; /* prototype --rail-text #a9b5ae, made for the dark rail */
+}
+html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
+  color: var(--muted-foreground);
+}
 [data-admin] .ah-rail .ah-brand-name small {
   font-size: 9px;
   margin-top: 1.6px;
@@ -766,7 +779,9 @@
 }
 [data-admin] .ah-nav-item.is-active .ah-nav-count {
   background: var(--lime);
-  color: var(--ink);
+  /* prototype: var(--ink), which turns light in dark mode (1.1:1 on lime);
+     the prototype's --lime-ink stays dark in both themes */
+  color: #0f1a15;
 }
 [data-admin] .ah-rail-foot {
   margin-top: auto;
@@ -1064,7 +1079,7 @@
   font-size: 13px;
 }
 [data-admin] .ah-cmdk-note.is-error {
-  color: var(--red);
+  color: var(--off-text);
 }
 [data-admin] .ah-cmdk-note button {
   font: inherit;
@@ -1118,7 +1133,7 @@
   color: var(--muted-foreground);
 }
 [data-admin] .ah-pop-note.is-error {
-  color: var(--red);
+  color: var(--off-text);
 }
 [data-admin] .ah-pop-item {
   display: flex;
@@ -1210,6 +1225,10 @@ html[data-theme="dark"] [data-admin] {
   --danger-muted: #2c1616;
 }
 html[data-theme="dark"] [data-admin] {
+  --rail-label: #6e8276; /* prototype #5d6e64 */
+  --ok-text: #7fa30f; /* passes in dark: the prototype value */
+  --wait-text: #d9930b; /* passes in dark: the prototype value */
+  --off-text: #d65d5d; /* prototype --red #cf4141 */
   --ink: #e9efe9;
   --ink-soft: #c8d3cb;
   --paper: #0a100d;
@@ -1266,10 +1285,10 @@ html[data-theme="dark"] [data-admin] .ah-toast {
   gap: 3px;
 }
 [data-admin] .ah-delta.up {
-  color: var(--lime-deep);
+  color: var(--ok-text);
 }
 [data-admin] .ah-delta.down {
-  color: var(--red);
+  color: var(--off-text);
 }
 [data-admin] .ah-spark {
   width: 100%;
@@ -1446,7 +1465,7 @@ html[data-theme="dark"] [data-admin] .ah-toast {
   padding: 10px 12px;
   border-radius: 9px;
   background: var(--red-wash);
-  color: var(--red);
+  color: var(--off-text);
   font-size: 13px;
 }
 [data-admin] .ah-empty-line {
@@ -1559,12 +1578,12 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 [data-admin] .ah-saved {
   font-size: 13px;
   font-weight: 600;
-  color: var(--lime-deep);
+  color: var(--ok-text);
 }
 /* Reviews: rating stars in the prototype's amber (graphic only; the number
    beside them carries the rating in readable --text-2) */
 [data-admin] .ah-stars {
-  color: var(--amber);
+  color: var(--wait-text); /* was the prototype --amber; the empty stars stay decorative */
   font-size: 13px;
   letter-spacing: 1px;
   white-space: nowrap;
@@ -1907,23 +1926,27 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: currentColor;
+  /* the dot keeps the prototype colour; only the text is darkened */
+  background: var(--badge-dot, currentColor);
 }
 [data-admin] .ah-b-ok {
+  --badge-dot: var(--lime-deep);
   background: var(--lime-wash);
-  color: var(--lime-deep);
+  color: var(--ok-text);
 }
 [data-admin] .ah-b-wait {
+  --badge-dot: var(--amber);
   background: var(--amber-wash);
-  color: var(--amber);
+  color: var(--wait-text);
 }
 [data-admin] .ah-b-off {
+  --badge-dot: var(--red);
   background: var(--red-wash);
-  color: var(--red);
+  color: var(--off-text);
 }
 [data-admin] .ah-b-idle {
   background: var(--line-soft);
-  color: var(--muted-foreground);
+  color: var(--text-2); /* prototype var(--muted): 4.4:1 on line-soft */
 }
 
 /* buttons ----------------------------------------------------------------------
@@ -1986,7 +2009,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
-  color: var(--red);
+  color: var(--off-text);
 }
 [data-admin] [data-slot="button"][data-variant="destructive"]:hover:not(:disabled) {
   background: var(--red-wash);
@@ -2370,7 +2393,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   padding: 8px 12px;
   border-radius: 9px;
   background: var(--red-wash);
-  color: var(--red);
+  color: var(--off-text);
   font-size: 13px;
 }
 [data-admin] .ah-auth-foot {
@@ -2516,7 +2539,9 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   display: flex;
   gap: 4px;
   justify-content: flex-end;
-  opacity: 0.35;
+  /* prototype .row-actions{opacity:.35} until hover: below 4.5:1 at rest,
+     so the actions now show at full strength (owner-approved) */
+  opacity: 1;
   transition: opacity 0.14s;
 }
 [data-admin] [data-slot="table-row"]:hover .ah-row-actions,
