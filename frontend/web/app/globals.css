@@ -2454,6 +2454,12 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 [data-admin] [data-slot="button"].ah-danger-text {
   color: var(--off-text);
 }
+/* a status badge with a "Pending refund" badge beside it */
+[data-admin] .ah-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 [data-admin] .ah-notice {
   margin: 0 0 12px;
 }

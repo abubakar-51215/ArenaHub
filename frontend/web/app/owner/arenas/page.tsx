@@ -76,69 +76,100 @@ export default function ArenasPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {arenas.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell>
-                    <p className="font-medium text-foreground">{a.name}</p>
-                    {a.status === "rejected" && a.rejection_reason && (
-                      <p className="text-xs text-destructive">Rejected: {a.rejection_reason}</p>
-                    )}
-                    {!a.is_active && (
-                      <p className="text-xs text-muted-foreground">Inactive (hidden from search)</p>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{a.city}</TableCell>
-                  <TableCell className="text-muted-foreground">{a.area ?? a.address}</TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/owner/courts?arena=${a.id}`}
-                      className="inline-flex text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:min-h-11 max-md:items-center"
-                    >
-                      Manage
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={!a.is_active ? "inactive" : a.status} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openEdit(a)}
-                        title="Edit"
+              {arenas.map((a) => {
+                // set by an admin: a suspended arena is locked here until the
+                // admin lifts it; a removed one is read-only for good
+                const removed = !!a.deleted_at;
+                const suspended = !removed && !!a.suspended_at;
+                const locked = removed || suspended;
+                const lockedTitle = removed
+                  ? "Removed by admin"
+                  : "Suspended by admin — changes are locked";
+                return (
+                  <TableRow key={a.id}>
+                    <TableCell>
+                      <p className="font-medium text-foreground">{a.name}</p>
+                      {removed && (
+                        <p className="text-xs text-destructive">
+                          Removed by admin{a.deleted_reason ? `: ${a.deleted_reason}` : ""}
+                        </p>
+                      )}
+                      {suspended && (
+                        <p className="text-xs text-destructive">
+                          Suspended by admin{a.suspended_reason ? `: ${a.suspended_reason}` : ""}
+                        </p>
+                      )}
+                      {!locked && a.status === "rejected" && a.rejection_reason && (
+                        <p className="text-xs text-destructive">Rejected: {a.rejection_reason}</p>
+                      )}
+                      {!locked && !a.is_active && (
+                        <p className="text-xs text-muted-foreground">Inactive (hidden from search)</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{a.city}</TableCell>
+                    <TableCell className="text-muted-foreground">{a.area ?? a.address}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/owner/courts?arena=${a.id}`}
+                        className="inline-flex text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:min-h-11 max-md:items-center"
                       >
-                        <Pencil className="size-4" />
-                      </Button>
-                      {a.status === "rejected" && (
+                        Manage
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        status={
+                          removed
+                            ? "removed"
+                            : suspended
+                              ? "suspended"
+                              : !a.is_active
+                                ? "inactive"
+                                : a.status
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          title="Resubmit for verification"
-                          disabled={resubmit.isPending}
-                          onClick={() => resubmit.mutate(a.id)}
+                          onClick={() => openEdit(a)}
+                          title={locked ? lockedTitle : "Edit"}
+                          disabled={locked}
                         >
-                          <RotateCcw className="size-4" />
+                          <Pencil className="size-4" />
                         </Button>
-                      )}
-                      {a.is_active && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Deactivate"
-                          disabled={deactivate.isPending}
-                          onClick={() => {
-                            if (confirm(`Deactivate “${a.name}”? It will be hidden from search.`))
-                              deactivate.mutate(a.id);
-                          }}
-                        >
-                          <PowerOff className="size-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {a.status === "rejected" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title={locked ? lockedTitle : "Resubmit for verification"}
+                            disabled={locked || resubmit.isPending}
+                            onClick={() => resubmit.mutate(a.id)}
+                          >
+                            <RotateCcw className="size-4" />
+                          </Button>
+                        )}
+                        {a.is_active && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title={locked ? lockedTitle : "Deactivate"}
+                            disabled={locked || deactivate.isPending}
+                            onClick={() => {
+                              if (confirm(`Deactivate “${a.name}”? It will be hidden from search.`))
+                                deactivate.mutate(a.id);
+                            }}
+                          >
+                            <PowerOff className="size-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

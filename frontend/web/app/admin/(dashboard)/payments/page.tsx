@@ -165,7 +165,10 @@ export default function AdminPaymentsPage() {
                   <TableCell>{METHOD_LABEL[p.payment_method] ?? p.payment_method}</TableCell>
                   <TableCell className="ah-r ah-money">{formatRs(p.amount)}</TableCell>
                   <TableCell>
-                    <AdminBadge status={p.status} />
+                    <span className="ah-badges">
+                      <AdminBadge status={p.status} />
+                      {p.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
+                    </span>
                   </TableCell>
                   <TableCell className="ah-t2 tabular-nums">
                     {formatDate(p.created_at.slice(0, 10))}
