@@ -8,6 +8,7 @@ import { ArenaDetailDialog } from "@/components/admin/arena-detail";
 import { CourtArt } from "@/components/admin/court-art";
 import { PageHeader } from "@/components/admin/page-header";
 import { AdminBadge, AdminEmpty, AdminTag } from "@/components/admin/ui";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useAdminArena, useArenaDirectory, type ArenaAction } from "@/hooks/useAdmin";
@@ -76,23 +77,34 @@ function ArenaCard({
           </Button>
           {/* only the actions valid for this arena */}
           {arena.status === "approved" && !arena.suspended_at && (
-            <Button variant="outline" size="sm" onClick={() => onAction("suspend")}>
+            <ActionButton
+              tone="negative"
+              variant="outline"
+              size="sm"
+              onClick={() => onAction("suspend")}
+            >
               Suspend
-            </Button>
+            </ActionButton>
           )}
           {arena.suspended_at && (
-            <Button variant="outline" size="sm" onClick={() => onAction("reactivate")}>
+            <ActionButton
+              tone="positive"
+              variant="outline"
+              size="sm"
+              onClick={() => onAction("reactivate")}
+            >
               Reactivate
-            </Button>
+            </ActionButton>
           )}
-          <Button
+          <ActionButton
+            tone="negative"
             variant="outline"
             size="sm"
             className="ah-danger-text"
             onClick={() => onAction("remove")}
           >
             Remove
-          </Button>
+          </ActionButton>
           {st === "pending" && (
             <Button asChild size="sm" className="ah-lime">
               <Link href="/admin/arenas">Review</Link>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +25,7 @@ export function TextInputDialog({
   confirmLabel,
   destructive = false,
   pending = false,
+  motion = false,
   error,
   onSubmit,
 }: {
@@ -35,6 +37,9 @@ export function TextInputDialog({
   confirmLabel: string;
   destructive?: boolean;
   pending?: boolean;
+  /** admin only for now: the confirm button gets the action motion
+   *  (sweep, spinner, tick or shake) */
+  motion?: boolean;
   error?: string | null;
   onSubmit: (value: string) => void;
 }) {
@@ -75,19 +80,33 @@ export function TextInputDialog({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant={destructive ? "destructive" : "default"}
-            onClick={() => onSubmit(value)}
-            disabled={pending || !value.trim()}
-            className={
-              destructive
-                ? ""
-                : "bg-primary text-primary-foreground transition-all hover:opacity-95"
-            }
-          >
-            {pending ? "Saving…" : confirmLabel}
-          </Button>
+          {motion ? (
+            <ActionButton
+              type="button"
+              tone={destructive ? "negative" : "positive"}
+              variant={destructive ? "destructive" : "default"}
+              onClick={() => onSubmit(value)}
+              disabled={pending || !value.trim()}
+              busy={pending}
+              failed={!!error}
+            >
+              {confirmLabel}
+            </ActionButton>
+          ) : (
+            <Button
+              type="button"
+              variant={destructive ? "destructive" : "default"}
+              onClick={() => onSubmit(value)}
+              disabled={pending || !value.trim()}
+              className={
+                destructive
+                  ? ""
+                  : "bg-primary text-primary-foreground transition-all hover:opacity-95"
+              }
+            >
+              {pending ? "Saving…" : confirmLabel}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
