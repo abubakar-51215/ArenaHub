@@ -76,8 +76,10 @@ function Board() {
             </option>
           ))}
         </Select>
-        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From" />
-        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To" />
+        <div className="ah-daterow">
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To" />
+        </div>
       </PageHeader>
 
       <div className="ah-ocanvas animate-fade-in ah-stack">

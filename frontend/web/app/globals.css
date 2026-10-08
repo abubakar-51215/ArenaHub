@@ -3009,7 +3009,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 }
 [data-admin] .ah-pitch-scroll {
   overflow-x: auto;
-  padding: 22px 18px 18px;
+  padding: 26px 18px 18px;
 }
 [data-admin] .ah-pitch-scroll:focus-visible {
   outline: 2px solid var(--lime-deep);
@@ -3128,10 +3128,12 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   width: 2px;
   background: var(--lime-deep);
 }
+/* the time pill sits in the padding above the hour row (line top 20px,
+   pill 40px above it), so it never covers an hour label */
 [data-admin] .ah-now-line::before {
   content: attr(data-t);
   position: absolute;
-  top: -19px;
+  top: -40px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--lime);
@@ -3339,6 +3341,24 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
 }
 [data-owner] .ah-occ .ah-rank-bar {
   width: 60px;
+}
+
+/* the From and To date boxes: part of the header row on wide screens, one
+   shared row of two half-width boxes on phones */
+[data-owner] .ah-daterow {
+  display: contents;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-daterow {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  [data-owner] .ah-daterow [data-slot="input"] {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
 }
 
 /* owner list pages (Bookings, Arenas): the table from 768px up; below that
