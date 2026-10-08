@@ -61,7 +61,10 @@ export function DashboardShell({
     if (!drawerOpen) return;
     const drawer = drawerRef.current;
     const burger = burgerRef.current;
-    drawer?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    // focus the drawer itself (no visible ring), not its first link: a tap
+    // must not light up the brand block; the first Tab reaches the brand,
+    // which then shows its keyboard-only :focus-visible ring
+    drawer?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -74,7 +77,8 @@ export function DashboardShell({
       const first = items[0];
       const last = items[items.length - 1];
       const inside = drawer.contains(document.activeElement);
-      if (e.shiftKey && (document.activeElement === first || !inside)) {
+      const onFrame = document.activeElement === drawer;
+      if (e.shiftKey && (document.activeElement === first || onFrame || !inside)) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
@@ -112,6 +116,7 @@ export function DashboardShell({
       {/* Sidebar — drawer on mobile, static on desktop */}
       <div
         ref={drawerRef}
+        tabIndex={admin && isDrawer ? -1 : undefined}
         id={admin ? "ah-drawer" : undefined}
         role={admin && isDrawer ? "dialog" : undefined}
         aria-modal={admin && isDrawer ? true : undefined}
