@@ -37,7 +37,7 @@ export function TextInputDialog({
   confirmLabel: string;
   destructive?: boolean;
   pending?: boolean;
-  /** admin only for now: the confirm button gets the action motion
+  /** the confirm button gets the action motion
    *  (sweep, spinner, tick or shake) */
   motion?: boolean;
   error?: string | null;

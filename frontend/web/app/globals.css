@@ -2052,7 +2052,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
    never changes), then a drawn tick or a short shake for about a second.
    Fill and text pairs: ink on lime 14:1, ink on lime-deep 6:1, white on
    red 4.7:1, the same in both themes. */
-:is([data-admin]) .ah-act {
+:is([data-admin], [data-owner]) .ah-act {
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -2061,7 +2061,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
     color 0.2s,
     border-color 0.2s;
 }
-:is([data-admin]) .ah-act::before {
+:is([data-admin], [data-owner]) .ah-act::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -2070,38 +2070,38 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   transform-origin: left;
   transition: transform 0.2s ease-out;
 }
-:is([data-admin]) .ah-act-pos::before {
+:is([data-admin], [data-owner]) .ah-act-pos::before {
   background: var(--lime);
 }
 /* a button that is lime already sweeps to the deeper lime */
-:is([data-admin]) .ah-act-pos.ah-lime::before {
+:is([data-admin], [data-owner]) .ah-act-pos.ah-lime::before {
   background: var(--lime-deep);
 }
-:is([data-admin]) .ah-act-neg::before {
+:is([data-admin], [data-owner]) .ah-act-neg::before {
   background: var(--red);
 }
-:is([data-admin]) .ah-act:hover:not(:disabled)::before {
+:is([data-admin], [data-owner]) .ah-act:hover:not(:disabled)::before {
   transform: scaleX(1);
 }
-:is([data-admin]) .ah-act-pos:hover:not(:disabled) {
+:is([data-admin], [data-owner]) .ah-act-pos:hover:not(:disabled) {
   color: #0f1a15;
 }
-:is([data-admin]) .ah-act-neg:hover:not(:disabled) {
+:is([data-admin], [data-owner]) .ah-act-neg:hover:not(:disabled) {
   color: #ffffff;
   border-color: var(--red);
 }
-:is([data-admin]) .ah-act:active:not(:disabled) {
+:is([data-admin], [data-owner]) .ah-act:active:not(:disabled) {
   transform: scale(0.97);
 }
 /* while busy the button is disabled but stays fully visible */
-:is([data-admin]) .ah-act[data-act="busy"]:disabled {
+:is([data-admin], [data-owner]) .ah-act[data-act="busy"]:disabled {
   opacity: 1;
 }
-:is([data-admin]) .ah-act[data-act="busy"] .ah-act-label,
-:is([data-admin]) .ah-act[data-act="done"] .ah-act-label {
+:is([data-admin], [data-owner]) .ah-act[data-act="busy"] .ah-act-label,
+:is([data-admin], [data-owner]) .ah-act[data-act="done"] .ah-act-label {
   visibility: hidden;
 }
-:is([data-admin]) .ah-act-spin {
+:is([data-admin], [data-owner]) .ah-act-spin {
   position: absolute;
   inset: 0;
   margin: auto;
@@ -2112,7 +2112,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   border-radius: 50%;
   animation: ah-spin 0.7s linear infinite;
 }
-:is([data-admin]) [data-slot="button"] svg.ah-act-tick {
+:is([data-admin], [data-owner]) [data-slot="button"] svg.ah-act-tick {
   position: absolute;
   inset: 0;
   margin: auto;
@@ -2127,7 +2127,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   stroke-dashoffset: 22;
   animation: ah-tick 0.3s ease-out forwards;
 }
-:is([data-admin]) .ah-act[data-act="fail"] {
+:is([data-admin], [data-owner]) .ah-act[data-act="fail"] {
   animation: ah-shake 0.4s ease-in-out;
 }
 @keyframes ah-spin {
@@ -2161,17 +2161,17 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 /* reduced motion: no sweep (the fill appears at once), no dip, no shake,
    and the tick shows without drawing; the spinner stays */
 @media (prefers-reduced-motion: reduce) {
-  :is([data-admin]) .ah-act,
-  :is([data-admin]) .ah-act::before {
+  :is([data-admin], [data-owner]) .ah-act,
+  :is([data-admin], [data-owner]) .ah-act::before {
     transition: none;
   }
-  :is([data-admin]) .ah-act:active:not(:disabled) {
+  :is([data-admin], [data-owner]) .ah-act:active:not(:disabled) {
     transform: none;
   }
-  :is([data-admin]) .ah-act[data-act="fail"] {
+  :is([data-admin], [data-owner]) .ah-act[data-act="fail"] {
     animation: none;
   }
-  :is([data-admin]) [data-slot="button"] svg.ah-act-tick {
+  :is([data-admin], [data-owner]) [data-slot="button"] svg.ah-act-tick {
     animation: none;
     stroke-dashoffset: 0;
   }

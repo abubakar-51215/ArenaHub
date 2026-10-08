@@ -14,6 +14,7 @@ import { AdminBadge, AdminCard, AdminEmpty, AdminPerson, AdminTableFoot, statusL
 import { PageHeader } from "@/components/owner/page-header";
 import { ReceiptReviewDialog } from "@/components/owner/receipt-review-dialog";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -164,12 +165,26 @@ function Bookings() {
       )}
       {row.status === "pending_approval" && row.payment_id && (
         <>
-          <Button size="sm" className="ah-lime" disabled={approve.isPending} onClick={() => onApprove(row)}>
+          <ActionButton
+            tone="positive"
+            size="sm"
+            className="ah-lime"
+            disabled={approve.isPending}
+            busy={approve.isPending && approve.variables === row.payment_id}
+            failed={approve.isError}
+            onClick={() => onApprove(row)}
+          >
             Approve
-          </Button>
-          <Button variant="destructive" size="sm" disabled={reject.isPending} onClick={() => setRejecting(row)}>
+          </ActionButton>
+          <ActionButton
+            tone="negative"
+            variant="destructive"
+            size="sm"
+            disabled={reject.isPending}
+            onClick={() => setRejecting(row)}
+          >
             Reject
-          </Button>
+          </ActionButton>
         </>
       )}
     </div>
@@ -341,6 +356,7 @@ function Bookings() {
         placeholder="Reason for rejection (e.g. receipt amount doesn't match)."
         confirmLabel="Reject"
         destructive
+        motion
         pending={reject.isPending}
         onSubmit={onReject}
       />

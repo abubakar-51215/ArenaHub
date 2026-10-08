@@ -16,6 +16,7 @@ import { useQueries } from "@tanstack/react-query";
 import { AdminAvatar, AdminBadge, AdminCard, AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
 import { ArenaForm } from "@/components/owner/arena-form";
 import { PageHeader } from "@/components/owner/page-header";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -140,17 +141,20 @@ export default function ArenasPage() {
         </Button>
       )}
       {a.is_active && (
-        <Button
+        <ActionButton
+          tone="negative"
           variant="destructive"
           size="sm"
           title={lock.locked ? lock.title : "Hide it from search"}
           disabled={lock.locked || deactivate.isPending}
+          busy={deactivate.isPending && deactivate.variables === a.id}
+          failed={deactivate.isError}
           onClick={() => {
             if (confirm(`Deactivate “${a.name}”? It will be hidden from search.`)) deactivate.mutate(a.id);
           }}
         >
           Deactivate
-        </Button>
+        </ActionButton>
       )}
     </div>
   );
