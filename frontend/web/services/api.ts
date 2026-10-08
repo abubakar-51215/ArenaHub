@@ -115,7 +115,8 @@ export const api = {
   post: <T>(path: string, body?: unknown) => apiRequest<T>("POST", path, body),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>("PATCH", path, body),
   put: <T>(path: string, body?: unknown) => apiRequest<T>("PUT", path, body),
-  del: <T>(path: string) => apiRequest<T>("DELETE", path),
+  // an optional JSON body, for deletes that carry one (e.g. a reason)
+  del: <T>(path: string, body?: unknown) => apiRequest<T>("DELETE", path, body),
 };
 
 /** Fetch a binary report export and trigger a browser download. Raw fetch

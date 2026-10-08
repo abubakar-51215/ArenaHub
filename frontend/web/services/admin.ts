@@ -24,8 +24,31 @@ export function fetchDashboardMetrics(): Promise<DashboardMetrics> {
 
 // ---- arena verification ----
 
-export function listArenaQueue(status: ArenaStatus, page = 1, pageSize = 20): Promise<Page<Arena>> {
-  return api.get<Page<Arena>>(`/admin/arenas?status=${status}&page=${page}&page_size=${pageSize}`);
+export function listArenaQueue(
+  status: ArenaStatus,
+  page = 1,
+  pageSize = 20,
+  suspended?: boolean,
+): Promise<Page<Arena>> {
+  const only = suspended === undefined ? "" : `&suspended=${suspended}`;
+  return api.get<Page<Arena>>(
+    `/admin/arenas?status=${status}&page=${page}&page_size=${pageSize}${only}`,
+  );
+}
+
+// ---- arena moderation (a reason of 10-500 characters is required) ----
+
+export function suspendArena(arenaId: string, reason: string): Promise<Arena> {
+  return api.post<Arena>(`/admin/arenas/${arenaId}/suspend`, { reason });
+}
+
+export function reactivateArena(arenaId: string, reason: string): Promise<Arena> {
+  return api.post<Arena>(`/admin/arenas/${arenaId}/reactivate`, { reason });
+}
+
+/** Soft delete: the reason goes as the DELETE request's JSON body. */
+export function removeArena(arenaId: string, reason: string): Promise<Arena> {
+  return api.del<Arena>(`/admin/arenas/${arenaId}`, { reason });
 }
 
 export function getAdminArena(arenaId: string): Promise<Arena> {

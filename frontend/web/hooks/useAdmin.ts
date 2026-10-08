@@ -14,7 +14,10 @@ import {
   listAuditLogs,
   listUsers,
   reactivateUser,
+  reactivateArena,
   rejectArena,
+  removeArena,
+  suspendArena,
   suspendUser,
   updatePlatformSettings,
 } from "@/services/admin";
@@ -48,22 +51,33 @@ export function useArenaQueue(status: ArenaStatus, page: number) {
 export function useArenaDirectory() {
   const statuses = ["approved", "pending", "rejected"] as const;
   const results = useQueries({
-    queries: statuses.map((status) => ({
-      queryKey: ["admin-arenas", status, "directory"],
-      queryFn: () => listArenaQueue(status, 1, 100),
-    })),
+    queries: [
+      ...statuses.map((status) => ({
+        queryKey: ["admin-arenas", status, "directory"],
+        queryFn: () => listArenaQueue(status, 1, 100),
+      })),
+      // suspended arenas on their own (suspended=true): the "Suspended"
+      // filter and the sub-line count. Only approved arenas can be suspended.
+      {
+        queryKey: ["admin-arenas", "approved", "suspended"],
+        queryFn: () => listArenaQueue("approved", 1, 100, true),
+      },
+    ],
   });
-  const [approved, pending, rejected] = results;
+  const [approved, pending, rejected, suspended] = results;
   const done = results.every((r) => r.data);
   return {
     arenas: results
+      .slice(0, 3)
       .flatMap((r) => r.data?.items ?? [])
       .sort((a, b) => a.name.localeCompare(b.name)),
+    suspended: (suspended.data?.items ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)),
     totals: done
       ? {
           approved: approved.data!.total,
           pending: pending.data!.total,
           rejected: rejected.data!.total,
+          suspended: suspended.data!.total,
         }
       : undefined,
     truncated: results.some((r) => r.data && r.data.total > r.data.items.length),
@@ -71,6 +85,33 @@ export function useArenaDirectory() {
     isError: results.some((r) => r.isError),
     refetch: () => results.forEach((r) => void r.refetch()),
   };
+}
+
+export type ArenaAction = "suspend" | "reactivate" | "remove";
+
+/** Suspend / reactivate / remove an arena; refreshes every admin arena list. */
+export function useArenaModeration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      action,
+      arenaId,
+      reason,
+    }: {
+      action: ArenaAction;
+      arenaId: string;
+      reason: string;
+    }) =>
+      action === "suspend"
+        ? suspendArena(arenaId, reason)
+        : action === "reactivate"
+          ? reactivateArena(arenaId, reason)
+          : removeArena(arenaId, reason),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-arenas"] });
+      void qc.invalidateQueries({ queryKey: ["admin-arena"] });
+    },
+  });
 }
 
 export function useAdminArena(arenaId: string | null) {

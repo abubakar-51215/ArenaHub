@@ -75,6 +75,11 @@ export interface Arena {
   is_active: boolean;
   amenities: Amenity[];
   created_at: string;
+  /** set by an admin; players never see a suspended or removed arena */
+  suspended_at?: string | null;
+  suspended_reason?: string | null;
+  deleted_at?: string | null;
+  deleted_reason?: string | null;
 }
 
 export interface Court {
