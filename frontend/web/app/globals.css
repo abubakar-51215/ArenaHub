@@ -1647,6 +1647,10 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   border-top: 1px solid var(--line-soft);
   justify-content: flex-end;
 }
+/* the open drawer takes focus as a whole; it shows no ring of its own */
+[data-admin] .ah-drawer:focus {
+  outline: none;
+}
 [data-admin] .ah-canvas {
   padding: 22px 24px 60px;
   max-width: 1560px;
