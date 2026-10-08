@@ -2438,6 +2438,25 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   padding: 11px;
   font-size: 14px;
 }
+/* Arenas: suspend / reactivate / remove dialog and the card's Remove */
+[data-admin] .ah-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-admin] .ah-reason-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="button"].ah-danger-text {
+  color: var(--off-text);
+}
+[data-admin] .ah-notice {
+  margin: 0 0 12px;
+}
 [data-admin] .ah-auth-error {
   margin: 0;
   padding: 8px 12px;
