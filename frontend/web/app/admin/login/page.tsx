@@ -177,6 +177,22 @@ export default function AdminLoginPage() {
           </h3>
           <p>Every arena that joins is verified here before a single slot goes on sale.</p>
         </div>
+        {/* the prototype's .auth-stats row, with what the panel is for instead of
+            counts: a signed-out page cannot show real numbers */}
+        <div className="ah-auth-stats">
+          <div>
+            <b>Review</b>
+            <span>Pending arenas</span>
+          </div>
+          <div>
+            <b>Manage</b>
+            <span>Owners and players</span>
+          </div>
+          <div>
+            <b>Resolve</b>
+            <span>Complaints</span>
+          </div>
+        </div>
       </div>
     </div>
   );

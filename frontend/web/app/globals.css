@@ -2427,11 +2427,31 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   position: relative;
   z-index: 2;
   max-width: 400px;
-  /* the prototype's network counts (.auth-stats) sit under the quote; they
-     are left out (an unauthenticated page cannot show real counts), so
-     their 98px stays reserved and the quote keeps the prototype's place,
-     clear of the network art */
-  margin-bottom: 98px;
+}
+/* prototype .auth-stats (labels in place of its counts) */
+[data-admin] .ah-auth-stats {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 30px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #1d2c24;
+}
+[data-admin] .ah-auth-stats b {
+  display: block;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
+  font-size: 26px;
+  line-height: 1;
+  color: #ffffff;
+}
+[data-admin] .ah-auth-stats span {
+  font-size: 10.5px;
+  color: #6e8177;
+  letter-spacing: 0.04em;
 }
 [data-admin] .ah-auth-quote h3 {
   font-family: var(--font-archivo), sans-serif;
