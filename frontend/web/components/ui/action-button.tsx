@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * A Button with the admin action motion (styles: `.ah-act` in globals.css):
+ * A Button with the console action motion (admin and owner) (styles: `.ah-act` in globals.css):
  * a lime ("positive") or red ("negative") fill sweeping in on hover, a small
  * press dip, a spinner over the label while `busy` (the label stays in the
  * layout, so the width never changes), then a drawn tick or a short shake for
