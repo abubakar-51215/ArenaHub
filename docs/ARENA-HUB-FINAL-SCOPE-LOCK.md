@@ -37,24 +37,26 @@ experiments and were deleted in commit `93beca6`.
 
 ## 2. Owner dashboard: 13 destinations
 
-All owner screens sit under `/owner`. A signed-out visitor is sent to `/login`.
-The menu has 12 working items and 1 disabled item.
+All owner screens sit under `/owner`. A signed-out visitor is sent to `/login`. The owner panel is
+being restyled to the owner prototype (`design/prototypes/arena-hub-owner.html`); the shell (rail,
+top bar on every page from 1024 px, slim bar below, dark theme) and the Live Board are done
+(2026-10-08). Menu names follow the decided list; routes are unchanged.
 
 | # | Menu group | Menu name | Route | What it is for | Status |
 |---|---|---|---|---|---|
-| 1 | Today | Dashboard | `/owner` | Live Board (courts by hour, with a "now" line), four stat cards, revenue and time-of-day charts. | Live. A "swipe for more hours" hint on phones is waiting (W8). |
+| 1 | Today | Live Board | `/owner` | Courts by hour for one arena (with a "now" line), four stat cards, revenue and time-of-day charts, arenas by revenue, receipts awaiting approval. | Live, restyled |
 | 2 | Today | Bookings | `/owner/bookings` | All bookings for the owner's arenas. Review and approve or reject bank-transfer receipts. | Live |
-| 3 | Today | Calendar | `/owner/calendar` | Week and month view of bookings. | Live |
-| 4 | Venue | Arenas | `/owner/arenas` | Add, edit, deactivate and resubmit arenas. | Live, with gaps: images are pasted as URLs. There is no file upload. |
-| 5 | Venue | Courts | `/owner/courts` | Add, edit and delete courts. Switch a court on or off (maintenance). | Live |
+| 3 | Today | Schedule | `/owner/calendar` | Week and month view of bookings. | Live |
+| 4 | Venue | Arenas | `/owner/arenas` | Add, edit, deactivate and resubmit arenas. Shows "Suspended by admin" or "Removed by admin". | Live, with gaps: images are pasted as URLs. There is no file upload. |
+| 5 | Venue | Courts | `/owner/courts` | Add, edit and delete courts. Switch a court on or off (maintenance). Generate slots. | Live |
 | 6 | Venue | Equipment | `/owner/equipment` | Add, edit and delete rental items. Change stock. | Live |
-| 7 | Money | Pricing | `/owner/pricing` | Peak-hour price rules for each court. | Live |
-| 8 | Money | Payment Config | `/owner/payments` | Bank accounts for transfers and discount codes. | Live |
-| 9 | Money | Earnings | `/owner/revenue` | Revenue, pending settlements, charts, and downloads for the bookings and occupancy reports. | Live, with gaps: no payment report (FR-O-10). |
-| 10 | Reputation | Reviews | `/owner/reviews` | Read reviews for each arena (including closed arenas) and reply. | Live |
-| 11 | (none) | Notifications | `/owner/notifications` | Notification centre. The menu shows an unread count. | Live |
-| 12 | (none) | Profile | `/owner/profile` | Edit your name. Change email, phone and password, each confirmed with a code. | Live |
-| 13 | (none) | Reports | not built | A page to build and download reports. | Disabled. Waiting for approval (W7). |
+| 7 | Money | Pricing Rules | `/owner/pricing` | Peak-hour price rules (multipliers) for each court. | Live |
+| 8 | Money | Payments | `/owner/payments` | Bank accounts for transfers and discount codes. | Live |
+| 9 | Money | Revenue | `/owner/revenue` | Revenue, pending settlements, charts. | Live, with gaps: no payment report (FR-O-10). |
+| 10 | Money | Reports | `/owner/reports` | Download the bookings and occupancy reports as CSV or PDF. | Live |
+| 11 | Reputation | Reviews | `/owner/reviews` | Read reviews for each arena (including closed arenas) and reply. | Live |
+| 12 | (none) | Notifications | `/owner/notifications` | Notification centre. Also reached from the top bar's bell. | Live |
+| 13 | (none) | Profile | `/owner/profile` | Edit your name. Change email, phone and password, each confirmed with a code. Also in the owner card's menu, with Log out. | Live |
 
 **Missing from the owner screens, and why it matters.** There is no screen for time slots
 (generate, block, edit) and none for blocked dates. The backend has them. Without slots a player
@@ -135,7 +137,6 @@ These are the standards the web gate checks (`FEATURE_GAP_REPORT.md` has the lat
 | Item | What it changes |
 |---|---|
 | W3 | Landing and sign-in page copy (removes figures that are not real). |
-| W7 | Builds screen 13 (owner Reports) and turns on its menu item. |
 | W8 | Phone hint on the Live Board. |
 | W16 | Menu behaviour between 1024 and 1279 px (icon rail or drawer). |
 | Reset by code | Backend and the two reset screens. |
