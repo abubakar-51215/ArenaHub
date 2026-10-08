@@ -1,7 +1,8 @@
 # ArenaHub Web — Final Scope Lock
 
 **What this is.** The list of web screens that make up ArenaHub's web dashboards, written from what
-exists in `frontend/web` today (branch `prototype-screens`, checked 2026-10-05). It is a list of
+exists in `frontend/web` today (branch `prototype-screens`, checked 2026-10-05; admin section
+2026-10-08). It is a list of
 what is in scope for the web UI, not a wish list. A screen not on this list is not part of the web
 release. Adding one needs a decision first.
 
@@ -59,22 +60,60 @@ The menu has 12 working items and 1 disabled item.
 (generate, block, edit) and none for blocked dates. The backend has them. Without slots a player
 sees nothing to book. This is the first item in `FEATURE_GAP_REPORT.md`, section D.
 
-## 3. Admin dashboard: 10 screens
+## 3. Admin dashboard: 11 screens and the sign-in page
 
-All admin screens sit under `/admin`. A signed-out visitor is sent to `/admin/login`.
+All admin screens sit under `/admin`. A signed-out visitor is sent to `/admin/login`. The menu
+(left rail on wide screens, a drawer below 1024 px) has three named groups and one unnamed item.
+Checked 2026-10-08 on branch `prototype-screens`.
 
 | # | Menu group | Menu name | Route | What it is for | Status |
 |---|---|---|---|---|---|
-| 1 | Oversight | Dashboard | `/admin` | Platform numbers: users, arenas, bookings, revenue. | Live |
-| 2 | Oversight | Bookings | `/admin/bookings` | Every booking on the platform, with a status filter. | Live |
-| 3 | Oversight | Payments | `/admin/payments` | Every payment, with method, status and gateway ID. | Live |
-| 4 | Directory | Users | `/admin/users` | List, suspend, reactivate and delete accounts. | Live, with gaps: the detail shows a booking count, not a booking history (FR-A-02). |
-| 5 | Directory | Arena Owners | `/admin/owners` | The same screen as Users, showing owners only. | Live |
-| 6 | Directory | Arenas | `/admin/arenas` | The verification queue. Approve, or reject with a reason. | Live, with gaps: the owner is not told the result (FR-A-03). |
-| 7 | Health | Complaints | `/admin/complaints` | Read complaints, reply, and move them from Open to Resolved. | Live, with gaps: no player screen sends complaints yet (FR-A-06). |
-| 8 | Health | Reports | `/admin/reports` | Download platform-wide reports. | Live |
-| 9 | Health | Settings | `/admin/settings` | Platform settings and the audit log. | Live |
-| 10 | (none) | Reviews | `/admin/reviews` | Reported reviews waiting for a decision. | Live |
+| 1 | Oversight | Dashboard | `/admin` | KPIs, decision queue, bookings by day and by city, utilisation by hour, top arenas. City and period filters. | Live |
+| 2 | Oversight | Approvals | `/admin/arenas` | The verification queue. Approve, or reject with a reason. The menu shows the pending count. | Live |
+| 3 | Oversight | Bookings | `/admin/bookings` | Every booking, with filters and a detail dialog. An amber "Pending refund" badge marks a refund still waiting. | Live |
+| 4 | Oversight | Payments | `/admin/payments` | Every payment: method, amount, status, period and method filters. "Pending refund" badge as on Bookings. | Live |
+| 5 | Directory | Players | `/admin/users` | List, view, suspend, reactivate and delete player accounts. | Live, with gaps: the detail shows a booking count, not a booking history (FR-A-02). |
+| 6 | Directory | Arena owners | `/admin/owners` | The same screen for owners. | Live |
+| 7 | Directory | Arenas | `/admin/arenas/all` | Every arena as a card (Live, Off, Pending review, Suspended, Rejected) with city, sport and status filters, including "Suspended". Suspend, Reactivate and Remove (see below). | Live |
+| 8 | Health | Complaints | `/admin/complaints` | Read complaints, reply, and move them from Open to Resolved. | Live, with gaps: no player screen sends complaints yet (FR-A-06). |
+| 9 | Health | Analytics | `/admin/reports` | Top city, bookings, value, peak hours, revenue over time, bookings by city, city comparison, report downloads (CSV and PDF). | Live |
+| 10 | Health | System settings | `/admin/settings` | Email, SMS, payment options, booking rules, notifications, general, security and the audit log. | Live |
+| 11 | (none) | Reviews | `/admin/reviews` | Reported reviews waiting for a decision. | Live |
+| 12 | (sign-in) | | `/admin/login` | Admin sign-in. The side panel names what the panel is for: Review, Manage, Resolve. | Live |
+
+**Shared parts of the admin panel**
+
+- **Top bar on the Dashboard only.** The search button, the alerts bell and the theme switch sit
+  in a top bar that only the Dashboard shows, and only at 1024 px and wider. Other screens start
+  with their page header. Below 1024 px there is no theme switch, bell or search button (see
+  `RESTYLE_FOLLOWUPS.md`); Ctrl+K still opens search from a keyboard.
+- **Search.** Ctrl+K (or the search button) opens a command palette: jump to any admin page, or
+  find a player or owner by name.
+- **Alerts.** The bell opens a short list of what is waiting (arenas to approve, open
+  complaints), each a link to its screen.
+- **Dark theme.** Every admin screen has a light and a dark theme. The choice is kept per browser
+  and survives blocked storage. Owner and public pages have no dark theme.
+- **Arena actions on `/admin/arenas/all`.** Each card shows only the actions valid for it:
+  Suspend (approved and not suspended), Reactivate (suspended), Remove (any listed arena). Each
+  opens a dialog with a plain line on the effect and a required reason of 10 to 500 characters.
+  Suspend and Remove cancel the arena's upcoming bookings with a full refund and tell the owner
+  the reason. Reactivate makes the arena bookable again; cancelled bookings are not restored.
+  Removed arenas are not listed anywhere in the admin panel. The owner's Arenas list shows
+  "Suspended by admin" or "Removed by admin" with the reason, and locks editing.
+
+**Payment options.** Wherever a screen shows or lets someone pick a payment method, it uses
+these four, in this order and with these labels (`frontend/web/lib/payment-methods.ts`):
+
+| Label | API `payment_method` | Backend provider |
+|---|---|---|
+| Card | `card` | `stripe` |
+| Bank transfer | `bank_transfer` | `manual` |
+| JazzCash | `jazzcash` | `jazzcash` |
+| EasyPaisa | `easypaisa` | `easypaisa` |
+
+The mock provider stands in for the gateways in development and is never listed. Today this
+covers admin Payments (method column and filter) and System settings (payment options). Real
+gateway work comes after the UI is finished.
 
 ## 4. Rules that apply to every screen above
 

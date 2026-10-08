@@ -497,3 +497,25 @@ stays in the open-match list and can still be joined: only `create_match`
 checks that the arena is live; `list_open_matches` and `join_match` do not.
 Not built. Suggested: hide those matches from the open list and refuse a join
 while the arena is not live (or cancel them and notify the joined players).
+
+## Gap — no theme switch, alerts or search button below 1024 px
+
+The admin top bar (search button, alerts bell, theme switch) is shown on the Dashboard only, and
+only at 1024 px and wider. On a phone or tablet an admin cannot switch theme, open the alerts
+list, or open search by touch (Ctrl+K works with a keyboard). The theme they picked on a wide
+screen is kept. Options: put the three buttons in the phone slim bar or at the foot of the
+drawer.
+
+## Existing behaviour — a fully refunded payment still reads "Completed" on admin Payments
+
+A full refund advances the payment's `lifecycle_status` to `refunded`, but the admin Payments
+status column shows the separate `status` field, which stays `completed`. Seen after suspending
+an arena whose JazzCash booking was refunded in full. Not changed (no backend work during the
+UI phase). Options: show `lifecycle_status`, or move `status` to `refunded` together with it.
+
+## Note — the owner side of arena moderation is minimal by design
+
+The owner Arenas list shows "Suspended by admin" or "Removed by admin" with the reason and
+disables Edit, Resubmit and Deactivate. The "Manage" link to the courts of that arena stays
+active; slot generation is refused by the API for a suspended or removed arena. A fuller owner
+view (a banner on every owner screen for that arena, a way to contact support) is not built.
