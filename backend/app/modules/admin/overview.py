@@ -155,17 +155,21 @@ async def build_overview(
     ).all()
     by_day = {d: (int(n), Decimal(v)) for d, n, v in rows}
 
-    # 3. arenas by status. Live = approved and active; pending counts every
-    #    pending arena, exactly as the Approvals queue lists them. -------------
-    arena_rows = (
-        await db.execute(
-            select(Arena.status, Arena.is_active, func.count())
-            .where(*city_filter)
-            .group_by(Arena.status, Arena.is_active)
+    # 3. arenas by status. Live = Arena.live_conditions() (approved, active,
+    #    not suspended, not removed); pending counts every pending arena that
+    #    is not removed, exactly as the Approvals queue lists them. -----------
+    live_arenas = (
+        await db.scalar(
+            select(func.count()).select_from(Arena).where(*Arena.live_conditions(), *city_filter)
         )
-    ).all()
-    live_arenas = sum(int(n) for s, active, n in arena_rows if s == ArenaStatus.approved and active)
-    pending_arenas = sum(int(n) for s, _active, n in arena_rows if s == ArenaStatus.pending)
+    ) or 0
+    pending_arenas = (
+        await db.scalar(
+            select(func.count())
+            .select_from(Arena)
+            .where(Arena.status == ArenaStatus.pending, Arena.deleted_at.is_(None), *city_filter)
+        )
+    ) or 0
 
     # 4. bookings by city in the current period ----------------------------
     cur_start = datetime.combine(start, time.min)
@@ -186,7 +190,7 @@ async def build_overview(
     ).all()
 
     # 5. slot utilisation by start hour in the current period: slots of live
-    #    (approved, active) arenas and available courts; maintenance slots are
+    #    arenas (Arena.live_conditions()) and available courts; maintenance slots are
     #    not bookable, so they are out of the total too. ----------------------
     hour = extract("hour", TimeSlot.start_time)
     used = func.sum(case((TimeSlot.status.in_(_USED_SLOTS), 1), else_=0))
@@ -200,8 +204,7 @@ async def build_overview(
                 TimeSlot.date >= start,
                 TimeSlot.date <= end,
                 TimeSlot.status != SlotStatus.maintenance,
-                Arena.status == ArenaStatus.approved,
-                Arena.is_active.is_(True),
+                *Arena.live_conditions(),
                 Court.is_available.is_(True),
                 *city_filter,
             )

@@ -189,7 +189,7 @@ async def search_public_arenas(
         select(Arena)
         .outerjoin(reviews, reviews.c.arena_id == Arena.id)
         .outerjoin(prices, prices.c.arena_id == Arena.id)
-        .where(Arena.status == ArenaStatus.approved, Arena.is_active.is_(True))
+        .where(*Arena.live_conditions())
     )
     if q:
         like = f"%{q.lower()}%"
@@ -237,8 +237,7 @@ async def list_trending_arenas(
         select(Arena, booking_count.label("recent_bookings"))
         .join(Booking, Booking.arena_id == Arena.id)
         .where(
-            Arena.status == ArenaStatus.approved,
-            Arena.is_active.is_(True),
+            *Arena.live_conditions(),
             Booking.created_at >= since,
             Booking.status.not_in(_NON_TRENDING_STATUSES),
         )
@@ -252,10 +251,21 @@ async def list_trending_arenas(
 
 
 async def list_arenas_by_status(
-    db: AsyncSession, status: ArenaStatus, *, offset: int, limit: int
+    db: AsyncSession,
+    status: ArenaStatus,
+    *,
+    offset: int,
+    limit: int,
+    suspended: bool | None = None,
 ) -> tuple[list[Arena], int]:
-    """Admin verification queue, oldest-first (FIFO review order)."""
-    base = select(Arena).where(Arena.status == status)
+    """Admin verification queue, oldest-first (FIFO review order). Deleted
+    arenas are never listed. ``suspended`` narrows to suspended arenas
+    (True) or leaves them out (False); None lists both."""
+    base = select(Arena).where(Arena.status == status, Arena.deleted_at.is_(None))
+    if suspended is True:
+        base = base.where(Arena.suspended_at.is_not(None))
+    elif suspended is False:
+        base = base.where(Arena.suspended_at.is_(None))
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
     result = await db.execute(
         _with_amenities(base).order_by(Arena.created_at.asc()).offset(offset).limit(limit)
@@ -358,13 +368,18 @@ async def add_like(db: AsyncSession, player_id: uuid.UUID, arena_id: uuid.UUID) 
 async def list_liked_arenas(
     db: AsyncSession, player_id: uuid.UUID, *, offset: int, limit: int
 ) -> tuple[list[Arena], int]:
-    """A player's liked arenas, most recently liked first. Arenas that have
-    since been suspended/unapproved stay listed — the bookmark is the
-    player's, and hiding it silently would look like data loss."""
+    """A player's liked arenas, most recently liked first. Arenas an admin
+    has suspended or removed drop out of the list (the like row stays, so a
+    reactivated arena comes back); an arena its owner merely took offline,
+    or one that went back to review, stays listed."""
     base = (
         select(Arena)
         .join(ArenaLike, ArenaLike.arena_id == Arena.id)
-        .where(ArenaLike.player_id == player_id)
+        .where(
+            ArenaLike.player_id == player_id,
+            Arena.suspended_at.is_(None),
+            Arena.deleted_at.is_(None),
+        )
     )
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
     result = await db.execute(

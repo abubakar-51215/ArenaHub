@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import Arena, ArenaStatus
+from app.modules.arena.model import Arena
 from app.modules.court import repository as repo
 from app.modules.court.model import Court, CourtPricingRule
 from app.modules.court.schema import (
@@ -106,7 +106,7 @@ async def delete_court(db: AsyncSession, user: User, court_id: uuid.UUID) -> Non
 
 async def list_public_courts(db: AsyncSession, arena_id: uuid.UUID) -> list[CourtResponse]:
     arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     rows = await repo.list_courts(db, arena_id, available_only=True)
     return [CourtResponse.model_validate(c) for c in rows]
@@ -121,7 +121,7 @@ async def list_public_pricing_rules(
     if court is None:
         raise NotFoundError("Court not found.")
     arena = await arena_repo.get_arena(db, court.arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Court not found.")
     rows = await repo.list_pricing_rules(db, court_id)
     return [PricingRuleResponse.model_validate(r) for r in rows if r.is_active]

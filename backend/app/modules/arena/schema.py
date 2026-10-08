@@ -136,6 +136,12 @@ class ArenaResponse(BaseModel):
     is_active: bool
     amenities: list[AmenityResponse] = Field(default_factory=list)
     created_at: datetime
+    # set by an admin: shown to the owner and in the admin panel (players
+    # never see a suspended or removed arena)
+    suspended_at: datetime | None = None
+    suspended_reason: str | None = None
+    deleted_at: datetime | None = None
+    deleted_reason: str | None = None
 
 
 class ArenaListItem(ArenaResponse):

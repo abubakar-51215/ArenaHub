@@ -20,6 +20,27 @@ async def get_booking(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None
     return await db.get(Booking, booking_id)
 
 
+async def list_future_live_bookings_for_update(
+    db: AsyncSession, arena_id: uuid.UUID, statuses: tuple, now: datetime
+) -> list[Booking]:
+    """Row-locked: an arena's bookings in ``statuses`` whose slot starts after
+    ``now`` (past and already-started bookings are not returned)."""
+    today, at = now.date(), now.time()
+    result = await db.execute(
+        select(Booking)
+        .where(
+            Booking.arena_id == arena_id,
+            Booking.status.in_(statuses),
+            (Booking.booking_date > today)
+            | ((Booking.booking_date == today) & (Booking.start_time > at)),
+        )
+        .order_by(Booking.booking_date, Booking.start_time)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return list(result.scalars().all())
+
+
 async def get_booking_for_update(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None:
     """Row-locked, session-cache-bypassing read — used right before a status
     transition (cancel/reschedule) so a concurrent request against the same

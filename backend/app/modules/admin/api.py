@@ -17,6 +17,7 @@ from app.database.session import get_db
 from app.modules.admin import service
 from app.modules.admin.overview import build_overview
 from app.modules.admin.schema import (
+    ArenaModerationRequest,
     PlatformSettingsRequest,
     RejectArenaRequest,
     SuspendUserRequest,
@@ -66,11 +67,14 @@ async def get_dashboard_overview(
 @router.get("/arenas", summary="Arena verification queue")
 async def list_queue(
     status: ArenaStatus = ArenaStatus.pending,
+    suspended: bool | None = None,
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.list_queue(db, status, params)
+    """``suspended=true`` lists only suspended arenas, ``false`` leaves them
+    out; omitted lists both. Removed arenas are never listed."""
+    data = await service.list_queue(db, status, params, suspended)
     return success(data=data, message="Verification queue retrieved.")
 
 
@@ -103,6 +107,39 @@ async def reject_arena(
 ) -> dict[str, Any]:
     arena = await service.reject_arena(db, user, arena_id, data.reason)
     return success(data=arena, message="Arena rejected.")
+
+
+@router.post("/arenas/{arena_id}/suspend", summary="Suspend an approved arena")
+async def suspend_arena(
+    arena_id: uuid.UUID,
+    data: ArenaModerationRequest,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    arena = await service.suspend_arena(db, user, arena_id, data.reason)
+    return success(data=arena, message="Arena suspended.")
+
+
+@router.post("/arenas/{arena_id}/reactivate", summary="Lift an arena's suspension")
+async def reactivate_arena(
+    arena_id: uuid.UUID,
+    data: ArenaModerationRequest,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    arena = await service.reactivate_arena(db, user, arena_id, data.reason)
+    return success(data=arena, message="Arena reactivated.")
+
+
+@router.delete("/arenas/{arena_id}", summary="Remove an arena (soft delete)")
+async def delete_arena(
+    arena_id: uuid.UUID,
+    data: ArenaModerationRequest,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    arena = await service.delete_arena(db, user, arena_id, data.reason)
+    return success(data=arena, message="Arena removed.")
 
 
 # ---- user management --------------------------------------------------

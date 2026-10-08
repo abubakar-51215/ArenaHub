@@ -120,8 +120,22 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # migration; the arena service validates the shape on write.
     refund_policy: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Admin moderation. Written only by the admin suspend / reactivate /
+    # delete endpoints; the owner's update and active toggle never touch
+    # them, so an owner cannot undo a suspension. Delete is soft: the row and
+    # everything that references it stay.
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    suspended_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suspended_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    deleted_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
-    owner: Mapped["User"] = relationship(back_populates="arenas")
+    owner: Mapped["User"] = relationship(back_populates="arenas", foreign_keys=[owner_id])
     courts: Mapped[list["Court"]] = relationship(
         back_populates="arena",
         cascade="all, delete-orphan",
@@ -138,6 +152,35 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="arena",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def is_suspended(self) -> bool:
+        return self.suspended_at is not None
+
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+
+    @property
+    def is_live(self) -> bool:
+        """Visible to players and open for booking: approved, switched on by
+        the owner, and neither suspended nor deleted by an admin."""
+        return (
+            self.status == ArenaStatus.approved
+            and self.is_active
+            and self.suspended_at is None
+            and self.deleted_at is None
+        )
+
+    @classmethod
+    def live_conditions(cls) -> tuple:
+        """The same rule as ``is_live``, for SQL ``where(...)`` clauses."""
+        return (
+            cls.status == ArenaStatus.approved,
+            cls.is_active.is_(True),
+            cls.suspended_at.is_(None),
+            cls.deleted_at.is_(None),
+        )
 
 
 class Amenity(UUIDPrimaryKeyMixin, Base):

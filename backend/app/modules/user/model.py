@@ -61,5 +61,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Arenas owned by this user (only meaningful for role=owner).
     arenas: Mapped[list["Arena"]] = relationship(
         back_populates="owner",
+        # arenas also point at users through suspended_by / deleted_by
+        foreign_keys="Arena.owner_id",
         cascade="all, delete-orphan",
     )
