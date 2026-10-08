@@ -473,3 +473,27 @@ draw under the notch on iPhones, so it is left off. Without it the browser
 already keeps all content inside the safe area. If it is ever enabled, the
 admin padding is ready; the owner and public layouts would need the same
 padding first.
+
+## Follow-up — arena suspend / remove: refunds go out inside the cancel transaction
+
+When an admin suspends or removes an arena, every upcoming booking is
+cancelled and its refund is sent to the payment gateway inside the same
+database transaction (`booking.service.cancel_future_bookings_for_arena`).
+If a database error happened after some refunds had already gone out, the
+transaction would roll back: the bookings would come back as confirmed, and a
+second attempt would create new refund rows with new ids, so the gateway's
+idempotency key (the refund id) would not stop a second refund. The risk is
+low today (the loop is short and only adds rows), and a gateway failure on its
+own is already safe (the refund stays pending and is retried). Later fix:
+commit per booking (cancel, refund, commit, then the next), or create the
+refund rows first and send them to the gateway only after the commit.
+
+## Follow-up — open matches at a suspended or removed arena
+
+Matches carry no payment and no booking (`match` has no link to either), so
+no player has paid anything through a match and nothing needs refunding when
+an arena is suspended or removed. But an open future match at such an arena
+stays in the open-match list and can still be joined: only `create_match`
+checks that the arena is live; `list_open_matches` and `join_match` do not.
+Not built. Suggested: hide those matches from the open list and refuse a join
+while the arena is not live (or cancel them and notify the joined players).

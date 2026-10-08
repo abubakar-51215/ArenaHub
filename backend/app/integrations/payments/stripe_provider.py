@@ -66,7 +66,9 @@ class StripeProvider:
             currency=str(intent["currency"]).upper(),
         )
 
-    async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:
+    async def refund(
+        self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key: str | None = None
+    ) -> RefundResult:
         settings = get_settings()
         if not settings.stripe_secret_key:
             log.info("stripe_dev_simulated_refund", gateway_transaction_id=gateway_transaction_id)
@@ -75,10 +77,14 @@ class StripeProvider:
             )
 
         stripe.api_key = settings.stripe_secret_key
+        # the same key on a retry makes Stripe return the first refund instead
+        # of creating a second one
+        extra = {"idempotency_key": idempotency_key} if idempotency_key else {}
         refund = await asyncio.to_thread(
             stripe.Refund.create,
             payment_intent=gateway_transaction_id,
             amount=int((amount * 100).to_integral_value()),
+            **extra,
         )
         status = "processed" if refund.status == "succeeded" else "pending"
         return RefundResult(provider_reference=refund.id, status=status)
