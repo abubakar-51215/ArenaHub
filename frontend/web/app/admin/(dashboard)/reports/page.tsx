@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { HourBars, LineChart } from "@/components/admin/charts";
+import { CityBars, LineChart } from "@/components/admin/charts";
 import {
   Delta,
   OverviewCard,
@@ -174,15 +174,7 @@ export default function AdminAnalyticsPage() {
             onRetry={retry}
             empty="No bookings in this period."
           >
-            <HourBars
-              // the largest city in ink, as the prototype marks its top bar (by_city is sorted)
-              peakIdx={0}
-              data={(data?.by_city ?? []).map((c) => ({
-                label: c.city,
-                value: c.bookings,
-                title: `${c.city}: ${c.bookings.toLocaleString("en-US")} bookings`,
-              }))}
-            />
+            <CityBars items={data?.by_city ?? []} />
           </OverviewCard>
         </div>
 

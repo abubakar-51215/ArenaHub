@@ -4,6 +4,7 @@
  * renderSparks(), renderDonut(), bars(), renderTopArenas()). Plain SVG, no
  * chart library, so the result matches the prototype stroke for stroke.
  */
+import { plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function series(vals: number[], w: number, h: number, pad: number) {
@@ -146,6 +147,32 @@ export function HourBars({ data, peakIdx }: { data: { label: string; value: numb
         </div>
       ))}
     </div>
+  );
+}
+
+/** "Bookings by city": one row per city with its name and count, and a bar
+ *  over a light track scaled against the real total (its share), so a single
+ *  city reads as 100% of a track rather than a solid block. The largest city
+ *  (by_city is sorted) is drawn in ink. */
+export function CityBars({ items }: { items: { city: string; bookings: number }[] }) {
+  const total = items.reduce((s, c) => s + c.bookings, 0);
+  return (
+    <ul className="ah-city-bars">
+      {items.map((c, i) => {
+        const share = total > 0 ? (c.bookings / total) * 100 : 0;
+        return (
+          <li key={c.city} className="ah-city-row">
+            <b>{c.city}</b>
+            <span className="ah-city-count">
+              {plural(c.bookings, "booking")} · {Math.round(share)}%
+            </span>
+            <div className="ah-city-track" aria-hidden="true">
+              <i className={i === 0 && c.bookings > 0 ? "is-top" : undefined} style={{ width: `${share}%` }} />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

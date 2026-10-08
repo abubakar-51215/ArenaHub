@@ -51,6 +51,11 @@ export function toDateInput(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** 1 → "1 booking", 3 → "3 bookings" (numbers grouped: "1,204 bookings"). */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+}
+
 /** Compact axis ticks: 245780 → "246K". */
 export function compactNumber(n: number): string {
   return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
