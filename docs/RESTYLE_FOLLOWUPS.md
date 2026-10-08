@@ -498,7 +498,12 @@ checks that the arena is live; `list_open_matches` and `join_match` do not.
 Not built. Suggested: hide those matches from the open list and refuse a join
 while the arena is not live (or cancel them and notify the joined players).
 
-## Gap — no theme switch, alerts or search button below 1024 px
+## Done (2026-10-08) — no theme switch, alerts or search button below 1024 px
+
+Fixed: the slim bar now carries search, theme and alerts on every admin screen below 1024 px.
+Ctrl+K does nothing while the phone drawer is open, so the palette never opens over it.
+The original note:
+
 
 The admin top bar (search button, alerts bell, theme switch) is shown on the Dashboard only, and
 only at 1024 px and wider. On a phone or tablet an admin cannot switch theme, open the alerts

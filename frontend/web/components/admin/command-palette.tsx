@@ -43,6 +43,9 @@ export function useCommandPaletteShortcut(setOpen: (fn: (o: boolean) => boolean)
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        // not over the open phone drawer (a modal of its own): close it first
+        const drawer = document.getElementById("ah-drawer");
+        if (drawer?.getAttribute("role") === "dialog" && !drawer.inert) return;
         setOpen((o) => !o);
       }
     };

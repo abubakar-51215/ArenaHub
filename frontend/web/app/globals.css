@@ -866,6 +866,20 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
     display: none;
   }
 }
+/* slim bar (below 1024px): search, theme and alerts on the right, and every
+   button in the bar a 44px target */
+[data-admin] .ah-slim-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 1023.98px) {
+  [data-admin] .ah-topbar:not(.ah-topbar-desk) .ah-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
 [data-admin] .ah-icon-btn {
   width: 34px;
   height: 34px;

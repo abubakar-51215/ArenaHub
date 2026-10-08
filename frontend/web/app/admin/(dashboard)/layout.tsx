@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { CommandPalette, useCommandPaletteShortcut } from "@/components/admin/command-palette";
 import { AdminSidebar } from "@/components/admin/sidebar";
-import { AdminTopbar } from "@/components/admin/topbar";
+import { AdminSlimActions, AdminTopbar } from "@/components/admin/topbar";
 import { DashboardShell } from "@/components/ui/dashboard-shell";
 import { useAuthStore } from "@/store/auth";
 
@@ -44,7 +44,11 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   }
 
   return (
-    <DashboardShell variant="admin" sidebar={(close) => <AdminSidebar onNavigate={close} />}>
+    <DashboardShell
+      variant="admin"
+      sidebar={(close) => <AdminSidebar onNavigate={close} />}
+      slimActions={<AdminSlimActions onSearch={() => setPaletteOpen(true)} />}
+    >
       {/* the top bar belongs to the Dashboard only (1024px and up, see CSS) */}
       {pathname === "/admin" && <AdminTopbar onSearch={() => setPaletteOpen(true)} />}
       <div className="ah-canvas">{children}</div>

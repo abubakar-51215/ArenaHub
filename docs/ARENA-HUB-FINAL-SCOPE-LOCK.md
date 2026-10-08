@@ -83,10 +83,11 @@ Checked 2026-10-08 on branch `prototype-screens`.
 
 **Shared parts of the admin panel**
 
-- **Top bar on the Dashboard only.** The search button, the alerts bell and the theme switch sit
-  in a top bar that only the Dashboard shows, and only at 1024 px and wider. Other screens start
-  with their page header. Below 1024 px there is no theme switch, bell or search button (see
-  `RESTYLE_FOLLOWUPS.md`); Ctrl+K still opens search from a keyboard.
+- **Top bar on the Dashboard only, at 1024 px and wider.** The search button, the alerts bell
+  and the theme switch sit in a top bar that only the Dashboard shows on wide screens. Other
+  screens start with their page header. Below 1024 px every admin screen has a slim bar instead:
+  the menu button, the brand mark, and the same three controls as 44 px icon buttons (search
+  opens the same palette, alerts the same popover).
 - **Search.** Ctrl+K (or the search button) opens a command palette: jump to any admin page, or
   find a player or owner by name.
 - **Alerts.** The bell opens a short list of what is waiting (arenas to approve, open
