@@ -4,7 +4,7 @@
  * The owner prototype's pitch grid (`.pitch`): courts x hours for one arena,
  * today, with a lime "now" line. Built from what the API already returns:
  * the arena's courts, its opening hours and today's bookings (the calendar
- * endpoint). A booking block spans its hours and shows its status and time
+ * endpoint) for the chosen date. A booking block spans its hours and shows its status and time
  * (the calendar has no player names); confirmed and completed bookings are
  * ink, bookings waiting for payment or approval amber; cancelled and
  * rejected bookings leave the slot open. A court switched off reads "Not
@@ -15,7 +15,8 @@ import { useMemo } from "react";
 import { NowLine } from "@/components/owner/now-line";
 import { useCourts } from "@/hooks/useCourts";
 import { useCalendar } from "@/hooks/useDashboard";
-import { formatHour, formatTime, toDateInput } from "@/lib/format";
+import { formatHour, formatTime } from "@/lib/format";
+import { karachiToday, weekdayIndex } from "@/lib/karachi-date";
 import type { Arena, CalendarBooking } from "@/types";
 
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -40,12 +41,13 @@ function shortTime(hms: string): string {
   return formatTime(hms).replace(":00", "").replace(" ", "");
 }
 
-export function LiveBoardGrid({ arena }: { arena: Arena }) {
+export function LiveBoardGrid({ arena, date }: { arena: Arena; date: string }) {
   const { data: courts, isLoading: courtsLoading, isError: courtsError } = useCourts(arena.id);
-  const today = useMemo(() => toDateInput(new Date()), []);
-  const { data: bookings, isLoading: bookingsLoading, isError: bookingsError } = useCalendar(arena.id, today, today);
+  const { data: bookings, isLoading: bookingsLoading, isError: bookingsError } = useCalendar(arena.id, date, date);
+  // the NOW line belongs to today (Karachi) only
+  const isToday = date === karachiToday();
 
-  const hours = arena.operating_hours[DAY_KEYS[new Date().getDay()]];
+  const hours = arena.operating_hours[DAY_KEYS[weekdayIndex(date)]];
   const openMinutes = hours ? minutes(hours.open) : 0;
   const closeMinutes = hours ? minutes(hours.close) : 0;
   const startHour = Math.floor(openMinutes / 60);
@@ -65,13 +67,17 @@ export function LiveBoardGrid({ arena }: { arena: Arena }) {
     return <div className="ah-skeleton" style={{ height: 160, margin: "0 18px 18px" }} aria-label="Loading" />;
   }
   if (courtsError || bookingsError) {
-    return <p className="ah-empty-line ah-pitch-note">Could not load today&apos;s board.</p>;
+    return <p className="ah-empty-line ah-pitch-note">Could not load this day&apos;s board.</p>;
   }
   if (!courts || courts.length === 0) {
     return <p className="ah-empty-line ah-pitch-note">No courts yet for this arena.</p>;
   }
   if (!hours || hourCount === 0) {
-    return <p className="ah-empty-line ah-pitch-note">{arena.name} is closed today.</p>;
+    return (
+      <p className="ah-empty-line ah-pitch-note">
+        {arena.name} is closed {isToday ? "today" : "on this day"}.
+      </p>
+    );
   }
 
   const columns = `${LABEL_PX}px repeat(${hourCount}, minmax(0, 1fr))`;
@@ -79,7 +85,7 @@ export function LiveBoardGrid({ arena }: { arena: Arena }) {
 
   return (
     <div className="ah-pitch">
-      <div className="ah-pitch-scroll" tabIndex={0} aria-label="Today's courts by hour">
+      <div className="ah-pitch-scroll" tabIndex={0} aria-label="Courts by hour">
         <div className="ah-pitch-inner" style={{ minWidth: LABEL_PX + hourCount * MIN_HOUR_PX }}>
           <div className="ah-pitch-hours" style={{ gridTemplateColumns: columns }}>
             <span />
@@ -143,9 +149,11 @@ export function LiveBoardGrid({ arena }: { arena: Arena }) {
               </div>
             );
           })}
-          <div className="ah-now-track" style={{ left: LABEL_PX }}>
-            <NowLine openMinutes={startHour * 60} closeMinutes={endHour * 60} />
-          </div>
+          {isToday && (
+            <div className="ah-now-track" style={{ left: LABEL_PX }}>
+              <NowLine openMinutes={startHour * 60} closeMinutes={endHour * 60} />
+            </div>
+          )}
         </div>
       </div>
       <div className="ah-pitch-legend">
