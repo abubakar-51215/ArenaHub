@@ -268,9 +268,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           Arena Hub<small>Owner console</small>
         </div>
       </Link>
-      <Suspense fallback={null}>
-        <NavLinks onNavigate={onNavigate} />
-      </Suspense>
+      {/* the menu scrolls inside the rail when the window is too short for it;
+          the owner card below stays pinned */}
+      <div className="ah-rail-nav">
+        <Suspense fallback={null}>
+          <NavLinks onNavigate={onNavigate} />
+        </Suspense>
+      </div>
       <div className="ah-rail-foot">
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>

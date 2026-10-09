@@ -4527,3 +4527,20 @@ html[data-theme="dark"] [data-owner] .ah-datepop-day.is-on {
     font-size: 14px;
   }
 }
+
+/* owner rail: the menu part takes the space between the brand and the owner
+   card and scrolls by itself when the window is too short (the card stays in
+   view). A flex column like the rail, so the groups' spacing is unchanged. */
+[data-owner] .ah-rail-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rail-line) transparent;
+}
+[data-owner] .ah-rail-foot {
+  flex: none;
+}
