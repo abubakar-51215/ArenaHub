@@ -12,6 +12,7 @@ and user services share one definition.
 import asyncio
 import secrets
 from datetime import timedelta
+from enum import StrEnum
 
 import structlog
 
@@ -26,6 +27,18 @@ RESET_TOKEN_TTL = timedelta(minutes=30)
 MAX_OTP_ATTEMPTS = 5
 
 
+class OtpPurpose(StrEnum):
+    """What an OTP row was issued for. Every lookup filters by purpose, so a code
+    issued for one flow can never complete another (e.g. a registration code
+    resetting a password)."""
+
+    registration = "registration"
+    password_reset = "password_reset"
+    password_change = "password_change"
+    phone_change = "phone_change"
+    email_change = "email_change"
+
+
 def generate_otp_code() -> str:
     """Return a cryptographically-random 6-digit numeric code."""
     return f"{secrets.randbelow(1_000_000):06d}"
@@ -36,7 +49,7 @@ def generate_reset_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def deliver_otp(destination: str, code: str, purpose: str = "verification") -> None:
+def deliver_otp(destination: str, code: str, purpose: OtpPurpose) -> None:
     """Deliver an OTP as a branded HTML email. Dev also logs the code to the
     console; whether the email actually goes out is decided inside
     ``send_email`` (credentials present + EMAIL_SEND_IN_DEV honoured)."""
@@ -45,7 +58,9 @@ def deliver_otp(destination: str, code: str, purpose: str = "verification") -> N
         log.info("otp_dev_delivery", destination=destination, purpose=purpose, code=code)
     else:
         log.info("otp_delivery_requested", destination=destination, purpose=purpose)
-    subject, text, html = otp_email(code, purpose, ttl_minutes=int(OTP_TTL.total_seconds() // 60))
+    subject, text, html = otp_email(
+        code, purpose.value, ttl_minutes=int(OTP_TTL.total_seconds() // 60)
+    )
     asyncio.create_task(send_email(destination, subject, text, html=html))
 
 

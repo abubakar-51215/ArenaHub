@@ -6,7 +6,7 @@ never self-registered (doc 05 permission matrix).
 
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.modules.user.schema import UserPublic
 
@@ -48,8 +48,20 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
+    """Reset with the emailed one-time code (``email`` + ``otp``), or with the
+    older reset ``token``. The token path stays for links already sent and is
+    due for removal."""
+
+    email: EmailStr | None = None
+    otp: str | None = Field(default=None, min_length=6, max_length=6)
+    token: str | None = None
     new_password: str = Field(min_length=8, max_length=72)
+
+    @model_validator(mode="after")
+    def _needs_otp_or_token(self) -> "ResetPasswordRequest":
+        if not self.token and not (self.email and self.otp):
+            raise ValueError("Provide email and otp, or a reset token.")
+        return self
 
 
 class TokenResponse(BaseModel):

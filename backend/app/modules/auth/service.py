@@ -24,6 +24,7 @@ from app.core.security import (
 )
 from app.modules.auth import repository as repo
 from app.modules.auth import tokens
+from app.modules.auth.model import OtpVerification
 from app.modules.auth.schema import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -38,11 +39,9 @@ from app.modules.user.schema import UserPublic
 from app.shared.otp import (
     MAX_OTP_ATTEMPTS,
     OTP_TTL,
-    RESET_TOKEN_TTL,
+    OtpPurpose,
     deliver_otp,
-    deliver_reset_link,
     generate_otp_code,
-    generate_reset_token,
 )
 
 LOGIN_MAX_ATTEMPTS = 5
@@ -74,9 +73,14 @@ def _issue_tokens(user: User) -> TokenResponse:
 async def _send_registration_otp(db: AsyncSession, user: User) -> None:
     code = generate_otp_code()
     await repo.create_otp(
-        db, user_id=user.id, code=code, channel="email", expires_at=_now() + OTP_TTL
+        db,
+        user_id=user.id,
+        code=code,
+        channel="email",
+        purpose=OtpPurpose.registration,
+        expires_at=_now() + OTP_TTL,
     )
-    deliver_otp(user.email, code, purpose="registration")
+    deliver_otp(user.email, code, purpose=OtpPurpose.registration)
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
@@ -103,6 +107,24 @@ async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
     )
 
 
+async def _check_otp(
+    db: AsyncSession, user: User, code: str, purpose: OtpPurpose
+) -> OtpVerification:
+    """The user's latest unused OTP *for this purpose* if ``code`` matches it. A
+    wrong code counts toward the attempt limit; the message is the same for a
+    wrong, expired or missing code, so it reveals nothing."""
+    otp = await repo.get_latest_otp(db, user.id, purpose)
+    if otp is None or otp.expires_at < _now():
+        raise ValidationError("Invalid or expired verification code.")
+    if otp.attempts >= MAX_OTP_ATTEMPTS:
+        raise ValidationError("Too many incorrect attempts. Request a new code.")
+    if otp.code != code:
+        otp.attempts += 1
+        await db.commit()
+        raise ValidationError("Invalid or expired verification code.")
+    return otp
+
+
 async def verify_otp(db: AsyncSession, data: OtpVerifyRequest) -> TokenResponse:
     user = await repo.get_user_by_email(db, data.email)
     if user is None:
@@ -110,16 +132,7 @@ async def verify_otp(db: AsyncSession, data: OtpVerifyRequest) -> TokenResponse:
     if user.is_verified:
         raise ConflictError("Account is already verified.")
 
-    otp = await repo.get_latest_otp(db, user.id)
-    if otp is None or otp.expires_at < _now():
-        raise ValidationError("Invalid or expired verification code.")
-    if otp.attempts >= MAX_OTP_ATTEMPTS:
-        raise ValidationError("Too many incorrect attempts. Request a new code.")
-    if otp.code != data.code:
-        otp.attempts += 1
-        await db.commit()
-        raise ValidationError("Invalid or expired verification code.")
-
+    otp = await _check_otp(db, user, data.code, OtpPurpose.registration)
     otp.is_used = True
     user.is_verified = True
     await db.commit()
@@ -140,7 +153,7 @@ async def resend_otp(db: AsyncSession, email: str) -> str | None:
     if user is None or user.is_verified:
         return None
 
-    latest = await repo.get_latest_otp(db, user.id)
+    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.registration)
     if latest is not None:
         issued_at = latest.expires_at - OTP_TTL  # same tz handling as expires_at
         if _now() - issued_at < OTP_RESEND_COOLDOWN:
@@ -196,7 +209,7 @@ async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:
         # family (deviation #17).
         await tokens.revoke_family(family)
         raise UnauthorizedError("Refresh token reuse detected; session revoked.")
-    if int(payload.get("iat", 0)) < await tokens.get_session_epoch(user_id):
+    if await tokens.is_session_stale(user_id, payload):
         raise UnauthorizedError("Session expired, please log in again.")
 
     user = await repo.get_user_by_id(db, uuid.UUID(user_id))
@@ -228,31 +241,57 @@ async def forgot_password(db: AsyncSession, data: ForgotPasswordRequest) -> None
     if user is None or user.deleted_at is not None:
         return
 
-    raw_token = generate_reset_token()
-    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-    await repo.create_reset_token(
-        db, user_id=user.id, token_hash=token_hash, expires_at=_now() + RESET_TOKEN_TTL
+    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.password_reset)
+    if latest is not None:
+        issued_at = latest.expires_at - OTP_TTL
+        if _now() - issued_at < OTP_RESEND_COOLDOWN:
+            # Within the cooldown: send nothing, and say nothing. An error here
+            # would show that the account exists.
+            return
+        # Retire the outstanding code so exactly one code is valid at a time.
+        latest.is_used = True
+
+    code = generate_otp_code()
+    await repo.create_otp(
+        db,
+        user_id=user.id,
+        code=code,
+        channel="email",
+        purpose=OtpPurpose.password_reset,
+        expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_reset_link(user.email, raw_token)
+    deliver_otp(user.email, code, purpose=OtpPurpose.password_reset)
 
 
 async def reset_password(db: AsyncSession, data: ResetPasswordRequest) -> None:
     validate_password_strength(data.new_password)
-    token_hash = hashlib.sha256(data.token.encode()).hexdigest()
-    reset = await repo.get_reset_token(db, token_hash)
-    if reset is None or reset.is_used or reset.expires_at < _now():
-        raise ValidationError("Invalid or expired reset token.")
 
-    user = await repo.get_user_by_id(db, reset.user_id)
-    if user is None:
-        raise ValidationError("Invalid or expired reset token.")
+    reset = None
+    otp = None
+    if data.token:
+        token_hash = hashlib.sha256(data.token.encode()).hexdigest()
+        reset = await repo.get_reset_token(db, token_hash)
+        if reset is None or reset.is_used or reset.expires_at < _now():
+            raise ValidationError("Invalid or expired reset token.")
+        user = await repo.get_user_by_id(db, reset.user_id)
+        if user is None:
+            raise ValidationError("Invalid or expired reset token.")
+    else:
+        assert data.email is not None and data.otp is not None  # enforced by the schema
+        user = await repo.get_user_by_email(db, data.email)
+        if user is None or user.deleted_at is not None:
+            raise ValidationError("Invalid or expired verification code.")
+        otp = await _check_otp(db, user, data.otp, OtpPurpose.password_reset)
     await enforce_password_reuse(db, user, data.new_password)
 
     user.password_hash = hash_password(data.new_password)
     user.failed_login_attempts = 0
     user.locked_until = None
-    reset.is_used = True
+    if reset is not None:
+        reset.is_used = True
+    if otp is not None:
+        otp.is_used = True
     await repo.add_password_history(db, user.id, user.password_hash)
     await db.commit()
     # Log out every existing session for this user (FR-P-02: old sessions die).

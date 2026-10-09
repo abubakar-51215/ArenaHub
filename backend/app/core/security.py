@@ -81,6 +81,9 @@ def _base_claims(subject: uuid.UUID, token_type: TokenType, ttl: timedelta) -> d
         "type": token_type.value,
         "jti": uuid.uuid4().hex,
         "iat": int(now.timestamp()),
+        # Milliseconds, for the session-epoch check: whole seconds cannot tell a
+        # token minted just before a password reset from one minted just after.
+        "iat_ms": int(now.timestamp() * 1000),
         "exp": int((now + ttl).timestamp()),
     }
 

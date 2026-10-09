@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth import repository as repo
+from app.shared.otp import OtpPurpose
 
 PASSWORD = "StrongP@ss1"
 
@@ -34,7 +35,7 @@ async def _register(
 async def _otp_code(db: AsyncSession, email: str) -> str:
     user = await repo.get_user_by_email(db, email)
     assert user is not None
-    otp = await repo.get_latest_otp(db, user.id)
+    otp = await repo.get_latest_otp(db, user.id, OtpPurpose.registration)
     assert otp is not None
     return otp.code
 
@@ -134,7 +135,7 @@ async def test_resend_otp_issues_fresh_code_and_retires_old(
     await _register(client, email="resend1@example.com", phone="03007777771")
     user = await repo.get_user_by_email(db_session, "resend1@example.com")
     assert user is not None
-    original = await repo.get_latest_otp(db_session, user.id)
+    original = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
     assert original is not None
 
     # Cooldown: an immediate resend right after registration is rejected.
@@ -151,7 +152,7 @@ async def test_resend_otp_issues_fresh_code_and_retires_old(
     resent = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
     assert resent.status_code == 200
 
-    fresh = await repo.get_latest_otp(db_session, user.id)
+    fresh = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
     assert fresh is not None
     assert fresh.id != original.id
 

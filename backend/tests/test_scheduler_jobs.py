@@ -16,6 +16,7 @@ from app.modules.auth import repository as auth_repo
 from app.modules.auth import service as auth_service
 from app.modules.auth.model import OtpVerification
 from app.modules.booking import service as booking_service
+from app.shared.otp import OtpPurpose
 from tests.helpers import PASSWORD, arena_payload, auth_header, make_admin, make_user
 
 
@@ -179,7 +180,7 @@ async def test_cleanup_expired_purges_old_otps_and_reset_tokens(
     )
     user = await auth_repo.get_user_by_email(db_session, "cleanup1@example.com")
     assert user is not None
-    otp = await auth_repo.get_latest_otp(db_session, user.id)
+    otp = await auth_repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
     assert otp is not None
 
     # Backdate the OTP's expiry so it's eligible for cleanup.

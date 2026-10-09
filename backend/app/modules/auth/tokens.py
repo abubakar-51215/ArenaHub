@@ -10,7 +10,8 @@ Keys — all namespaced under ``auth:`` with a TTL so nothing lingers forever:
 - ``auth:rt:used:{jti}``       a rotated (spent) refresh token id
 - ``auth:rt:revoked:{family}`` a revoked refresh-token family
 - ``auth:at:denied:{jti}``     an access token invalidated by logout
-- ``auth:epoch:{user_id}``     unix ts; tokens issued before it are stale
+- ``auth:epoch_ms:{user_id}``  unix ms; tokens issued at or before it are stale
+- ``auth:epoch:{user_id}``     older key, unix seconds; still honoured
 """
 
 from datetime import UTC, datetime
@@ -69,10 +70,27 @@ async def is_access_denied(jti: str) -> bool:
 
 
 async def bump_session_epoch(user_id: str) -> None:
-    now = int(datetime.now(UTC).timestamp())
-    await redis_cache.get_redis().set(f"auth:epoch:{user_id}", str(now), ex=_REFRESH_TTL_S)
+    now_ms = int(datetime.now(UTC).timestamp() * 1000)
+    await redis_cache.get_redis().set(f"auth:epoch_ms:{user_id}", str(now_ms), ex=_REFRESH_TTL_S)
 
 
-async def get_session_epoch(user_id: str) -> int:
-    value = await redis_cache.get_redis().get(f"auth:epoch:{user_id}")
-    return int(value) if value else 0
+async def get_session_epoch_ms(user_id: str) -> int:
+    redis = redis_cache.get_redis()
+    value = await redis.get(f"auth:epoch_ms:{user_id}")
+    if value:
+        return int(value)
+    # Epoch written before millisecond precision existed: whole seconds. Treat
+    # it as the end of that second so nothing issued in it survives.
+    legacy = await redis.get(f"auth:epoch:{user_id}")
+    return int(legacy) * 1000 + 999 if legacy else 0
+
+
+async def is_session_stale(user_id: str, payload: dict) -> bool:
+    """True when the token was issued at or before the user's last password
+    change/reset, i.e. it must no longer be accepted. A token without ``iat_ms``
+    (minted before that claim existed) falls back to its whole-second ``iat``."""
+    epoch_ms = await get_session_epoch_ms(user_id)
+    if not epoch_ms:
+        return False
+    issued_ms = int(payload.get("iat_ms") or int(payload.get("iat", 0)) * 1000)
+    return issued_ms <= epoch_ms

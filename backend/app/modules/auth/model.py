@@ -29,6 +29,8 @@ class OtpVerification(UUIDPrimaryKeyMixin, Base):
     )
     code: Mapped[str] = mapped_column(String(6), nullable=False)
     channel: Mapped[str] = mapped_column(String(10), nullable=False)  # email | sms
+    # OtpPurpose value. Lookups always filter on it (see app.shared.otp.OtpPurpose).
+    purpose: Mapped[str] = mapped_column(String(20), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
