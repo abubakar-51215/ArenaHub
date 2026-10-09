@@ -7,6 +7,10 @@ before every commit, and a **Full gate** at the end of every group (G1–G8) or
 after any change to a shared component (`components/ui/*`, `app/_layout.tsx`,
 or anything else more than one screen imports).
 
+## Mobile blockers
+
+- Admins must be able to sign in and use the mobile app, including the emailed code step (user decision). Admin screens in the app: to be decided.
+
 ## Comparison baseline — the rule for every regression diff
 
 Regression diffs compare against a **same-time capture of HEAD**, not against

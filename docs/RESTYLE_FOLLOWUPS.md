@@ -603,8 +603,9 @@ than per IP, so people on a shared network do not limit each other.
   `{mfa_required, challenge_token, expires_in: 600}`. `/auth/admin/verify-code` turns the
   challenge and the code into the normal tokens; `/auth/admin/resend-code` sends a new code
   after the 60 s wait. The challenge is a signed token of its own type, for one user, 10 minutes.
-- **Mobile app.** The app's sign-in does not handle the code step, so an admin account can no
-  longer sign in there (the app has no admin screens).
+- **Mobile app.** The app's sign-in does not handle the code step yet, so an admin account
+  cannot sign in there today. Admins must be able to use the app (user decision): see
+  "Mobile blockers" in `docs/MOBILE_QA_GATE.md`.
 - **Logs.** The code is written only on the dev path (dev with no mail server); the delivery
   line and the email fallback no longer carry the address.
 
