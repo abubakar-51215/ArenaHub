@@ -14,6 +14,32 @@ or anything else more than one screen imports).
 - Sign-up variant choice: unconfirmed, built the only frame in the prototype.
 - Sign-in screens the prototype does not draw are **proposed, not in the prototype**: reset with 6 code boxes, the reset success step, the admin code step, and the wrong / expired code states. They are built from the existing OTP screen and need the user's look before they count as final.
 
+## Mobile standing rules (user decisions)
+
+a) **Professional and on theme.** Mobile is the main app. Every screen, pop-up, sheet, toast, button press, loading, success and error must look and feel professional and match the theme.
+
+b) **Only what is drawn.** If a screen or pop-up is not in `arena-hub-player-app.html`, `arena-hub-player-app-auth.html` (or a file the user adds to `design/prototypes/`), do not invent it in code. A prototype HTML for it is made first and put in `design/prototypes/`; build only after the frame exists. A missing frame is listed and waits.
+
+c) **Motion rules** (shared components; no new library unless it is already installed):
+- A button press dips to 97.5% in about 160 ms.
+- Loading shows a spinner and keeps the button width.
+- Success shows a short tick. Errors shake once.
+- Pop-ups and sheets dim and blur the back and rise in about 340 ms (close about 200 ms).
+- Destructive buttons are red and always come with a plain Stay or Cancel.
+- Toasts drop from the top, stay about 3 seconds and slide away.
+- A light haptic on primary taps and a stronger one on success and error.
+- Everything respects "reduce motion" (instant). Screen changes use the native stack transition.
+
+What exists today (checked, nothing built for these rules yet): `react-native-reanimated` 4.1.7 and `expo-haptics` 15.0.8 are installed (so nothing new is needed). `Button` dips to 99% with opacity 0.9 (not 97.5% in 160 ms), shows an `ActivityIndicator` at full width, and has no haptic. `ConfirmTick` is a static tick. Haptics are used only by the tab bar button. There is no shared toast, sheet, shake or pop-up component yet.
+
+d) **Email and password field icons** (on purpose, as the prototype draws it). Every field with the mail or lock icon, on every screen (Log in, Register, Forgot password, Reset password, Change password, Change email, and later ones), uses the shared `Field` with `huge`:
+- Idle (empty and not focused): the icon is huge (mail about 104px, lock about 88px at 390 wide; field about 138px tall; small 12px grey label beside it), scaled with the phone width (360 to 430). The eye button is hidden.
+- Active (focused or has text): the normal 52px field, icon 15px, text 14px, with a 300 ms ease-out for height and icon size together. Empty and unfocused again: it grows back.
+- The whole field is the touch target in both states. After the animation, the focused field scrolls into view above the keyboard.
+- "Reduce motion": the change is instant. Screen readers hear "Email" / "Password".
+- The person icon (Full name) and the Phone field keep the normal small look (only mail and lock were named).
+- Check 360x640 specially on screens with several such fields. A screen that cannot be used there is reported with a picture, not fixed by changing this rule.
+
 ## Comparison baseline — the rule for every regression diff
 
 Regression diffs compare against a **same-time capture of HEAD**, not against
