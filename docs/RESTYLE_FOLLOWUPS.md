@@ -594,3 +594,23 @@ than per IP, so people on a shared network do not limit each other.
   new password together. The web screens collect the code at Step 1 and send it at Step 2,
   so a wrong, expired or used-up code is only found at Step 2; the page then returns to Step 1
   with the message and keeps the typed password.
+
+## Admin sign-in with an emailed code (2026-10-09)
+
+- **How it works.** `/auth/login` is unchanged for owners and players. An admin with the right
+  password gets no tokens: an `admin_login` code is emailed (same rules as the other codes:
+  6 digits, 10 minutes, 5 wrong tries, 60 s before a new one, one live code) and the reply is
+  `{mfa_required, challenge_token, expires_in: 600}`. `/auth/admin/verify-code` turns the
+  challenge and the code into the normal tokens; `/auth/admin/resend-code` sends a new code
+  after the 60 s wait. The challenge is a signed token of its own type, for one user, 10 minutes.
+- **Mobile app.** The app's sign-in does not handle the code step, so an admin account can no
+  longer sign in there (the app has no admin screens).
+- **Logs.** The code is written only on the dev path (dev with no mail server); the delivery
+  line and the email fallback no longer carry the address.
+
+## Note — "completed" payments with lifecycle "pending" in dev
+
+The 21 such rows in the dev database are seed data from 2026-08-01:
+`backend/scripts/seed_dummy_data.py` builds `Payment(status=completed, …)` without a lifecycle,
+so the model default `pending` sticks; the app itself only moves the lifecycle through
+`payment/state_machine.py`. Fix later by setting `lifecycle_status` in the seed script.
