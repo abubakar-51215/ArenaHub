@@ -242,6 +242,10 @@ async def test_owner_bookings_table_lists_and_filters(
     assert row["player_name"] == "Test User"
     assert row["status"] == "pending_payment"
     assert row["total_amount"] == "2000.00"
+    # the player's phone arrives masked (the test user's number is 0300...), and
+    # no payment exists yet for a booking that has not been paid
+    assert row["player_phone"].startswith("+92 300") and row["player_phone"].endswith("••••")
+    assert row["payment_method"] is None and row["payment_status"] is None
 
     # Status filter excludes it; matching filter keeps it.
     none = await client.get(
@@ -296,3 +300,13 @@ async def test_revenue_widgets_sum_completed_payments(
         params={"arena_id": arena_id},
     )
     assert scoped.json()["data"]["total_revenue"] == "2000.00"
+
+
+def test_phone_mask_hides_all_but_the_prototype_prefix() -> None:
+    from app.modules.dashboard.service import mask_phone
+
+    assert mask_phone("03001112233") == "+92 300 11••••"
+    assert mask_phone("+923215550101") == "+92 321 55••••"
+    assert mask_phone("12345678") == "1234••••"
+    assert mask_phone("del-9f3a1c") is None  # a deleted user's anonymised value
+    assert mask_phone(None) is None and mask_phone("") is None

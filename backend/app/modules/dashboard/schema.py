@@ -11,6 +11,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.booking.model import BookingStatus
+from app.modules.payment.model import PaymentLifecycleStatus, PaymentMethod, PaymentStatus
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -128,5 +129,10 @@ class OwnerBookingRow(BaseModel):
     player_name: str
     total_amount: Decimal
     status: BookingStatus
+    # the player's phone, masked (+92 300 11••••): the full number never leaves the server
+    player_phone: str | None = None
     payment_id: uuid.UUID | None = None
+    payment_method: PaymentMethod | None = None
+    payment_status: PaymentStatus | None = None
+    payment_lifecycle_status: PaymentLifecycleStatus | None = None
     receipt_proof_url: str | None = None

@@ -262,7 +262,12 @@ export interface OwnerBookingRow {
   player_name: string;
   total_amount: string;
   status: BookingStatus;
+  /** the player's phone, masked by the server ("+92 300 11••••") */
+  player_phone?: string | null;
   payment_id: string | null;
+  payment_method?: PaymentMethod | null;
+  payment_status?: PaymentStatus | null;
+  payment_lifecycle_status?: string | null;
   receipt_proof_url: string | null;
 }
 

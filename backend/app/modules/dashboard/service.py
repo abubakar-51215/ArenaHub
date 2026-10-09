@@ -10,6 +10,7 @@ arena).
 """
 
 import calendar
+import re
 import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -40,6 +41,23 @@ from app.modules.payment import repository as payment_repo
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User
 from app.shared.pagination import PaginationParams, paginated
+
+
+def mask_phone(phone: str | None) -> str | None:
+    """A Pakistani mobile number as the prototype shows it, "+92 300 11••••":
+    country code, the operator code and two more digits; the rest hidden.
+    Other numbers keep their first four characters; a value that is not a
+    phone number (an anonymised, deleted user) gives nothing."""
+    if not phone:
+        return None
+    if not re.fullmatch(r"\+?[\d\s-]{8,}", phone):
+        return None  # not a phone number (an anonymised, deleted user)
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) == 11 and digits.startswith("0"):
+        digits = "92" + digits[1:]
+    if len(digits) == 12 and digits.startswith("92"):
+        return f"+92 {digits[2:5]} {digits[5:7]}••••"
+    return f"{phone[:4]}••••"
 
 
 def _month_bounds(today: date) -> tuple[date, date]:
@@ -326,6 +344,12 @@ async def list_owner_bookings(
                 db, booking.booking_group_id
             )
 
+    phones: dict[uuid.UUID, str] = {}
+    player_ids = {booking.player_id for booking, _, _, _ in rows}
+    if player_ids:
+        result = await db.execute(select(User.id, User.phone).where(User.id.in_(player_ids)))
+        phones = {row.id: row.phone for row in result.all()}
+
     items = []
     for booking, court_name, arena_name, player_name in rows:
         payment = payments_by_group.get(booking.booking_group_id)
@@ -342,7 +366,11 @@ async def list_owner_bookings(
                 player_name=player_name,
                 total_amount=booking.total_amount,
                 status=booking.status,
+                player_phone=mask_phone(phones.get(booking.player_id)),
                 payment_id=payment.id if payment else None,
+                payment_method=payment.payment_method if payment else None,
+                payment_status=payment.status if payment else None,
+                payment_lifecycle_status=payment.lifecycle_status if payment else None,
                 receipt_proof_url=payment.receipt_proof_url if payment else None,
             )
         )

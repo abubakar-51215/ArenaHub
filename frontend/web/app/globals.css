@@ -4244,3 +4244,60 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     display: block;
   }
 }
+
+/* owner Bookings rows (the style guide's rows): about 84px tall, a muted
+   spaced header, the phone small under the name, payment in plain text,
+   the amount bold at the column's right edge */
+[data-owner] .ah-bk td {
+  height: 84px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  vertical-align: middle;
+}
+[data-owner] .ah-bk td .ah-sub {
+  font-size: 12px;
+}
+[data-owner] .ah-bk .ah-money {
+  font-weight: 700;
+  white-space: nowrap;
+}
+[data-owner] .ah-bk .ah-strong {
+  font-weight: 700;
+}
+[data-owner] .ah-bk .ah-row-actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+@media (max-width: 1279.98px) {
+  [data-owner] .ah-bk th,
+  [data-owner] .ah-bk td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  [data-owner] .ah-bk td {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  /* the payment may take two lines ("Bank transfer" / "· receipt to review") */
+  [data-owner] .ah-bk td:nth-child(5) {
+    white-space: normal;
+    max-width: 104px;
+  }
+  /* the arena line under the court gives way to an ellipsis, so a row stays
+     two lines tall */
+  [data-owner] .ah-bk td:nth-child(3) .ah-sub {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* the customer's name may wrap, the rest stays on one line */
+  [data-owner] .ah-bk td:nth-child(2) {
+    white-space: normal;
+  }
+  [data-owner] .ah-bk td:nth-child(2) .ah-strong {
+    white-space: nowrap;
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
