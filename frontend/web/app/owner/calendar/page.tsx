@@ -303,7 +303,7 @@ function Schedule() {
                     <div className="ah-cal-times">
                       {Array.from({ length: HOURS }, (_, i) => (
                         <div key={i} className="ah-cal-time">
-                          {i === 0 ? "" : formatHour(START + i)}
+                          {formatHour(START + i)}
                         </div>
                       ))}
                     </div>
