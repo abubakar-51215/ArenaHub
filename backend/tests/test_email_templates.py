@@ -24,3 +24,15 @@ def test_notification_email_wraps_title_and_body() -> None:
     assert subject == "ArenaHub — Booking confirmed"
     assert "Booking confirmed" in html and "See you on the court!" in html
     assert text.startswith("Booking confirmed")
+
+
+def test_password_reset_code_email_says_reset_not_verify() -> None:
+    subject, text, html = otp_email("482913", "password_reset", ttl_minutes=10)
+    assert "password reset code" in subject
+    assert "Reset your password" in html and "Reset your password" in text
+    assert "Verify your account" not in html and "Verify your account" not in text
+
+
+def test_registration_code_email_still_says_verify() -> None:
+    _, _, html = otp_email("482913", "registration", ttl_minutes=10)
+    assert "Verify your account" in html

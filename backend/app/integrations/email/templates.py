@@ -62,18 +62,44 @@ def _code_box(code: str) -> str:
 </div>"""
 
 
+# purpose -> (heading, what the code is for, what the code is called)
+_OTP_COPY = {
+    "registration": ("Verify your account", "verify your account", "verification code"),
+    "password_reset": ("Reset your password", "reset your password", "password reset code"),
+    "password_change": (
+        "Confirm your password change",
+        "confirm your password change",
+        "confirmation code",
+    ),
+    "phone_change": (
+        "Confirm your new phone number",
+        "confirm your new number",
+        "confirmation code",
+    ),
+    "email_change": (
+        "Confirm your new email address",
+        "confirm your new email address",
+        "confirmation code",
+    ),
+}
+
+
 def otp_email(code: str, purpose: str, ttl_minutes: int) -> tuple[str, str, str]:
-    subject = f"{code} is your {BRAND} verification code"
+    heading, action, noun = _OTP_COPY.get(
+        purpose, ("Your one-time code", f"complete your {purpose}", "code")
+    )
+    subject = f"{code} is your {BRAND} {noun}"
     text = (
-        f"Your {BRAND} {purpose} code is {code}.\n\n"
+        f"{heading}\n\n"
+        f"Your {BRAND} {noun} is {code}. Use it to {action}.\n\n"
         f"It expires in {ttl_minutes} minutes. "
         "If you didn't request this, you can safely ignore this email."
     )
     html = _layout(
-        f"Your verification code is {code}",
+        f"Your {noun} is {code}",
         f"""\
-<p style="margin:0 0 8px;font-size:18px;font-weight:700;">Verify your account</p>
-<p style="margin:0;">Use this code to complete your {purpose}:</p>
+<p style="margin:0 0 8px;font-size:18px;font-weight:700;">{heading}</p>
+<p style="margin:0;">Use this code to {action}:</p>
 {_code_box(code)}
 <p style="margin:0;color:{MUTED};">This code expires in <strong>{ttl_minutes} minutes</strong>
 and can only be used once.</p>""",
