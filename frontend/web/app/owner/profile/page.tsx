@@ -211,7 +211,7 @@ export default function OwnerProfilePage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Your account and sign-in details" />
+      <PageHeader title="Profile" subtitle="Your account and sign-in details" />
       <div className="ah-ocanvas animate-fade-in">
         <section className="ah-card">
           <div className="ah-tabs ah-tabs-scroll" role="tablist" aria-label="Settings sections">

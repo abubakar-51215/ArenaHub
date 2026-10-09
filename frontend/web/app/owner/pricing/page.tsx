@@ -115,7 +115,7 @@ function Pricing() {
 
   return (
     <>
-      <PageHeader title="Pricing rules" subtitle="A rule multiplies the court's base price in its hours">
+      <PageHeader title="Pricing Rules" subtitle="A rule multiplies the court's base price in its hours">
         <Button
           className="ah-lime"
           disabled={courts.length === 0}

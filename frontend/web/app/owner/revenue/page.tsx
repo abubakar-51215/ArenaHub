@@ -69,7 +69,7 @@ function Earnings() {
   return (
     <>
       <PageHeader
-        title="Earnings"
+        title="Revenue"
         subtitle={`${dateFrom ? formatDateShort(dateFrom) : "Start"} – ${dateTo ? formatDateShort(dateTo) : "today"} · ${picked ? picked.name : "All arenas"}`}
       >
         <div className="ah-daterow">

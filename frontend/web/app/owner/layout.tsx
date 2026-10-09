@@ -1,11 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useCommandPaletteShortcut } from "@/components/admin/command-palette";
 import { OwnerCommandPalette } from "@/components/owner/command-palette";
-import { OwnerBrandMark, Sidebar } from "@/components/owner/sidebar";
+import { OWNER_NAV, OwnerBrandMark, Sidebar } from "@/components/owner/sidebar";
 import { OwnerPickerRow, OwnerSlimActions, OwnerTopbar } from "@/components/owner/topbar";
 import { DashboardShell } from "@/components/ui/dashboard-shell";
 import { useAuthStore } from "@/store/auth";
@@ -19,6 +19,7 @@ import { useAuthStore } from "@/store/auth";
  */
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { hydrated, user, accessToken } = useAuthStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
   useCommandPaletteShortcut(setPaletteOpen);
@@ -33,6 +34,12 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       document.body.removeAttribute("data-owner");
     };
   }, []);
+
+  // the browser tab reads the page's menu name (the same list as the rail)
+  useEffect(() => {
+    const item = OWNER_NAV.flatMap((g) => g.items).find((i) => i.href === pathname);
+    if (item) document.title = item.label;
+  }, [pathname]);
 
   useEffect(() => {
     if (hydrated && (!accessToken || user?.role !== "owner")) {
