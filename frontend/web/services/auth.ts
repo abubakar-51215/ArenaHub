@@ -33,8 +33,10 @@ export function forgotPassword(email: string): Promise<null> {
   return api.post<null>("/auth/forgot-password", { email });
 }
 
-export function resetPassword(token: string, newPassword: string): Promise<null> {
-  return api.post<null>("/auth/reset-password", { token, new_password: newPassword });
+/** Reset with the emailed 6-digit code. The code is checked only here, with
+ *  the new password: there is no separate "check code" endpoint. */
+export function resetPassword(email: string, otp: string, newPassword: string): Promise<null> {
+  return api.post<null>("/auth/reset-password", { email, otp, new_password: newPassword });
 }
 
 export function updateProfile(data: { full_name?: string }): Promise<User> {
