@@ -144,7 +144,7 @@ function PaymentsInner() {
           <Button
             className="ah-lime"
             disabled={!picked}
-            title={picked ? undefined : "Choose an arena in the top bar first"}
+            title={picked ? undefined : "Choose an arena above first"}
             onClick={() => {
               setEditing(undefined);
               setFormOpen(true);
@@ -220,7 +220,7 @@ function PaymentsInner() {
               )}
               {!discountsLoading && !discountsFailed && discounts.length === 0 && (
                 <AdminEmpty>
-                  {picked ? "No discount codes yet. Click “Add code” to create one." : "No discount codes yet. Choose an arena in the top bar to add one."}
+                  {picked ? "No discount codes yet. Click “Add code” to create one." : "No discount codes yet. Choose an arena above to add one."}
                 </AdminEmpty>
               )}
               {!discountsLoading && discounts.length > 0 && (

@@ -4298,29 +4298,18 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   }
   [data-owner] .ah-bk td {
     font-size: 13px;
+  }
+  /* nothing is cut with an ellipsis: the booking id and the time range stay
+     on one line, the court's arena name, the customer's name and the payment
+     state wrap onto their own lines */
+  [data-owner] .ah-bk td:nth-child(1),
+  [data-owner] .ah-bk .ah-slot-time,
+  [data-owner] .ah-bk .ah-pay-method,
+  [data-owner] .ah-bk .ah-money {
     white-space: nowrap;
   }
-  /* the payment may take two lines ("Bank transfer" / "· receipt to review") */
-  [data-owner] .ah-bk td:nth-child(5) {
-    white-space: normal;
-    max-width: 104px;
-  }
-  /* the arena line under the court gives way to an ellipsis, so a row stays
-     two lines tall */
-  [data-owner] .ah-bk td:nth-child(3) .ah-sub {
-    max-width: 96px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  /* the customer's name may wrap, the rest stays on one line */
-  [data-owner] .ah-bk td:nth-child(2) {
-    white-space: normal;
-  }
-  [data-owner] .ah-bk td:nth-child(2) .ah-strong {
-    white-space: nowrap;
-    max-width: 96px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  [data-owner] .ah-bk td:nth-child(3) {
+    max-width: 112px;
   }
 }
 
