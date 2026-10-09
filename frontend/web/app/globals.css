@@ -3960,3 +3960,21 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     min-height: 44px;
   }
 }
+
+/* owner Equipment: the stock stepper (− n of m free +) */
+[data-owner] .ah-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+[data-owner] .ah-stepper b {
+  color: var(--foreground);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-stepper {
+    font-size: 14px;
+  }
+}
