@@ -33,3 +33,12 @@ async def test_rate_limited_response_carries_cors_and_retry_after(client, monkey
     assert limited.headers["access-control-allow-origin"] == ORIGIN
     assert int(limited.headers["retry-after"]) >= 1
     assert "retry-after" in limited.headers["access-control-expose-headers"].lower()
+
+
+async def test_dev_allows_expo_web_origin_and_nothing_else(client):
+    for origin, allowed in (("http://localhost:8081", True), ("http://evil.example", False)):
+        res = await client.options(
+            "/api/v1/auth/login",
+            headers={"Origin": origin, "Access-Control-Request-Method": "POST"},
+        )
+        assert (res.headers.get("access-control-allow-origin") == origin) is allowed
