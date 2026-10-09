@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
+import { useFormDialog } from "@/hooks/useFormDialog";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatDateShort, formatRs, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
@@ -89,7 +90,7 @@ function PaymentsInner() {
   const discountsLoading = discountQueries.some((q) => q.isLoading);
   const discountsFailed = discountQueries.some((q) => q.isError);
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<DiscountCode | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const formArenaId = editing?.arena_id ?? picked?.id;

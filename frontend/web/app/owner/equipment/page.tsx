@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
+import { useFormDialog } from "@/hooks/useFormDialog";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatRs, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
@@ -39,7 +40,7 @@ function EquipmentInner() {
   const failed = queries.some((q) => q.isError);
   const items = queries.flatMap((q) => q.data ?? []);
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<Equipment | undefined>(undefined);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

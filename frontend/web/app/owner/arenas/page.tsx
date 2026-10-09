@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useFormDialog } from "@/hooks/useFormDialog";
 import { useDeactivateArena, useMyArenas, useResubmitArena } from "@/hooks/useArenas";
 import { useRevenue } from "@/hooks/useDashboard";
 import { formatRs, plural, toDateInput } from "@/lib/format";
@@ -76,7 +77,7 @@ export default function ArenasPage() {
   const { data, isLoading, isError, refetch } = useMyArenas();
   const deactivate = useDeactivateArena();
   const resubmit = useResubmitArena();
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<Arena | undefined>(undefined);
   const [search, setSearch] = useState("");
 
