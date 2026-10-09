@@ -73,10 +73,12 @@ async def create_otp(
 
 
 async def get_latest_otp(
-    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, *, for_update: bool = False
 ) -> OtpVerification | None:
-    """Most recently issued, still-unused OTP of one purpose for a user."""
-    result = await db.execute(
+    """Most recently issued, still-unused OTP of one purpose for a user.
+    ``for_update`` locks the row (SELECT ... FOR UPDATE) until the transaction
+    ends, so concurrent checks of one code are counted one after the other."""
+    stmt = (
         select(OtpVerification)
         .where(
             OtpVerification.user_id == user_id,
@@ -86,6 +88,9 @@ async def get_latest_otp(
         .order_by(OtpVerification.created_at.desc())
         .limit(1)
     )
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 

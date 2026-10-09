@@ -80,7 +80,7 @@ async def _send_registration_otp(db: AsyncSession, user: User) -> None:
         purpose=OtpPurpose.registration,
         expires_at=_now() + OTP_TTL,
     )
-    deliver_otp(user.email, code, purpose=OtpPurpose.registration)
+    deliver_otp(user.email, code, purpose=OtpPurpose.registration, user_id=user.id)
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
@@ -112,8 +112,10 @@ async def _check_otp(
 ) -> OtpVerification:
     """The user's latest unused OTP *for this purpose* if ``code`` matches it. A
     wrong code counts toward the attempt limit; the message is the same for a
-    wrong, expired or missing code, so it reveals nothing."""
-    otp = await repo.get_latest_otp(db, user.id, purpose)
+    wrong, expired or missing code, so it reveals nothing. The row is locked
+    while it is checked, so two requests at once cannot both slip under the
+    attempt limit."""
+    otp = await repo.get_latest_otp(db, user.id, purpose, for_update=True)
     if otp is None or otp.expires_at < _now():
         raise ValidationError("Invalid or expired verification code.")
     if otp.attempts >= MAX_OTP_ATTEMPTS:
@@ -261,7 +263,7 @@ async def forgot_password(db: AsyncSession, data: ForgotPasswordRequest) -> None
         expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(user.email, code, purpose=OtpPurpose.password_reset)
+    deliver_otp(user.email, code, purpose=OtpPurpose.password_reset, user_id=user.id)
 
 
 async def reset_password(db: AsyncSession, data: ResetPasswordRequest) -> None:

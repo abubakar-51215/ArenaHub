@@ -70,7 +70,7 @@ async def request_password_change(
         expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(user.email, code, purpose=OtpPurpose.password_change)
+    deliver_otp(user.email, code, purpose=OtpPurpose.password_change, user_id=user.id)
 
 
 async def verify_password_change(
@@ -124,7 +124,7 @@ async def request_phone_change(db: AsyncSession, user: User, data: PhoneChangeRe
         expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(data.new_phone, code, purpose=OtpPurpose.phone_change)
+    deliver_otp(data.new_phone, code, purpose=OtpPurpose.phone_change, user_id=user.id)
 
 
 async def verify_phone_change(
@@ -167,7 +167,7 @@ async def request_email_change(db: AsyncSession, user: User, data: EmailChangeRe
         expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(data.new_email, code, purpose=OtpPurpose.email_change)
+    deliver_otp(data.new_email, code, purpose=OtpPurpose.email_change, user_id=user.id)
 
 
 async def verify_email_change(
