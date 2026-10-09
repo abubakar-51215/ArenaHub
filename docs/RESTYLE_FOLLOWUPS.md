@@ -584,3 +584,13 @@ than per IP, so people on a shared network do not limit each other.
   refund ("Refunded") can be told apart from the payment's lifecycle.
 - **Done: "Verify bank transfer".** The Bookings receipt dialog uses the payment option name
   "Bank transfer" (5d7cb99).
+
+## Follow-up — password-reset codes (2026-10-09)
+
+- **Codes are stored as plain text.** `otp_verifications.code` holds the six digits as typed.
+  A later improvement is to store a keyed hash (HMAC with a server secret) and compare
+  hashes, so a database read does not expose live codes.
+- **No separate "check code" step.** `/auth/reset-password` takes the email, the code and the
+  new password together. The web screens collect the code at Step 1 and send it at Step 2,
+  so a wrong, expired or used-up code is only found at Step 2; the page then returns to Step 1
+  with the message and keeps the typed password.
