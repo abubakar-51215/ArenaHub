@@ -1671,6 +1671,11 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   background: var(--ink);
   overflow: hidden;
 }
+/* --ink turns light in the dark theme: the picture area stays the dark ink, so a
+   court photo that is missing or still loading is not a pale block */
+html[data-theme="dark"] [data-admin] .ah-court-vis {
+  background: #0f1a15;
+}
 [data-admin] .ah-court-vis svg {
   position: absolute;
   inset: 0;
