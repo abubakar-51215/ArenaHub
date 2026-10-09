@@ -64,6 +64,24 @@ class ResetPasswordRequest(BaseModel):
         return self
 
 
+class AdminLoginChallenge(BaseModel):
+    """What /auth/login returns to an admin with the right password: no tokens
+    yet; a code has been emailed and this value carries them to the next step."""
+
+    mfa_required: bool = True
+    challenge_token: str
+    expires_in: int
+
+
+class AdminCodeRequest(BaseModel):
+    challenge_token: str
+    code: str = Field(min_length=6, max_length=6)
+
+
+class AdminResendRequest(BaseModel):
+    challenge_token: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

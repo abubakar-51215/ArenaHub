@@ -24,6 +24,7 @@ from app.core.exceptions import UnauthorizedError, ValidationError
 ALGORITHM = "HS256"
 ACCESS_TOKEN_TTL = timedelta(minutes=15)
 REFRESH_TOKEN_TTL = timedelta(days=7)
+ADMIN_LOGIN_TOKEN_TTL = timedelta(minutes=10)
 
 # bcrypt only hashes the first 72 bytes; reject longer input rather than
 # silently truncate it (which would make distinct passwords collide).
@@ -35,6 +36,9 @@ _SPECIAL_CHARS = re.compile(r"[^A-Za-z0-9]")
 class TokenType(StrEnum):
     access = "access"
     refresh = "refresh"
+    # carries an admin from the password step to the emailed-code step; it is
+    # not an access or refresh token and is accepted nowhere else
+    admin_login = "admin_login"
 
 
 # --- Passwords ---------------------------------------------------------------
@@ -102,6 +106,14 @@ def create_refresh_token(user_id: uuid.UUID, family: str | None = None) -> str:
     settings = get_settings()
     claims = _base_claims(user_id, TokenType.refresh, REFRESH_TOKEN_TTL)
     claims["family"] = family or uuid.uuid4().hex
+    return jwt.encode(claims, settings.jwt_refresh_secret, algorithm=ALGORITHM)
+
+
+def create_admin_login_token(user_id: uuid.UUID) -> str:
+    """Mint the admin sign-in challenge: 10 minutes, for this user, for the
+    code step only (its own ``type``)."""
+    settings = get_settings()
+    claims = _base_claims(user_id, TokenType.admin_login, ADMIN_LOGIN_TOKEN_TTL)
     return jwt.encode(claims, settings.jwt_refresh_secret, algorithm=ALGORITHM)
 
 

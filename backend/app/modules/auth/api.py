@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.modules.auth import service
 from app.modules.auth.schema import (
+    AdminCodeRequest,
+    AdminLoginChallenge,
+    AdminResendRequest,
     ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
@@ -47,8 +50,28 @@ async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login", summary="Login and receive JWT tokens")
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    tokens = await service.login(db, data)
+    result = await service.login(db, data)
+    if isinstance(result, AdminLoginChallenge):
+        # admins: no tokens yet, a code was emailed
+        return success(data=result, message="Enter the 6-digit code we emailed you.")
+    return success(data=result, message="Login successful.")
+
+
+@router.post("/admin/verify-code", summary="Finish an admin sign-in with the emailed code")
+async def verify_admin_code(
+    data: AdminCodeRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    tokens = await service.verify_admin_code(db, data)
     return success(data=tokens, message="Login successful.")
+
+
+@router.post("/admin/resend-code", summary="Email a new admin sign-in code")
+async def resend_admin_code(
+    data: AdminResendRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    # same answer inside or outside the 60 s wait: nothing is revealed
+    await service.resend_admin_code(db, data)
+    return success(message="If a new code can be sent, it is on its way.")
 
 
 @router.post("/refresh", summary="Rotate the access + refresh tokens")
