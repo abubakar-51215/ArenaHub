@@ -10,13 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
-import { fetchMe, isAdminChallenge, login } from "@/services/auth";
+import { fetchMe, isAdminChallenge, loginWithIdentifier } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
 export default function LoginPage() {
   const router = useRouter();
   const { setSession, hydrated, user } = useAuthStore();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const result = await login(email, password);
+      const result = await loginWithIdentifier(identifier.trim(), password);
       if (isAdminChallenge(result)) {
         // an admin account: it signs in on the admin page, with a code
         setError("This dashboard is for arena owners. Please use an owner account.");
@@ -83,14 +83,17 @@ export default function LoginPage() {
 
       <form onSubmit={onSubmit} className="mt-7 space-y-4">
         <div>
-          <Label htmlFor="email">Email Address</Label>
+          <Label htmlFor="identifier">Email or phone</Label>
           <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="owner@arenahub.pk"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="identifier"
+            type="text"
+            inputMode="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="owner@arenahub.pk or 0300 1234567"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             required
           />
         </div>

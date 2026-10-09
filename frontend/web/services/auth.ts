@@ -15,6 +15,11 @@ export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChalleng
   return "mfa_required" in r && r.mfa_required === true;
 }
 
+/** Sign in with an email or a phone number (the player and owner pages). */
+export function loginWithIdentifier(identifier: string, password: string): Promise<Tokens | AdminChallenge> {
+  return api.post<Tokens | AdminChallenge>("/auth/login", { identifier, password });
+}
+
 export function login(email: string, password: string): Promise<Tokens | AdminChallenge> {
   return api.post<Tokens | AdminChallenge>("/auth/login", { email, password });
 }

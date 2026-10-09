@@ -160,5 +160,5 @@ These are the standards the web gate checks (`FEATURE_GAP_REPORT.md` has the lat
 | Reset by code | Done 2026-10-09: backend and the two reset screens. |
 | Admin sign-in mail | **Production must have working mail settings.** Admin sign-in now needs the emailed code; without mail the code is never delivered and no admin can sign in. |
 | Admin lost email | No way for an admin to recover if they lose their email inbox. Joins the open gap that there is no admin password reset. |
-| Login by email or phone | Sign-in rules and a data migration. |
+| Login by email or phone | **Done** 2026-10-09 (backend + web, no migration). `/login` takes an email or a phone number in one field; the Pakistani forms of a number match each other. A phone shared by several accounts is refused with the generic message. Admins stay email-only. Sign-up refuses a phone already held in any spelling. |
 | Owner slot screen | A new screen. Needs a decision: it is not in the 13 today. |
