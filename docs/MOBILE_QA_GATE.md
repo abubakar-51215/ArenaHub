@@ -10,6 +10,8 @@ or anything else more than one screen imports).
 ## Mobile blockers
 
 - Admins must be able to sign in and use the mobile app, including the emailed code step (user decision). Admin screens in the app: to be decided.
+- Sign-up variant choice: unconfirmed, built the only frame in the prototype.
+- Sign-in screens the prototype does not draw are **proposed, not in the prototype**: reset with 6 code boxes, the reset success step, the admin code step, and the wrong / expired code states. They are built from the existing OTP screen and need the user's look before they count as final.
 
 ## Comparison baseline — the rule for every regression diff
 

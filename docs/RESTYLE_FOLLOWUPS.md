@@ -642,3 +642,10 @@ date filters).
 ## Bookings table — "Remind" is built
 
 Owner Bookings shows "Remind" on a booking that is **Awaiting payment** (status `pending_payment`: booked, nothing paid yet; a bank transfer with a receipt is `pending_approval` and is not remindable) while its slot has not started (Karachi time). `POST /owner/dashboard/bookings/{id}/remind` sends the player the notice `payment_reminder` (saved in their notices, pushed/emailed by their category settings). Only the arena's own owner may send it; one reminder an hour per booking (a second try gets 409 with the minutes left, and the button shows "Sent · N min"). The hour is read from the notices table, so there is no new table. Reminder email wording is plain; the redesign of it comes with the email work.
+
+## Sign-in follow-ups (from the user's answers)
+
+- Unique index on `lower(email)`: add it only after a duplicate check on real data (sign-in and sign-up already match email without regard to case).
+- Prototype shows "Email or phone" on the sign-in field; login by phone needs backend work and is **not done**.
+- Google / Apple buttons and the "328 arenas" copy are left out of the sign-in screens (nothing behind them).
+- Mobile gate G1: the frames for reset with 6 boxes, the success step, the admin code and a wrong / expired code are **proposed, not in the prototype**.
