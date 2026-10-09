@@ -1,63 +1,179 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput as RNTextInput, type TextInputProps } from 'react-native';
+import { createContext, forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ScrollView,
+  type TextInput as RNTextInput,
+  type TextInputProps,
+} from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Colors } from '@/constants/theme';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { TextInput } from '@/components/ui/text-input';
+import { Colors } from '@/constants/theme';
 
-// Base values from .m-search (arena-hub-player-app.html). The prototype is a
-// static mockup with no focused/error state drawn, so those two are added
-// here — not in the prototype — for G1's form work:
-//   focused: border -> ink, 1.5px (thicker/darker, not lime — the
-//     colour-as-meaning rule reserves lime for live status and primary
-//     action, so focus uses the same ink the rest of the UI uses for
-//     emphasis, e.g. the primary button).
-//   error: border -> destructive red, an existing token, no new colour.
+// The one text field of the app. Base look: .m-search (arena-hub-player-app.html)
+// as set out in arena-hub-player-app-auth-2.html: 52 tall, radius 15, 1.5px line
+// border, icon 15, text 14; focused = ink border + a soft lime ring; error =
+// red border.
 //
-// FieldProps extends TextInputProps, and everything not destructured below
-// spreads onto the underlying TextInput — onSubmitEditing, returnKeyType,
-// blurOnSubmit, autoComplete, textContentType and importantForAutofill all
-// already pass through that way; none needed adding. The one real gap was
-// the ref itself: nothing outside Field could reach the input to call
-// .focus(), which G1's autofocus-first-field and return-key-to-next-field
-// both need. forwardRef fixes that.
+// Mail and lock fields (`huge`) have the prototype's on-purpose behaviour (user
+// decision, "Mobile standing rules" in docs/MOBILE_QA_GATE.md): while the field
+// is empty and not focused the icon is HUGE (mail 104, lock 88 on a 390 wide
+// phone) and the field grows to 138 to hold it, with the placeholder as a small
+// 12px label beside the icon; focus or any text settles it to the normal field
+// in 300 ms (height and icon size together, ease-out). Sizes scale with the
+// phone width (360 to 430). With "reduce motion" on, the change is instant. The
+// whole field is the touch target in both states. A password field also has
+// the eye button, hidden while the field is huge.
+export const FIELD_ACTIVE_HEIGHT = 52;
+const IDLE_HEIGHT = 138; // at 390 wide
+const ICON_SMALL = 15;
+const ICON_HUGE: Partial<Record<IconName, number>> = { mail: 104, lock: 88 }; // at 390 wide
+const EASE = Easing.bezier(0.2, 0.8, 0.2, 1);
+const MS = 300;
+
+/** A screen's scroll view, so a focused field can bring itself into view above the keyboard. */
+export const FieldScrollContext = createContext<{
+  scrollRef: React.RefObject<ScrollView | null>;
+  contentRef: React.RefObject<View | null>;
+} | null>(null);
+
 interface FieldProps extends TextInputProps {
-  icon?: React.ReactNode;
+  icon?: IconName;
+  /** Use the huge-when-idle behaviour (mail and lock fields only). */
+  huge?: boolean;
+  /** Show the eye button (password fields). Needs secureTextEntry. */
+  revealable?: boolean;
   error?: boolean;
 }
 
 export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
-  { icon, error, style, onFocus, onBlur, ...props },
+  { icon, huge, revealable, error, style, onFocus, onBlur, value, secureTextEntry, ...props },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const inner = useRef<RNTextInput>(null);
+  const box = useRef<View>(null);
+  const scroll = useContext(FieldScrollContext);
   useImperativeHandle(ref, () => inner.current as RNTextInput);
-  // The whole box is the touch target (the prototype's box is ~41 tall; the
-  // 44 minimum height below makes it a full-size one), not just the text line.
+
+  const reduceMotion = useReducedMotion();
+  const { width } = useWindowDimensions();
+  const scale = Math.min(430, Math.max(360, width)) / 390;
+  const hugeIcon = huge && icon ? Math.round((ICON_HUGE[icon] ?? 104) * scale) : ICON_SMALL;
+  const idleHeight = Math.round(IDLE_HEIGHT * scale);
+
+  // active = focused or has text; a field with nothing in it and no focus is idle
+  const active = !huge || focused || (value ?? '').length > 0;
+  const progress = useSharedValue(active ? 1 : 0);
+  useEffect(() => {
+    progress.value = reduceMotion
+      ? active
+        ? 1
+        : 0
+      : withTiming(active ? 1 : 0, { duration: MS, easing: EASE });
+  }, [active, reduceMotion, progress]);
+
+  const boxStyle = useAnimatedStyle(() => ({
+    height: interpolate(progress.value, [0, 1], [idleHeight, FIELD_ACTIVE_HEIGHT]),
+  }));
+  const slotStyle = useAnimatedStyle(() => {
+    const size = interpolate(progress.value, [0, 1], [hugeIcon, ICON_SMALL]);
+    return {
+      width: size,
+      height: size,
+      marginLeft: interpolate(progress.value, [0, 1], [6, 0]),
+      marginRight: interpolate(progress.value, [0, 1], [8, 0]),
+    };
+  });
+  // the icon is drawn once at its huge size and scaled down, so one animation
+  // drives both size and position
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(progress.value, [0, 1], [1, ICON_SMALL / hugeIcon]) }],
+  }));
+  const eyeStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
+
+  // after the tap's animation settles, bring the field into view above the keyboard
+  useEffect(() => {
+    if (!focused || !huge || !scroll?.scrollRef.current || !scroll.contentRef.current || !box.current) return;
+    const id = setTimeout(
+      () => {
+        box.current?.measureLayout(
+          scroll.contentRef.current as never,
+          (_x, y) => scroll.scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true }),
+          () => {},
+        );
+      },
+      reduceMotion ? 0 : MS + 40,
+    );
+    return () => clearTimeout(id);
+  }, [focused, huge, reduceMotion, scroll]);
+
+  const showEye = revealable && secureTextEntry;
   return (
-    <Pressable
-      accessible={false}
-      onPress={() => inner.current?.focus()}
-      style={[
-        styles.base,
-        focused && !error && styles.focused,
-        error && styles.error,
-      ]}>
-      {icon}
-      <TextInput
-        ref={inner}
-        {...props}
-        style={[styles.input, style]}
-        placeholderTextColor={Colors.light.muted}
-        onFocus={(e) => {
-          setFocused(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          onBlur?.(e);
-        }}
-      />
+    <Pressable accessible={false} onPress={() => inner.current?.focus()} ref={box as never}>
+      <Animated.View
+        style={[styles.base, focused && !error && styles.focused, error && styles.error, huge && boxStyle, !huge && styles.normalHeight]}>
+        {icon ? (
+          huge ? (
+            <Animated.View style={slotStyle} pointerEvents="none">
+              <Animated.View
+                style={[{ width: hugeIcon, height: hugeIcon, transformOrigin: 'top left' } as object, iconStyle]}>
+                <Icon name={icon} size={hugeIcon} color={active ? '#6C7771' : '#7F8A84'} />
+              </Animated.View>
+            </Animated.View>
+          ) : (
+            <Icon name={icon} size={ICON_SMALL} color="#6C7771" />
+          )
+        ) : null}
+        <TextInput
+          ref={inner}
+          {...props}
+          value={value}
+          secureTextEntry={secureTextEntry && !revealed}
+          style={[styles.input, huge && !active && styles.inputIdle, style]}
+          placeholderTextColor="#8B958F"
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
+        />
+        {showEye ? (
+          <Animated.View style={eyeStyle} pointerEvents={active ? 'auto' : 'none'}>
+            <Pressable
+              onPress={() => setRevealed((r) => !r)}
+              hitSlop={14}
+              accessibilityRole="button"
+              accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+              accessibilityState={{ checked: revealed }}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
+                  stroke={revealed ? Colors.light.ink : '#6C7771'}
+                  strokeWidth={2}
+                />
+                <Circle cx={12} cy={12} r={3} stroke={revealed ? Colors.light.ink : '#6C7771'} strokeWidth={2} />
+              </Svg>
+            </Pressable>
+          </Animated.View>
+        ) : null}
+      </Animated.View>
     </Pressable>
   );
 });
@@ -66,20 +182,19 @@ const styles = StyleSheet.create({
   base: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    minHeight: 44,
-    paddingVertical: 10,
+    gap: 10,
     paddingHorizontal: 13,
     backgroundColor: Colors.light.card,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.light.line,
-    borderRadius: 12,
+    borderRadius: 15,
   },
-  focused: { borderColor: Colors.light.ink, borderWidth: 1.5 },
-  error: { borderColor: Colors.light.destructive, borderWidth: 1.5 },
-  // The prototype's own .m-search text colour (muted) is for its
-  // placeholder-only mock; a real typed value reads better in ink.
+  normalHeight: { height: FIELD_ACTIVE_HEIGHT },
+  focused: { borderColor: Colors.light.ink, boxShadow: '0 0 0 3px rgba(196,245,70,0.45)' },
+  error: { borderColor: Colors.light.destructive },
   // outlineStyle: the browser's own focus ring would draw a second box inside
   // the field's ink focus border (web only; ignored on iOS/Android)
-  input: { flex: 1, fontSize: 12.5, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
+  input: { flex: 1, fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
+  // the small label beside the huge icon
+  inputIdle: { fontSize: 12 },
 });
