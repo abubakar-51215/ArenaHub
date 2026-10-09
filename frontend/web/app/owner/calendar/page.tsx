@@ -30,7 +30,7 @@ type View = "day" | "week" | "month";
 
 const START = 6; // first hour on the grid
 const HOURS = 18; // to midnight
-const ROW = 52; // px per hour (prototype)
+// rows are 52px an hour below 1024px (prototype); from 1024px they share the screen height
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** prototype event colours: ev-a lime (football, futsal), ev-b grey
@@ -160,8 +160,11 @@ function Schedule() {
     const court = courtById.get(b.court_id);
     const s = Math.max(minutes(b.start_time), START * 60);
     const e = Math.min(minutes(b.end_time) || 24 * 60, 24 * 60);
-    const top = ((s - START * 60) / 60) * ROW + 2;
-    const height = Math.max(((e - s) / 60) * ROW - 5, 18);
+    // percentages of the column, so they hold on 52px rows (below 1024px) and
+    // on rows sized from the screen height (1024px and wider)
+    const span = HOURS * 60;
+    const top = `calc(${(((s - START * 60) / span) * 100).toFixed(3)}% + 2px)`;
+    const height = `max(calc(${(((e - s) / span) * 100).toFixed(3)}% - 5px), 16px)`;
     const time = `${formatTime(b.start_time)} – ${formatTime(b.end_time)}`;
     return (
       <div
@@ -176,7 +179,7 @@ function Schedule() {
         title={`${court?.name ?? "Court"} · ${b.arena_name} · ${time} · ${statusLabel(b.status)}`}
       >
         <b>{showArena ? (court?.name ?? "Court") : time}</b>
-        {showArena ? `${b.arena_name} · ${time}` : statusLabel(b.status)}
+        <span className="ah-ev-sub">{showArena ? `${b.arena_name} · ${time}` : statusLabel(b.status)}</span>
       </div>
     );
   };
@@ -227,7 +230,7 @@ function Schedule() {
         : longDate(anchor, { month: "long", year: "numeric" }));
 
   return (
-    <>
+    <div className="ah-sched">
       <PageHeader title="Schedule" subtitle={sub}>
         <div className="ah-seg" role="group" aria-label="View">
           {(["day", "week", "month"] as const).map((v) => (
@@ -244,8 +247,8 @@ function Schedule() {
         </div>
       </PageHeader>
 
-      <div className="ah-ocanvas animate-fade-in">
-        <section className="ah-card">
+      <div className="ah-ocanvas ah-sched-canvas animate-fade-in">
+        <section className="ah-card ah-sched-card">
           <div className="ah-card-head ah-cal-head-row">
             <Button variant="outline" size="sm" onClick={() => setAnchor(new Date())}>
               Today
@@ -282,14 +285,17 @@ function Schedule() {
           {loading && <div className="ah-skeleton" style={{ height: 320, margin: 18 }} aria-label="Loading" />}
 
           {!loading && !failed && view !== "month" && (
-            <ScrollCue>
+            <ScrollCue className="ah-sched-cue" scrollClassName="ah-sched-scroll">
               {view === "day" && courts.length === 0 ? (
                 <p className="ah-empty-line ah-pitch-note">No courts yet.</p>
               ) : (
                 <div
                   className="ah-cal"
                   style={{
-                    minWidth: view === "day" ? Math.max(640, 56 + courts.length * 150) : 860,
+                    ["--hours" as string]: HOURS,
+                    ["--cal-min" as string]: `${view === "day" ? Math.max(640, 56 + courts.length * 150) : 860}px`,
+                    // from 1024px the week fits the box: seven days at about 90px each
+                    ["--cal-min-lg" as string]: `${view === "day" ? Math.max(640, 56 + courts.length * 150) : 640}px`,
                     ["--cols" as string]: columns.length,
                   }}
                 >
@@ -325,7 +331,7 @@ function Schedule() {
           )}
 
           {!loading && !failed && view === "month" && (
-            <ScrollCue>
+            <ScrollCue className="ah-sched-cue" scrollClassName="ah-sched-scroll">
               <div className="ah-cal-month">
                 {DAY_NAMES.map((n) => (
                   <div key={n} className="ah-cal-mhead">
@@ -371,7 +377,7 @@ function Schedule() {
           )}
         </section>
       </div>
-    </>
+    </div>
   );
 }
 
