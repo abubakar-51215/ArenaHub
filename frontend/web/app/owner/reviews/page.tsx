@@ -6,8 +6,9 @@
  * with "Needs reply" / "Replied" badges and the existing reply flow. The
  * average and count come from the rating summary endpoint (per arena, and
  * combined by review count under "All arenas"); that endpoint has no
- * breakdown, so the 5-to-1 bars are counted from the reviews loaded here,
- * leaving out reported ones as the summary does.
+ * breakdown, so every review of the chosen arena(s) is fetched (100 a page,
+ * up to 500) and the 5-to-1 bars count them all, leaving out reported ones
+ * as the summary does; until then the bars show a quiet loading state.
  * The arena comes from the top bar picker. Left out: "What people mention
  * most" (no data for it).
  */
@@ -26,7 +27,9 @@ import { ApiError } from "@/services/api";
 import { getRatingSummary, listOwnerArenaReviews, respondToReview } from "@/services/reviews";
 import type { Review } from "@/types";
 
-const PAGE_SIZE_STEP = 50;
+const PAGE_SIZE = 100; // the API's largest page
+const CAP = 500; // most reviews counted for the breakdown
+const SHOW_STEP = 20; // review cards shown at a time
 
 type Filter = "" | "reply" | "low";
 
@@ -64,14 +67,21 @@ function ReviewsInner() {
   const picked = arenas.find((a) => a.id === arenaId);
   const scope = picked ? [picked] : arenas;
 
-  // fetched per arena and merged; "load more" raises one shared page size
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_STEP);
+  // every review of each chosen arena, 100 a page (the API's maximum), up to
+  // CAP, so the star breakdown covers them all
   const reviewQueries = useQueries({
     queries: scope.map((a) => ({
-      queryKey: ["reviews", a.id, pageSize],
+      queryKey: ["reviews", a.id, "all"],
       queryFn: async (): Promise<{ items: TaggedReview[]; total: number }> => {
-        const page = await listOwnerArenaReviews(a.id, 1, pageSize);
-        return { items: page.items.map((r) => ({ ...r, arena_name: a.name })), total: page.total };
+        const items: TaggedReview[] = [];
+        let total = 0;
+        for (let page = 1; items.length < CAP; page++) {
+          const res = await listOwnerArenaReviews(a.id, page, PAGE_SIZE);
+          total = res.total;
+          items.push(...res.items.map((r) => ({ ...r, arena_name: a.name })));
+          if (res.items.length < PAGE_SIZE || items.length >= total) break;
+        }
+        return { items, total };
       },
     })),
   });
@@ -81,11 +91,12 @@ function ReviewsInner() {
 
   const loading = arenasLoading || reviewQueries.some((q) => q.isLoading);
   const failed = reviewQueries.some((q) => q.isError);
-  const reviews = reviewQueries
+  const merged = reviewQueries
     .flatMap((q) => q.data?.items ?? [])
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const allLoaded = reviewQueries.every((q) => (q.data?.total ?? 0) <= (q.data?.items.length ?? 0));
-  const canLoadMore = !allLoaded;
+  // across several arenas the cap applies to the whole list: the latest CAP
+  const capped = merged.length > CAP || reviewQueries.some((q) => (q.data?.total ?? 0) > (q.data?.items.length ?? 0));
+  const reviews = merged.slice(0, CAP);
 
   // average and count: the summaries, combined by review count
   const summaries = summaryQueries.map((q) => q.data).filter((s) => !!s);
@@ -103,9 +114,11 @@ function ReviewsInner() {
   const waiting = reviews.filter((r) => !r.owner_response).length;
 
   const [filter, setFilter] = useState<Filter>("");
-  const shown = reviews.filter((r) =>
+  const [showCount, setShowCount] = useState(SHOW_STEP);
+  const matching = reviews.filter((r) =>
     filter === "reply" ? !r.owner_response : filter === "low" ? r.rating <= 2 : true,
   );
+  const shown = matching.slice(0, showCount);
 
   const [responding, setResponding] = useState<TaggedReview | null>(null);
   const [pending, setPending] = useState(false);
@@ -138,7 +151,10 @@ function ReviewsInner() {
               : "Every review has a reply"
         }
       >
-        <Select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="Show">
+        <Select value={filter} onChange={(e) => {
+            setFilter(e.target.value as Filter);
+            setShowCount(SHOW_STEP);
+          }} aria-label="Show">
           <option value="">All reviews</option>
           <option value="reply">Needs reply</option>
           <option value="low">1–2 stars</option>
@@ -166,7 +182,18 @@ function ReviewsInner() {
                     ? `Based on ${plural(count, "review")}${picked ? "" : " across your arenas"}`
                     : "No reviews yet"}
               </p>
-              {counted.length > 0 && (
+              {loading && (
+                <div className="ah-score-rows" aria-label="Loading the star breakdown">
+                  {[5, 4, 3, 2, 1].map((star) => (
+                    <div key={star} className="ah-score-row">
+                      <span className="tabular-nums">{star}★</span>
+                      <div className="ah-score-track" aria-hidden="true" />
+                      <span />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!loading && counted.length > 0 && (
                 <div className="ah-score-rows">
                   {dist.map((d) => (
                     <div key={d.star} className="ah-score-row" title={plural(d.n, "review")}>
@@ -179,9 +206,9 @@ function ReviewsInner() {
                   ))}
                 </div>
               )}
-              {!allLoaded && counted.length > 0 && (
+              {!loading && capped && (
                 <p className="ah-score-note" style={{ marginTop: 12, marginBottom: 0 }}>
-                  Breakdown of the latest {plural(counted.length, "review")}.
+                  Based on the latest {CAP} reviews
                 </p>
               )}
             </div>
@@ -241,11 +268,13 @@ function ReviewsInner() {
                 </div>
               </article>
             ))}
-            {canLoadMore && !loading && (
+            {!loading && matching.length > shown.length && (
               <div className="ah-tbl-foot">
-                <span>Showing the latest {plural(reviews.length, "review")}</span>
-                <Button variant="outline" size="sm" onClick={() => setPageSize((n) => n + PAGE_SIZE_STEP)}>
-                  Load more
+                <span>
+                  Showing {shown.length} of {matching.length}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setShowCount((n) => n + SHOW_STEP)}>
+                  Show more
                 </Button>
               </div>
             )}
