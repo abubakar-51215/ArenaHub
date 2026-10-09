@@ -3579,6 +3579,11 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   transform: translateY(-6px);
   font-variant-numeric: tabular-nums;
 }
+/* each label is lifted onto its hour line; the first (6 AM) would then
+   cross the header, so it sits just under the header line instead */
+[data-owner] .ah-cal-time:first-child {
+  transform: translateY(2px);
+}
 [data-owner] .ah-cal-col {
   border-left: 1px solid var(--line-soft);
   position: relative;
