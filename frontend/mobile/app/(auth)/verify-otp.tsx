@@ -1,116 +1,140 @@
-import { useMutation } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { Text } from '@/components/ui/text';
+import { useMutation } from '@tanstack/react-query';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/ui/text-field";
-import { Colors } from "@/constants/theme";
-import { ApiError } from "@/lib/api";
-import { fetchMe, resendOtp, verifyOtp } from "@/services/auth";
-import { useAuthStore } from "@/store/auth";
+import { AuthScreen } from '@/components/auth/auth-screen';
+import { Button } from '@/components/ui/button';
+import { CodeBoxes } from '@/components/ui/code-boxes';
+import { Text } from '@/components/ui/text';
+import { Colors } from '@/constants/theme';
+import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
+import { ApiError } from '@/lib/api';
+import { fetchMe, resendOtp, verifyOtp } from '@/services/auth';
+import { useAuthStore } from '@/store/auth';
+
+// The backend will not send a second code within 60 s of the first, so the
+// Resend link waits the same time (arena-hub-player-app-auth.html: "Resend
+// code in 0:47"). The code was sent just before this screen opened.
+const RESEND_WAIT = 60;
 
 export default function VerifyOtpScreen() {
-  const { email, sentTo } = useLocalSearchParams<{
-    email: string;
-    sentTo?: string;
-  }>();
-  const [code, setCode] = useState("");
+  const { email, sentTo } = useLocalSearchParams<{ email?: string; sentTo?: string }>();
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const setSession = useAuthStore((s) => s.setSession);
+  const wait = useCountdown(RESEND_WAIT);
 
   const resend = useMutation({
-    mutationFn: () => resendOtp(email),
+    mutationFn: () => resendOtp(email!),
     onSuccess: () => {
       setError(null);
-      setNotice("A new code is on its way.");
+      setCode('');
+      setNotice('A new code is on its way.');
+      wait.restart();
     },
     onError: (err) => {
       setNotice(null);
-      setError(
-        err instanceof ApiError ? err.message : "Could not resend the code.",
-      );
+      if (err instanceof ApiError && err.status === 422) wait.restart(); // "wait a minute"
+      setError(err instanceof ApiError ? err.message : 'Could not resend the code.');
     },
   });
 
-  const mutation = useMutation({
+  const verify = useMutation({
     mutationFn: async () => {
-      const tokens = await verifyOtp(email, code.trim());
+      const tokens = await verifyOtp(email!, code);
       useAuthStore.getState().setTokens(tokens);
       const me = await fetchMe();
       return { tokens, me };
     },
     onSuccess: ({ tokens, me }) => {
       setSession(tokens, me);
-      router.replace("/(tabs)");
+      router.replace('/(tabs)');
     },
     onError: (err) => {
-      setError(
-        err instanceof ApiError ? err.message : "Invalid code. Try again.",
-      );
+      setError(err instanceof ApiError ? err.message : 'Invalid code. Try again.');
     },
   });
 
+  if (!email) return <Redirect href="/(auth)/register" />;
+
+  const submit = () => {
+    if (code.length < 6 || verify.isPending) return;
+    setError(null);
+    setNotice(null);
+    verify.mutate();
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Verify your account</Text>
-      <Text style={styles.subtitle}>
-        We sent a 6-digit code to {sentTo ?? email}. In development it&apos;s
-        logged to the backend console instead of actually being emailed.
-      </Text>
-
-      <TextField
-        label="Verification Code"
-        keyboardType="number-pad"
-        maxLength={6}
+    <AuthScreen
+      title="Check your email"
+      subtitleGap={22}
+      subtitle={
+        <>
+          We sent a 6-digit code to <Text style={styles.strong}>{sentTo ?? email}</Text>.
+        </>
+      }>
+      <CodeBoxes
         value={code}
-        onChangeText={setCode}
-        placeholder="123456"
-        style={styles.codeInput}
-      />
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
-
-      <Button
-        title="Verify"
-        loading={mutation.isPending}
-        onPress={() => {
+        onChange={(c) => {
+          setCode(c);
           setError(null);
-          setNotice(null);
-          mutation.mutate();
         }}
+        error={!!error}
+        autoFocus
+        onSubmit={submit}
       />
-
-      <Pressable onPress={() => resend.mutate()} disabled={resend.isPending}>
-        <Text style={[styles.resendText, resend.isPending && { opacity: 0.4 }]}>
-          {resend.isPending ? "Sending…" : "Didn't get a code? Resend"}
+      {error ? (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
         </Text>
-      </Pressable>
-    </View>
+      ) : null}
+      {notice && !error ? (
+        <Text style={styles.notice} accessibilityRole="alert">
+          {notice}
+        </Text>
+      ) : null}
+
+      <View style={styles.button}>
+        <Button title="Verify" loading={verify.isPending} disabled={code.length < 6} onPress={submit} />
+      </View>
+
+      {wait.running ? (
+        <View style={styles.resendPress}>
+          <Text style={styles.resend}>
+            Resend code in <Text style={styles.strong}>{formatCountdown(wait.remaining)}</Text>
+          </Text>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => resend.mutate()}
+          disabled={resend.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Resend code"
+          style={styles.resendPress}>
+          <Text style={styles.resend}>
+            {resend.isPending ? (
+              'Sending…'
+            ) : (
+              <>
+                Didn&apos;t get a code? <Text style={styles.strong}>Resend</Text>
+              </>
+            )}
+          </Text>
+        </Pressable>
+      )}
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-    padding: 24,
-    justifyContent: "center",
-    gap: 16,
-  },
-  title: { fontSize: 22, fontWeight: "700", color: Colors.light.text },
-  subtitle: { fontSize: 14, color: Colors.light.muted, lineHeight: 20 },
-  codeInput: { fontSize: 22, letterSpacing: 8, textAlign: "center" },
-  errorText: { color: Colors.light.destructive, fontSize: 13 },
-  noticeText: { color: Colors.light.success, fontSize: 13 },
-  resendText: {
-    color: Colors.light.tint,
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 4,
-  },
+  strong: { fontWeight: '700', color: Colors.light.text },
+  // .field-err / .field-hint: 11px under the field
+  error: { fontSize: 11, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
+  notice: { fontSize: 11, color: Colors.light.limeDeep, marginTop: 10, paddingHorizontal: 2 },
+  button: { marginTop: 22 },
+  resend: { fontSize: 12, color: Colors.light.muted, textAlign: 'center' },
+  // 12px text in a 44px touch row, so the link is easy to hit
+  resendPress: { marginTop: 3, minHeight: 44, justifyContent: 'center' },
 });
