@@ -155,6 +155,8 @@ These are the standards the web gate checks (`FEATURE_GAP_REPORT.md` has the lat
 | W3 | Landing and sign-in page copy (removes figures that are not real). |
 | W8 | Phone hint on the Live Board. |
 | W16 | Menu behaviour between 1024 and 1279 px (icon rail or drawer). |
-| Reset by code | Backend and the two reset screens. |
+| Reset by code | Done 2026-10-09: backend and the two reset screens. |
+| Admin sign-in mail | **Production must have working mail settings.** Admin sign-in now needs the emailed code; without mail the code is never delivered and no admin can sign in. |
+| Admin lost email | No way for an admin to recover if they lose their email inbox. Joins the open gap that there is no admin password reset. |
 | Login by email or phone | Sign-in rules and a data migration. |
 | Owner slot screen | A new screen. Needs a decision: it is not in the 13 today. |

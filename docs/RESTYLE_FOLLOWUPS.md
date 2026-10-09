@@ -614,3 +614,16 @@ The 21 such rows in the dev database are seed data from 2026-08-01:
 `backend/scripts/seed_dummy_data.py` builds `Payment(status=completed, …)` without a lifecycle,
 so the model default `pending` sticks; the app itself only moves the lifecycle through
 `payment/state_machine.py`. Fix later by setting `lifecycle_status` in the seed script.
+
+## NEEDS DECISION — admin sign-in depends on mail (2026-10-09)
+
+- **Production needs working mail settings** (`EMAIL_HOST`, `EMAIL_PASSWORD` and the rest). Admin
+  sign-in now ends with an emailed code: if mail is not configured or fails, the code never
+  arrives and no admin can sign in. A send failure is logged as `otp_email_failed` (kind and
+  user id only).
+- **No recovery if an admin loses their email.** There is no other way to receive the code and
+  no admin password reset (see "no admin password reset" above). Recovery today means a manual
+  database change by someone with server access.
+- **Dev only:** the code can be read from the backend log (`otp_dev_delivery`) only because the
+  dev `.env` has no mail password. With mail configured, dev sends the email like production and
+  the code is not logged.
