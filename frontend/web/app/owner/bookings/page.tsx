@@ -6,14 +6,16 @@
  * the pager (the API pages). The arena comes from the picker in the page
  * header (`?arena=`). Customer phones arrive masked from the server; the
  * Payment column is the real payment (one of our four methods and its
- * state). Left out, as nothing is behind them: the KPI strip totals and
- * "Remind".
+ * state). "Remind" shows on bookings that are awaiting payment with the slot
+ * still ahead (one reminder an hour). Left out, as nothing is behind it: the
+ * KPI strip totals.
  */
 import { Suspense, useMemo, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { AdminBadge, AdminCard, AdminEmpty, AdminPerson, AdminTableFoot, statusLabel } from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
+import { Toast, useToast } from "@/components/owner/toast";
 import { ReceiptReviewDialog } from "@/components/owner/receipt-review-dialog";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
 import { ActionButton } from "@/components/ui/action-button";
@@ -30,7 +32,7 @@ import {
 } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
-import { useApprovePayment, useOwnerBookings, useRejectPayment } from "@/hooks/useDashboard";
+import { useApprovePayment, useOwnerBookings, useRejectPayment, useRemindBooking } from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, formatTime, plural } from "@/lib/format";
 import { shortDay } from "@/lib/karachi-date";
 import { PAYMENT_METHOD_LABEL } from "@/lib/payment-methods";
@@ -148,6 +150,30 @@ function Bookings() {
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const qc = useQueryClient();
+  const remind = useRemindBooking();
+  const [toast, showToast] = useToast();
+  // minutes to wait before the next reminder, set by this page right after a
+  // send (or a "too soon" answer); the list carries it after a reload
+  const [waits, setWaits] = useState<Record<string, number>>({});
+
+  async function onRemind(row: OwnerBookingRow) {
+    setError(null);
+    try {
+      const res = await remind.mutateAsync(row.booking_id);
+      showToast(`Reminder sent to ${row.player_name.split(" ")[0]}`);
+      // let the tick show for a second before the button turns into "Sent"
+      window.setTimeout(() => {
+        setWaits((w) => ({ ...w, [row.booking_id]: res.next_reminder_in_minutes }));
+        void qc.invalidateQueries({ queryKey: ["owner-bookings"] });
+      }, 1100);
+    } catch (err) {
+      const left = err instanceof ApiError && err.status === 409 ? err.message.match(/in (\d+) minute/) : null;
+      if (left) setWaits((w) => ({ ...w, [row.booking_id]: Number(left[1]) }));
+      showToast(err instanceof ApiError ? err.message : "Could not send the reminder.");
+    }
+  }
+
   const approve = useApprovePayment();
   const reject = useRejectPayment();
   const [rejecting, setRejecting] = useState<OwnerBookingRow | null>(null);
@@ -182,6 +208,28 @@ function Bookings() {
   // the same buttons in the table row and the phone card
   const actions = (row: OwnerBookingRow) => (
     <div className="ah-row-actions">
+      {row.can_remind &&
+        (() => {
+          const wait = waits[row.booking_id] ?? row.remind_wait_minutes;
+          return wait ? (
+            <Button variant="outline" size="sm" disabled title="A reminder went out in the last hour">
+              Sent · {wait} min
+            </Button>
+          ) : (
+            <ActionButton
+              tone="positive"
+              variant="outline"
+              size="sm"
+              title="Remind the player that payment is waiting"
+              disabled={remind.isPending}
+              busy={remind.isPending && remind.variables === row.booking_id}
+              failed={remind.isError}
+              onClick={() => void onRemind(row)}
+            >
+              Remind
+            </ActionButton>
+          );
+        })()}
       {row.receipt_proof_url && (
         <Button
           variant="ghost"
@@ -377,6 +425,7 @@ function Bookings() {
         </AdminCard>
       </div>
 
+      <Toast message={toast} />
       <ReceiptReviewDialog row={reviewing} onOpenChange={(v) => !v && setReviewing(null)} />
 
       <TextInputDialog

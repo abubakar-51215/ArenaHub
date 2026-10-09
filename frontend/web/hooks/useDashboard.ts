@@ -12,6 +12,7 @@ import {
   listPendingApprovals,
   type OwnerBookingsParams,
   rejectPayment,
+  remindBooking,
   type RevenueParams,
 } from "@/services/dashboard";
 
@@ -68,6 +69,10 @@ export function useRevenue(params: RevenueParams) {
     queryKey: ["revenue", params.arenaId ?? "all", params.dateFrom ?? "", params.dateTo ?? ""],
     queryFn: () => getRevenue(params),
   });
+}
+
+export function useRemindBooking() {
+  return useMutation({ mutationFn: (bookingId: string) => remindBooking(bookingId) });
 }
 
 function invalidateApprovals(qc: ReturnType<typeof useQueryClient>) {

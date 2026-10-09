@@ -639,6 +639,6 @@ header row (added once, in the shared owner `PageHeader`). Below 1024px nothing 
 Board's court grid also gained a date control (Karachi dates; the KPIs and charts keep their own
 date filters).
 
-## Bookings table — "Remind" is not built
+## Bookings table — "Remind" is built
 
-The 'Remind' button from the user's sample picture is not built because nothing exists behind it yet (would need a reminder notice to the player for 'Awaiting payment' bookings). Decide later.
+Owner Bookings shows "Remind" on a booking that is **Awaiting payment** (status `pending_payment`: booked, nothing paid yet; a bank transfer with a receipt is `pending_approval` and is not remindable) while its slot has not started (Karachi time). `POST /owner/dashboard/bookings/{id}/remind` sends the player the notice `payment_reminder` (saved in their notices, pushed/emailed by their category settings). Only the arena's own owner may send it; one reminder an hour per booking (a second try gets 409 with the minutes left, and the button shows "Sent · N min"). The hour is read from the notices table, so there is no new table. Reminder email wording is plain; the redesign of it comes with the email work.

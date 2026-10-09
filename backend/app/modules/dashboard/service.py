@@ -10,20 +10,24 @@ arena).
 """
 
 import calendar
+import math
 import re
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena, ArenaCity
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus
+from app.modules.court.model import Court
 from app.modules.dashboard.schema import (
+    BookingReminderResponse,
     BookingsByHourPoint,
     CalendarBookingResponse,
     DashboardAnalyticsResponse,
@@ -37,9 +41,11 @@ from app.modules.dashboard.schema import (
     RevenueTrendPoint,
     TopArenaItem,
 )
+from app.modules.notification.model import Notification
 from app.modules.payment import repository as payment_repo
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User
+from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
 
@@ -58,6 +64,56 @@ def mask_phone(phone: str | None) -> str | None:
     if len(digits) == 12 and digits.startswith("92"):
         return f"+92 {digits[2:5]} {digits[5:7]}••••"
     return f"{phone[:4]}••••"
+
+
+REMINDER_EVENT = "payment_reminder"
+REMINDER_COOLDOWN = timedelta(minutes=60)
+_KARACHI = ZoneInfo("Asia/Karachi")
+
+
+def _slot_start(booking: Booking) -> datetime:
+    """When the booked slot starts, as a Karachi wall-clock time."""
+    return datetime.combine(booking.booking_date, booking.start_time.replace(tzinfo=None)).replace(
+        tzinfo=_KARACHI
+    )
+
+
+def can_remind(booking: Booking, now: datetime | None = None) -> bool:
+    """A booking the owner may remind the player about: it is "Awaiting
+    payment" (status pending_payment: booked, nothing paid yet; a bank
+    transfer with a receipt is pending_approval, which waits for the owner,
+    not for the player) and its slot has not started yet."""
+    now = now or datetime.now(_KARACHI)
+    return booking.status == BookingStatus.pending_payment and _slot_start(booking) > now
+
+
+async def _recent_reminders(
+    db: AsyncSession, player_ids: set[uuid.UUID], now: datetime
+) -> dict[str, datetime]:
+    """booking id -> when its latest reminder went out, for reminders sent in
+    the last cooldown. They are kept as the players' notices, so no table of
+    their own is needed."""
+    if not player_ids:
+        return {}
+    since = now.astimezone(UTC) - REMINDER_COOLDOWN
+    result = await db.execute(
+        select(Notification.data, Notification.created_at).where(
+            Notification.event == REMINDER_EVENT,
+            Notification.user_id.in_(player_ids),
+            Notification.created_at > since,
+        )
+    )
+    latest: dict[str, datetime] = {}
+    for data, created_at in result.all():
+        booking_id = str(data.get("booking_id", ""))
+        if booking_id and (booking_id not in latest or created_at > latest[booking_id]):
+            latest[booking_id] = created_at
+    return latest
+
+
+def _minutes_left(sent_at: datetime, now: datetime) -> int:
+    left = REMINDER_COOLDOWN - (now.astimezone(UTC) - sent_at.astimezone(UTC))
+    return max(1, math.ceil(left.total_seconds() / 60))
 
 
 def _month_bounds(today: date) -> tuple[date, date]:
@@ -136,6 +192,65 @@ async def list_pending_approvals(db: AsyncSession, user: User, params: Paginatio
             )
         )
     return paginated(items, total, params)
+
+
+async def remind_booking(
+    db: AsyncSession, user: User, booking_id: uuid.UUID
+) -> BookingReminderResponse:
+    """Send the player a "payment is still waiting" notice (saved in their
+    notices and emailed through the usual notice path). Only for the owner's
+    own booking, only while it is awaiting payment with its slot still
+    ahead, and at most once an hour per booking."""
+    result = await db.execute(
+        select(Booking, Court.name, Arena.name, User.full_name)
+        .join(Court, Court.id == Booking.court_id)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .join(User, User.id == Booking.player_id)
+        .where(Booking.id == booking_id)
+        .with_for_update(of=Booking)
+    )
+    found = result.first()
+    if found is None:
+        raise NotFoundError("Booking not found.")
+    booking, court_name, arena_name, player_name = found
+    await _owned_arena(db, booking.arena_id, user)
+
+    now = datetime.now(_KARACHI)
+    if booking.status != BookingStatus.pending_payment:
+        raise ValidationError("This booking is not awaiting payment.")
+    if _slot_start(booking) <= now:
+        raise ValidationError("This slot has already started, so a reminder would not help.")
+    sent_at = (await _recent_reminders(db, {booking.player_id}, now)).get(str(booking.id))
+    if sent_at is not None:
+        left = _minutes_left(sent_at, now)
+        ago = max(
+            0, math.floor((now.astimezone(UTC) - sent_at.astimezone(UTC)).total_seconds() / 60)
+        )
+        raise ConflictError(
+            f"A reminder was sent {ago} minute{'' if ago == 1 else 's'} ago. "
+            f"You can send another in {left} minute{'' if left == 1 else 's'}."
+        )
+
+    slot = (
+        f"{booking.booking_date.strftime('%a')} {booking.booking_date.day} "
+        f"{booking.booking_date.strftime('%b')}, "
+        f"{booking.start_time.strftime('%I:%M %p').lstrip('0')} - "
+        f"{booking.end_time.strftime('%I:%M %p').lstrip('0')}"
+    )
+    await notify_user(
+        db,
+        booking.player_id,
+        REMINDER_EVENT,
+        booking_id=str(booking.id),
+        arena_name=arena_name,
+        court_name=court_name,
+        slot=slot,
+    )
+    await db.commit()
+    return BookingReminderResponse(
+        player_name=player_name,
+        next_reminder_in_minutes=int(REMINDER_COOLDOWN.total_seconds() // 60),
+    )
 
 
 async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Arena:
@@ -350,9 +465,13 @@ async def list_owner_bookings(
         result = await db.execute(select(User.id, User.phone).where(User.id.in_(player_ids)))
         phones = {row.id: row.phone for row in result.all()}
 
+    now = datetime.now(_KARACHI)
+    reminders = await _recent_reminders(db, player_ids, now)
+
     items = []
     for booking, court_name, arena_name, player_name in rows:
         payment = payments_by_group.get(booking.booking_group_id)
+        sent_at = reminders.get(str(booking.id))
         items.append(
             OwnerBookingRow(
                 booking_id=booking.id,
@@ -372,6 +491,8 @@ async def list_owner_bookings(
                 payment_status=payment.status if payment else None,
                 payment_lifecycle_status=payment.lifecycle_status if payment else None,
                 receipt_proof_url=payment.receipt_proof_url if payment else None,
+                can_remind=can_remind(booking, now),
+                remind_wait_minutes=_minutes_left(sent_at, now) if sent_at else None,
             )
         )
     return paginated(items, total, params)
