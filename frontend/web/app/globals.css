@@ -4233,3 +4233,14 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     font-size: 14px;
   }
 }
+
+/* owner pages without the top bar: the arena filter lives in the page's own
+   header row from 1024px up (below that it is the row under the slim bar) */
+[data-owner] .ah-hdr-picker {
+  display: none;
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-hdr-picker {
+    display: block;
+  }
+}
