@@ -225,9 +225,10 @@ function ResetPasswordInner() {
           <>
             We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span> if it is
             registered. It works for 10 minutes.{" "}
+            {/* the tap area is a 44px pseudo-element, so the link keeps the line's height */}
             <Link
               href="/forgot-password"
-              className="inline-block font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:py-3"
+              className="relative font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-['']"
             >
               Use another email
             </Link>
