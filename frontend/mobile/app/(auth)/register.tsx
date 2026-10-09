@@ -8,7 +8,6 @@ import { FieldMessage } from '@/components/auth/field-message';
 import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-rules';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
@@ -78,7 +77,7 @@ export default function RegisterScreen() {
       <View style={styles.form}>
         <View style={styles.group}>
           <Field
-            icon={<Icon name="user" size={15} color={Colors.light.muted} />}
+            icon="user"
             placeholder="Full name"
             value={fullName}
             onChangeText={(t) => {
@@ -98,7 +97,8 @@ export default function RegisterScreen() {
         <View style={styles.group}>
           <Field
             ref={emailRef}
-            icon={<Icon name="mail" size={15} color={Colors.light.muted} />}
+            icon="mail"
+            huge
             placeholder="Email"
             value={email}
             onChangeText={(t) => {
@@ -139,7 +139,9 @@ export default function RegisterScreen() {
         <View style={styles.group}>
           <Field
             ref={passwordRef}
-            icon={<Icon name="lock" size={15} color={Colors.light.muted} />}
+            icon="lock"
+            huge
+            revealable
             placeholder="Password"
             value={password}
             onChangeText={(t) => {
