@@ -184,6 +184,10 @@ These rules apply to every check, in every area (mobile and web):
   worktree installs its own dependencies (`npm ci` in each app folder).
 - Remove a verification worktree only with `git worktree remove`, run from
   the main tree. Never delete a worktree folder by hand.
+- Starting or restarting the dev backend on :8000 from the main tree is
+  allowed whenever your own checks need it. Anything else that needs a stop
+  and a report stays as it is: a failed worktree removal, anything touching
+  the dev database, anything outside the repo.
 - Never recursively delete a directory that might contain a link. If a
   cleanup fails, stop and report it; do not retry with a stronger delete.
 - Scratch files go outside the repo. Delete only files you created in this

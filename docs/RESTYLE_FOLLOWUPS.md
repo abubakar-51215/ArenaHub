@@ -638,3 +638,7 @@ item shows the unread count, and pages whose data filters by arena show the pick
 header row (added once, in the shared owner `PageHeader`). Below 1024px nothing changed. The Live
 Board's court grid also gained a date control (Karachi dates; the KPIs and charts keep their own
 date filters).
+
+## Bookings table — "Remind" is not built
+
+The 'Remind' button from the user's sample picture is not built because nothing exists behind it yet (would need a reminder notice to the player for 'Awaiting payment' bookings). Decide later.
