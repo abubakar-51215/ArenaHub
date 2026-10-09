@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
-import { fetchMe, login } from "@/services/auth";
+import { fetchMe, isAdminChallenge, login } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
 export default function LoginPage() {
@@ -33,7 +33,13 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const tokens = await login(email, password);
+      const result = await login(email, password);
+      if (isAdminChallenge(result)) {
+        // an admin account: it signs in on the admin page, with a code
+        setError("This dashboard is for arena owners. Please use an owner account.");
+        return;
+      }
+      const tokens = result;
       // Persist tokens first so fetchMe() sends the Authorization header.
       useAuthStore.getState().setTokens(tokens);
       const me = await fetchMe();
