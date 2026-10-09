@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
-import { addDaysIso, addMonthsIso, monthGrid, monthTitle, weekdayIndex } from "@/lib/karachi-date";
+import { addDaysIso, addMonthsIso, monthGrid, monthTitle, shiftMonth, weekdayIndex } from "@/lib/karachi-date";
 import { cn } from "@/lib/utils";
 
 const WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -50,8 +50,8 @@ export function DatePopover({
       ArrowDown: addDaysIso(focusIso, 7),
       Home: addDaysIso(focusIso, -weekdayIndex(focusIso)),
       End: addDaysIso(focusIso, 6 - weekdayIndex(focusIso)),
-      PageUp: addMonthsIso(focusIso, -1),
-      PageDown: addMonthsIso(focusIso, 1),
+      PageUp: shiftMonth(focusIso, -1),
+      PageDown: shiftMonth(focusIso, 1),
     };
     if (step[e.key]) {
       e.preventDefault();
@@ -91,13 +91,13 @@ export function DatePopover({
           }}
         >
           <div className="ah-datepop-head">
-            <button type="button" className="ah-icon-btn" aria-label="Previous month" onClick={() => move(addMonthsIso(focusIso, -1))}>
+            <button type="button" className="ah-icon-btn" aria-label="Previous month" onClick={() => move(shiftMonth(focusIso, -1))}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                 <path d="m15 6-6 6 6 6" />
               </svg>
             </button>
             <b aria-live="polite">{monthTitle(month)}</b>
-            <button type="button" className="ah-icon-btn" aria-label="Next month" onClick={() => move(addMonthsIso(focusIso, 1))}>
+            <button type="button" className="ah-icon-btn" aria-label="Next month" onClick={() => move(shiftMonth(focusIso, 1))}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                 <path d="m9 6 6 6-6 6" />
               </svg>

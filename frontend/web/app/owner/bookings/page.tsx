@@ -32,6 +32,7 @@ import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { useApprovePayment, useOwnerBookings, useRejectPayment } from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, formatTime, plural } from "@/lib/format";
+import { shortDay } from "@/lib/karachi-date";
 import { PAYMENT_METHOD_LABEL } from "@/lib/payment-methods";
 import { ApiError } from "@/services/api";
 import { listCourts } from "@/services/courts";
@@ -73,14 +74,27 @@ function exportCsv(rows: OwnerBookingRow[]) {
 
 /** The payment, in words, from the real payment: one of our four methods and
  *  its state ("Card · paid"), "Refunded" for a refunded one. */
-function paymentText(row: OwnerBookingRow): string {
-  if (!row.payment_method) return row.status === "pending_payment" ? "Not paid yet" : "—";
-  if (row.payment_status === "refunded" || row.payment_lifecycle_status === "refunded") return "Refunded";
+function paymentParts(row: OwnerBookingRow): { method: string; state: string | null } {
+  if (!row.payment_method) return { method: row.status === "pending_payment" ? "Not paid yet" : "—", state: null };
   const method = PAYMENT_METHOD_LABEL[row.payment_method];
-  if (row.payment_status === "completed") return `${method} · paid`;
-  if (row.payment_status === "failed") return `${method} · failed`;
-  if (row.status === "pending_approval") return `${method} · receipt to review`;
-  return `${method} · pending`;
+  if (row.payment_status === "refunded" || row.payment_lifecycle_status === "refunded")
+    return { method, state: "refunded" };
+  if (row.payment_status === "completed") return { method, state: "paid" };
+  if (row.payment_status === "failed") return { method, state: "failed" };
+  if (row.status === "pending_approval") return { method, state: "receipt to review" };
+  return { method, state: "pending" };
+}
+
+/** One line, for the phone cards. */
+function paymentText(row: OwnerBookingRow): string {
+  const { method, state } = paymentParts(row);
+  return state ? `${method} · ${state}` : method;
+}
+
+/** The phone under a name, only when it is a phone number (a deleted user's
+ *  anonymised value is not). */
+function cleanPhone(phone: string | null | undefined): string | undefined {
+  return phone && /^[+\d]/.test(phone) ? phone : undefined;
 }
 
 function bookingRef(id: string): string {
@@ -300,17 +314,20 @@ function Bookings() {
                       <TableRow key={row.booking_id}>
                         <TableCell className="ah-strong tabular-nums">{bookingRef(row.booking_id)}</TableCell>
                         <TableCell>
-                          <AdminPerson name={row.player_name} sub={row.player_phone ?? undefined} />
+                          <AdminPerson name={row.player_name} sub={cleanPhone(row.player_phone)} />
                         </TableCell>
                         <TableCell>
                           <div>{row.court_name}</div>
                           <div className="ah-sub">{row.arena_name}</div>
                         </TableCell>
                         <TableCell className="tabular-nums">
-                          <div>{formatDateShort(row.booking_date)}</div>
-                          <div className="ah-sub">{slotTime(row)}</div>
+                          <div>{shortDay(row.booking_date)}</div>
+                          <div className="ah-sub ah-slot-time">{slotTime(row)}</div>
                         </TableCell>
-                        <TableCell className="ah-t2">{paymentText(row)}</TableCell>
+                        <TableCell>
+                          <div className="ah-pay-method">{paymentParts(row).method}</div>
+                          {paymentParts(row).state && <div className="ah-sub">{paymentParts(row).state}</div>}
+                        </TableCell>
                         <TableCell className="ah-r ah-money">{formatRs(row.total_amount)}</TableCell>
                         <TableCell>
                           <AdminBadge status={row.status} />
@@ -328,14 +345,14 @@ function Bookings() {
                       <span className="ah-strong tabular-nums">{bookingRef(row.booking_id)}</span>
                       <AdminBadge status={row.status} />
                     </div>
-                    <AdminPerson name={row.player_name} sub={row.player_phone ?? undefined} />
+                    <AdminPerson name={row.player_name} sub={cleanPhone(row.player_phone)} />
                     <div>
                       <div>
                         {row.court_name} · {row.arena_name}
                       </div>
                       <div className="ah-sub">{paymentText(row)}</div>
                       <div className="ah-sub tabular-nums">
-                        {formatDateShort(row.booking_date)} · {slotTime(row)}
+                        {shortDay(row.booking_date)} · {slotTime(row)}
                       </div>
                     </div>
                     <div className="ah-card-line">

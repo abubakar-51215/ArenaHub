@@ -84,7 +84,7 @@ function CourtsInner() {
         title="Courts"
         subtitle={
           !loading
-            ? `${plural(courts.length, "court")} · ${live} taking bookings${picked ? "" : " · choose an arena in the top bar to add a court"}`
+            ? `${plural(courts.length, "court")} · ${live} taking bookings${picked ? "" : " · choose an arena above to add a court"}`
             : undefined
         }
       >
@@ -101,7 +101,7 @@ function CourtsInner() {
         <Button
           className="ah-lime"
           disabled={!picked}
-          title={picked ? undefined : "Choose an arena in the top bar first"}
+          title={picked ? undefined : "Choose an arena above first"}
           onClick={() => {
             setEditing(undefined);
             setFormOpen(true);
