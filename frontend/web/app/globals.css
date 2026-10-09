@@ -3313,6 +3313,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   }
   /* the rank list sets 13px inline */
   [data-owner] .ah-rank-item b,
+  [data-owner] .ah-rank-item .ah-sub,
   [data-owner] .ah-rank-item .ah-money {
     font-size: 14px !important;
   }
@@ -3749,5 +3750,20 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   [data-owner] .ah-legend-list li,
   [data-owner] .ah-legend-list b {
     font-size: 14px;
+  }
+}
+
+/* owner Reports: each download row keeps its CSV and PDF buttons on the
+   right; on phones they drop under the description */
+[data-owner] .ah-reports .ah-row-actions {
+  flex: none;
+  margin-left: auto;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-reports li {
+    flex-wrap: wrap;
+  }
+  [data-owner] .ah-reports .ah-row-actions {
+    margin-left: 0;
   }
 }
