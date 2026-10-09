@@ -3978,3 +3978,110 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     font-size: 14px;
   }
 }
+
+/* owner Payments: bank accounts per arena (list rows, the add/edit form on
+   paper) and the discount codes table */
+[data-owner] .ah-mono {
+  font-family: var(--font-mono, ui-monospace), monospace;
+  font-variant-numeric: tabular-nums;
+}
+[data-owner] .ah-h3 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+[data-owner] .ah-bank-group + .ah-bank-group {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-soft);
+}
+[data-owner] .ah-bank-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+[data-owner] .ah-bank-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+[data-owner] .ah-bank-list li:first-child {
+  border-top: 0;
+}
+[data-owner] .ah-bank-name b {
+  font-size: 13.5px;
+}
+[data-owner] .ah-bank-acct {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+[data-owner] .ah-bank-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--line-soft);
+}
+[data-owner] .ah-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+[data-owner] .ah-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--lime-deep);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-bank-list li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-bank-list .ah-row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  [data-owner] .ah-bank-name b,
+  [data-owner] .ah-h3,
+  [data-owner] .ah-check {
+    font-size: 14px;
+  }
+  [data-owner] .ah-check {
+    min-height: 44px;
+  }
+  [data-owner] .ah-check input {
+    width: 20px;
+    height: 20px;
+  }
+}
+@media (min-width: 761px) {
+  [data-owner] .ah-span-2 {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-empty {
+    font-size: 14px;
+  }
+}
+[data-owner] .ah-bank-none {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-bank-none {
+    font-size: 14px;
+  }
+}
