@@ -27,9 +27,9 @@ this lock. See `docs/FEATURE_GAP_REPORT.md` for what is missing around these scr
 | 1 | `/` | Everyone | Landing page. Every call-to-action goes to `/login` or `/register`. | Live. Copy changes (W3) are waiting. |
 | 2 | `/login` | Arena owners | Sign in. On success it opens `/owner`. Players and admins are turned away with a message. | Live |
 | 3 | `/register` | Arena owners | Create an owner account, then enter the emailed 6-digit code. | Live, with gaps: business name and business contact are not asked (FR-O-01). |
-| 4 | `/forgot-password` | Owners | Ask for a password-reset email. Always answers "sent", so it never shows which emails exist. | Live. Still on the old two-column shell. |
-| 5 | `/reset-password` | Owners | Set a new password with the emailed code or token. | Live. Still on the old two-column shell. Redesign waits for the reset-by-code backend. |
-| 6 | `/admin/login` | Administrators | Sign in. On success it opens `/admin`. | Live |
+| 4 | `/forgot-password` | Owners | Ask for a 6-digit reset code by email. Always answers "If this email is registered, we have sent a 6-digit code.", so it never shows which emails exist. | Live, on the split sign-in shell (2026-10-09). |
+| 5 | `/reset-password` | Owners | Three steps: the 6-digit code (paste, auto-advance, Resend after 60 s), a new password with the live rule list, then Sign in. A wrong code is found at step 2 and returns to step 1. | Live, on the split sign-in shell (2026-10-09). |
+| 6 | `/admin/login` | Administrators | Sign in in two steps: email and password, then the 6-digit code emailed to the admin (Resend after 60 s, Back). On success it opens `/admin`. | Live; code step added 2026-10-09. |
 | 7 | `/health` | Developers | Shows whether the API answers. A diagnostic page, not a product screen. | Live. Keep, but hide from any public menu. |
 
 Not on the list, and now removed: `/login1`, `/signup1`, `/admin/login1`. They were design
@@ -97,7 +97,7 @@ Checked 2026-10-08 on branch `prototype-screens`.
 | 9 | Health | Analytics | `/admin/reports` | Top city, bookings, value, peak hours, revenue over time, bookings by city, city comparison, report downloads (CSV and PDF). | Live |
 | 10 | Health | System settings | `/admin/settings` | Email, SMS, payment options, booking rules, notifications, general, security and the audit log. | Live |
 | 11 | (none) | Reviews | `/admin/reviews` | Reported reviews waiting for a decision. | Live |
-| 12 | (sign-in) | | `/admin/login` | Admin sign-in. The side panel names what the panel is for: Review, Manage, Resolve. | Live |
+| 12 | (sign-in) | | `/admin/login` | Admin sign-in with a second step: the 6-digit code emailed to the admin. The side panel names what the panel is for: Review, Manage, Resolve. | Live |
 
 **Shared parts of the admin panel**
 
