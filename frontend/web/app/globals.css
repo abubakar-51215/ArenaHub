@@ -4085,3 +4085,91 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     font-size: 14px;
   }
 }
+
+/* owner Notifications: the bell popover's rows at full width (icon tile,
+   title, body, time, unread dot) */
+[data-owner] .ah-notes {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 8px;
+}
+[data-owner] .ah-note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  color: var(--text);
+}
+[data-owner] .ah-note-row:hover {
+  background: var(--line-soft);
+}
+[data-owner] .ah-note-row:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: -2px;
+}
+/* unread: the dot and a heavier title, as in the bell popover */
+[data-owner] .ah-note-row.is-unread .ah-note-text b {
+  font-weight: 750;
+}
+[data-owner] .ah-note-row .ah-pop-dot {
+  margin-top: 6px;
+}
+[data-owner] .ah-note-ico {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+[data-owner] .ah-note-ok {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-owner] .ah-note-off {
+  background: var(--red-wash);
+  color: var(--off-text);
+}
+[data-owner] .ah-note-wait {
+  background: var(--amber-wash);
+  color: var(--wait-text);
+}
+[data-owner] .ah-note-idle {
+  background: var(--line-soft);
+  color: var(--text-2);
+}
+[data-owner] .ah-note-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+[data-owner] .ah-note-text b {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+[data-owner] .ah-note-text span {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.45;
+}
+[data-owner] .ah-note-text small {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-notes {
+    padding: 4px;
+  }
+  [data-owner] .ah-note-text b,
+  [data-owner] .ah-note-text span,
+  [data-owner] .ah-note-text small {
+    font-size: 14px;
+  }
+}
