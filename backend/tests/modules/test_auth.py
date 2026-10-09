@@ -172,3 +172,18 @@ async def test_resend_otp_does_not_leak_account_existence(client: AsyncClient) -
     resp = await client.post("/api/v1/auth/resend-otp", json={"email": "ghost@example.com"})
     assert resp.status_code == 200
     assert "new code has been sent" in resp.json()["message"]
+
+
+async def test_login_ignores_email_case(client: AsyncClient, db_session: AsyncSession) -> None:
+    await _register_and_verify(client, db_session, "Mixed.Case@Example.com")
+    for typed in ("mixed.case@example.com", "MIXED.CASE@EXAMPLE.COM"):
+        resp = await client.post("/api/v1/auth/login", json={"email": typed, "password": PASSWORD})
+        assert resp.status_code == 200, resp.text
+
+
+async def test_register_duplicate_email_ignores_case(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _register(client, email="Case.Dupe@example.com", phone="03007770001")
+    again = await _register(client, email="case.dupe@EXAMPLE.com", phone="03007770002")
+    assert again.status_code == 409

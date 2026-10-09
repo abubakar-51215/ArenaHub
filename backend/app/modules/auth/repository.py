@@ -8,7 +8,7 @@ populated on the returned instance.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.model import OtpVerification, PasswordHistory, PasswordResetToken
@@ -17,7 +17,14 @@ from app.shared.otp import OtpPurpose
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-    result = await db.execute(select(User).where(User.email == email))
+    """Email is matched without regard to case (Ali@x.com signs in as ali@x.com).
+    The oldest account wins if old data holds two that differ only in case."""
+    result = await db.execute(
+        select(User)
+        .where(func.lower(User.email) == email.strip().lower())
+        .order_by(User.created_at)
+        .limit(1)
+    )
     return result.scalar_one_or_none()
 
 
