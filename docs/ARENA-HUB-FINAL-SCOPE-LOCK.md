@@ -37,26 +37,42 @@ experiments and were deleted in commit `93beca6`.
 
 ## 2. Owner dashboard: 13 destinations
 
-All owner screens sit under `/owner`. A signed-out visitor is sent to `/login`. The owner panel is
-being restyled to the owner prototype (`design/prototypes/arena-hub-owner.html`); the shell (rail,
-top bar on every page from 1024 px, slim bar below, dark theme) and the Live Board are done
-(2026-10-08). Menu names follow the decided list; routes are unchanged.
+All owner screens sit under `/owner`. A signed-out visitor is sent to `/login`. Every owner
+screen is restyled to the owner prototype (`design/prototypes/arena-hub-owner.html`), finished
+2026-10-09. Routes are unchanged.
+
+- **Menu, in order:** Today (Live Board, Bookings, Schedule) · Venue (Arenas, Courts, Equipment) ·
+  Money (Pricing Rules, Payments, Revenue, Reports) · Reputation (Reviews) · Notifications, Profile.
+  The rail foot is the owner card (name, "Owner · N arenas"); its menu has Profile and Log out.
+- **Top bar on every owner page from 1024 px:** arena picker (where it filters), search (⌘K: owner
+  pages, arenas, courts), theme switch and the bell (latest notices, "See all"). Below 1024 px a
+  slim bar (menu, search, theme, bell at 44 px) with the picker in a row under it.
+- **Dark theme:** owners and admins share one preference (`ah-admin-theme`), set before paint.
+  Sign-in and public pages stay light.
+- **Arena picker** (`?arena=`, kept on rail links) shows on Live Board, Bookings, Schedule, Courts,
+  Equipment, Pricing Rules, Payments, Revenue, Reports and Reviews. It is hidden on Arenas,
+  Notifications and Profile, where it would filter nothing.
+- **Left out on purpose (no data or not built):** platform fee, net payout, in transit and payout
+  history; occupancy by weekday; "Schedule weekly" reports and repeat rate; "What people mention
+  most" on reviews; "Block time" by the hour (blocking stays by whole day in each court's slots
+  dialog); photo upload (initials only); court surface and "% full"; player names on Schedule and
+  Live Board events (the calendar endpoint has none).
 
 | # | Menu group | Menu name | Route | What it is for | Status |
 |---|---|---|---|---|---|
 | 1 | Today | Live Board | `/owner` | Courts by hour for one arena (with a "now" line), four stat cards, revenue and time-of-day charts, arenas by revenue, receipts awaiting approval. | Live, restyled |
-| 2 | Today | Bookings | `/owner/bookings` | All bookings for the owner's arenas. Review and approve or reject bank-transfer receipts. | Live |
-| 3 | Today | Schedule | `/owner/calendar` | Week and month view of bookings. | Live |
-| 4 | Venue | Arenas | `/owner/arenas` | Add, edit, deactivate and resubmit arenas. Shows "Suspended by admin" or "Removed by admin". | Live, with gaps: images are pasted as URLs. There is no file upload. |
-| 5 | Venue | Courts | `/owner/courts` | Add, edit and delete courts. Switch a court on or off (maintenance). Generate slots. | Live |
-| 6 | Venue | Equipment | `/owner/equipment` | Add, edit and delete rental items. Change stock. | Live |
-| 7 | Money | Pricing Rules | `/owner/pricing` | Peak-hour price rules (multipliers) for each court. | Live |
-| 8 | Money | Payments | `/owner/payments` | Bank accounts for transfers and discount codes. | Live |
-| 9 | Money | Revenue | `/owner/revenue` | Revenue, pending settlements, charts. | Live, with gaps: no payment report (FR-O-10). |
-| 10 | Money | Reports | `/owner/reports` | Download the bookings and occupancy reports as CSV or PDF. | Live |
-| 11 | Reputation | Reviews | `/owner/reviews` | Read reviews for each arena (including closed arenas) and reply. | Live |
-| 12 | (none) | Notifications | `/owner/notifications` | Notification centre. Also reached from the top bar's bell. | Live |
-| 13 | (none) | Profile | `/owner/profile` | Edit your name. Change email, phone and password, each confirmed with a code. Also in the owner card's menu, with Log out. | Live |
+| 2 | Today | Bookings | `/owner/bookings` | All bookings for the owner's arenas, with filters, Export CSV, and bank-transfer receipts to approve or reject. | Live, restyled |
+| 3 | Today | Schedule | `/owner/calendar` | Day, week and month views of bookings, coloured by sport. | Live, restyled |
+| 4 | Venue | Arenas | `/owner/arenas` | Add, edit, deactivate and resubmit arenas, with courts, this month's occupancy and revenue. Shows "Suspended by admin" or "Removed by admin". | Live, restyled; images are pasted as URLs (no file upload). |
+| 5 | Venue | Courts | `/owner/courts` | Court cards: add, edit, delete, switch on or off, slots dialog. | Live, restyled |
+| 6 | Venue | Equipment | `/owner/equipment` | Add, edit and delete rental items. Change stock. | Live, restyled |
+| 7 | Money | Pricing Rules | `/owner/pricing` | Peak-hour price rules (multipliers) for each court, with the rate they give. | Live, restyled |
+| 8 | Money | Payments | `/owner/payments` | Tabs for bank accounts (Bank transfer) and discount codes. | Live, restyled |
+| 9 | Money | Revenue | `/owner/revenue` | Earnings, bookings, pending settlements, daily chart, share by arena. | Live, restyled; no payout data and no payment report (FR-O-10). |
+| 10 | Money | Reports | `/owner/reports` | Download the bookings and occupancy reports as CSV or PDF; hours sold and arena comparison. | Live, restyled |
+| 11 | Reputation | Reviews | `/owner/reviews` | Average rating with the 5-to-1 breakdown, reviews and replies. | Live, restyled |
+| 12 | (none) | Notifications | `/owner/notifications` | Notification centre, including the admin's arena notices. Also reached from the bell. | Live, restyled |
+| 13 | (none) | Profile | `/owner/profile` | Settings with Profile and Security tabs: name, and email, phone and password changed by code. | Live, restyled |
 
 **Missing from the owner screens, and why it matters.** There is no screen for time slots
 (generate, block, edit) and none for blocked dates. The backend has them. Without slots a player

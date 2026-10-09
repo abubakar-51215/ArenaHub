@@ -79,7 +79,7 @@ do what the screen promises.
 | **Notifications** (push) | Sent through Expo's push service, not Firebase directly. A documented choice, and it works. |
 | **Recommendations on the home screen** | Arena lists now carry rating, review count and "from" price. The recommendation list does not, so its cards cannot show them. |
 | **Near me and distance** (FR-P-04) | The backend has no distance search or sort. The app turns the phone's location into the nearest city and filters by city. The map is OpenStreetMap, not Google Maps. |
-| **Owner "Reports" menu item** | Greyed out. The backend report route exists. Only the payment report is missing (FR-O-10). |
+| **Owner "Reports" menu item** | Live since 2026-10-08 (CSV and PDF downloads, hours sold, arena comparison). Only the payment report is missing (FR-O-10). |
 | **Forgot password** | Works today by pasting a token. The six-digit code version is built and tested but not applied. |
 
 ---
@@ -295,3 +295,20 @@ Screenshots: `review-admin/final/<route>-<width>-<theme>.png`.
 - Open matches at a suspended or removed arena can still be joined.
 - Refunds for an arena action are sent inside the same database transaction as the
   cancellations; a commit per booking is the later fix.
+
+## Owner panel restyle — what was left out (2026-10-09)
+
+The owner screens follow the owner prototype, built only from data the API already has. These
+prototype parts are not shown because there is no data or feature behind them:
+
+| Left out | Why |
+|---|---|
+| Platform fee, net payout, in transit, payout history (Revenue) | No payout or commission data exists. |
+| Occupancy by weekday (Reports) | No endpoint gives occupancy per weekday. |
+| "Schedule weekly" report, repeat rate (Reports) | Not built; no repeat-customer data. |
+| "What people mention most" (Reviews) | No review topic data. |
+| "Block time" by the hour (Schedule) | The backend blocks whole days only; that stays in each court's slots dialog. |
+| Photo upload (Profile, arenas, courts) | Uploads are not built; images are pasted URLs, profiles show initials. |
+| Court surface and "% full" (Courts) | Courts have no surface field; occupancy is kept per arena only. |
+| Player names on Schedule and Live Board events | The calendar endpoint returns no names. |
+| "Remind", cash on arrival, KPI totals, phone and payment method columns (Bookings) | Not in the bookings list data. |

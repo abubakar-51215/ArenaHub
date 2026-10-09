@@ -573,3 +573,14 @@ in one or two calls whatever the number of arenas or courts:
 
 Separately worth deciding: count the API limit per signed-in user rather
 than per IP, so people on a shared network do not limit each other.
+
+## Owner panel — known follow-ups after the final pass (2026-10-09)
+
+- **Calls per page against the rate limit.** See "owner pages make many API calls" above: Pricing
+  grows by one call per court; one batch endpoint per heavy page is the later fix. No limit changed.
+- **Arenas page: one analytics call per arena** for this month's occupancy. A per-arena summary
+  endpoint (or the Reports batch endpoint) would replace it.
+- **"Part refunded" on admin Payments** needs the refunded amount from the API; today only a full
+  refund ("Refunded") can be told apart from the payment's lifecycle.
+- **Done: "Verify bank transfer".** The Bookings receipt dialog uses the payment option name
+  "Bank transfer" (5d7cb99).
