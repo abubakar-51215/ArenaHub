@@ -1,19 +1,22 @@
 "use client";
 
+/**
+ * Forgot password: one email field and "Send code". After sending, the page
+ * shows the same message whether or not the email is registered (the
+ * server answers the same way for both), then leads on to the code step.
+ */
 import { useState } from "react";
 import Link from "next/link";
-import { MailCheck } from "lucide-react";
 
-import { AuthShell } from "@/components/auth/auth-shell";
+import { FormMessage, ResetShell, SENT_MESSAGE, plainError } from "@/components/auth/reset-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError } from "@/services/api";
 import { forgotPassword } from "@/services/auth";
 
 export default function ForgotPasswordPage() {
-  const [step, setStep] = useState<"form" | "sent">("form");
   const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,81 +25,64 @@ export default function ForgotPasswordPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await forgotPassword(email);
-      // The backend never reveals whether an email is registered, so this
-      // step always shows regardless of the account's existence.
-      setStep("sent");
+      await forgotPassword(email.trim());
+      setSent(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setError(plainError(err));
     } finally {
       setSubmitting(false);
     }
   }
 
+  const next = `/reset-password?email=${encodeURIComponent(email.trim())}&sent=1`;
+
   return (
-    <AuthShell>
-      {step === "form" ? (
-        <>
-          <h1 className="text-2xl font-bold text-foreground">Forgot your password?</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Enter your email and we&apos;ll send you a link to reset it.
-          </p>
+    <ResetShell>
+      <h1 className="text-2xl font-bold text-foreground">Forgot your password?</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Enter your email and we&apos;ll send you a 6-digit code to reset it.
+      </p>
 
-          <form onSubmit={onSubmit} className="mt-7 space-y-4">
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="owner@arenahub.pk"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+      <form onSubmit={onSubmit} className="mt-7 space-y-4">
+        <div>
+          <Label htmlFor="email">Email Address</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="owner@arenahub.pk"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setSent(false);
+            }}
+            required
+          />
+        </div>
 
-            {error && (
-              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
+        {error && <FormMessage>{error}</FormMessage>}
+        {sent && <FormMessage tone="info">{SENT_MESSAGE}</FormMessage>}
 
-            <Button
-              type="submit"
-              size="lg"
-              disabled={submitting}
-              className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
-            >
-              {submitting ? "Sending…" : "Send Reset Link"}
-            </Button>
-          </form>
-        </>
-      ) : (
-        <>
-          <MailCheck className="size-10 text-foreground" />
-          <h1 className="mt-4 text-2xl font-bold text-foreground">Check your email</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            If <span className="font-medium text-foreground">{email}</span> is registered,
-            we&apos;ve sent a link to reset your password. It expires in 30 minutes.
-          </p>
-          <Link href="/reset-password" className="mt-6 block">
-            <Button
-              size="lg"
-              className="h-11 w-full bg-primary text-primary-foreground shadow-brand transition-all hover:opacity-95"
-            >
-              I have my reset link
-            </Button>
-          </Link>
-        </>
-      )}
+        {sent ? (
+          <Button asChild size="lg" className="h-11 w-full">
+            <Link href={next}>Enter the code</Link>
+          </Button>
+        ) : (
+          <Button type="submit" size="lg" disabled={submitting} className="h-11 w-full">
+            {submitting ? "Sending…" : "Send code"}
+          </Button>
+        )}
+      </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Remembered your password?{" "}
-        <Link href="/login" className="font-medium text-foreground hover:underline">
+        <Link
+          href="/login"
+          className="inline-block font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:py-3"
+        >
           Sign in
         </Link>
       </p>
-    </AuthShell>
+    </ResetShell>
   );
 }
