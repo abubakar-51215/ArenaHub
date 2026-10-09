@@ -85,7 +85,13 @@ def create_app() -> FastAPI:
     # with credentials") — an explicit localhost allowlist in dev avoids that
     # gap without losing convenience. Prod/staging read a configured list.
     if settings.is_dev:
-        cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+        # 3000 is the web app, 8081 is Expo web (the mobile app in a browser)
+        cors_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
+        ]
     else:
         cors_origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
 
