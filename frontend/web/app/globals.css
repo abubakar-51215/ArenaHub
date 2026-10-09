@@ -4195,3 +4195,41 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     font-size: 14px;
   }
 }
+
+/* admin sign-in, step 2 (the emailed code): info line, Resend / Back */
+[data-admin] .ah-auth-info {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--line-soft);
+  color: var(--text);
+  font-size: 13px;
+}
+[data-admin] .ah-auth-code-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-auth-link {
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--muted-foreground);
+  cursor: pointer;
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-auth-error,
+  [data-admin] .ah-auth-info,
+  [data-admin] .ah-auth-code-links {
+    font-size: 14px;
+  }
+}

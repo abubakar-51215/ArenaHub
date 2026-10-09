@@ -4,12 +4,30 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AdminBrandMark } from "@/components/admin/brand";
+import { CodeBoxes } from "@/components/auth/code-boxes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
-import { fetchMe, login } from "@/services/auth";
+import { fetchMe, isAdminChallenge, login, resendAdminCode, verifyAdminCode } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
+import type { Tokens } from "@/types";
+
+const RESEND_WAIT_S = 60;
+const EMPTY_CODE = "      ";
+
+/** Server messages about the code, in plain words. */
+function codeMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 429) return "Too many requests from this device. Wait a minute and try again.";
+    if (/too many incorrect attempts/i.test(err.message))
+      return "Too many wrong tries for this code. Ask for a new code below.";
+    if (/verification code/i.test(err.message))
+      return "That code is wrong, has expired, or was already used. Check the newest email, or ask for a new code.";
+    return err.message;
+  }
+  return "Something went wrong. Please try again.";
+}
 
 // The prototype's sign-in illustration: a fixed set of lime nodes, joined when
 // they are closer than 260 units (design/prototypes/arena-hub-admin.html).
@@ -45,25 +63,90 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // step 2: the emailed code (admins only)
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState(EMPTY_CODE);
+  const [info, setInfo] = useState<string | null>(null);
+  const [wait, setWait] = useState(0);
+
   useEffect(() => {
     if (hydrated && user?.role === "admin") router.replace("/admin");
   }, [hydrated, user, router]);
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = window.setTimeout(() => setWait((s) => s - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [wait]);
+
+  async function finish(tokens: Tokens) {
+    useAuthStore.getState().setTokens(tokens);
+    const me = await fetchMe();
+    if (me.role !== "admin") {
+      useAuthStore.getState().clear();
+      setChallenge(null);
+      setError("This is the admin console. Please use an admin account.");
+      return;
+    }
+    setSession(tokens, me);
+    router.replace("/admin");
+  }
+
+  function backToPassword(message: string | null = null) {
+    setChallenge(null);
+    setCode(EMPTY_CODE);
+    setInfo(null);
+    setError(message);
+  }
+
+  async function onVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!challenge || !/^\d{6}$/.test(code)) return;
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+    try {
+      await finish(await verifyAdminCode(challenge, code));
+    } catch (err) {
+      // an expired or unusable sign-in step goes back to the password
+      if (err instanceof ApiError && err.status === 401) backToPassword(err.message);
+      else {
+        setCode(EMPTY_CODE);
+        setError(codeMessage(err));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onResend() {
+    if (!challenge) return;
+    setError(null);
+    setInfo(null);
+    try {
+      await resendAdminCode(challenge);
+      setWait(RESEND_WAIT_S);
+      setCode(EMPTY_CODE);
+      setInfo("A new code is on its way. Only the newest code works.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) backToPassword(err.message);
+      else setError(codeMessage(err));
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const tokens = await login(email, password);
-      useAuthStore.getState().setTokens(tokens);
-      const me = await fetchMe();
-      if (me.role !== "admin") {
-        useAuthStore.getState().clear();
-        setError("This is the admin console. Please use an admin account.");
+      const result = await login(email, password);
+      if (isAdminChallenge(result)) {
+        setChallenge(result.challenge_token);
+        setCode(EMPTY_CODE);
+        setWait(RESEND_WAIT_S);
         return;
       }
-      setSession(tokens, me);
-      router.replace("/admin");
+      await finish(result);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -83,58 +166,100 @@ export default function AdminLoginPage() {
         <p className="ah-eyebrow" style={{ margin: "0 0 10px" }}>
           Restricted access
         </p>
-        <h1 className="ah-h1 ah-auth-title">Control tower.</h1>
-        <p className="ah-mute" style={{ margin: "0 0 28px", fontSize: 14 }}>
-          Approvals, payouts and disputes across every arena on the network.
-        </p>
-
-        <form onSubmit={onSubmit} className="ah-stack" style={{ gap: 16, maxWidth: 410 }}>
-          <div className="ah-field">
-            <Label htmlFor="email">Work email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="admin@arenahub.pk"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="ah-field">
-            <Label htmlFor="password">Password</Label>
-            <div className="ah-pw-wrap">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                className="ah-pw-toggle"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {EyeIcon}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <p role="alert" className="ah-auth-error">
-              {error}
+        {challenge ? (
+          <>
+            <h1 className="ah-h1 ah-auth-title">Verification code</h1>
+            <p className="ah-mute" style={{ margin: "0 0 28px", fontSize: 14 }}>
+              We emailed a 6-digit code to <b style={{ color: "var(--text)" }}>{email}</b>. It works for
+              10 minutes.
             </p>
-          )}
+            <form onSubmit={onVerify} className="ah-stack" style={{ gap: 16, maxWidth: 410 }}>
+              <CodeBoxes value={code} onChange={setCode} invalid={!!error} autoFocus />
+              {error && (
+                <p role="alert" className="ah-auth-error">
+                  {error}
+                </p>
+              )}
+              {info && (
+                <p role="status" className="ah-auth-info">
+                  {info}
+                </p>
+              )}
+              <Button type="submit" disabled={submitting || !/^\d{6}$/.test(code)} className="ah-signin">
+                {submitting ? "Checking…" : "Verify and sign in"}
+              </Button>
+              <div className="ah-auth-code-links">
+                {wait > 0 ? (
+                  <span aria-live="polite">
+                    Resend code in {Math.floor(wait / 60)}:{String(wait % 60).padStart(2, "0")}
+                  </span>
+                ) : (
+                  <button type="button" className="ah-auth-link" onClick={onResend}>
+                    Resend code
+                  </button>
+                )}
+                <button type="button" className="ah-auth-link" onClick={() => backToPassword()}>
+                  Back
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <h1 className="ah-h1 ah-auth-title">Control tower.</h1>
+            <p className="ah-mute" style={{ margin: "0 0 28px", fontSize: 14 }}>
+              Approvals, payouts and disputes across every arena on the network.
+            </p>
 
-          <Button type="submit" disabled={submitting} className="ah-signin">
-            {submitting ? "Signing in…" : "Sign in"}
-          </Button>
-        </form>
+            <form onSubmit={onSubmit} className="ah-stack" style={{ gap: 16, maxWidth: 410 }}>
+              <div className="ah-field">
+                <Label htmlFor="email">Work email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="admin@arenahub.pk"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="ah-field">
+                <Label htmlFor="password">Password</Label>
+                <div className="ah-pw-wrap">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="••••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="ah-pw-toggle"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {EyeIcon}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p role="alert" className="ah-auth-error">
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" disabled={submitting} className="ah-signin">
+                {submitting ? "Signing in…" : "Sign in"}
+              </Button>
+            </form>
+          </>
+        )}
 
         <p className="ah-mute ah-auth-foot">© 2026 Arena Hub · Internal use only</p>
       </div>

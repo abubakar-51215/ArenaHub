@@ -2,8 +2,31 @@
 import { api } from "@/services/api";
 import type { RegisterResult, Tokens, User } from "@/types";
 
-export function login(email: string, password: string): Promise<Tokens> {
-  return api.post<Tokens>("/auth/login", { email, password });
+/** What /auth/login returns to an admin with the right password: no tokens
+ *  yet; a 6-digit code was emailed, and the challenge carries the sign-in to
+ *  the code step (valid 10 minutes). */
+export interface AdminChallenge {
+  mfa_required: true;
+  challenge_token: string;
+  expires_in: number;
+}
+
+export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChallenge {
+  return "mfa_required" in r && r.mfa_required === true;
+}
+
+export function login(email: string, password: string): Promise<Tokens | AdminChallenge> {
+  return api.post<Tokens | AdminChallenge>("/auth/login", { email, password });
+}
+
+/** Second step of an admin sign-in: the emailed code; returns the normal tokens. */
+export function verifyAdminCode(challengeToken: string, code: string): Promise<Tokens> {
+  return api.post<Tokens>("/auth/admin/verify-code", { challenge_token: challengeToken, code });
+}
+
+/** A new admin code (the server sends nothing new within 60 s of the last). */
+export function resendAdminCode(challengeToken: string): Promise<null> {
+  return api.post<null>("/auth/admin/resend-code", { challenge_token: challengeToken });
 }
 
 export function fetchMe(): Promise<User> {
