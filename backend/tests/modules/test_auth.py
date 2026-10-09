@@ -187,3 +187,102 @@ async def test_register_duplicate_email_ignores_case(
     await _register(client, email="Case.Dupe@example.com", phone="03007770001")
     again = await _register(client, email="case.dupe@EXAMPLE.com", phone="03007770002")
     assert again.status_code == 409
+
+
+async def _phone_login(client: AsyncClient, who: str, password: str = PASSWORD) -> Any:
+    return await client.post("/api/v1/auth/login", json={"identifier": who, "password": password})
+
+
+async def test_login_by_email_in_the_identifier_field_any_case(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _register_and_verify(client, db_session, "Who.Am@Example.com")
+    for typed in ("who.am@example.com", "WHO.AM@EXAMPLE.COM", " Who.Am@Example.com "):
+        assert (await _phone_login(client, typed)).status_code == 200
+
+
+async def test_login_by_phone_in_any_pakistani_form(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _register_and_verify(client, db_session, "byphone@example.com")  # phone 03001234567
+    for typed in ("0300 1234567", "+92 300 1234567", "923001234567", "(0092) 300-1234567"):
+        resp = await _phone_login(client, typed)
+        assert resp.status_code == 200, (typed, resp.text)
+        assert resp.json()["data"]["access_token"]
+
+
+async def test_login_by_phone_compares_all_digits_for_other_countries(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    reg = await _register(client, email="uk@example.com", phone="+44 7911 123456")
+    assert reg.status_code == 201, reg.text
+    user = await repo.get_user_by_email(db_session, "uk@example.com")
+    otp = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
+    await client.post("/api/v1/auth/verify-otp", json={"email": "uk@example.com", "code": otp.code})
+    assert (await _phone_login(client, "00447911123456")).status_code == 200
+    assert (await _phone_login(client, "447911 123456")).status_code == 200
+
+
+async def test_phone_shared_by_two_accounts_is_refused_like_a_wrong_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _register_and_verify(client, db_session, "share-a@example.com")
+    first = await repo.get_user_by_email(db_session, "share-a@example.com")
+    # old data could hold the same number spelled another way
+    twin = await repo.create_user(
+        db_session,
+        full_name="Twin",
+        email="share-b@example.com",
+        phone="+92 300 1234567",
+        password_hash=first.password_hash,
+        role=first.role,
+    )
+    twin.is_verified = True
+    await db_session.commit()
+
+    shared = await _phone_login(client, "03001234567")
+    wrong = await client.post(
+        "/api/v1/auth/login", json={"email": "share-a@example.com", "password": "Nope-Nope-1"}
+    )
+    assert shared.status_code == 401
+    assert shared.json() == wrong.json()
+
+
+async def test_unknown_phone_answers_like_a_wrong_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _register_and_verify(client, db_session, "known@example.com")
+    unknown = await _phone_login(client, "03119998887")
+    wrong = await _phone_login(client, "03001234567", "Nope-Nope-1")
+    assert unknown.status_code == wrong.status_code == 401
+    assert unknown.json() == wrong.json()
+    assert "email/phone" in unknown.json()["message"]
+
+
+async def test_register_phone_in_another_spelling_is_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    assert (await _register(client, email="p1@example.com", phone="03001234567")).status_code == 201
+    for spelling in ("+92 300 1234567", "0300-1234567", "923001234567"):
+        again = await _register(client, email=f"dup-{len(spelling)}@example.com", phone=spelling)
+        assert again.status_code == 409, (spelling, again.text)
+        assert again.json()["message"] == "Phone number is already registered."
+
+
+async def test_admin_still_gets_the_code_step_and_not_by_phone(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from tests.helpers import make_admin
+
+    await make_admin(client, db_session, "adm-who@example.com")
+    by_email = await _phone_login(client, "adm-who@example.com")
+    assert by_email.status_code == 200
+    assert by_email.json()["data"]["mfa_required"] is True
+    admin = await repo.get_user_by_email(db_session, "adm-who@example.com")
+    by_phone = await _phone_login(client, admin.phone)
+    assert by_phone.status_code == 401
+    # the older field still works
+    old = await client.post(
+        "/api/v1/auth/login", json={"email": "adm-who@example.com", "password": PASSWORD}
+    )
+    assert old.json()["data"]["mfa_required"] is True

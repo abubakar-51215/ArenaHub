@@ -31,8 +31,23 @@ class ResendOtpRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    """Sign in with an email or a phone number in ``identifier``. The older
+    ``email`` field still works (the mobile app sends it); ``identifier`` wins
+    when both are sent."""
+
+    identifier: str | None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr | None = None
     password: str
+
+    @model_validator(mode="after")
+    def _need_who(self) -> "LoginRequest":
+        if not (self.identifier and self.identifier.strip()) and not self.email:
+            raise ValueError("Enter your email or phone number.")
+        return self
+
+    @property
+    def who(self) -> str:
+        return (self.identifier or self.email or "").strip()
 
 
 class RefreshRequest(BaseModel):
