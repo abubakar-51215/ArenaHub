@@ -3767,3 +3767,116 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     margin-left: 0;
   }
 }
+
+/* owner Reviews (prototype .g-23, .stars, .score-*, .review) */
+[data-owner] .ah-g-23 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.62fr);
+  align-items: start;
+}
+@media (max-width: 1180px) {
+  [data-owner] .ah-g-23 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+[data-owner] .ah-stars {
+  display: inline-flex;
+  gap: 1.5px;
+  color: var(--amber);
+}
+[data-owner] .ah-stars .off {
+  color: var(--line);
+}
+[data-owner] .ah-score-big {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+[data-owner] .ah-score-note {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin: 0 0 16px;
+}
+[data-owner] .ah-score-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+[data-owner] .ah-score-row {
+  display: grid;
+  grid-template-columns: 22px 1fr 38px;
+  gap: 9px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-score-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+[data-owner] .ah-score-track i {
+  display: block;
+  height: 100%;
+  background: var(--amber);
+  border-radius: 3px;
+}
+[data-owner] .ah-review {
+  display: flex;
+  gap: 13px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-owner] .ah-review:last-of-type {
+  border-bottom: 0;
+}
+[data-owner] .ah-review-b {
+  flex: 1;
+  min-width: 0;
+}
+[data-owner] .ah-review-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-owner] .ah-review-top b {
+  font-size: 13.5px;
+}
+[data-owner] .ah-review-meta {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-review-badge {
+  margin-left: auto;
+}
+[data-owner] .ah-review-text {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+[data-owner] .ah-review-reply {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-review-btn {
+  margin-top: 9px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-score-note,
+  [data-owner] .ah-score-row,
+  [data-owner] .ah-review-top b,
+  [data-owner] .ah-review-meta,
+  [data-owner] .ah-review-text,
+  [data-owner] .ah-review-reply {
+    font-size: 14px;
+  }
+  [data-owner] .ah-review {
+    padding: 14px 16px;
+  }
+}
