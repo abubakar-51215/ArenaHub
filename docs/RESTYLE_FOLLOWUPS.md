@@ -524,3 +524,52 @@ The owner Arenas list shows "Suspended by admin" or "Removed by admin" with the 
 disables Edit, Resubmit and Deactivate. The "Manage" link to the courts of that arena stays
 active; slot generation is refused by the API for a suspended or removed arena. A fuller owner
 view (a banner on every owner screen for that arena, a way to contact support) is not built.
+
+## Follow-up — owner pages make many API calls; the limit is 100 a minute per IP
+
+**The limit.** `RATE_LIMIT_API_PER_MINUTE` = **100** requests a minute
+(`backend/app/core/config.py`; sign-in routes have their own 20). It is a
+fixed 60-second window counted **per client IP**
+(`backend/app/middleware/rate_limit.py`), not per user. Nothing changed here.
+
+**Calls on one fresh page load** (demo owner: 5 arenas, 13 courts; measured
+2026-10-09 with a clean browser, shell calls included — arenas, summary,
+notifications):
+
+| Page | Calls | Grows with |
+|---|---|---|
+| Pricing Rules | 21 | 3 + arenas + **one per court** (rules are per court) |
+| Arenas | 14 | 4 + 2 per arena (courts, analytics) |
+| Schedule | 13 | 3 + 2 per arena (calendar, courts) |
+| Reports | 13 | 3 + 2 per arena (analytics, calendar) |
+| Reviews | 13 | 3 + 2 per arena (reviews, summary), plus a page per extra 100 reviews |
+| Bookings | 9 | 4 + one per arena (courts) |
+| Courts | 8 | 3 + one per arena |
+| Live Board | 7 | fixed, plus courts and today's calendar for one arena |
+| Revenue | 5 | fixed |
+
+**Could a normal owner hit it?** Not with the demo data on one page: the
+heaviest page is about a fifth of the budget. But it is reachable in real use:
+
+- **Bigger owners.** Pricing grows by one call per court: 10 arenas with 8
+  courts each is about 93 calls for one load of Pricing.
+- **Moving around.** The budget is per minute, not per page: opening
+  Pricing, Reports and Reviews within a minute is about 50 calls for the
+  demo owner, and more with refetches when the tab regains focus.
+- **Shared IPs.** The count is per IP, so staff at one arena on the same
+  Wi-Fi, or many users behind one mobile carrier NAT, share one budget.
+
+A 429 shows as the page's "Could not load …" state with Try again; nothing
+breaks for good, but it looks like an outage.
+
+**Later fix (not done).** One batch endpoint per heavy page, so each loads
+in one or two calls whatever the number of arenas or courts:
+
+- `GET /owner/pricing-rules?arena_id=` — every rule with its court and base price.
+- `GET /owner/courts?arena_id=` — every court of every arena (Bookings, Courts, Pricing, Schedule).
+- `GET /owner/reports/summary?date_from&date_to&arena_id=` — per-arena bookings, hours, revenue, occupancy (Reports, Arenas).
+- `GET /owner/reviews?arena_id=` with a star breakdown in the summary (Reviews).
+- `GET /owner/calendar?date_from&date_to&arena_id=` across arenas (Schedule).
+
+Separately worth deciding: count the API limit per signed-in user rather
+than per IP, so people on a shared network do not limit each other.
