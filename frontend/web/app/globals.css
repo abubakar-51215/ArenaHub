@@ -3567,12 +3567,35 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-[data-owner] .ah-cal-times {
+[data-owner] .ah-cal {
   display: flex;
   flex-direction: column;
+  min-height: 100%;
+  min-width: var(--cal-min, 860px);
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-cal {
+    min-width: var(--cal-min-lg, 640px);
+  }
+}
+/* the body grows to the box; its hour rows are 52px (below 1024px) or an
+   equal share of the box with a floor (--row-min) from 1024px up */
+[data-owner] .ah-cal-body {
+  flex: 1;
+}
+[data-owner] .ah-cal-times,
+[data-owner] .ah-cal-col {
+  display: grid;
+  grid-template-rows: repeat(var(--hours, 18), 52px);
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-cal-times,
+  [data-owner] .ah-cal-col {
+    grid-template-rows: repeat(var(--hours, 18), minmax(var(--row-min, 26px), 1fr));
+  }
 }
 [data-owner] .ah-cal-time {
-  height: 52px;
+  min-height: 0;
   font-size: 10px;
   color: var(--muted-foreground);
   text-align: right;
@@ -3590,7 +3613,6 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   position: relative;
 }
 [data-owner] .ah-cal-hr {
-  height: 52px;
   border-bottom: 1px solid var(--line-soft);
 }
 [data-owner] .ah-ev {
@@ -4299,5 +4321,79 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     max-width: 96px;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+/* Schedule fits one screen from 1024px up: the page is a column the height of
+   the window; the card takes what the heading leaves and the grid inside it
+   shares that height between the 18 hours (never under --row-min, 26px; only
+   then does the grid scroll). Below 1024px the grid keeps its 52px rows and
+   scrolls. */
+@media (min-width: 1024px) {
+  [data-owner] .ah-sched {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  [data-owner] .ah-sched > .ah-ohead {
+    flex: none;
+  }
+  [data-owner] .ah-sched > .ah-ohead + * {
+    padding-top: 16px;
+  }
+  [data-owner] .ah-sched-canvas {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+  }
+  [data-owner] .ah-sched-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-owner] .ah-sched-card > .ah-card-head {
+    flex: none;
+  }
+  [data-owner] .ah-sched-cue {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-owner] .ah-sched-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* a tight event on a short row: small padding, and the second line gives
+     way when the card is too short to show it whole */
+  [data-owner] .ah-ev {
+    padding: 3px 7px;
+    container-type: size;
+  }
+  [data-owner] .ah-ev-sub {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @container (max-height: 33px) {
+    [data-owner] .ah-ev-sub {
+      display: none;
+    }
+  }
+  /* month cells share the height too */
+  [data-owner] .ah-cal-month {
+    min-height: 100%;
+    grid-template-rows: auto;
+    grid-auto-rows: minmax(64px, 1fr);
+  }
+  [data-owner] .ah-cal-mcell {
+    min-height: 0;
+    overflow: hidden;
   }
 }
