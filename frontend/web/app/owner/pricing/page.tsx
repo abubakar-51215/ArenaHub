@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
+import { useFormDialog } from "@/hooks/useFormDialog";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatRs, formatTime, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
@@ -69,7 +70,7 @@ function Pricing() {
     onError: (err) => setError(err instanceof ApiError ? err.message : "Could not delete this rule."),
   });
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<PricingRule | undefined>(undefined);
   // under "All arenas" the form's court list names the arena too
   const formCourts = picked ? courts : courts.map((c) => ({ ...c, name: `${c.name} · ${arenaName.get(c.arena_id) ?? ""}` }));

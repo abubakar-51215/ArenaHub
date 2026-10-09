@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useMyArenas } from "@/hooks/useArenas";
+import { useFormDialog } from "@/hooks/useFormDialog";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatRs, plural } from "@/lib/format";
 import { deleteCourt, listCourts, setCourtAvailability } from "@/services/courts";
@@ -54,7 +55,7 @@ function CourtsInner() {
   const live = courts.filter((c) => c.is_available).length;
 
   const [slotsFor, setSlotsFor] = useState<Court | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<Court | undefined>(undefined);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
