@@ -44,9 +44,11 @@ screen is restyled to the owner prototype (`design/prototypes/arena-hub-owner.ht
 - **Menu, in order:** Today (Live Board, Bookings, Schedule) · Venue (Arenas, Courts, Equipment) ·
   Money (Pricing Rules, Payments, Revenue, Reports) · Reputation (Reviews) · Notifications, Profile.
   The rail foot is the owner card (name, "Owner · N arenas"); its menu has Profile and Log out.
-- **Top bar on every owner page from 1024 px:** arena picker (where it filters), search (⌘K: owner
-  pages, arenas, courts), theme switch and the bell (latest notices, "See all"). Below 1024 px a
-  slim bar (menu, search, theme, bell at 44 px) with the picker in a row under it.
+- **Top bar, from 1024 px, on the Live Board only** (user decision, 2026-10-09): arena picker,
+  search (⌘K: owner pages, arenas, courts), theme switch and the bell (latest notices, "See all").
+  Other owner pages keep Ctrl+K, the theme switch in the owner card menu, the rail's unread count
+  and, where it filters, the arena picker in the page's own header. Below 1024 px a slim bar
+  (menu, search, theme, bell at 44 px) with the picker in a row under it.
 - **Dark theme:** owners and admins share one preference (`ah-admin-theme`), set before paint.
   Sign-in and public pages stay light.
 - **Arena picker** (`?arena=`, kept on rail links) shows on Live Board, Bookings, Schedule, Courts,

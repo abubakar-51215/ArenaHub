@@ -628,3 +628,13 @@ so the model default `pending` sticks; the app itself only moves the lifecycle t
 - **Dev only:** the code can be read from the backend log (`otp_dev_delivery`) only because the
   dev `.env` has no mail password. With mail configured, dev sends the email like production and
   the code is not logged.
+
+## Decision — the owner top bar is now Live Board only (2026-10-09)
+
+User decision; it replaces the earlier "top bar on every owner page". At 1024px and wider the
+bar (arena picker, search, theme, bell) shows on the Live Board only. Other owner pages: the
+theme switch is in the owner card menu, Ctrl+K / ⌘K still opens search, the rail's Notifications
+item shows the unread count, and pages whose data filters by arena show the picker in their own
+header row (added once, in the shared owner `PageHeader`). Below 1024px nothing changed. The Live
+Board's court grid also gained a date control (Karachi dates; the KPIs and charts keep their own
+date filters).
