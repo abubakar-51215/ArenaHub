@@ -25,7 +25,13 @@ from app.modules.user.schema import (
     UpdateProfileRequest,
     UserPublic,
 )
-from app.shared.otp import MAX_OTP_ATTEMPTS, OTP_TTL, deliver_otp, generate_otp_code
+from app.shared.otp import (
+    MAX_OTP_ATTEMPTS,
+    OTP_TTL,
+    OtpPurpose,
+    deliver_otp,
+    generate_otp_code,
+)
 
 
 def _now() -> datetime:
@@ -56,10 +62,15 @@ async def request_password_change(
     user.pending_password_hash = hash_password(data.new_password)
     code = generate_otp_code()
     await auth_repo.create_otp(
-        db, user_id=user.id, code=code, channel="email", expires_at=_now() + OTP_TTL
+        db,
+        user_id=user.id,
+        code=code,
+        channel="email",
+        purpose=OtpPurpose.password_change,
+        expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(user.email, code, purpose="password_change")
+    deliver_otp(user.email, code, purpose=OtpPurpose.password_change)
 
 
 async def verify_password_change(
@@ -68,7 +79,7 @@ async def verify_password_change(
     if user.pending_password_hash is None:
         raise ValidationError("No password change is pending.")
 
-    otp = await auth_repo.get_latest_otp(db, user.id)
+    otp = await auth_repo.get_latest_otp(db, user.id, OtpPurpose.password_change)
     if otp is None or otp.expires_at < _now():
         raise ValidationError("Invalid or expired verification code.")
     if otp.attempts >= MAX_OTP_ATTEMPTS:
@@ -105,10 +116,15 @@ async def request_phone_change(db: AsyncSession, user: User, data: PhoneChangeRe
     user.pending_phone = data.new_phone
     code = generate_otp_code()
     await auth_repo.create_otp(
-        db, user_id=user.id, code=code, channel="sms", expires_at=_now() + OTP_TTL
+        db,
+        user_id=user.id,
+        code=code,
+        channel="sms",
+        purpose=OtpPurpose.phone_change,
+        expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(data.new_phone, code, purpose="phone_change")
+    deliver_otp(data.new_phone, code, purpose=OtpPurpose.phone_change)
 
 
 async def verify_phone_change(
@@ -117,7 +133,7 @@ async def verify_phone_change(
     if user.pending_phone is None:
         raise ValidationError("No phone change is pending.")
 
-    otp = await auth_repo.get_latest_otp(db, user.id)
+    otp = await auth_repo.get_latest_otp(db, user.id, OtpPurpose.phone_change)
     if otp is None or otp.expires_at < _now():
         raise ValidationError("Invalid or expired verification code.")
     if otp.attempts >= MAX_OTP_ATTEMPTS:
@@ -143,10 +159,15 @@ async def request_email_change(db: AsyncSession, user: User, data: EmailChangeRe
     user.pending_email = data.new_email
     code = generate_otp_code()
     await auth_repo.create_otp(
-        db, user_id=user.id, code=code, channel="email", expires_at=_now() + OTP_TTL
+        db,
+        user_id=user.id,
+        code=code,
+        channel="email",
+        purpose=OtpPurpose.email_change,
+        expires_at=_now() + OTP_TTL,
     )
     await db.commit()
-    deliver_otp(data.new_email, code, purpose="email_change")
+    deliver_otp(data.new_email, code, purpose=OtpPurpose.email_change)
 
 
 async def verify_email_change(
@@ -155,7 +176,7 @@ async def verify_email_change(
     if user.pending_email is None:
         raise ValidationError("No email change is pending.")
 
-    otp = await auth_repo.get_latest_otp(db, user.id)
+    otp = await auth_repo.get_latest_otp(db, user.id, OtpPurpose.email_change)
     if otp is None or otp.expires_at < _now():
         raise ValidationError("Invalid or expired verification code.")
     if otp.attempts >= MAX_OTP_ATTEMPTS:

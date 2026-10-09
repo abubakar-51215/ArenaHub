@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.model import OtpVerification, PasswordHistory, PasswordResetToken
 from app.modules.user.model import User, UserRole
+from app.shared.otp import OtpPurpose
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
@@ -56,19 +57,32 @@ async def create_otp(
     user_id: uuid.UUID,
     code: str,
     channel: str,
+    purpose: OtpPurpose,
     expires_at: datetime,
 ) -> OtpVerification:
-    otp = OtpVerification(user_id=user_id, code=code, channel=channel, expires_at=expires_at)
+    otp = OtpVerification(
+        user_id=user_id,
+        code=code,
+        channel=channel,
+        purpose=purpose.value,
+        expires_at=expires_at,
+    )
     db.add(otp)
     await db.flush()
     return otp
 
 
-async def get_latest_otp(db: AsyncSession, user_id: uuid.UUID) -> OtpVerification | None:
-    """Most recently issued, still-unused OTP for a user."""
+async def get_latest_otp(
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose
+) -> OtpVerification | None:
+    """Most recently issued, still-unused OTP of one purpose for a user."""
     result = await db.execute(
         select(OtpVerification)
-        .where(OtpVerification.user_id == user_id, OtpVerification.is_used.is_(False))
+        .where(
+            OtpVerification.user_id == user_id,
+            OtpVerification.purpose == purpose.value,
+            OtpVerification.is_used.is_(False),
+        )
         .order_by(OtpVerification.created_at.desc())
         .limit(1)
     )
