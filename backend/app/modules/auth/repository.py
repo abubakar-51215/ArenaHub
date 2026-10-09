@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.auth.model import OtpVerification, PasswordHistory, PasswordResetToken
 from app.modules.user.model import User, UserRole
 from app.shared.otp import OtpPurpose
+from app.shared.phone import stored_digit_forms
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
@@ -28,9 +29,27 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+def _phone_matches(phone: str):
+    """Rows whose stored phone is this number, whatever its spelling (see
+    app.shared.phone). Deleted accounts hold an anonymised value and never match."""
+    return (
+        func.regexp_replace(User.phone, "[^0-9]", "", "g").in_(stored_digit_forms(phone)),
+        User.deleted_at.is_(None),
+    )
+
+
 async def get_user_by_phone(db: AsyncSession, phone: str) -> User | None:
-    result = await db.execute(select(User).where(User.phone == phone))
+    result = await db.execute(select(User).where(*_phone_matches(phone)).limit(1))
     return result.scalar_one_or_none()
+
+
+async def get_users_by_phone(db: AsyncSession, phone: str, limit: int = 2) -> list[User]:
+    """Up to ``limit`` accounts holding this phone, so a caller can tell one from
+    several. Admins are left out: they sign in by email only."""
+    result = await db.execute(
+        select(User).where(*_phone_matches(phone), User.role != UserRole.admin).limit(limit)
+    )
+    return list(result.scalars().all())
 
 
 async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:

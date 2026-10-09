@@ -7,6 +7,7 @@ the JWTs. Lockout, token lifetimes, and password policy follow FR-P-01/02.
 """
 
 import hashlib
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -53,7 +54,9 @@ LOGIN_MAX_ATTEMPTS = 5
 LOCKOUT_DURATION = timedelta(minutes=15)
 PASSWORD_HISTORY_DEPTH = 3
 
-_INVALID_CREDENTIALS = "Invalid email or password."
+logger = logging.getLogger(__name__)
+
+_INVALID_CREDENTIALS = "Invalid email/phone or password."
 _ACCOUNT_LOCKED = "Your account has been locked. Please try again after 15 minutes."
 
 
@@ -181,8 +184,22 @@ async def _register_failed_login(db: AsyncSession, user: User) -> None:
     await db.commit()
 
 
+async def _user_for_login(db: AsyncSession, who: str) -> User | None:
+    """The account an email or a phone number points to. A text with "@" is an
+    email; anything else is a phone. A phone shared by several accounts matches
+    none (we never guess whose it is); the caller answers as for an unknown
+    account."""
+    if "@" in who:
+        return await repo.get_user_by_email(db, who)
+    matches = await repo.get_users_by_phone(db, who)
+    if len(matches) > 1:
+        logger.warning("Sign-in by phone refused: the number belongs to several accounts")
+        return None
+    return matches[0] if matches else None
+
+
 async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLoginChallenge:
-    user = await repo.get_user_by_email(db, data.email)
+    user = await _user_for_login(db, data.who)
     if user is None or user.deleted_at is not None or not user.is_active:
         raise UnauthorizedError(_INVALID_CREDENTIALS)
     if user.locked_until is not None and user.locked_until > _now():
