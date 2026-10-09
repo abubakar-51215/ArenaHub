@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Pencil, Plus, Star, Trash2 } from "lucide-react";
 
+import { AdminBadge } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,190 +99,168 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading bank accounts…</p>;
+    return <p className="ah-empty-line ah-pitch-note">Loading bank accounts…</p>;
   }
 
   const list = accounts ?? [];
   const pending = add.isPending || update.isPending;
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Shown to players at checkout when they choose Bank Transfer. Mark one account as the default
-        — it&apos;s listed first. Inactive accounts are hidden from players.
-      </p>
+    <div className="ah-bank">
+      {list.length === 0 && !editing && <p className="ah-bank-none">No bank accounts yet for this arena.</p>}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {list.map((a) => (
-          <div key={a.id} className="space-y-1 rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="flex items-center gap-2 font-medium text-foreground">
-                  {a.label || a.bank_name}
-                  {a.is_default && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-                      <Star className="size-3 fill-success" /> Default
-                    </span>
-                  )}
-                  {!a.is_active && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      Inactive
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">{a.bank_name}</p>
+      {list.length > 0 && (
+        <ul className="ah-bank-list">
+          {list.map((a) => (
+            <li key={a.id}>
+              <div className="ah-bank-name">
+                <div className="ah-badges">
+                  <b>{a.label || a.bank_name}</b>
+                  {a.is_default && <AdminBadge tone="ok">Default</AdminBadge>}
+                  {!a.is_active && <AdminBadge tone="idle">Inactive</AdminBadge>}
+                </div>
+                <span className="ah-sub">{a.bank_name}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon-sm" title="Edit" onClick={() => openEdit(a)}>
-                  <Pencil className="size-4" />
-                </Button>
+              <div className="ah-bank-acct">
+                <span>{a.account_title}</span>
+                <span className="ah-mono">{a.account_number}</span>
+                {a.iban && <span className="ah-mono ah-sub">{a.iban}</span>}
+              </div>
+              <div className="ah-row-actions">
+                {!a.is_default && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={update.isPending}
+                    onClick={() => update.mutate({ id: a.id, input: { is_default: true } })}
+                  >
+                    Make default
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
-                  size="icon-sm"
-                  title="Delete"
+                  size="sm"
+                  disabled={update.isPending}
+                  onClick={() => update.mutate({ id: a.id, input: { is_active: !a.is_active } })}
+                >
+                  {a.is_active ? "Deactivate" : "Activate"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(a)}>
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
                   onClick={() => {
                     if (confirm(`Delete ${a.label || a.bank_name}?`)) remove.mutate(a.id);
                   }}
                 >
-                  <Trash2 className="size-4 text-destructive" />
+                  Delete
                 </Button>
               </div>
-            </div>
-            <p className="text-sm text-foreground">{a.account_title}</p>
-            <p className="font-mono text-sm text-muted-foreground">{a.account_number}</p>
-            {a.iban && <p className="font-mono text-xs text-muted-foreground">{a.iban}</p>}
-            <div className="flex gap-2 pt-1">
-              {!a.is_default && (
-                <button
-                  type="button"
-                  onClick={() => update.mutate({ id: a.id, input: { is_default: true } })}
-                  className="text-xs text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
-                >
-                  Make default
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => update.mutate({ id: a.id, input: { is_active: !a.is_active } })}
-                className="text-xs text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
-              >
-                {a.is_active ? "Deactivate" : "Activate"}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {editing ? (
-        <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-border bg-card p-4">
-          <p className="text-sm font-semibold text-foreground">
-            {editing === "new" ? "Add bank account" : "Edit bank account"}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="bd-label">Label (optional)</Label>
+        <form onSubmit={onSubmit} className="ah-bank-form">
+          <p className="ah-eyebrow">{editing === "new" ? "Add bank account" : "Edit bank account"}</p>
+          <div className="ah-grid ah-g-2" style={{ gap: 14 }}>
+            <div className="ah-field">
+              <Label htmlFor={`bd-label-${arenaId}`}>Label (optional)</Label>
               <Input
-                id="bd-label"
+                id={`bd-label-${arenaId}`}
                 value={form.label ?? ""}
                 onChange={(e) => set("label", e.target.value)}
                 placeholder="Meezan Main"
               />
             </div>
-            <div>
-              <Label htmlFor="bd-bank">Bank Name</Label>
+            <div className="ah-field">
+              <Label htmlFor={`bd-bank-${arenaId}`}>Bank name</Label>
               <Input
-                id="bd-bank"
+                id={`bd-bank-${arenaId}`}
                 value={form.bank_name}
                 onChange={(e) => set("bank_name", e.target.value)}
                 placeholder="Meezan Bank"
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="bd-title">Account Title</Label>
+            <div className="ah-field">
+              <Label htmlFor={`bd-title-${arenaId}`}>Account title</Label>
               <Input
-                id="bd-title"
+                id={`bd-title-${arenaId}`}
                 value={form.account_title}
                 onChange={(e) => set("account_title", e.target.value)}
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="bd-account">Account Number</Label>
+            <div className="ah-field">
+              <Label htmlFor={`bd-account-${arenaId}`}>Account number</Label>
               <Input
-                id="bd-account"
+                id={`bd-account-${arenaId}`}
                 value={form.account_number}
                 onChange={(e) => set("account_number", e.target.value)}
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="bd-iban">IBAN (optional)</Label>
-              <Input
-                id="bd-iban"
-                value={form.iban ?? ""}
-                onChange={(e) => set("iban", e.target.value)}
-              />
+            <div className="ah-field">
+              <Label htmlFor={`bd-iban-${arenaId}`}>IBAN (optional)</Label>
+              <Input id={`bd-iban-${arenaId}`} value={form.iban ?? ""} onChange={(e) => set("iban", e.target.value)} />
             </div>
-            <div>
-              <Label htmlFor="bd-branch">Branch Code (optional)</Label>
+            <div className="ah-field">
+              <Label htmlFor={`bd-branch-${arenaId}`}>Branch code (optional)</Label>
               <Input
-                id="bd-branch"
+                id={`bd-branch-${arenaId}`}
                 value={form.branch_code ?? ""}
                 onChange={(e) => set("branch_code", e.target.value)}
               />
             </div>
-            <div>
-              <Label htmlFor="bd-swift">SWIFT Code (optional)</Label>
+            <div className="ah-field">
+              <Label htmlFor={`bd-swift-${arenaId}`}>SWIFT code (optional)</Label>
               <Input
-                id="bd-swift"
+                id={`bd-swift-${arenaId}`}
                 value={form.swift_code ?? ""}
                 onChange={(e) => set("swift_code", e.target.value)}
               />
             </div>
           </div>
-          <div>
-            <Label htmlFor="bd-instructions">Payment Instructions (optional)</Label>
+          <div className="ah-field">
+            <Label htmlFor={`bd-instructions-${arenaId}`}>Payment instructions (optional)</Label>
             <Textarea
-              id="bd-instructions"
+              id={`bd-instructions-${arenaId}`}
               value={form.payment_instructions ?? ""}
               onChange={(e) => set("payment_instructions", e.target.value)}
               placeholder="Upload your payment receipt after transferring."
               rows={2}
             />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!!form.is_default}
-              onChange={(e) => set("is_default", e.target.checked)}
-            />
+          <label className="ah-check">
+            <input type="checkbox" checked={!!form.is_default} onChange={(e) => set("is_default", e.target.checked)} />
             Set as default (shown first at checkout)
           </label>
 
           {error && (
-            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
+            <div className="ah-card-error" role="alert">
+              <span>{error}</span>
+            </div>
           )}
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-              Cancel
+          <div className="ah-save-row" style={{ marginTop: 4 }}>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving…" : "Save account"}
             </Button>
-            <Button
-              type="submit"
-              disabled={pending}
-              className="bg-primary text-primary-foreground transition-all hover:opacity-95"
-            >
-              <Check className="size-4" /> {pending ? "Saving…" : "Save Account"}
+            <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+              Cancel
             </Button>
           </div>
         </form>
       ) : (
-        <Button variant="outline" onClick={openNew}>
-          <Plus className="size-4" /> Add Bank Account
-        </Button>
+        <div className="ah-bank-add">
+          <Button variant="outline" onClick={openNew}>
+            Add bank account
+          </Button>
+        </div>
       )}
     </div>
   );

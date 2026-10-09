@@ -1,194 +1,302 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+/**
+ * Owner Payments: bank accounts and discount codes. The prototype has no
+ * screen for this, so it borrows the Settings card's tab row (as in its
+ * Payouts tab) with one tab per section that exists, and the shared table,
+ * badge and button styles. Both belong to one arena, so the top bar picker
+ * filters them; under "All arenas" each arena gets its own group. The
+ * arena's payment policy (advance, full payment, refund tiers) is shown
+ * read-only above, as before; it is edited in the arena's form.
+ */
+import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
+import { AdminBadge, AdminEmpty, AdminTag } from "@/components/admin/ui";
 import { BankDetailsForm } from "@/components/owner/bank-details-form";
 import { DiscountForm } from "@/components/owner/discount-form";
 import { PageHeader } from "@/components/owner/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
-import { useDeleteDiscount, useDiscounts } from "@/hooks/useDiscounts";
-import type { DiscountCode } from "@/types";
+import { useArenaParam } from "@/hooks/useArenaParam";
+import { formatDateShort, formatRs, plural } from "@/lib/format";
+import { ApiError } from "@/services/api";
+import { deleteDiscount, listDiscounts } from "@/services/discounts";
+import type { Arena, DiscountCode } from "@/types";
+
+type Tab = "bank" | "discounts";
+
+function discountText(d: DiscountCode): string {
+  return d.discount_type === "percentage" ? `${Number(d.discount_value)}% off` : `${formatRs(d.discount_value)} off`;
+}
+function validity(d: DiscountCode): string {
+  if (d.valid_from && d.valid_until)
+    return `${formatDateShort(d.valid_from.slice(0, 10))} – ${formatDateShort(d.valid_until.slice(0, 10))}`;
+  if (d.valid_until) return `Until ${formatDateShort(d.valid_until.slice(0, 10))}`;
+  if (d.valid_from) return `From ${formatDateShort(d.valid_from.slice(0, 10))}`;
+  return "No end date";
+}
+
+function Policy({ arena }: { arena: Arena }) {
+  return (
+    <div className="ah-grid ah-g-3">
+      <div className="ah-card ah-kpi">
+        <p className="ah-eyebrow">Advance payment</p>
+        <div className="ah-metric">{arena.require_full_payment ? "100%" : `${arena.advance_percentage}%`}</div>
+        <div className="ah-kpi-foot">{arena.require_full_payment ? "Full payment required" : "Balance paid at the arena"}</div>
+      </div>
+      <div className="ah-card ah-kpi ah-span-2">
+        <p className="ah-eyebrow">Refunds</p>
+        <div className="ah-badges" style={{ marginTop: 10 }}>
+          {arena.refund_policy.length ? (
+            arena.refund_policy.map((t) => (
+              <AdminTag key={t.hours_before}>
+                {t.hours_before}h before · {t.refund_percentage}% back
+              </AdminTag>
+            ))
+          ) : (
+            <AdminTag>Non-refundable</AdminTag>
+          )}
+        </div>
+        <div className="ah-kpi-foot">
+          Edit these in the arena&apos;s form on{" "}
+          <Link href="/owner/arenas" className="ah-link">
+            Arenas
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function PaymentsInner() {
-  const searchParams = useSearchParams();
-  const { data: arenaPage } = useMyArenas();
+  const qc = useQueryClient();
+  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
+  const [pickedId] = useArenaParam();
+  const picked = arenas.find((a) => a.id === pickedId);
+  const scope = picked ? [picked] : arenas;
+  const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
-  const [arenaId, setArenaId] = useState<string>("");
-  useEffect(() => {
-    const fromUrl = searchParams.get("arena");
-    if (fromUrl && arenas.some((a) => a.id === fromUrl)) setArenaId(fromUrl);
-    else if (!arenaId && arenas.length) setArenaId(arenas[0].id);
-  }, [arenas, searchParams, arenaId]);
+  const [tab, setTab] = useState<Tab>("bank");
 
-  const selectedArena = arenas.find((a) => a.id === arenaId);
-  const { data: discounts, isLoading } = useDiscounts(arenaId || null);
-  const removeDiscount = useDeleteDiscount(arenaId);
+  const discountQueries = useQueries({
+    queries: scope.map((a) => ({ queryKey: ["discounts", a.id], queryFn: () => listDiscounts(a.id) })),
+  });
+  const discounts = discountQueries.flatMap((q) => q.data ?? []);
+  const discountsLoading = discountQueries.some((q) => q.isLoading);
+  const discountsFailed = discountQueries.some((q) => q.isError);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<DiscountCode | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const formArenaId = editing?.arena_id ?? picked?.id;
+
+  async function remove(d: DiscountCode) {
+    setError(null);
+    try {
+      await deleteDiscount(d.arena_id, d.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not delete ${d.code}.`);
+    } finally {
+      await qc.invalidateQueries({ queryKey: ["discounts", d.arena_id] });
+    }
+  }
+
+  const status = (d: DiscountCode) => <AdminBadge tone={d.is_active ? "ok" : "idle"}>{d.is_active ? "Active" : "Paused"}</AdminBadge>;
+  const used = (d: DiscountCode) => `${d.used_count}${d.max_uses ? ` of ${d.max_uses}` : ""} used`;
+  const actions = (d: DiscountCode) => (
+    <div className="ah-row-actions">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          setEditing(d);
+          setFormOpen(true);
+        }}
+      >
+        Edit
+      </Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          if (confirm(`Delete code “${d.code}”?`)) void remove(d);
+        }}
+      >
+        Delete
+      </Button>
+    </div>
+  );
+
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: "bank", label: "Bank accounts" },
+    { key: "discounts", label: "Discount codes", count: discountsLoading ? undefined : discounts.length },
+  ];
 
   return (
     <>
-      <PageHeader title="Payment Config">
-        <Button
-          onClick={() => {
-            setEditing(undefined);
-            setFormOpen(true);
-          }}
-          disabled={!arenaId}
-          className="bg-primary text-primary-foreground transition-all hover:opacity-95"
-        >
-          <Plus className="size-4" /> Add Discount Code
-        </Button>
+      <PageHeader title="Payments" subtitle={`Bank transfer accounts and discount codes · ${picked ? picked.name : "All arenas"}`}>
+        {tab === "discounts" && (
+          <Button
+            className="ah-lime"
+            disabled={!picked}
+            title={picked ? undefined : "Choose an arena in the top bar first"}
+            onClick={() => {
+              setEditing(undefined);
+              setFormOpen(true);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add code
+          </Button>
+        )}
       </PageHeader>
 
-      <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-foreground">Arena</label>
-          <Select value={arenaId} onChange={(e) => setArenaId(e.target.value)} className="w-64">
-            {arenas.length === 0 && <option value="">No arenas yet</option>}
-            {arenas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {!arenaId && (
-          <p className="text-sm text-muted-foreground">
-            Register an arena first, then configure its payment policy and discount codes here.
-          </p>
+      <div className="ah-ocanvas animate-fade-in ah-stack">
+        {picked && <Policy arena={picked} />}
+        {error && (
+          <div className="ah-card-error" role="alert">
+            <span>{error}</span>
+          </div>
         )}
 
-        {selectedArena && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Payment Policy</h2>
-            <div className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Advance Payment</p>
-                <p className="text-sm font-medium text-foreground">
-                  {selectedArena.advance_percentage}%
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Full Payment Required</p>
-                <p className="text-sm font-medium text-foreground">
-                  {selectedArena.require_full_payment ? "Yes" : "No"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Refund Tiers</p>
-                <p className="text-sm font-medium text-foreground">
-                  {selectedArena.refund_policy.length
-                    ? selectedArena.refund_policy
-                        .map((t) => `${t.hours_before}h → ${t.refund_percentage}%`)
-                        .join(", ")
-                    : "Non-refundable"}
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Edit these from the arena&apos;s edit form on the{" "}
-              <a
-                href={`/owner/arenas`}
-                className="text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+        <section className="ah-card">
+          <div className="ah-tabs ah-tabs-scroll" role="tablist" aria-label="Payment sections">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                id={`tab-${t.key}`}
+                aria-selected={tab === t.key}
+                aria-controls={`panel-${t.key}`}
+                className={tab === t.key ? "ah-tab is-on" : "ah-tab"}
+                onClick={() => setTab(t.key)}
               >
-                Arenas
-              </a>{" "}
-              page.
-            </p>
-          </section>
-        )}
+                {t.label}
+                {t.count != null && <span className="ah-tab-count ah-tag">{t.count}</span>}
+              </button>
+            ))}
+          </div>
 
-        {arenaId && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Bank Transfer Details</h2>
-            <BankDetailsForm arenaId={arenaId} />
-          </section>
-        )}
+          {arenasLoading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
+          {!arenasLoading && arenas.length === 0 && (
+            <AdminEmpty>Register an arena first, then set up its payments here.</AdminEmpty>
+          )}
 
-        {arenaId && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Discount Codes</h2>
-
-            {isLoading && <p className="text-sm text-muted-foreground">Loading discount codes…</p>}
-
-            {!isLoading && (discounts?.length ?? 0) === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No discount codes yet. Click “Add Discount Code” to create one.
+          {tab === "bank" && arenas.length > 0 && (
+            <div id="panel-bank" role="tabpanel" aria-labelledby="tab-bank" className="ah-card-body">
+              <p className="ah-field-hint" style={{ marginBottom: 14 }}>
+                Players see these when they pay by Bank transfer. The default account is listed first;
+                inactive accounts are hidden from players.
               </p>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {discounts?.map((d) => (
-                <div key={d.id} className="space-y-2 rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-mono text-sm font-semibold text-foreground">{d.code}</p>
-                      {d.description && (
-                        <p className="text-xs text-muted-foreground">{d.description}</p>
-                      )}
-                    </div>
-                    <StatusBadge status={d.is_active ? "active" : "inactive"} />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    {d.discount_type === "percentage"
-                      ? `${d.discount_value}% off`
-                      : `Rs. ${d.discount_value} off`}
-                    {Number(d.min_booking_amount) > 0 && (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        (min Rs. {d.min_booking_amount})
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Used {d.used_count}
-                    {d.max_uses ? ` / ${d.max_uses}` : ""} times
-                  </p>
-                  <div className="flex items-center justify-end gap-1 pt-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Edit"
-                      onClick={() => {
-                        setEditing(d);
-                        setFormOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Delete"
-                      onClick={() => {
-                        if (confirm(`Delete code “${d.code}”?`)) removeDiscount.mutate(d.id);
-                      }}
-                    >
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </div>
+              {scope.map((a) => (
+                <div key={a.id} className="ah-bank-group">
+                  {!picked && <h3 className="ah-h3">{a.name}</h3>}
+                  <BankDetailsForm arenaId={a.id} />
                 </div>
               ))}
             </div>
-          </section>
-        )}
+          )}
+
+          {tab === "discounts" && arenas.length > 0 && (
+            <div id="panel-discounts" role="tabpanel" aria-labelledby="tab-discounts">
+              {discountsLoading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
+              {!discountsLoading && discountsFailed && (
+                <div className="ah-card-body">
+                  <div className="ah-card-error" role="alert">
+                    <span>Could not load the discount codes.</span>
+                    <button type="button" className="ah-link" onClick={() => discountQueries.forEach((q) => void q.refetch())}>
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!discountsLoading && !discountsFailed && discounts.length === 0 && (
+                <AdminEmpty>
+                  {picked ? "No discount codes yet. Click “Add code” to create one." : "No discount codes yet. Choose an arena in the top bar to add one."}
+                </AdminEmpty>
+              )}
+              {!discountsLoading && discounts.length > 0 && (
+                <>
+                  <div className="ah-only-wide">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Code</TableHead>
+                          {!picked && <TableHead>Arena</TableHead>}
+                          <TableHead>Discount</TableHead>
+                          <TableHead>Valid</TableHead>
+                          <TableHead className="ah-r">Uses</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="ah-r">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {discounts.map((d) => (
+                          <TableRow key={d.id}>
+                            <TableCell>
+                              <div className="ah-strong ah-mono">{d.code}</div>
+                              {d.description && <div className="ah-sub">{d.description}</div>}
+                            </TableCell>
+                            {!picked && <TableCell className="ah-t2">{arenaName.get(d.arena_id) ?? ""}</TableCell>}
+                            <TableCell>
+                              <div>{discountText(d)}</div>
+                              {Number(d.min_booking_amount) > 0 && (
+                                <div className="ah-sub">On {formatRs(d.min_booking_amount)} or more</div>
+                              )}
+                            </TableCell>
+                            <TableCell className="ah-t2 tabular-nums">{validity(d)}</TableCell>
+                            <TableCell className="ah-r tabular-nums">{used(d)}</TableCell>
+                            <TableCell>{status(d)}</TableCell>
+                            <TableCell className="ah-r">{actions(d)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <ul className="ah-cards">
+                    {discounts.map((d) => (
+                      <li key={d.id}>
+                        <div className="ah-card-line">
+                          <span className="ah-strong ah-mono">{d.code}</span>
+                          {status(d)}
+                        </div>
+                        {(d.description || !picked) && (
+                          <div className="ah-sub">
+                            {[d.description, picked ? null : arenaName.get(d.arena_id)].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
+                        <div className="ah-card-line">
+                          <span>{discountText(d)}</span>
+                          <span className="ah-sub tabular-nums">{used(d)}</span>
+                        </div>
+                        <div className="ah-sub">{validity(d)}</div>
+                        {actions(d)}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="ah-tbl-foot">
+                    <span>{plural(discounts.length, "code")}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </section>
       </div>
 
-      {formOpen && arenaId && (
+      {formOpen && formArenaId && (
         <DiscountForm
           key={editing?.id ?? "new"}
           open={formOpen}
           onOpenChange={setFormOpen}
-          arenaId={arenaId}
+          arenaId={formArenaId}
           discount={editing}
         />
       )}
@@ -198,7 +306,7 @@ function PaymentsInner() {
 
 export default function PaymentsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense fallback={null}>
       <PaymentsInner />
     </Suspense>
   );
