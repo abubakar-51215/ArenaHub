@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-function minutesSinceMidnight(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes();
-}
+import { karachiMinutes } from "@/lib/karachi-date";
 
 /**
  * Sweeping "now" indicator for the Live Board grid. Owns its 60s tick
@@ -17,10 +15,10 @@ function minutesSinceMidnight(d: Date): number {
  * opening/closing without needing a second timer anywhere else.
  */
 export function NowLine({ openMinutes, closeMinutes }: { openMinutes: number; closeMinutes: number }) {
-  const [now, setNow] = useState(() => minutesSinceMidnight(new Date()));
+  const [now, setNow] = useState(karachiMinutes);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(minutesSinceMidnight(new Date())), 60_000);
+    const id = setInterval(() => setNow(karachiMinutes()), 60_000);
     return () => clearInterval(id);
   }, []);
 

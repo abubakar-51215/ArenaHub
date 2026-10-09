@@ -4397,3 +4397,144 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     overflow: hidden;
   }
 }
+
+/* Live Board date control: label, previous / next day, Today, calendar */
+[data-owner] .ah-lb-head {
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+[data-owner] .ah-lb-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+[data-owner] .ah-lb-arenas {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+[data-owner] .ah-lb-date {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* a fixed slot for the Today button and a fixed-width label, so a longer
+   or shorter date never moves the arrows */
+[data-owner] .ah-lb-today {
+  display: inline-flex;
+  justify-content: flex-end;
+  min-width: 76px;
+}
+[data-owner] .ah-lb-label {
+  width: 26ch; /* room for the longest label, "Yesterday · Wed 30 Sept 2026" */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+[data-owner] .ah-datepop {
+  width: min(300px, 94vw);
+}
+[data-owner] .ah-datepop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 8px;
+}
+[data-owner] .ah-datepop-head b {
+  font-size: 13.5px;
+}
+[data-owner] .ah-datepop-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+[data-owner] .ah-datepop-dow {
+  padding: 4px 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-datepop-day {
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+[data-owner] .ah-datepop-day:hover {
+  background: var(--line-soft);
+}
+[data-owner] .ah-datepop-day:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 1px;
+}
+[data-owner] .ah-datepop-day.is-out {
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-datepop-day.is-today {
+  border-color: var(--lime-deep);
+}
+[data-owner] .ah-datepop-day.is-on {
+  background: var(--ink);
+  color: var(--lime);
+  font-weight: 700;
+}
+html[data-theme="dark"] [data-owner] .ah-datepop-day.is-on {
+  background: var(--lime);
+  color: #0f1a15;
+}
+@media (max-width: 767.98px) {
+  /* one row: previous, the label, next, calendar; "Today" gets a row of its
+     own below, only when shown, so the arrows never move sideways */
+  [data-owner] .ah-lb-date {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
+    gap: 8px;
+  }
+  [data-owner] .ah-lb-today {
+    order: 10;
+    grid-column: 1 / -1;
+    min-width: 0;
+    justify-content: stretch;
+  }
+  [data-owner] .ah-lb-today:empty {
+    display: none;
+  }
+  [data-owner] .ah-lb-today button {
+    width: 100%;
+  }
+  [data-owner] .ah-lb-label {
+    width: auto;
+    min-width: 0;
+    font-size: 14px;
+    /* a long label wraps to two centred lines instead of being cut */
+    white-space: normal;
+    line-height: 1.25;
+    overflow: visible;
+  }
+  [data-owner] .ah-lb-date {
+    align-items: center;
+  }
+  [data-owner] .ah-lb-arenas {
+    font-size: 14px;
+  }
+  [data-owner] .ah-datepop-day {
+    height: 44px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-datepop-head b {
+    font-size: 14px;
+  }
+}
