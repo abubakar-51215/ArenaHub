@@ -3548,7 +3548,8 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   color: var(--muted-foreground);
 }
 [data-owner] .ah-cal-day.is-today b {
-  color: var(--lime-deep);
+  /* was var(--lime-deep): 2.94:1 on white in light, under the 3:1 large-text minimum */
+  color: var(--ok-text);
 }
 [data-owner] .ah-cal-court b {
   font-family: inherit;
@@ -3635,9 +3636,13 @@ html[data-theme="dark"] [data-owner] .ah-ev-a {
 html[data-theme="dark"] [data-owner] .ah-ev-c {
   color: #e8b93f;
 }
-/* cancelled and rejected bookings stay visible but faded and struck */
-[data-owner] .ah-ev-off {
-  opacity: 0.6;
+/* cancelled and rejected bookings stay visible, greyed and struck. Was
+   opacity: 0.6 over the sport colour (2.55:1); now muted text on the grey
+   wash, which reads at full contrast */
+[data-owner] .ah-ev.ah-ev-off {
+  background: var(--line-soft);
+  border-color: var(--line);
+  color: var(--muted-foreground);
   text-decoration: line-through;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -4170,6 +4175,23 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   [data-owner] .ah-note-text b,
   [data-owner] .ah-note-text span,
   [data-owner] .ah-note-text small {
+    font-size: 14px;
+  }
+}
+
+/* the small link in a card head (Live Board "Needs your attention") */
+[data-owner] .ah-head-link {
+  margin-left: auto;
+  font-size: 13px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-head-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-bank-list .ah-sub {
     font-size: 14px;
   }
 }

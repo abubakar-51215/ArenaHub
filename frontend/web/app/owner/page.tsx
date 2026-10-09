@@ -208,7 +208,7 @@ function Board() {
             onRetry={() => void approvals.refetch()}
             empty="Nothing is waiting for you."
             actions={
-              <Link href="/owner/bookings" className="ah-link" style={{ marginLeft: "auto", fontSize: 13 }}>
+              <Link href="/owner/bookings" className="ah-link ah-head-link">
                 Bookings
               </Link>
             }
