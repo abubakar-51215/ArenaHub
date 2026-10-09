@@ -40,8 +40,8 @@ async def send_email(to: str, subject: str, body: str, html: str | None = None) 
         or not settings.email_password
         or (settings.is_dev and not settings.email_send_in_dev)
     ):
-        # never the subject or body: an OTP email's subject carries the code
-        log.info("email_dev_delivery", to=to, html=html is not None)
+        # never the address, subject or body: an OTP email carries the code
+        log.info("email_dev_delivery", html=html is not None)
         return
 
     msg = EmailMessage()

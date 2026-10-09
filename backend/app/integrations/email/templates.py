@@ -84,7 +84,35 @@ _OTP_COPY = {
 }
 
 
-def otp_email(code: str, purpose: str, ttl_minutes: int) -> tuple[str, str, str]:
+def admin_login_email(code: str, ttl_minutes: int, requested_by: str) -> tuple[str, str, str]:
+    """The admin sign-in code. The subject carries no code."""
+    subject = f"Your {BRAND} admin sign-in code"
+    who = (
+        f"Someone signed in to the {BRAND} admin panel as {requested_by} with the right "
+        f"password. This code finishes that sign-in and works for {ttl_minutes} minutes."
+    )
+    text = (
+        f"{subject}\n\n"
+        f"Your code is {code}.\n\n{who}\n\n"
+        "If this wasn't you, don't share the code and change your password now."
+    )
+    html = _layout(
+        subject,
+        f"""\
+<p style="margin:0 0 8px;font-size:18px;font-weight:700;">Your admin sign-in code</p>
+<p style="margin:0;">{who}</p>
+{_code_box(code)}
+<p style="margin:0;color:{MUTED};">It can only be used once. If this wasn't you, don't share the
+code and change your password now.</p>""",
+    )
+    return subject, text, html
+
+
+def otp_email(
+    code: str, purpose: str, ttl_minutes: int, requested_by: str | None = None
+) -> tuple[str, str, str]:
+    if purpose == "admin_login":
+        return admin_login_email(code, ttl_minutes, requested_by or "your account")
     heading, action, noun = _OTP_COPY.get(
         purpose, ("Your one-time code", f"complete your {purpose}", "code")
     )

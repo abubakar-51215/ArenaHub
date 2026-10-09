@@ -14,8 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, UnauthorizedError, ValidationError
 from app.core.security import (
+    ADMIN_LOGIN_TOKEN_TTL,
     TokenType,
     create_access_token,
+    create_admin_login_token,
     create_refresh_token,
     decode_token,
     hash_password,
@@ -26,6 +28,9 @@ from app.modules.auth import repository as repo
 from app.modules.auth import tokens
 from app.modules.auth.model import OtpVerification
 from app.modules.auth.schema import (
+    AdminCodeRequest,
+    AdminLoginChallenge,
+    AdminResendRequest,
     ForgotPasswordRequest,
     LoginRequest,
     OtpVerifyRequest,
@@ -176,7 +181,7 @@ async def _register_failed_login(db: AsyncSession, user: User) -> None:
     await db.commit()
 
 
-async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse:
+async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLoginChallenge:
     user = await repo.get_user_by_email(db, data.email)
     if user is None or user.deleted_at is not None or not user.is_active:
         raise UnauthorizedError(_INVALID_CREDENTIALS)
@@ -192,7 +197,72 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse:
     user.failed_login_attempts = 0
     user.locked_until = None
     await db.commit()
+    if user.role == UserRole.admin:
+        # admins finish signing in with an emailed code: no tokens yet
+        await _send_admin_code(db, user)
+        return AdminLoginChallenge(
+            challenge_token=create_admin_login_token(user.id),
+            expires_in=int(ADMIN_LOGIN_TOKEN_TTL.total_seconds()),
+        )
     return _issue_tokens(user)
+
+
+_CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in again."
+
+
+async def _send_admin_code(db: AsyncSession, user: User) -> None:
+    """Email a fresh admin sign-in code, keeping the OTP rules: nothing new
+    within 60 s of the last one, and the older code retired so one is live."""
+    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login, for_update=True)
+    if latest is not None:
+        if _now() - (latest.expires_at - OTP_TTL) < OTP_RESEND_COOLDOWN:
+            await db.commit()  # release the row lock
+            return
+        latest.is_used = True
+    code = generate_otp_code()
+    await repo.create_otp(
+        db,
+        user_id=user.id,
+        code=code,
+        channel="email",
+        purpose=OtpPurpose.admin_login,
+        expires_at=_now() + OTP_TTL,
+    )
+    await db.commit()
+    deliver_otp(user.email, code, purpose=OtpPurpose.admin_login, user_id=user.id)
+
+
+async def _challenge_user(db: AsyncSession, challenge_token: str) -> User:
+    """The admin a sign-in challenge belongs to, or a plain error."""
+    try:
+        payload = decode_token(challenge_token, TokenType.admin_login)
+    except UnauthorizedError as exc:
+        raise UnauthorizedError(_CHALLENGE_INVALID) from exc
+    user = await repo.get_user_by_id(db, uuid.UUID(payload["sub"]))
+    if (
+        user is None
+        or user.deleted_at is not None
+        or not user.is_active
+        or user.role != UserRole.admin
+        or await tokens.is_session_stale(str(user.id), payload)
+    ):
+        raise UnauthorizedError(_CHALLENGE_INVALID)
+    return user
+
+
+async def verify_admin_code(db: AsyncSession, data: AdminCodeRequest) -> TokenResponse:
+    """Second step of an admin sign-in: the emailed code (OTP try limit and
+    row lock), then the normal tokens."""
+    user = await _challenge_user(db, data.challenge_token)
+    otp = await _check_otp(db, user, data.code, OtpPurpose.admin_login)
+    otp.is_used = True
+    await db.commit()
+    return _issue_tokens(user)
+
+
+async def resend_admin_code(db: AsyncSession, data: AdminResendRequest) -> None:
+    user = await _challenge_user(db, data.challenge_token)
+    await _send_admin_code(db, user)
 
 
 async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:

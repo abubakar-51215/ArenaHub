@@ -38,6 +38,7 @@ class OtpPurpose(StrEnum):
     password_change = "password_change"
     phone_change = "phone_change"
     email_change = "email_change"
+    admin_login = "admin_login"  # second sign-in step for admins
 
 
 def generate_otp_code() -> str:
@@ -88,9 +89,12 @@ def deliver_otp(destination: str, code: str, purpose: OtpPurpose, user_id: objec
     if get_settings().is_dev and not _mail_configured():
         log.info("otp_dev_delivery", destination=destination, purpose=purpose, code=code)
     else:
-        log.info("otp_delivery_requested", destination=destination, purpose=purpose)
+        log.info("otp_delivery_requested", purpose=purpose, user_id=str(user_id))
     subject, text, html = otp_email(
-        code, purpose.value, ttl_minutes=int(OTP_TTL.total_seconds() // 60)
+        code,
+        purpose.value,
+        ttl_minutes=int(OTP_TTL.total_seconds() // 60),
+        requested_by=destination,
     )
     _send_in_background(destination, subject, text, html, kind=purpose.value, user_id=user_id)
 
