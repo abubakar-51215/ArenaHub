@@ -649,3 +649,8 @@ Owner Bookings shows "Remind" on a booking that is **Awaiting payment** (status 
 - Sign-in by "Email or phone" is **done** (backend and the owner login page). A match scans the users table by cleaned digits (no index); fine at this size, add a functional index if the table grows. Admins sign in by email only.
 - Google / Apple buttons and the "328 arenas" copy are left out of the sign-in screens (nothing behind them).
 - Mobile gate G1: the frames for reset with 6 boxes, the success step, the admin code and a wrong / expired code are **proposed, not in the prototype**.
+
+## Documented UI improvements for a future update (not part of this restyle)
+
+- **Courts "Bookable" switch on a phone.** The switch itself is 22px high; its label is the 44px tap area. The user approved leaving it as it is. A larger switch is a future improvement. No code change.
+- **Reports "Arena comparison" avatar initials.** They use the first and last word of the name, so every "Arena Hub ..." arena shows "AL". Future idea: use the distinctive words (for example "JT" for Johar Town). Not changed now.
