@@ -100,6 +100,14 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "Your refund of PKR {amount} has been completed.",
         "category": "payment",
     },
+    "payment_reminder": {
+        "title": "Your booking is waiting for payment",
+        "body": (
+            "{arena_name} is holding your booking: {court_name}, {slot}. Payment is still "
+            "waiting. You can pay by Card, Bank transfer, JazzCash or EasyPaisa."
+        ),
+        "category": "booking",
+    },
     "refund_needs_manual": {
         "title": "Your refund is being handled by our team",
         "body": (

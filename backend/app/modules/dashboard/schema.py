@@ -40,6 +40,12 @@ class PendingApprovalItem(BaseModel):
     receipt_proof_url: str | None = None
 
 
+class BookingReminderResponse(BaseModel):
+    player_name: str
+    # a new reminder is possible after this many minutes
+    next_reminder_in_minutes: int
+
+
 class CalendarBookingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -136,3 +142,7 @@ class OwnerBookingRow(BaseModel):
     payment_status: PaymentStatus | None = None
     payment_lifecycle_status: PaymentLifecycleStatus | None = None
     receipt_proof_url: str | None = None
+    # "Awaiting payment" and the slot still ahead: the owner may send a reminder
+    can_remind: bool = False
+    # minutes until another reminder may be sent, while one went out in the last hour
+    remind_wait_minutes: int | None = None

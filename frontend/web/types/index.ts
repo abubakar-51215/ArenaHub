@@ -269,6 +269,10 @@ export interface OwnerBookingRow {
   payment_status?: PaymentStatus | null;
   payment_lifecycle_status?: string | null;
   receipt_proof_url: string | null;
+  /** "Awaiting payment" with the slot still ahead: the owner may send a reminder */
+  can_remind?: boolean;
+  /** minutes until another reminder may go out, while one went out in the last hour */
+  remind_wait_minutes?: number | null;
 }
 
 export interface RevenueBreakdownItem {
