@@ -3,9 +3,11 @@
 /**
  * Owner Bookings, laid out as the owner prototype's Bookings screen: page
  * head with filters and Export, then one card with the bookings table and
- * the pager (the API pages). The arena comes from the top bar's picker
- * (`?arena=`). Left out, as the API has no data for them: the KPI strip
- * totals, the customer's phone, the payment-method column and "Remind".
+ * the pager (the API pages). The arena comes from the picker in the page
+ * header (`?arena=`). Customer phones arrive masked from the server; the
+ * Payment column is the real payment (one of our four methods and its
+ * state). Left out, as nothing is behind them: the KPI strip totals and
+ * "Remind".
  */
 import { Suspense, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
@@ -30,6 +32,7 @@ import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { useApprovePayment, useOwnerBookings, useRejectPayment } from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, formatTime, plural } from "@/lib/format";
+import { PAYMENT_METHOD_LABEL } from "@/lib/payment-methods";
 import { ApiError } from "@/services/api";
 import { listCourts } from "@/services/courts";
 import type { BookingStatus, OwnerBookingRow } from "@/types";
@@ -66,6 +69,18 @@ function exportCsv(rows: OwnerBookingRow[]) {
   a.download = "bookings.csv";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** The payment, in words, from the real payment: one of our four methods and
+ *  its state ("Card · paid"), "Refunded" for a refunded one. */
+function paymentText(row: OwnerBookingRow): string {
+  if (!row.payment_method) return row.status === "pending_payment" ? "Not paid yet" : "—";
+  if (row.payment_status === "refunded" || row.payment_lifecycle_status === "refunded") return "Refunded";
+  const method = PAYMENT_METHOD_LABEL[row.payment_method];
+  if (row.payment_status === "completed") return `${method} · paid`;
+  if (row.payment_status === "failed") return `${method} · failed`;
+  if (row.status === "pending_approval") return `${method} · receipt to review`;
+  return `${method} · pending`;
 }
 
 function bookingRef(id: string): string {
@@ -157,10 +172,10 @@ function Bookings() {
         <Button
           variant="ghost"
           size="sm"
-          title="Check the receipt against your bank details"
+          title="View the receipt and check it against your bank details"
           onClick={() => setReviewing(row)}
         >
-          Receipt
+          View
         </Button>
       )}
       {row.status === "pending_approval" && row.payment_id && (
@@ -267,13 +282,14 @@ function Bookings() {
           {rows.length > 0 && (
             <>
               <div className="ah-only-wide">
-                <Table>
+                <Table className="ah-bk">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Booking</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Court</TableHead>
                       <TableHead>Slot</TableHead>
+                      <TableHead>Payment</TableHead>
                       <TableHead className="ah-r">Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="ah-r">Actions</TableHead>
@@ -284,16 +300,17 @@ function Bookings() {
                       <TableRow key={row.booking_id}>
                         <TableCell className="ah-strong tabular-nums">{bookingRef(row.booking_id)}</TableCell>
                         <TableCell>
-                          <AdminPerson name={row.player_name} />
+                          <AdminPerson name={row.player_name} sub={row.player_phone ?? undefined} />
                         </TableCell>
                         <TableCell>
-                          <div className="ah-strong">{row.court_name}</div>
+                          <div>{row.court_name}</div>
                           <div className="ah-sub">{row.arena_name}</div>
                         </TableCell>
                         <TableCell className="tabular-nums">
                           <div>{formatDateShort(row.booking_date)}</div>
                           <div className="ah-sub">{slotTime(row)}</div>
                         </TableCell>
+                        <TableCell className="ah-t2">{paymentText(row)}</TableCell>
                         <TableCell className="ah-r ah-money">{formatRs(row.total_amount)}</TableCell>
                         <TableCell>
                           <AdminBadge status={row.status} />
@@ -311,11 +328,12 @@ function Bookings() {
                       <span className="ah-strong tabular-nums">{bookingRef(row.booking_id)}</span>
                       <AdminBadge status={row.status} />
                     </div>
-                    <AdminPerson name={row.player_name} />
+                    <AdminPerson name={row.player_name} sub={row.player_phone ?? undefined} />
                     <div>
                       <div>
                         {row.court_name} · {row.arena_name}
                       </div>
+                      <div className="ah-sub">{paymentText(row)}</div>
                       <div className="ah-sub tabular-nums">
                         {formatDateShort(row.booking_date)} · {slotTime(row)}
                       </div>
