@@ -13,7 +13,7 @@ export const ARENA_PARAM = "arena";
 
 /** Owner routes whose data the picker really filters. The picker is shown
  *  only there; a page joins this list when its data is wired to the choice. */
-export const ARENA_PICKER_ROUTES = ["/owner", "/owner/bookings", "/owner/courts", "/owner/calendar", "/owner/pricing", "/owner/revenue"];
+export const ARENA_PICKER_ROUTES = ["/owner", "/owner/bookings", "/owner/courts", "/owner/calendar", "/owner/pricing", "/owner/revenue", "/owner/reports"];
 
 export function useArenaParam(): [string, (arenaId: string) => void] {
   const params = useSearchParams();
