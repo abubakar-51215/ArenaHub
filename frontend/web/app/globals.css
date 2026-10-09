@@ -3637,12 +3637,12 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   color: #e8b93f;
 }
 /* cancelled and rejected bookings stay visible, greyed and struck. Was
-   opacity: 0.6 over the sport colour (2.55:1); now muted text on the grey
-   wash, which reads at full contrast */
+   opacity: 0.6 over the sport colour (2.55:1); then muted text on the grey
+   wash (4.37:1 in light); now --text-2 on the grey wash */
 [data-owner] .ah-ev.ah-ev-off {
   background: var(--line-soft);
   border-color: var(--line);
-  color: var(--muted-foreground);
+  color: var(--text-2);
   text-decoration: line-through;
 }
 @media (prefers-reduced-motion: reduce) {
