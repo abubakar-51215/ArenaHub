@@ -86,16 +86,25 @@ const DONUT_COLOURS = ["var(--lime)", "var(--ink)", "#5A6B61", "#AAB6AF"];
 export function Donut({
   shares,
   total,
+  centre,
+  caption = "BOOKINGS",
+  label = "Bookings by city",
+  colours = DONUT_COLOURS,
 }: {
   shares: { label: string; pct: number }[];
   total: number;
+  /** the figure in the middle (default: the total) and the line under it */
+  centre?: string;
+  caption?: string;
+  label?: string;
+  colours?: string[];
 }) {
   const R = 52;
   const C = 2 * Math.PI * R;
   let off = 0;
   return (
     <div className="ah-row" style={{ gap: 22, alignItems: "center" }}>
-      <svg width="132" height="132" viewBox="0 0 132 132" style={{ flex: "none" }} role="img" aria-label="Bookings by city">
+      <svg width="132" height="132" viewBox="0 0 132 132" style={{ flex: "none" }} role="img" aria-label={label}>
         {shares.map((s, i) => {
           const len = (C * s.pct) / 100;
           const seg = (
@@ -105,7 +114,7 @@ export function Donut({
               cy="66"
               r={R}
               fill="none"
-              stroke={DONUT_COLOURS[i % DONUT_COLOURS.length]}
+              stroke={colours[i % colours.length]}
               strokeWidth="20"
               strokeDasharray={`${Math.max(len - 2, 0)} ${C - len + 2}`}
               strokeDashoffset={-off}
@@ -116,16 +125,16 @@ export function Donut({
           return seg;
         })}
         <text x="66" y="63" textAnchor="middle" fontFamily="var(--font-archivo), sans-serif" fontSize="20" fontWeight="700" fill="var(--text)">
-          {total.toLocaleString("en-US")}
+          {centre ?? total.toLocaleString("en-US")}
         </text>
         <text x="66" y="78" textAnchor="middle" fontSize="9.5" fill="var(--muted-foreground)" letterSpacing="1">
-          BOOKINGS
+          {caption}
         </text>
       </svg>
       <ul className="ah-legend-list">
         {shares.map((s, i) => (
           <li key={s.label}>
-            <i style={{ background: DONUT_COLOURS[i % DONUT_COLOURS.length] }} />
+            <i style={{ background: colours[i % colours.length] }} />
             {s.label}
             <b>{s.pct}%</b>
           </li>

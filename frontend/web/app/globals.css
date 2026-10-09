@@ -3739,3 +3739,15 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     font-size: 14px;
   }
 }
+
+/* owner Earnings: the by-arena table sits flush in its card */
+[data-owner] .ah-earn-table {
+  margin: -18px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-earn-table .ah-occ,
+  [data-owner] .ah-legend-list li,
+  [data-owner] .ah-legend-list b {
+    font-size: 14px;
+  }
+}
