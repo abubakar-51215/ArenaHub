@@ -3885,3 +3885,78 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
     padding: 14px 16px;
   }
 }
+
+/* owner Settings (prototype Settings: tabs, the owner card on paper, the
+   fields beside it). Tabs scroll inside their own row on phones. */
+[data-owner] .ah-tabs-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+[data-owner] .ah-settings {
+  gap: 26px;
+}
+[data-owner] .ah-owner-card {
+  align-self: start;
+  padding: 22px 18px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--line-soft);
+  text-align: center;
+}
+[data-owner] .ah-owner-avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #0f1a15;
+  color: var(--lime);
+  font-family: var(--font-archivo), sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+[data-owner] .ah-owner-card b {
+  display: block;
+  font-size: 15px;
+}
+[data-owner] .ah-owner-card p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+[data-owner] .ah-owner-card .ah-tag {
+  display: inline-block;
+  margin-top: 12px;
+}
+[data-owner] .ah-field-row {
+  display: flex;
+  gap: 8px;
+}
+[data-owner] .ah-field-row [data-slot="input"] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+[data-owner] .ah-field-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-settings-narrow {
+  max-width: 560px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-field-row {
+    flex-direction: column;
+  }
+  [data-owner] .ah-field-hint,
+  [data-owner] .ah-owner-card p,
+  [data-owner] .ah-tab {
+    font-size: 14px;
+  }
+  [data-owner] .ah-tab {
+    min-height: 44px;
+  }
+}
