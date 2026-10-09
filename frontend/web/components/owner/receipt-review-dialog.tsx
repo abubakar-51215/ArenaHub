@@ -31,7 +31,7 @@ export function ReceiptReviewDialog({
     <Dialog open={!!row} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Verify Bank Transfer</DialogTitle>
+          <DialogTitle>Verify bank transfer</DialogTitle>
           <DialogDescription>
             {row ? `#BK-${row.booking_id.slice(0, 4).toUpperCase()} — ${row.player_name}` : ""}
           </DialogDescription>
