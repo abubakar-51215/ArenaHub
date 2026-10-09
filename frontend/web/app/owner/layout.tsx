@@ -68,9 +68,14 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
         </Suspense>
       }
     >
-      <Suspense fallback={null}>
-        <OwnerTopbar onSearch={openSearch} />
-      </Suspense>
+      {/* the desktop top bar belongs to the Live Board only; other pages keep
+          the shortcut (below), the theme switch in the owner card menu and an
+          arena filter in their own header */}
+      {pathname === "/owner" && (
+        <Suspense fallback={null}>
+          <OwnerTopbar onSearch={openSearch} />
+        </Suspense>
+      )}
       {children}
       <OwnerCommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </DashboardShell>

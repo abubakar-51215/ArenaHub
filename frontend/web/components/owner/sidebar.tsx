@@ -17,7 +17,9 @@ import { DropdownMenu } from "radix-ui";
 
 import { useDashboardSummary } from "@/hooks/useDashboard";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useIsDark } from "@/components/admin/topbar";
 import { useArenaParam, withArena } from "@/hooks/useArenaParam";
+import { toggleAdminTheme } from "@/lib/admin-theme";
 import { cn } from "@/lib/utils";
 import { logout } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
@@ -103,6 +105,11 @@ const ICONS = {
     <svg {...svgProps}>
       <circle cx="12" cy="12" r="3.2" />
       <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.2A1.6 1.6 0 0 0 4.3 6.1L4.2 6a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V2a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1A2 2 0 1 1 19.4 6l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.1 1.1Z" />
+    </svg>
+  ),
+  theme: (
+    <svg {...svgProps} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
     </svg>
   ),
   logout: (
@@ -237,6 +244,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
+  const dark = useIsDark();
   const { refreshToken, clear, user } = useAuthStore();
   const { data: summary } = useDashboardSummary();
   const arenas = summary?.total_arenas;
@@ -283,6 +291,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   {ICONS.profile}
                   Profile
                 </Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className="ah-menu-item" onSelect={() => toggleAdminTheme()}>
+                {ICONS.theme}
+                {dark ? "Light theme" : "Dark theme"}
               </DropdownMenu.Item>
               <DropdownMenu.Item className="ah-menu-item" onSelect={() => void onLogout()}>
                 {ICONS.logout}
