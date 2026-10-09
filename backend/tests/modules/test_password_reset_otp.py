@@ -358,3 +358,18 @@ async def test_the_older_reset_token_path_still_works(client, db_session):
         "/api/v1/auth/login", json={"email": "rst-token@example.com", "password": NEW_PASSWORD}
     )
     assert login.status_code == 200
+
+
+async def test_two_wrong_checks_of_one_code_count_two_attempts(client, db_session):
+    _, user = await make_user(client, db_session, "rst-lock@example.com")
+    await _forgot(client, "rst-lock@example.com")
+    code = await _latest_code(db_session, user)
+    wrong = "000000" if code != "000000" else "111111"
+
+    for _ in range(2):
+        assert (await _reset(client, "rst-lock@example.com", wrong)).status_code == 422
+
+    otp = await repo.get_latest_otp(db_session, user.id, OtpPurpose.password_reset)
+    assert otp is not None
+    await db_session.refresh(otp)
+    assert otp.attempts == 2

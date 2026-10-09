@@ -13,6 +13,7 @@ import asyncio
 import secrets
 from datetime import timedelta
 from enum import StrEnum
+from functools import partial
 
 import structlog
 
@@ -49,27 +50,59 @@ def generate_reset_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def deliver_otp(destination: str, code: str, purpose: OtpPurpose) -> None:
-    """Deliver an OTP as a branded HTML email. Dev also logs the code to the
-    console; whether the email actually goes out is decided inside
-    ``send_email`` (credentials present + EMAIL_SEND_IN_DEV honoured)."""
+# Email sends run in the background. asyncio keeps only a weak reference to a
+# task, so each one is held here until it finishes.
+_send_tasks: set[asyncio.Task[None]] = set()
+
+
+def _mail_configured() -> bool:
     settings = get_settings()
-    if settings.is_dev:
+    return bool(settings.email_host and settings.email_password)
+
+
+def _log_send_failure(task: asyncio.Task[None], *, kind: str, user_id: object) -> None:
+    """Done-callback: log a failed send with what it was for and whose it was.
+    Never the code, the token or the email text."""
+    if task.cancelled():
+        log.warning("otp_email_cancelled", kind=kind, user_id=str(user_id))
+        return
+    exc = task.exception()
+    if exc is not None:
+        log.error("otp_email_failed", kind=kind, user_id=str(user_id), error=type(exc).__name__)
+
+
+def _send_in_background(
+    destination: str, subject: str, text: str, html: str, *, kind: str, user_id: object
+) -> None:
+    task = asyncio.create_task(send_email(destination, subject, text, html=html))
+    _send_tasks.add(task)
+    task.add_done_callback(_send_tasks.discard)
+    task.add_done_callback(partial(_log_send_failure, kind=kind, user_id=user_id))
+
+
+def deliver_otp(destination: str, code: str, purpose: OtpPurpose, user_id: object) -> None:
+    """Deliver an OTP as a branded HTML email. The code itself is written to the
+    log only in dev with no mail server configured, so it can be read there;
+    every other setting logs the request without the code. Whether the email
+    actually goes out is decided inside ``send_email``."""
+    if get_settings().is_dev and not _mail_configured():
         log.info("otp_dev_delivery", destination=destination, purpose=purpose, code=code)
     else:
         log.info("otp_delivery_requested", destination=destination, purpose=purpose)
     subject, text, html = otp_email(
         code, purpose.value, ttl_minutes=int(OTP_TTL.total_seconds() // 60)
     )
-    asyncio.create_task(send_email(destination, subject, text, html=html))
+    _send_in_background(destination, subject, text, html, kind=purpose.value, user_id=user_id)
 
 
-def deliver_reset_link(destination: str, token: str) -> None:
-    """Deliver a password-reset token (same delivery gating as OTPs)."""
-    settings = get_settings()
-    if settings.is_dev:
+def deliver_reset_link(destination: str, token: str, user_id: object = None) -> None:
+    """Deliver a password-reset token (same rule as OTPs: the token reaches the
+    log only in dev with no mail server configured)."""
+    if get_settings().is_dev and not _mail_configured():
         log.info("password_reset_dev_delivery", destination=destination, token=token)
     else:
         log.info("password_reset_requested", destination=destination)
     subject, text, html = reset_email(token, ttl_minutes=int(RESET_TOKEN_TTL.total_seconds() // 60))
-    asyncio.create_task(send_email(destination, subject, text, html=html))
+    _send_in_background(
+        destination, subject, text, html, kind="password_reset_link", user_id=user_id
+    )
