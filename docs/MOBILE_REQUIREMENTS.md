@@ -29,8 +29,9 @@ current working session.*
 | 8 | Light haptic on primary taps, a stronger one on success and error (expo-haptics is installed, 15.0.8; used only by the tab bar today). | earlier prompt; standing rules c) | Not started |
 | 9 | Everything respects "reduce motion" (instant). Screen changes use the native stack transition. | earlier prompt; standing rules c) | Partly (the Field animation does; nothing else animates yet) |
 | 10 | No new animation library unless already installed (`react-native-reanimated` 4.1.7 is). | earlier prompt; standing rules c) | Done as a rule |
-| 11 | Mail and lock fields are huge while idle and shrink to a normal field on focus or text (300 ms), on every screen that has one: Log in, Register, Forgot password, Reset password, Change password, Change email, and later ones. One shared `Field` behaviour. | earlier prompt; standing rules d); `arena-hub-player-app-auth-2.html` | Partly (shared `Field` built; applied to Register only) |
-| 12 | Phone targets are 44px; text is 14px on phones except labels, badges and chart text. | earlier prompt (web rule, asked to be listed here for mobile); `MOBILE_QA_GATE.md` | Partly (auth screens: 44px boxes, fields and links; the old screens are unchecked) |
+| 11 | Every password field has a show/hide eye button (44px tap area, labels "Show password" / "Hide password"); while the password is visible the eye is a crossed-out eye, swapped smoothly with no layout jump. **Confirmed.** | earlier prompt (user decision, G1 release) | Partly (eye built, no crossed-out version yet) |
+| 11b | Mail and lock fields are huge while idle and shrink to a normal field on focus or text (300 ms), on every screen that has one: Log in, Register, Forgot password, Reset password, Change password, Change email, and later ones. One shared `Field` behaviour. | earlier prompt; standing rules d); `arena-hub-player-app-auth-2.html` | Partly (shared `Field` built; applied to Register only) |
+| 12 | Phone targets are 44px (small links get a 44px tap area through hitSlop); text is 14px except labels, badges and chart text. Same as web. **Confirmed for mobile by the user.** | earlier prompt; `MOBILE_QA_GATE.md` | Partly (auth screens: 44px boxes, fields and links; the old screens are unchecked) |
 | 13 | A new screen is built from the same components and tokens as the rest; a screen the prototype does not draw is marked "proposed, not in the prototype". | earlier prompt; `RESTYLE_FOLLOWUPS.md` sign-in follow-ups | Partly (see Unconfirmed 1) |
 
 ## 2. How every commit is checked
@@ -98,7 +99,7 @@ Screen-level requirements already written down:
 
 | # | Requirement | Source | Status |
 |---|---|---|---|
-| 34 | Payment options are Card, Bank transfer, JazzCash, EasyPaisa (one list, in that wording). | `FEATURE_GAP_REPORT.md` and the scope lock (web); earlier prompt for mobile | Conflicts: the mobile Payment screen lists "Credit / Debit Card" first and preselects it; G4 aligns it |
+| 34 | **G4 Payment screen:** it lists exactly Card, Bank transfer, JazzCash, EasyPaisa (provider keys `stripe`, `manual`, `jazzcash`, `easypaisa`; `mock` is never listed) and does not preselect "Credit / Debit Card". | `FEATURE_GAP_REPORT.md` and the scope lock (web); earlier prompt (G1 release) | Conflicts: today the mobile Payment screen lists "Credit / Debit Card" first and preselects it; G4 fixes it |
 | 35 | Card payment must work before any demo that pays by card (Stripe key is a placeholder in dev, so card returns 500). | `RESTYLE_FOLLOWUPS.md`; `FEATURE_GAP_REPORT.md` | Not started (backend/config) |
 | 36 | A bank-transfer booking waits for the owner; a bank transfer with a receipt is "to review"; "Awaiting payment" means nothing paid yet. The owner can send the player a payment reminder. | earlier prompt (Remind); `RESTYLE_FOLLOWUPS.md` | Backend done; the player sees it as a notice |
 
@@ -113,25 +114,22 @@ Screen-level requirements already written down:
 
 ---
 
+## Confirmed, not built yet (the user will make prototype frames first)
+
+| # | Requirement | Source | Status |
+|---|---|---|---|
+| 41 | A complaints screen for players (file a complaint, see your own complaints and the admin's answer). | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
+| 42 | Distance search ("near me"): the distance on arena cards and a radius search. | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
+| 43 | A booking-history report (download or share your bookings as a file). | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
+| 44 | The final G1 sign-in frames are in `design/prototypes/arena-hub-player-app-auth-2.html`: Log in, Forgot password, the code and new-password steps, success, failed, admin code, wrong code, admin landing (temporary until the admin group), the pop-up pattern and the toast pattern. | earlier prompt | In progress (G1) |
+
+## Decided out of scope or settled
+
+- **Text-message (SMS) codes:** not now, out of scope.
+- **A sign-in step with no frame:** the frames now exist (auth-2 file). Any other screen without a frame waits for a frame.
+- **The old Verify wording that mentioned the backend console:** it does not come back.
+- **Sign-up variant:** stays "unconfirmed, built the only frame".
+
 ## Unconfirmed
 
-These were found in the project files or came up in work, but I could not trace them to something the user asked
-for the mobile app. They stay here until the user says yes.
-
-1. **A show/hide-password eye button on every password field.** It is drawn in `arena-hub-player-app-auth-2.html`, and the
-   user's last note says it is hidden while a field is idle, but no earlier prompt asked for it on mobile. It is built
-   on the shared `Field` and on Register. Say if it should stay.
-2. **Eye icon when the password is shown.** The prototype draws one eye only; the built eye changes colour (ink) when the
-   password is visible. No "crossed" eye is drawn, so none was invented.
-3. **Phone-number OTP by text message** (FR-P-01 says "email or phone"). The docs list it, but today codes go by email
-   only, and no prompt asked for text messages on mobile.
-4. **A screen to file and track complaints** (gap report item 7), **distance search and sort** (item 9 / FR-P-04),
-   **a booking-history report screen** (FR-P-17). They are gaps found by reading the code, not requests.
-5. **Mobile text size and target size beyond the auth screens.** Rule 12 was asked to be listed, but a precise
-   mobile rule (which texts are exempt) was written only for the web. Needs the user to confirm the exemptions for mobile.
-6. **Where a sign-in step is not in the prototype** (reset success, expired-code state, admin states). Earlier prompts said
-   to build them from the same components; the latest says the new file's frames are the prototype instead. Which one
-   wins if a frame is missing: rule 2 (wait for a frame).
-7. **The Sign-up variant.** The user wrote "unconfirmed"; the one existing frame was built.
-8. **Whether the old Verify copy that mentioned the backend console in development** should return. It was removed
-   in favour of the prototype wording; nobody asked either way.
+Nothing is open right now. A line is added here when a requirement cannot be traced to something the user asked for.
