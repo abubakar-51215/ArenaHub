@@ -2,7 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ScreenLoader } from '@/components/brand/screen-loader';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -66,7 +67,7 @@ export default function RescheduleScreen() {
   if (booking.isLoading || !booking.data) {
     return (
       <SafeAreaView style={styles.loading} edges={['top']}>
-        <ActivityIndicator color={Colors.light.tint} />
+        <ScreenLoader top={0} />
       </SafeAreaView>
     );
   }
@@ -109,7 +110,7 @@ export default function RescheduleScreen() {
       />
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.light.tint} style={{ marginTop: 32 }} />
+        <ScreenLoader />
       ) : (
         <FlatList
           data={slots ?? []}

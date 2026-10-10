@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, View, type ScrollView } from 'react-native';
 import type { ReactNode } from 'react';
 
+import { BrandMark } from '@/components/brand/brand-mark';
 import { BackButton } from '@/components/ui/back-button';
 import { FieldScrollContext } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
@@ -23,10 +24,12 @@ interface AuthScreenProps {
   onBack?: () => void;
   /** No back button (Log in is the first screen). */
   hideBack?: boolean;
+  /** The still ArenaHub mark at the top (Log in, Register, Verify, Forgot password). */
+  showMark?: boolean;
   children: ReactNode;
 }
 
-export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack, children }: AuthScreenProps) {
+export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack, showMark, children }: AuthScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
   return (
@@ -36,12 +39,27 @@ export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         bottomOffset={24}>
-        {hideBack ? <View style={styles.headSpace} /> : <View style={styles.head}>
-          <BackButton
-            hitSlop={7}
-            onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login')))}
-          />
-        </View>}
+        {hideBack ? (
+          showMark ? (
+            <View style={styles.markRow}>
+              <BrandMark mode="still" tone="light" size={44} />
+            </View>
+          ) : (
+            <View style={styles.headSpace} />
+          )
+        ) : (
+          <View style={styles.head}>
+            <BackButton
+              hitSlop={7}
+              onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login')))}
+            />
+            {showMark ? (
+              <View style={styles.markRight}>
+                <BrandMark mode="still" tone="light" size={44} />
+              </View>
+            ) : null}
+          </View>
+        )}
         {title ? (
           <Text variant="archivo" style={styles.title} accessibilityRole="header">
             {title}
@@ -61,7 +79,9 @@ export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   content: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 24 },
-  head: { flexDirection: 'row', paddingBottom: 14 },
+  head: { flexDirection: 'row', alignItems: 'center', paddingBottom: 14 },
+  markRight: { marginLeft: 'auto' },
+  markRow: { height: 44, marginBottom: 6 },
   // where the back button would be: the title sits 46px below the top, as in the Log in frame
   headSpace: { height: 26 },
   title: {

@@ -1,8 +1,9 @@
+import { ScreenLoader } from "@/components/brand/screen-loader";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
-  ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+  FlatList, Pressable, StyleSheet, View } from "react-native";
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -77,10 +78,7 @@ export default function NotificationsScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator
-          color={Colors.light.tint}
-          style={{ marginTop: 32 }}
-        />
+        <ScreenLoader />
       ) : (
         <FlatList
           data={notifications}

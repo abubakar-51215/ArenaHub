@@ -82,7 +82,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <AuthScreen title="Create your account" subtitle="Join ArenaHub and start booking courts.">
+    <AuthScreen showMark title="Create your account" subtitle="Join ArenaHub and start booking courts.">
       <View style={styles.form}>
         <View style={styles.group}>
           <Field
