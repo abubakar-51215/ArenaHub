@@ -136,6 +136,7 @@ function RootNavigator() {
       <Stack.Protected guard={!!accessToken && !!user}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="filters" options={{ headerShown: false }} />
         <Stack.Screen name="arena/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="court/[id]/slots"
