@@ -177,7 +177,7 @@ export default function RegisterScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Already have an account? </Text>
-        <Link href="/(auth)/login" style={styles.footerLink} accessibilityRole="link">
+        <Link href="/(auth)/login" dismissTo style={styles.footerLink} accessibilityRole="link">
           Log in
         </Link>
       </View>

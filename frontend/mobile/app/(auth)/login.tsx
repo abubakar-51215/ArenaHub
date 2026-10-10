@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { Link, router, type Href } from 'expo-router';
+import { Link, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
@@ -19,6 +19,8 @@ import { useAuthStore } from '@/store/auth';
 // password and an unknown account in the same words, so this screen shows the
 // server's message as it is.
 export default function LoginScreen() {
+  // set when an admin's sign-in step expired (Admin code screen sends them back here)
+  const { notice } = useLocalSearchParams<{ notice?: string }>();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,11 @@ export default function LoginScreen() {
 
   return (
     <AuthScreen hideBack title="Welcome back" subtitle="Log in with your email or phone number.">
+      {notice ? (
+        <View style={styles.note} accessibilityRole="alert">
+          <Text style={styles.noteText}>{notice}</Text>
+        </View>
+      ) : null}
       <View style={styles.form}>
         <Field
           icon="mail"
@@ -131,6 +138,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  // .note.info of the auth-2 frames
+  note: { backgroundColor: '#EEF6D6', borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
+  noteText: { fontSize: 12.5, lineHeight: 17.5, color: '#4D6410' },
   form: { gap: 11 },
   // right aligned; the link has 14px above and below so its tap area is 44 high
   forgotRow: { alignItems: 'flex-end', marginTop: -14 },
