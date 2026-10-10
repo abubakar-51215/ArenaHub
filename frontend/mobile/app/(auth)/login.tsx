@@ -1,104 +1,141 @@
 import { useMutation } from '@tanstack/react-query';
-import { Link, router } from 'expo-router';
-import { useState } from 'react';
-import {
-  KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { Link, router, type Href } from 'expo-router';
+import { useRef, useState } from 'react';
+import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { Colors } from '@/constants/theme';
+import { AuthScreen } from '@/components/auth/auth-screen';
+import { FieldMessage } from '@/components/auth/field-message';
+import { Button, useButtonStatus } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
+import { Text } from '@/components/ui/text';
+import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
-import { fetchMe, login } from '@/services/auth';
+import { fetchMe, isAdminChallenge, login } from '@/services/auth';
+import { useAdminChallenge } from '@/store/admin-challenge';
 import { useAuthStore } from '@/store/auth';
 
+// Frame 1 of arena-hub-player-app-auth-2.html. The first field takes an email
+// or a phone number and is sent as `identifier`; the server answers a wrong
+// password and an unknown account in the same words, so this screen shows the
+// server's message as it is.
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [btnStatus, flash] = useButtonStatus();
+  const passwordRef = useRef<RNTextInput>(null);
   const setSession = useAuthStore((s) => s.setSession);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const tokens = await login(email.trim(), password);
+      const who = identifier.trim();
+      const result = await login(who, password);
+      if (isAdminChallenge(result)) return { kind: 'admin' as const, challenge: result, who };
       // Stash the token immediately so the fetchMe call below is authed.
-      useAuthStore.getState().setTokens(tokens);
+      useAuthStore.getState().setTokens(result);
       const me = await fetchMe();
-      return { tokens, me };
+      return { kind: 'ok' as const, tokens: result, me };
     },
-    onSuccess: ({ tokens, me }) => {
-      setSession(tokens, me);
-      router.replace('/(tabs)');
+    onSuccess: (r) => {
+      if (r.kind === 'admin') {
+        // an admin: a code was emailed; the token lives in memory only
+        useAdminChallenge.getState().set(r.challenge.challenge_token, r.who);
+        router.push('/(auth)/admin-code' as Href);
+        return;
+      }
+      flash('success');
+      setSession(r.tokens, r.me);
+      router.replace(r.me.role === 'admin' ? ('/admin' as Href) : '/(tabs)');
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
+      flash('error');
+      if (err instanceof ApiError && err.status === 429) {
+        setError('Too many attempts. Please wait a minute and try again.');
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Could not reach the server. Check your connection and try again.');
+      }
     },
   });
 
+  const submit = () => {
+    if (mutation.isPending) return;
+    setError(null);
+    if (!identifier.trim() || !password) {
+      setError('Enter your email or phone number and your password.');
+      flash('error');
+      return;
+    }
+    mutation.mutate();
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.logo}>
-          <Text style={{ color: Colors.light.tint }}>Arena</Text>Hub
-        </Text>
-        <Text style={styles.title}>Welcome back!</Text>
-        <Text style={styles.subtitle}>Login to continue booking</Text>
-
-        <View style={styles.form}>
-          <TextField
-            label="Email or Phone"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-          />
-          <TextField
-            label="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-          />
-          <Link href="/(auth)/forgot-password" style={styles.forgot}>
-            Forgot?
-          </Link>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Button
-            title="Log In"
-            loading={mutation.isPending}
-            onPress={() => {
-              setError(null);
-              mutation.mutate();
-            }}
-          />
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
-          <Link href="/(auth)/register" style={styles.footerLink}>
-            Sign up
+    <AuthScreen hideBack title="Welcome back" subtitle="Log in with your email or phone number.">
+      <View style={styles.form}>
+        <Field
+          icon="mail"
+          huge
+          placeholder="Email or phone"
+          value={identifier}
+          onChangeText={(t) => {
+            setIdentifier(t);
+            setError(null);
+          }}
+          error={!!error}
+          autoComplete="username"
+          textContentType="username"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          accessibilityLabel="Email or phone"
+        />
+        <Field
+          ref={passwordRef}
+          icon="lock"
+          huge
+          revealable
+          placeholder="Password"
+          value={password}
+          onChangeText={(t) => {
+            setPassword(t);
+            setError(null);
+          }}
+          error={!!error}
+          secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          autoCapitalize="none"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+          accessibilityLabel="Password"
+        />
+        {error ? <FieldMessage>{error}</FieldMessage> : null}
+        <View style={styles.forgotRow}>
+          <Link href="/(auth)/forgot-password" style={styles.forgot} accessibilityRole="link">
+            Forgot password?
           </Link>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Button title="Log in" loading={mutation.isPending} status={btnStatus} onPress={submit} />
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>New here? </Text>
+        <Link href="/(auth)/register" style={styles.footerLink} accessibilityRole="link">
+          Create account
+        </Link>
+      </View>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.light.background },
-  container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-  logo: { fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 32 },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.light.text },
-  subtitle: { fontSize: 14, color: Colors.light.muted, marginTop: 4, marginBottom: 24 },
-  form: { gap: 14 },
-  forgot: { alignSelf: 'flex-end', color: Colors.light.tint, fontSize: 13, fontWeight: '600' },
-  errorText: { color: Colors.light.destructive, fontSize: 13 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  footerText: { color: Colors.light.muted, fontSize: 14 },
-  footerLink: { color: Colors.light.tint, fontSize: 14, fontWeight: '700' },
+  form: { gap: 11 },
+  // right aligned; the link has 14px above and below so its tap area is 44 high
+  forgotRow: { alignItems: 'flex-end', marginTop: -14 },
+  forgot: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingLeft: 12 },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', minHeight: 44, marginTop: 4 },
+  footerText: { fontSize: 13, color: Colors.light.muted },
+  footerLink: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14 },
 });
