@@ -18,21 +18,13 @@ import { getRecommendations } from '@/services/ai';
 import { getTrendingArenas } from '@/services/arenas';
 import { getUnreadCount } from '@/services/notifications';
 import { useAuthStore } from '@/store/auth';
-import { useLocationStore, type LocationStatus } from '@/store/location';
+import { useLocationStore } from '@/store/location';
 import { useSearchFilters } from '@/store/search-filters';
 
 // Home, from the frames of arena-hub-player-app-home-search.html: the dark
 // hero, the sport chips, and three sections that each load on their own
 // (their own shimmer; a small inline "Could not load" when one fails; hidden
 // when empty). The whole-screen error shows only if all three fail.
-const LOCATION_LABEL: Record<LocationStatus, string> = {
-  idle: 'Detect my location',
-  detecting: 'Detecting…',
-  detected: '',
-  denied: 'Location permission denied',
-  outside: 'Outside supported cities',
-};
-
 // Home's "See all" links and sport chips open the Results screen with a preset
 const results = (preset: Parameters<ReturnType<typeof useSearchFilters.getState>['open']>[0]) => {
   useSearchFilters.getState().open(preset);
@@ -96,6 +88,8 @@ export default function HomeScreen() {
 
   const allFailed = trending.isError && recommended.isError && popular.isError;
   const first = user?.full_name?.split(' ')[0] ?? 'there';
+  // the detected city, else the first city saved in the profile, else "All cities": never a permission message
+  const savedCity = user?.preferred_locations?.[0] ?? 'All cities';
 
   return (
     <View style={styles.page}>
@@ -114,7 +108,7 @@ export default function HomeScreen() {
             <View style={styles.heroTop}>
               <Pressable onPress={detect} hitSlop={10} style={styles.where} accessibilityRole="button" accessibilityLabel="Detect my location">
                 <Icon name="pin" size={13} color="#8FA096" />
-                <Text style={styles.whereText}>{city ?? LOCATION_LABEL[status]}</Text>
+                <Text style={styles.whereText}>{city ?? savedCity}</Text>
               </Pressable>
               <Pressable
                 onPress={() => router.push('/notifications')}
