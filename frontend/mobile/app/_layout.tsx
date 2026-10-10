@@ -18,6 +18,7 @@ import "react-native-reanimated";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { Colors, Font } from "@/constants/theme";
+import { ToastHost } from "@/components/ui/toast";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { fetchMe } from "@/services/auth";
@@ -203,6 +204,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider value={NavigationTheme}>
           <RootNavigator />
+          <ToastHost />
           <StatusBar style="dark" />
         </ThemeProvider>
       </QueryClientProvider>
