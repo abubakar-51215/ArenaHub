@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/services/api";
 import type { ArenaInput } from "@/services/arenas";
 import { useCreateArena, useUpdateArena } from "@/hooks/useArenas";
+import { SportChecks } from "@/components/owner/sport-checks";
 import {
   ARENA_CITIES,
   type Arena,
@@ -69,7 +70,7 @@ export function ArenaForm({
   const [longitude, setLongitude] = useState(arena?.longitude ?? "");
   const [phone, setPhone] = useState(arena?.contact_phone ?? "");
   const [emailContact, setEmailContact] = useState(arena?.contact_email ?? "");
-  const [sports, setSports] = useState((arena?.sports_offered ?? []).join(", "));
+  const [sports, setSports] = useState<string[]>(arena?.sports_offered ?? []);
   const [images, setImages] = useState((arena?.images ?? []).join("\n"));
   const [advance, setAdvance] = useState(String(arena?.advance_percentage ?? 100));
   const [fullPayment, setFullPayment] = useState(arena?.require_full_payment ?? true);
@@ -96,12 +97,9 @@ export function ArenaForm({
     e.preventDefault();
     setError(null);
 
-    const sportsList = sports
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const sportsList = sports;
     if (sportsList.length === 0) {
-      setError("Add at least one sport.");
+      setError("Choose at least one sport.");
       return;
     }
     if (Object.keys(openHours).length === 0) {
@@ -232,14 +230,8 @@ export function ArenaForm({
             </div>
           </div>
           <div>
-            <Label htmlFor="a-sports">Sports Offered</Label>
-            <Input
-              id="a-sports"
-              value={sports}
-              onChange={(e) => setSports(e.target.value)}
-              placeholder="futsal, cricket, padel"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated.</p>
+            <Label>Sports Offered</Label>
+            <SportChecks idPrefix="a-sport" value={sports} onChange={setSports} />
           </div>
 
           <div>
