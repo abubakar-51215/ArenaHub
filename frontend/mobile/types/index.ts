@@ -272,3 +272,52 @@ export interface Match {
 export interface MatchDetail extends Match {
   participants: MatchParticipant[];
 }
+
+/** POST /bookings/preview: the price of a checkout, nothing reserved. */
+export interface BookingPreview {
+  slots_subtotal: string;
+  equipment_total: string;
+  discount_amount: string;
+  total: string;
+  payment_type: PaymentPlan;
+  pay_now: string;
+  due_at_arena: string;
+  discount_status: 'none' | 'applied' | 'refused';
+  discount_message: string | null;
+  cancellation_note: string;
+}
+
+/** GET /bookings/group/{id}: one booking group with names, money and rules. */
+export interface BookingGroupDetails {
+  booking_group_id: string;
+  arena_id: string;
+  arena_name: string;
+  arena_address: string;
+  court_id: string;
+  court_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  slot_count: number;
+  status: BookingStatus;
+  payment_status: PaymentStatus;
+  payment_type: PaymentPlan;
+  total: string;
+  pay_now: string;
+  due_at_arena: string;
+  payment_id: string | null;
+  payment_method: PaymentMethod | null;
+  payment_lifecycle: string | null;
+  booking_code: string;
+  cancellation_note: string;
+  booking_ids: string[];
+}
+
+/** GET /payments/methods: exactly four, in this order. */
+export interface PayMethodInfo {
+  key: 'stripe' | 'manual' | 'jazzcash' | 'easypaisa';
+  method: PaymentMethod;
+  label: string;
+  state: 'available' | 'unavailable' | 'coming_soon';
+  message: string | null;
+}

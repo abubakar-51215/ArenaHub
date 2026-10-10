@@ -3,6 +3,8 @@
  * since this needs a FormData body and no Content-Type override (fetch sets
  * the multipart boundary itself).
  */
+import { Platform } from 'react-native';
+
 import { ApiError, type FieldError } from '../lib/api';
 import { API_BASE } from '../lib/config';
 import { useAuthStore } from '../store/auth';
@@ -16,8 +18,14 @@ export async function uploadImage(
   const filename = uri.split('/').pop() || 'photo.jpg';
   const ext = filename.split('.').pop()?.toLowerCase();
   const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  // React Native's fetch accepts this file-like shape for FormData.
-  form.append('file', { uri, name: filename, type: mime } as unknown as Blob);
+  if (Platform.OS === 'web') {
+    // a browser FormData needs the real file, not the file-like shape
+    const blob = await (await fetch(uri)).blob();
+    form.append('file', blob, filename);
+  } else {
+    // React Native's fetch accepts this file-like shape for FormData.
+    form.append('file', { uri, name: filename, type: mime } as unknown as Blob);
+  }
 
   const res = await fetch(`${API_BASE}/uploads/image?folder=${folder}`, {
     method: 'POST',

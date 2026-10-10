@@ -2,7 +2,11 @@
 import { api } from '../lib/api';
 import { API_BASE } from '../lib/config';
 import { useAuthStore } from '../store/auth';
-import type { Page, Payment, PaymentHistoryItem, PaymentInitiateResult, PaymentMethod } from '../types';
+import type { Page, PayMethodInfo, Payment, PaymentHistoryItem, PaymentInitiateResult, PaymentMethod } from '../types';
+
+export function listPaymentMethods(): Promise<PayMethodInfo[]> {
+  return api.get<PayMethodInfo[]>('/payments/methods');
+}
 
 export function initiatePayment(
   bookingGroupId: string,
