@@ -18,6 +18,12 @@ export function listMyNotifications(): Promise<NotificationPage> {
   return api.get<NotificationPage>("/notifications?page_size=50");
 }
 
+/** Just the unread count (the bell dot on Home): one small page. */
+export async function getUnreadCount(): Promise<number> {
+  const page = await api.get<NotificationPage>("/notifications?page_size=1");
+  return page.unread_count;
+}
+
 export function markNotificationRead(id: string): Promise<AppNotification> {
   return api.patch<AppNotification>(`/notifications/${id}/read`);
 }

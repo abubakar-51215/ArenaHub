@@ -8,7 +8,7 @@ export interface ArenaSearchParams {
   sport?: string;
   price_min?: number;
   price_max?: number;
-  sort?: "newest" | "name" | "price_asc" | "price_desc" | "rating_desc";
+  sort?: "newest" | "name" | "price_asc" | "price_desc" | "rating_desc" | "best";
   page?: number;
   page_size?: number;
 }
