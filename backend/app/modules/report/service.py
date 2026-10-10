@@ -15,6 +15,7 @@ from app.modules.admin import repository as admin_repo
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
+from app.modules.court import repository as court_repo
 from app.modules.report.builders import rows_to_csv, rows_to_pdf
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User, UserRole
@@ -56,11 +57,22 @@ async def player_bookings_report(
     if date_to is not None:
         bookings = [b for b in bookings if b.booking_date <= date_to]
 
-    headers = ["Date", "Time", "Status", "Payment Status", "Amount (PKR)"]
+    names: dict[tuple[str, uuid.UUID], str] = {}
+    for b in bookings:
+        if ("a", b.arena_id) not in names:
+            arena = await arena_repo.get_arena(db, b.arena_id)
+            names[("a", b.arena_id)] = arena.name if arena else ""
+        if ("c", b.court_id) not in names:
+            court = await court_repo.get_court(db, b.court_id)
+            names[("c", b.court_id)] = court.name if court else ""
+
+    headers = ["Date", "Time", "Arena", "Court", "Status", "Payment Status", "Amount (PKR)"]
     rows = [
         [
             b.booking_date.isoformat(),
             f"{b.start_time.strftime('%H:%M')}-{b.end_time.strftime('%H:%M')}",
+            names[("a", b.arena_id)],
+            names[("c", b.court_id)],
             b.status.value,
             b.payment_status.value,
             str(b.total_amount),
