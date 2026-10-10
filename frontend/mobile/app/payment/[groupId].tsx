@@ -95,10 +95,7 @@ export default function PaymentScreen() {
       return { pendingApproval: false };
     },
     onSuccess: ({ pendingApproval }) => {
-      router.replace({
-        pathname: '/booking/confirmation/[bookingId]',
-        params: { bookingId, pendingApproval: pendingApproval ? '1' : '0' },
-      });
+      router.replace('/(tabs)/bookings');
     },
     onError: (err) =>
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Payment failed.'),
