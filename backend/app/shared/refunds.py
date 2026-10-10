@@ -50,3 +50,13 @@ def describe_refund_policy(policy: list[dict], start: datetime) -> str:
             parts.append(f"Before {cutoff}, {pct}% is refunded.")
     parts.append("After that, nothing is refunded.")
     return " ".join(parts)
+
+
+def free_cancel_cutoff(policy: list[dict], start: datetime) -> datetime:
+    """The last moment a booking can still be cancelled (or moved) on the arena's
+    best terms: the start minus the largest threshold that refunds in full, or
+    the largest threshold when no tier refunds in full."""
+    tiers = policy or DEFAULT_REFUND_POLICY
+    full = [t for t in tiers if t["refund_percentage"] >= 100]
+    hours = max((t["hours_before"] for t in (full or tiers)), default=0)
+    return start - timedelta(hours=hours)

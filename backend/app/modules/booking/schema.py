@@ -120,3 +120,58 @@ class BookingGroupDetails(BaseModel):
     booking_code: str
     cancellation_note: str
     booking_ids: list[uuid.UUID]
+    # what was refunded (or is on its way) for a cancelled group
+    refund_amount: Decimal = Decimal("0")
+    refund_status: str | None = None
+    can_cancel: bool = False
+    can_reschedule: bool = False
+
+
+class CancelPreview(BaseModel):
+    """What cancelling this group now would do: the refund from the arena policy."""
+
+    can_cancel: bool
+    paid: Decimal
+    refund_percentage: int
+    refund_amount: Decimal
+    policy_text: str
+
+
+class GroupRescheduleRequest(BaseModel):
+    new_slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
+
+
+class ReschedulePreview(BaseModel):
+    """The price of moving a group to new times, nothing changed yet. ``balance`` is
+    what is still to pay at the arena; ``refund`` is what goes back to the player."""
+
+    old_total: Decimal
+    new_total: Decimal
+    paid: Decimal
+    balance: Decimal
+    refund: Decimal
+
+
+class BookingGroupListItem(BaseModel):
+    """One card of My bookings: a whole booking group."""
+
+    booking_group_id: uuid.UUID
+    booking_code: str
+    arena_id: uuid.UUID
+    arena_name: str
+    arena_photo: str | None = None
+    court_id: uuid.UUID
+    court_name: str
+    sport: str | None = None
+    booking_date: date
+    start_time: time
+    end_time: time
+    slot_count: int
+    status: BookingStatus
+    payment_status: PaymentStatus
+    total: Decimal
+    pay_now: Decimal
+    due_at_arena: Decimal
+    refund_amount: Decimal
+    refund_status: str | None = None
+    tab: str

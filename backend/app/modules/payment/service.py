@@ -547,13 +547,44 @@ async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking
     # Base the tier on what was actually captured (payment.amount, which for
     # advance-payment bookings is less than total_amount) — _issue_refund then
     # caps it at the still-refundable balance.
-    computed = payment.amount * Decimal(booking.refund_percentage) / Decimal(100)
+    # This booking's share of the payment: a group is paid once, so cancelling
+    # one slot of three must refund a third, never the whole payment.
+    siblings = await booking_repo.list_group(db, booking.booking_group_id)
+    group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
+    share = booking.advance_amount / group_advance if group_advance > 0 else Decimal("1")
+    computed = payment.amount * Decimal(booking.refund_percentage) / Decimal(100) * share
     return await _issue_refund(
         db,
         booking=booking,
         payment=payment,
         requested_amount=computed,
         reason=booking.cancellation_reason or "Booking cancelled.",
+        kind="cancellation",
+    )
+
+
+async def create_refund_for_cancelled_group(
+    db: AsyncSession, bookings: list[Booking], refund_percentage: int, reason: str | None
+) -> Refund | None:
+    """One refund for a whole group cancelled together: the policy percentage of
+    what was captured, for the cancelled bookings' share of it. Capped, like every
+    refund, at what is still refundable on the payment."""
+    if refund_percentage <= 0 or not bookings:
+        return None
+    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
+    if payment is None or payment.status != PaymentStatus.completed:
+        return None
+    siblings = await booking_repo.list_group(db, bookings[0].booking_group_id)
+    group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
+    cancelled_advance = sum((b.advance_amount for b in bookings), Decimal("0"))
+    share = cancelled_advance / group_advance if group_advance > 0 else Decimal("1")
+    computed = payment.amount * Decimal(refund_percentage) / Decimal(100) * share
+    return await _issue_refund(
+        db,
+        booking=bookings[0],
+        payment=payment,
+        requested_amount=computed,
+        reason=reason or "Booking cancelled.",
         kind="cancellation",
     )
 
