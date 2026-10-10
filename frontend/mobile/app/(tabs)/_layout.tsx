@@ -1,6 +1,6 @@
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { PlatformPressable } from '@react-navigation/elements';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useSegments } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -30,7 +30,9 @@ function makeTabButton(iconName: IconName, label: string, theme: (typeof Colors)
     // but never rendered; our own View below is passed as children instead.
     const { style, ...rest } = props;
     const insets = useSafeAreaInsets();
-    const focused = props['aria-selected'] === true;
+    // the Results screen has no tab of its own: Search stays lit while it is open
+    const onResults = (useSegments() as string[]).includes('results');
+    const focused = props['aria-selected'] === true || (label === 'Search' && onResults);
     const iconColor = focused ? theme.limeDeep : theme.tabIconDefault;
     const labelColor = focused ? theme.tabIconSelected : theme.tabIconDefault;
 
@@ -84,6 +86,8 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // Back returns to where the person came from (Results back to Search or to Home), not always to the first tab
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -107,6 +111,8 @@ export default function TabLayout() {
         name="search"
         options={{ title: 'Search', tabBarButton: makeTabButton('search', 'Search', theme) }}
       />
+      {/* the Results screen keeps the tab bar (Search stays lit) but has no tab of its own */}
+      <Tabs.Screen name="results" options={{ href: null }} />
       <Tabs.Screen
         name="bookings"
         options={{

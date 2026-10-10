@@ -1,336 +1,106 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { router, type Href } from 'expo-router';
+import { StyleSheet, View, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { SearchBar } from '@/components/search/search-bar';
+import { Icon } from '@/components/ui/icon';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { ScreenHead } from '@/components/ui/screen-head';
 import { Text } from '@/components/ui/text';
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from '@/constants/theme';
+import { SPORTS } from '@/constants/sports';
+import { activeFilterCount, useSearchFilters } from '@/store/search-filters';
+import { useSearchHistory } from '@/store/search-history';
 
-import { ArenaCard } from "@/components/arena-card";
-import { TextField } from "@/components/ui/text-field";
-import { Colors } from "@/constants/theme";
-import { SPORT_VALUES, sportLabel } from "@/constants/sports";
-import { useArenaSearch } from "@/hooks/useArenas";
-import { nlpSearch } from "@/services/ai";
-import { useLocationStore } from "@/store/location";
-import { useSearchHistory } from "@/store/search-history";
-import { ARENA_CITIES, type ArenaCity } from "@/types";
-
-const SPORTS = SPORT_VALUES;
-type SortOption = "newest" | "price_asc" | "price_desc" | "rating_desc";
-const SORTS: { value: SortOption; label: string }[] = [
-  { value: "newest", label: "Newest" },
-  { value: "price_asc", label: "Price: Low to High" },
-  { value: "price_desc", label: "Price: High to Low" },
-  { value: "rating_desc", label: "Top Rated" },
-];
+// Search (frame 4): the field, a Filters button with its count, Recent
+// searches (hidden when there are none; 8 at most, with Clear) and Browse by
+// sport. Everything leads to the Results screen.
+const toResults = () => router.push('/results' as unknown as Href);
 
 export default function SearchScreen() {
-  const params = useLocalSearchParams<{ sport?: string }>();
-  const location = useLocationStore();
-  const [q, setQ] = useState("");
-  const [city, setCity] = useState<ArenaCity | undefined>(undefined);
-
-  async function useMyLocation() {
-    // Fresh detection each tap — the user may have moved since app launch.
-    await location.detect();
-    const detected = useLocationStore.getState().city;
-    if (detected) setCity(detected);
-  }
-  const [sport, setSport] = useState<string | undefined>(params.sport);
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [sort, setSort] = useState<SortOption>("newest");
-
-  const searchParams = useMemo(
-    () => ({
-      q: q.trim() || undefined,
-      city,
-      sport,
-      price_min: priceMin ? Number(priceMin) : undefined,
-      price_max: priceMax ? Number(priceMax) : undefined,
-      sort,
-      page_size: 30,
-    }),
-    [q, city, sport, priceMin, priceMax, sort],
-  );
-
-  const structuredResults = useArenaSearch(searchParams);
-  const nlpResults = useQuery({
-    queryKey: ["nlp-search", q],
-    queryFn: () => nlpSearch(q.trim()),
-    enabled: q.trim().length > 0,
-  });
-
-  const useNlp = q.trim().length > 0;
-  const items = useNlp ? nlpResults.data?.items : structuredResults.data?.items;
-  const total = useNlp ? nlpResults.data?.total : structuredResults.data?.total;
-  const isLoading = useNlp ? nlpResults.isLoading : structuredResults.isLoading;
-  const parsed = nlpResults.data?.parsed;
-
+  const f = useSearchFilters();
   const history = useSearchHistory();
-  useEffect(() => {
-    // Record a query once it has actually produced results — keeps typos
-    // and half-typed prefixes out of the recent list.
-    if (useNlp && nlpResults.data && nlpResults.data.total > 0) {
-      history.add(q);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nlpResults.data]);
+
+  const run = (text: string) => {
+    history.add(text);
+    f.setQ(text);
+    toResults();
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Search</Text>
-        <TextField
-          placeholder='Try "cheap futsal in Lahore"'
-          value={q}
-          onChangeText={setQ}
+    <SafeAreaView style={styles.page} edges={['bottom']}>
+      <ScreenHead title="Search" back={false} />
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.pad}>
+        <SearchBar
+          value={f.q}
+          onChangeText={f.setQ}
+          onSubmit={() => f.q.trim() && run(f.q.trim())}
+          onFilters={() => router.push({ pathname: '/filters', params: { from: 'search' } } as unknown as Href)}
+          filterCount={activeFilterCount(f)}
         />
-        {useNlp && parsed && !parsed.used_fallback_text_search ? (
-          <View style={styles.parsedRow}>
-            <Text style={styles.parsedLabel}>Understood:</Text>
-            {parsed.sport ? (
-              <Text style={styles.parsedChip}>{parsed.sport}</Text>
-            ) : null}
-            {parsed.city ? (
-              <Text style={styles.parsedChip}>{parsed.city}</Text>
-            ) : null}
-            {parsed.sort !== "newest" ? (
-              <Text style={styles.parsedChip}>
-                {SORTS.find((s) => s.value === parsed.sort)?.label}
+
+        {history.recent.length ? (
+          <View>
+            <View style={styles.sectionRow}>
+              <Text style={styles.eyebrow} accessibilityRole="header">
+                Recent searches
               </Text>
-            ) : null}
+              <Pressable onPress={history.clear} hitSlop={14} accessibilityRole="button" accessibilityLabel="Clear recent searches">
+                <Text style={styles.clear}>Clear</Text>
+              </Pressable>
+            </View>
+            {history.recent.map((t) => (
+              <PressableScale key={t} onPress={() => run(t)} accessibilityRole="button" accessibilityLabel={`Search ${t}`}>
+                <View style={styles.row}>
+                  <View style={styles.ico}>
+                    <Icon name="search" size={16} color={Colors.light.text2} />
+                  </View>
+                  <Text style={styles.rowText}>{t}</Text>
+                  <View style={styles.chev}>
+                    <Icon name="chev" size={15} color={Colors.light.muted} />
+                  </View>
+                </View>
+              </PressableScale>
+            ))}
           </View>
         ) : null}
-      </View>
 
-      {!useNlp && history.recent.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterBar}
-          contentContainerStyle={styles.filterBarContent}
-        >
-          <FilterGroup label="Recent">
-            {history.recent.map((recentQuery) => (
-              <Chip
-                key={recentQuery}
-                label={`🕐 ${recentQuery}`}
-                active={false}
-                onPress={() => setQ(recentQuery)}
-              />
-            ))}
-            <Pressable onPress={history.clear} hitSlop={8}>
-              <Ionicons name="close-circle-outline" size={18} color={Colors.light.muted} />
-            </Pressable>
-          </FilterGroup>
-        </ScrollView>
-      ) : null}
-
-      {!useNlp ? (
-        <>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterBar}
-            contentContainerStyle={styles.filterBarContent}
-          >
-            <FilterGroup label="City">
-              <Chip
-                label={
-                  location.status === "detecting" ? "Locating…" : "📍 Near me"
-                }
-                active={!!city && city === location.city}
-                onPress={useMyLocation}
-              />
-              {ARENA_CITIES.map((c) => (
-                <Chip
-                  key={c}
-                  label={c}
-                  active={city === c}
-                  onPress={() => setCity(city === c ? undefined : c)}
-                />
-              ))}
-            </FilterGroup>
-          </ScrollView>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterBar}
-            contentContainerStyle={styles.filterBarContent}
-          >
-            <FilterGroup label="Sport">
-              {SPORTS.map((s) => (
-                <Chip
-                  key={s}
-                  label={sportLabel(s)}
-                  active={sport === s}
-                  onPress={() => setSport(sport === s ? undefined : s)}
-                />
-              ))}
-            </FilterGroup>
-          </ScrollView>
-
-          <View style={styles.priceRow}>
-            <TextField
-              style={styles.priceInput}
-              placeholder="Min price"
-              keyboardType="number-pad"
-              value={priceMin}
-              onChangeText={setPriceMin}
-            />
-            <Text style={styles.priceDash}>—</Text>
-            <TextField
-              style={styles.priceInput}
-              placeholder="Max price"
-              keyboardType="number-pad"
-              value={priceMax}
-              onChangeText={setPriceMax}
-            />
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterBar}
-            contentContainerStyle={styles.filterBarContent}
-          >
-            {SORTS.map((s) => (
-              <Chip
-                key={s.value}
-                label={s.label}
-                active={sort === s.value}
-                onPress={() => setSort(s.value)}
-              />
-            ))}
-          </ScrollView>
-        </>
-      ) : null}
-
-      <FlatList
-        data={items ?? []}
-        keyExtractor={(a) => a.id}
-        numColumns={2}
-        columnWrapperStyle={styles.column}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <View style={styles.cardWrap}>
-            <ArenaCard arena={item} />
-          </View>
-        )}
-        ListHeaderComponent={
-          total !== undefined ? (
-            <Text style={styles.resultCount}>{total} results</Text>
-          ) : null
-        }
-        ListEmptyComponent={
-          isLoading ? (
-            <ActivityIndicator
-              style={{ marginTop: 24 }}
-              color={Colors.light.tint}
-            />
-          ) : (
-            <Text style={styles.empty}>No arenas match your filters.</Text>
-          )
-        }
-      />
+        <Text style={[styles.eyebrow, { marginTop: 22, marginBottom: 10 }]} accessibilityRole="header">
+          Browse by sport
+        </Text>
+        <View style={styles.tags}>
+          {SPORTS.map((s) => (
+            <PressableScale
+              key={s.value}
+              onPress={() => {
+                f.open({ sport: s.value });
+                toResults();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={s.label}>
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>{s.label}</Text>
+              </View>
+            </PressableScale>
+          ))}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.filterGroup}>
-      <Text style={styles.filterLabel}>{label}:</Text>
-      {children}
-    </View>
-  );
-}
-
-function Chip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[styles.chip, active && styles.chipActive]}
-      onPress={onPress}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  header: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
-  title: { fontSize: 20, fontWeight: "700", color: Colors.light.text },
-  parsedRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  parsedLabel: { fontSize: 12, color: Colors.light.muted },
-  parsedChip: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.light.tint,
-    backgroundColor: "#EFF6FF",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    textTransform: "capitalize",
-  },
-  filterBar: { flexGrow: 0, marginTop: 10 },
-  filterBarContent: { paddingHorizontal: 20, gap: 8, alignItems: "center" },
-  filterGroup: { flexDirection: "row", gap: 8, alignItems: "center" },
-  filterLabel: { fontSize: 12, fontWeight: "600", color: Colors.light.muted },
-  chip: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipActive: {
-    backgroundColor: Colors.light.tint,
-    borderColor: Colors.light.tint,
-  },
-  chipText: {
-    fontSize: 12,
-    color: Colors.light.text,
-    textTransform: "capitalize",
-  },
-  chipTextActive: { color: "#fff", fontWeight: "600" },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 20,
-    marginTop: 10,
-  },
-  priceInput: { flex: 1 },
-  priceDash: { color: Colors.light.muted },
-  resultCount: { fontSize: 12, color: Colors.light.muted, marginBottom: 8 },
-  listContent: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 24 },
-  column: { gap: 12 },
-  cardWrap: { flex: 1, marginBottom: 12 },
-  empty: { color: Colors.light.muted, textAlign: "center", marginTop: 24 },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  pad: { paddingHorizontal: 18, paddingBottom: 28 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 4 },
+  // uppercase labels are exempt from the 14px rule
+  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
+  clear: { fontSize: 14, fontWeight: '600', color: Colors.light.limeDeep },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 44, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: Colors.light.lineSoft },
+  ico: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.light.lineSoft, alignItems: 'center', justifyContent: 'center' },
+  rowText: { fontSize: 14, color: Colors.light.text },
+  chev: { marginLeft: 'auto' },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  tag: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 6, backgroundColor: Colors.light.lineSoft },
+  tagText: { fontSize: 14, fontWeight: '600', color: Colors.light.text2 },
 });
