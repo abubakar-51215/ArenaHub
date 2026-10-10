@@ -6,6 +6,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SportChips } from '@/components/home/sport-chips';
+import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -110,6 +111,9 @@ export default function HomeScreen() {
                 <Icon name="pin" size={13} color="#8FA096" />
                 <Text style={styles.whereText}>{city ?? savedCity}</Text>
               </Pressable>
+              <View style={styles.heroMark} pointerEvents="none">
+                <BrandMark mode="still" tone="dark" size={30} />
+              </View>
               <Pressable
                 onPress={() => router.push('/notifications')}
                 hitSlop={7}
@@ -138,12 +142,9 @@ export default function HomeScreen() {
 
         {allFailed ? (
           <View style={styles.errorBox}>
-            <View style={styles.errorIcon}>
-              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={Colors.light.red} strokeWidth={2} strokeLinecap="round">
-                <Path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0" />
-                <Path d="M12 19.5h.01" />
-              </Svg>
-            </View>
+            <View style={{ marginBottom: 10 }}>
+<BrandMark mode="offline" size={72} />
+</View>
             <Text variant="archivo" style={styles.errorTitle}>
               Could not load arenas
             </Text>
@@ -267,6 +268,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   hero: { backgroundColor: Colors.light.ink, paddingBottom: 18, borderBottomLeftRadius: 22, borderBottomRightRadius: 22, overflow: 'hidden' },
   heroPad: { paddingHorizontal: 18 },
+  heroMark: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   where: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 30 },
   whereText: { fontSize: 14, color: '#8FA096' },

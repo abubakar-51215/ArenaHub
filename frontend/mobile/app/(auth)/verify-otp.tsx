@@ -66,6 +66,7 @@ export default function VerifyOtpScreen() {
 
   return (
     <AuthScreen
+      showMark
       title="Check your email"
       subtitleGap={22}
       subtitle={

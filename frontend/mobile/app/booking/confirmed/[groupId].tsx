@@ -4,10 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 
 import { Line } from '@/components/booking/parts';
+import { BrandMark } from '@/components/brand/brand-mark';
 import { ResultScreen } from '@/components/booking/result';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,30 +22,10 @@ import { formatRs } from '@/lib/money';
 import { getBookingGroup } from '@/services/bookings';
 import { useCheckout } from '@/store/checkout';
 
-// Booking confirmed, from arena-hub-player-app-booking-payment.html (frame 10): a lime
-// circle whose tick draws itself (with the success buzz), the booking code, the time,
+// Booking confirmed, from arena-hub-player-app-booking-payment.html (frame 10): the ArenaHub
+// mark lights its ring and lands the ball once (with the success buzz), the booking code, the time,
 // what was paid and the arena's cancellation rules as text. "Add to calendar" shares a
 // calendar file (.ics) with a reminder one hour before.
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-const TICK_LEN = 60;
-
-function LimeTick() {
-  const reduceMotion = useReducedMotion();
-  const tick = useSharedValue(reduceMotion ? 0 : TICK_LEN);
-  useEffect(() => {
-    if (reduceMotion) return;
-    tick.value = TICK_LEN;
-    tick.value = withDelay(150, withTiming(0, { duration: 450, easing: Easing.bezier(0.2, 0.8, 0.2, 1) }));
-  }, [reduceMotion, tick]);
-  const props = useAnimatedProps(() => ({ strokeDashoffset: tick.value }));
-  return (
-    <Svg width={74} height={74} viewBox="0 0 74 74" accessibilityRole="image" accessibilityLabel="Booking confirmed">
-      <SvgCircle cx={37} cy={37} r={37} fill={Colors.light.lime} />
-      <AnimatedPath d="M22 38l10 10 20-22" stroke={Colors.light.ink} fill="none" strokeWidth={4.6} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={TICK_LEN} animatedProps={props} />
-    </Svg>
-  );
-}
-
 const METHOD_LABEL: Record<string, string> = { bank_transfer: 'Bank transfer', card: 'Card', jazzcash: 'JazzCash', easypaisa: 'EasyPaisa' };
 
 export default function BookingConfirmedScreen() {
@@ -107,7 +86,7 @@ export default function BookingConfirmedScreen() {
   return (
     <ResultScreen
       top={36}
-      mark={<LimeTick />}
+      mark={<BrandMark mode="success" tone="light" size={104} />}
       title="You are on the pitch."
       text={g ? `${dayAndMonth(g.booking_date)} · ${clockLabel(g.start_time)}. We will remind you one hour before.` : ' '}
       buttons={

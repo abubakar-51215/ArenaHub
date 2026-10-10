@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PhotoGallery } from '@/components/arena/photo-gallery';
 import { Badge } from '@/components/ui/badge';
+import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -132,9 +133,9 @@ export default function ArenaDetailsScreen() {
           </Pressable>
         </View>
         <View style={styles.centerBox}>
-          <View style={[styles.stateIcon, { backgroundColor: Colors.light.redWash }]}>
-            <Icon name="pin" size={26} color={Colors.light.red} />
-          </View>
+          <View style={{ marginBottom: 10 }}>
+<BrandMark mode="offline" size={72} />
+</View>
           <Text variant="archivo" style={styles.stateTitle}>
             Could not load this arena
           </Text>

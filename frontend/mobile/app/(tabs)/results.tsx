@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/components/search/search-bar';
+import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHead } from '@/components/ui/screen-head';
@@ -54,6 +55,9 @@ export default function ResultsScreen() {
 
         {r.isError ? (
           <View style={styles.center}>
+            <View style={{ marginBottom: 10 }}>
+              <BrandMark mode="offline" size={72} />
+            </View>
             <Text style={styles.centerTitle} variant="archivo">
               Could not load arenas
             </Text>

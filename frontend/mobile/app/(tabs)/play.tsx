@@ -2,7 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScreenLoader } from '@/components/brand/screen-loader';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -90,7 +91,7 @@ export default function PlayScreen() {
       ) : null}
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.light.tint} style={{ marginTop: 32 }} />
+        <ScreenLoader />
       ) : (
         <FlatList
           data={tab === 'open' ? openItems : myItems}

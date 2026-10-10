@@ -51,7 +51,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <AuthScreen title="Forgot password?" subtitle="Enter your email. We will send a 6-digit code if an account exists.">
+    <AuthScreen showMark title="Forgot password?" subtitle="Enter your email. We will send a 6-digit code if an account exists.">
       <View style={styles.form}>
         <Field
           icon="mail"

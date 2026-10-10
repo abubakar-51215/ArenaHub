@@ -4,6 +4,7 @@ import { File, Paths } from 'expo-file-system';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ScreenLoader } from '@/components/brand/screen-loader';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -56,7 +57,7 @@ export default function PaymentHistoryScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.light.tint} style={{ marginTop: 32 }} />
+        <ScreenLoader />
       ) : (
         <FlatList
           data={data?.items ?? []}

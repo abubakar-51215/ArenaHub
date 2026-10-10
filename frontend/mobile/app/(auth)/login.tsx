@@ -3,6 +3,7 @@ import { Link, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
+import { ScreenLoader } from '@/components/brand/screen-loader';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FieldMessage } from '@/components/auth/field-message';
 import { Button, useButtonStatus } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { fetchMe, isAdminChallenge, login } from '@/services/auth';
 import { useAdminChallenge } from '@/store/admin-challenge';
+import { LOGIN_LOADER_AFTER_MS } from '@/constants/brand';
+import { useDelayedFlag } from '@/hooks/useDelayedFlag';
 import { useAuthStore } from '@/store/auth';
 
 // Frame 1 of arena-hub-player-app-auth-2.html. The first field takes an email
@@ -61,6 +64,9 @@ export default function LoginScreen() {
     },
   });
 
+  // sign-in that takes longer than half a second shows the full-screen loader
+  const slow = useDelayedFlag(mutation.isPending, LOGIN_LOADER_AFTER_MS);
+
   const submit = () => {
     if (mutation.isPending) return;
     setError(null);
@@ -73,7 +79,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <AuthScreen hideBack title="Welcome back" subtitle="Log in with your email or phone number.">
+    <>
+    <AuthScreen hideBack showMark title="Welcome back" subtitle="Log in with your email or phone number.">
       {notice ? (
         <View style={styles.note} accessibilityRole="alert">
           <Text style={styles.noteText}>{notice}</Text>
@@ -134,10 +141,18 @@ export default function LoginScreen() {
         </Link>
       </View>
     </AuthScreen>
+    {slow ? (
+      <View style={styles.loading} accessibilityViewIsModal>
+        <ScreenLoader top={0} />
+      </View>
+    ) : null}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  // the sign-in wait: a full-screen loader over the form, only after half a second
+  loading: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.light.paper, alignItems: 'center', justifyContent: 'center', zIndex: 50 },
   // .note.info of the auth-2 frames
   note: { backgroundColor: '#EEF6D6', borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
   noteText: { fontSize: 14, lineHeight: 20, color: '#4D6410' },
