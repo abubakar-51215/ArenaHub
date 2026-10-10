@@ -235,6 +235,14 @@ individual group's gate — it's a standing reminder that "passed the web
 gate" and "verified on-device" are different claims, and only the second one
 means the restyle is actually done.
 
+### Checked only on a real phone (added after G2)
+
+These cannot be proven on the web run, so they are on the real-device list:
+
+- **Pull to refresh** on Home: the native spinner shows while the three lists reload, and it stops when they finish (a failed list shows its own "Could not load. Try again").
+- **The heart failing:** with the network off, tapping a heart fills it, then puts it back and shows the toast "Could not save. Try again." (the light haptic on the tap is felt).
+- The price slider thumbs by touch drag, and by screen reader swipe up and down.
+
 ## Verification safety
 
 These rules apply to every check, in every area (mobile and web):
