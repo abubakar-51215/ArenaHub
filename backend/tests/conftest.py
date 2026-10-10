@@ -73,6 +73,22 @@ async def client() -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture(autouse=True)
+def payment_gateways_open(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The card and wallet providers have no real credentials here, so the
+    payment-flow tests run them as the simulators. A test that checks the real
+    "not available yet" rules opts out with ``@pytest.mark.real_gateway_rules``."""
+    if request.node.get_closest_marker("real_gateway_rules"):
+        return
+    from app.integrations import payments as providers
+    from app.integrations.payments.mock import MockProvider
+    from app.modules.payment import methods, service
+
+    monkeypatch.setitem(providers._LIVE_PROVIDERS, "card", MockProvider("card"))
+    monkeypatch.setattr(methods, "ensure_usable", lambda method: None)
+    monkeypatch.setattr(service.methods, "ensure_usable", lambda method: None)
+
+
+@pytest.fixture(autouse=True)
 def fake_redis(monkeypatch: pytest.MonkeyPatch) -> fakeredis.aioredis.FakeRedis:
     """Give every test its own clean in-memory Redis."""
     fake = fakeredis.aioredis.FakeRedis(decode_responses=True)

@@ -86,6 +86,17 @@ class Settings(BaseSettings):
     # Which provider backs the gateway payment methods — see PaymentMode.
     payment_mode: PaymentMode = Field(default=PaymentMode.auto, alias="PAYMENT_MODE")
 
+    @property
+    def stripe_configured(self) -> bool:
+        """True only for a real-looking secret key. An empty value or a
+        placeholder such as ``sk_test_xxx`` counts as "no key", so card
+        payments say so instead of calling Stripe and failing."""
+        key = (self.stripe_secret_key or "").strip().lower()
+        if not key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")):
+            return False
+        tail = key.split("_", 2)[2]
+        return len(tail) >= 16 and "xxx" not in tail and "placeholder" not in tail
+
     # Email (OTP + notification delivery). Unset in dev -> console log instead
     # of a real SMTP connection (same seam as deliver_otp).
     email_host: str | None = Field(default=None, alias="EMAIL_HOST")

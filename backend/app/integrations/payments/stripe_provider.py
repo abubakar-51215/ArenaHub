@@ -18,7 +18,7 @@ import stripe
 import structlog
 
 from app.core.config import get_settings
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ServiceUnavailableError, ValidationError
 from app.integrations.payments.base import InitiateResult, RefundResult, WebhookEvent
 
 log = structlog.get_logger()
@@ -27,20 +27,25 @@ log = structlog.get_logger()
 class StripeProvider:
     async def initiate(self, *, amount: Decimal, currency: str, reference: str) -> InitiateResult:
         settings = get_settings()
-        if not settings.stripe_secret_key:
-            log.info("stripe_dev_simulated_initiate", reference=reference, amount=str(amount))
-            return InitiateResult(
-                gateway_transaction_id=f"pi_test_{uuid.uuid4().hex}",
-                client_secret=f"pi_test_{uuid.uuid4().hex}_secret_dev",
-            )
+        if not settings.stripe_configured:
+            # No real key (empty or a placeholder): say so plainly instead of
+            # calling Stripe and letting its rejection become a 500.
+            log.warning("stripe_not_configured", reference=reference)
+            raise ServiceUnavailableError("Card payments are not available yet.")
 
         stripe.api_key = settings.stripe_secret_key
-        intent = await asyncio.to_thread(
-            stripe.PaymentIntent.create,
-            amount=int((amount * 100).to_integral_value()),
-            currency=currency.lower(),
-            metadata={"reference": reference},
-        )
+        try:
+            intent = await asyncio.to_thread(
+                stripe.PaymentIntent.create,
+                amount=int((amount * 100).to_integral_value()),
+                currency=currency.lower(),
+                metadata={"reference": reference},
+            )
+        except stripe.error.StripeError as exc:
+            log.error("stripe_initiate_failed", reference=reference, error=type(exc).__name__)
+            raise ServiceUnavailableError(
+                "Card payments are not available right now. Please try again later."
+            ) from exc
         return InitiateResult(gateway_transaction_id=intent.id, client_secret=intent.client_secret)
 
     def verify_webhook(self, payload: bytes, headers: dict[str, str]) -> WebhookEvent:

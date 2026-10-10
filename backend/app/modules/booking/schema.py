@@ -69,3 +69,54 @@ class BookingGroupResponse(BaseModel):
     equipment_total: Decimal
     discount_amount: Decimal
     total: Decimal
+
+
+class BookingPreviewRequest(BaseModel):
+    court_id: uuid.UUID
+    slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
+    discount_code: str | None = Field(default=None, max_length=50)
+    equipment: list[EquipmentAddonRequest] = Field(default_factory=list)
+
+
+class BookingPreviewResponse(BaseModel):
+    """The price a booking would have, with nothing reserved. ``pay_now`` is
+    what the first payment asks for; ``due_at_arena`` is the rest (0 when the
+    arena takes full payment). ``discount_status`` is none, applied or refused."""
+
+    slots_subtotal: Decimal
+    equipment_total: Decimal
+    discount_amount: Decimal
+    total: Decimal
+    payment_type: PaymentPlan
+    pay_now: Decimal
+    due_at_arena: Decimal
+    discount_status: str
+    discount_message: str | None = None
+    cancellation_note: str
+
+
+class BookingGroupDetails(BaseModel):
+    """One booking group with the names and money a confirmation screen needs."""
+
+    booking_group_id: uuid.UUID
+    arena_id: uuid.UUID
+    arena_name: str
+    arena_address: str
+    court_id: uuid.UUID
+    court_name: str
+    booking_date: date
+    start_time: time
+    end_time: time
+    slot_count: int
+    status: BookingStatus
+    payment_status: PaymentStatus
+    payment_type: PaymentPlan
+    total: Decimal
+    pay_now: Decimal
+    due_at_arena: Decimal
+    payment_id: uuid.UUID | None = None
+    payment_method: str | None = None
+    payment_lifecycle: str | None = None
+    booking_code: str
+    cancellation_note: str
+    booking_ids: list[uuid.UUID]

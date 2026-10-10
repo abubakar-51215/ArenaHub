@@ -40,3 +40,8 @@ class ForbiddenError(AppError):
 class ValidationError(AppError):
     status_code = 422
     message = "Validation failed"
+
+
+class ServiceUnavailableError(AppError):
+    status_code = 503
+    message = "This service is not available right now"

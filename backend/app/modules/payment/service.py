@@ -23,8 +23,8 @@ from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
 from app.modules.equipment import service as equipment_service
+from app.modules.payment import methods, state_machine
 from app.modules.payment import repository as repo
-from app.modules.payment import state_machine
 from app.modules.payment.model import (
     Payment,
     PaymentMethod,
@@ -159,6 +159,7 @@ async def initiate_payment(
     if existing is not None and existing.status in (PaymentStatus.pending, PaymentStatus.completed):
         raise ConflictError("A payment for this booking already exists.")
 
+    methods.ensure_usable(data.payment_method)
     amount = sum((b.advance_amount for b in bookings), Decimal("0"))
     provider = get_provider(data.payment_method.value)
     result = await provider.initiate(
@@ -205,6 +206,7 @@ async def initiate_balance_payment(
     bookings = await _group_bookings_for_player(db, user, data.booking_group_id)
     if any(b.status != BookingStatus.confirmed for b in bookings):
         raise ValidationError("Only a confirmed booking can have its balance paid online.")
+    methods.ensure_usable(data.payment_method)
     outstanding = sum((b.remaining_amount for b in bookings), Decimal("0"))
     if outstanding <= 0:
         raise ValidationError("This booking has no outstanding balance.")
