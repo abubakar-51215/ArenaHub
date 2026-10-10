@@ -40,6 +40,16 @@ d) **Email and password field icons** (on purpose, as the prototype draws it). E
 - The person icon (Full name) and the Phone field keep the normal small look (only mail and lock were named).
 - Check 360x640 specially on screens with several such fields. A screen that cannot be used there is reported with a picture, not fixed by changing this rule.
 
+e) **Eye button on every password field** (user decision). Show/hide with a 44px tap area, labels "Show password" / "Hide password"; while the password is visible the eye is crossed out, swapped smoothly with no layout jump.
+
+f) **Text and tap sizes on mobile** (user decision, same as web): 14px text (exemptions: labels, badges, chart text) and 44px tap targets; small links get a 44px tap area through `hitSlop`.
+
+g) **A sign-in step without a frame:** the frames now exist (`arena-hub-player-app-auth-2.html`). Any other screen without a frame waits for a frame. SMS codes are out of scope. The old Verify wording about the backend console does not come back. Sign-up variant: unconfirmed, built the only frame.
+
+h) **G4 Payment screen:** it must list exactly Card, Bank transfer, JazzCash, EasyPaisa (provider keys `stripe`, `manual`, `jazzcash`, `easypaisa`; `mock` is never listed) and must not preselect "Credit / Debit Card".
+
+i) **Temporary screens:** the admin landing ("Hello, Admin" with Log out) is **temporary until the admin group**.
+
 ## Comparison baseline — the rule for every regression diff
 
 Regression diffs compare against a **same-time capture of HEAD**, not against
