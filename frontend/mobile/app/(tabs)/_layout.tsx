@@ -1,6 +1,6 @@
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { PlatformPressable } from '@react-navigation/elements';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/store/auth';
 
 const BAR_HEIGHT = 60.25;
 const ICON_SIZE = 19;
@@ -76,6 +77,10 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+  const role = useAuthStore((s) => s.user?.role);
+
+  // an admin signed in earlier (a saved session) opens the admin screen, not the player tabs
+  if (role === 'admin') return <Redirect href="/admin" />;
 
   return (
     <Tabs
