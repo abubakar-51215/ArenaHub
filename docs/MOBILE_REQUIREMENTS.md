@@ -133,6 +133,20 @@ Screen-level requirements already written down:
 - **Results: load more on scroll.** Results shows one page of 30 for now. Loading more as the person scrolls is later work.
 
 
+## G3 decisions (Arena details and Pick a slot) — frames in `arena-hub-player-app-arena-slots.html`
+
+| # | Decision | Status |
+|---|---|---|
+| 51 | **Court choice.** The Arena screen has a "Courts" section: each court with sport, capacity, "N open tonight" (or "Fully booked tonight") and the "from" price. The sticky button reads "Choose a court". With one court it goes straight to Pick a slot. Pick a slot has a court switch (Court A, Court B) at the top. | Building |
+| 52 | **"Tonight at a glance"** is removed from the Arena screen; the courts rows carry that information. New small endpoint `GET /arenas/{id}/slots-today`: per court, the open count and lowest price for today's remaining slots. | Building |
+| 53 | **7-day strip** with a dot per day (grey dot and dimmed at zero). New small endpoint `GET /courts/{id}/availability?from=&to=`: the open slot count per date. | Building |
+| 54 | **Duration.** "1.5 hours" and "How long" are dropped. People tap consecutive slots to play longer; the sticky bar shows the range, the hours and the total. The "20% off second hour" line is dropped. | Building |
+| 55 | **Slot looks.** A price below the court's base price is the light-green style; above base is peak. "Morning · cheaper" and "Evening · peak" are decided on the phone. A held slot (reserved by someone mid-booking) shows "Held", dashed, and cannot be tapped. Past times today are hidden. | Building |
+| 56 | **Slot taken while choosing.** The WebSocket flips it to Taken, it leaves the selection, the toast says "6 PM was just taken. Your other time is still selected." with an error haptic. Nothing left: Continue is grey and disabled. | Building |
+| 57 | **Arena screen details.** "Open till 11 PM" is computed on the phone from today's closing time. No "5-a-side" tag, no "Includes tax", no distance. Unknown amenity icons use a plain tick. The photo area swipes with a "1 / N" counter and dots. Long text shows "Read more". A suspended or missing arena shows "This arena is not available". | Building |
+| 58 | **Later work:** the full-screen photo viewer and sharing. | Later |
+| 59 | **States to build:** loading, error, one section failing, no courts, no reviews yet. | Building |
+
 ## Confirmed, not built yet (the user will make prototype frames first)
 
 | # | Requirement | Source | Status |
