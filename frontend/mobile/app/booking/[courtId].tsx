@@ -1,300 +1,210 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Eyebrow, IconTile, Line, Note } from '@/components/booking/parts';
 import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
+import { Card } from '@/components/ui/card';
+import { CourtArt } from '@/components/ui/court-art';
+import { Icon } from '@/components/ui/icon';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { ScreenHead } from '@/components/ui/screen-head';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StickyBar } from '@/components/ui/sticky-bar';
+import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
-import { useArena, useArenaCourts } from '@/hooks/useArenas';
+import { sportLabel } from '@/constants/sports';
+import { useArena, useArenaCourts, useArenaRating } from '@/hooks/useArenas';
 import { ApiError } from '@/lib/api';
-import { createBooking } from '@/services/bookings';
+import { hoursLabel, longDate, parseSlots, timeRange } from '@/lib/checkout';
+import { formatRs } from '@/lib/money';
+import { previewBooking } from '@/services/bookings';
 import { listArenaEquipment } from '@/services/equipment';
-import type { PaymentPlan } from '@/types';
 
-interface SelectedSlot {
-  id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  price: string;
-}
-
-export default function BookingSummaryScreen() {
-  const { courtId, slots: slotsParam, arenaId } = useLocalSearchParams<{
-    courtId: string;
-    slots: string;
-    arenaId: string;
-  }>();
-
+// Review booking, from arena-hub-player-app-booking-payment.html (frame 1).
+// The price is worked out by the server (POST /bookings/preview) so what is
+// shown here is what the booking will cost; nothing is reserved yet. If a time
+// was taken since Pick a slot, the server says so (409) and the Slot lost
+// screen opens.
+export default function ReviewBookingScreen() {
+  const { courtId, arenaId, slots: slotsParam } = useLocalSearchParams<{ courtId: string; arenaId: string; slots: string }>();
+  const slots = useMemo(() => parseSlots(slotsParam), [slotsParam]);
   const arena = useArena(arenaId);
   const courts = useArenaCourts(arenaId);
+  const rating = useArenaRating(arenaId);
   const court = courts.data?.find((c) => c.id === courtId);
+  const equipment = useQuery({ queryKey: ['arena-equipment', arenaId], queryFn: () => listArenaEquipment(arenaId), enabled: !!arenaId });
+  const extras = (equipment.data ?? []).filter((e) => e.is_active && e.quantity_available > 0);
+  const [picked, setPicked] = useState<Record<string, number>>({});
+  const equipmentList = Object.entries(picked)
+    .filter(([, q]) => q > 0)
+    .map(([equipment_id, quantity]) => ({ equipment_id, quantity }));
 
-  // Passed straight from the slot-selection screen (which already has the
-  // full slot objects) rather than re-queried here — avoids re-fetching a
-  // slot list for a date this screen doesn't otherwise know.
-  const slots: SelectedSlot[] = useMemo(() => {
-    try {
-      return JSON.parse(slotsParam ?? '[]');
-    } catch {
-      return [];
-    }
-  }, [slotsParam]);
-
-  const equipment = useQuery({
-    queryKey: ['arena-equipment', arenaId],
-    queryFn: () => listArenaEquipment(arenaId),
-    enabled: !!arenaId,
+  const slotIds = slots.map((s) => s.id);
+  const preview = useQuery({
+    queryKey: ['booking-preview', courtId, slotIds.join(','), JSON.stringify(equipmentList)],
+    queryFn: () => previewBooking({ court_id: courtId, slot_ids: slotIds, equipment: equipmentList }),
+    enabled: slots.length > 0 && !!courtId,
+    retry: false,
+    placeholderData: (prev) => prev,
   });
 
-  const [selectedEquipment, setSelectedEquipment] = useState<Record<string, number>>({});
-  const [paymentType, setPaymentType] = useState<PaymentPlan>('full');
-  const [discountCode, setDiscountCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const lost = preview.error instanceof ApiError && preview.error.status === 409;
+  useEffect(() => {
+    if (!lost || slots.length === 0) return;
+    router.replace({
+      pathname: '/booking/slot-lost',
+      params: { courtId, arenaId, date: slots[0].date, start: slots[0].start_time, end: slots[slots.length - 1].end_time },
+    });
+  }, [lost]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const equipmentTotal = useMemo(() => {
-    if (!equipment.data) return 0;
-    return equipment.data.reduce((sum, e) => {
-      const qty = selectedEquipment[e.id] ?? 0;
-      return sum + qty * Number(e.rental_price);
-    }, 0);
-  }, [equipment.data, selectedEquipment]);
+  const first = slots[0];
+  const last = slots[slots.length - 1];
+  const p = preview.data;
+  const loading = arena.isLoading || courts.isLoading || (preview.isLoading && !p);
+  const failed = !lost && (arena.isError || courts.isError || (preview.isError && !p));
 
-  const slotsTotal = slots.reduce((sum, s) => sum + Number(s.price), 0);
-  const estimatedTotal = slotsTotal + equipmentTotal;
-  const allowAdvance = arena.data ? !arena.data.require_full_payment : false;
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      createBooking({
-        court_id: courtId,
-        slot_ids: slots.map((s) => s.id),
-        payment_type: paymentType,
-        discount_code: discountCode.trim() || undefined,
-        equipment: Object.entries(selectedEquipment)
-          .filter(([, qty]) => qty > 0)
-          .map(([equipment_id, quantity]) => ({ equipment_id, quantity })),
-      }),
-    onSuccess: (group) => {
-      router.replace({
-        pathname: '/payment/[groupId]',
-        params: {
-          groupId: group.booking_group_id,
-          amount: group.total,
-          slotsSubtotal: group.slots_subtotal,
-          equipmentTotal: group.equipment_total,
-          discountAmount: group.discount_amount,
-          bookingId: group.bookings[0]?.id ?? '',
-          arenaId,
-        },
-      });
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Something went wrong.'),
-  });
-
-  if (arena.isLoading || courts.isLoading) {
-    return (
-      <SafeAreaView style={styles.loading} edges={['top']}>
-        <ActivityIndicator color={Colors.light.tint} />
-      </SafeAreaView>
-    );
-  }
+  const goPay = () =>
+    router.push({
+      pathname: '/booking/payment',
+      params: { courtId, arenaId, slots: slotsParam, equipment: JSON.stringify(picked) },
+    });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
-        </Pressable>
-        <Text style={styles.title}>Booking Summary</Text>
-        <View style={{ width: 22 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.arenaName}>{arena.data?.name}</Text>
-          <Text style={styles.arenaLocation}>
-            {arena.data?.area ? `${arena.data.area}, ` : ''}
-            {arena.data?.city}
+    <SafeAreaView style={styles.page} edges={['bottom']}>
+      <ScreenHead title="Review booking" />
+      {slots.length === 0 ? (
+        <View style={styles.center}>
+          <IconTile>
+            <Icon name="cal" size={20} color={Colors.light.text2} />
+          </IconTile>
+          <Text variant="archivo" style={styles.stateTitle}>
+            No time chosen
           </Text>
+          <Text style={styles.stateText}>Go back and pick a time first.</Text>
+          <View style={styles.stateButton}>
+            <Button title="Choose a time" onPress={() => router.back()} />
+          </View>
         </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Court</Text>
-          <Text style={styles.detailValue}>{court?.name ?? '—'}</Text>
+      ) : failed ? (
+        <View style={styles.center}>
+          <View style={[styles.stateIcon, { backgroundColor: Colors.light.redWash }]}>
+            <Icon name="cal" size={26} color={Colors.light.red} />
+          </View>
+          <Text variant="archivo" style={styles.stateTitle}>
+            Could not load your booking
+          </Text>
+          <Text style={styles.stateText}>Check your connection and try again.</Text>
+          <View style={styles.stateButton}>
+            <Button
+              title="Try again"
+              onPress={() => {
+                arena.refetch();
+                courts.refetch();
+                preview.refetch();
+              }}
+            />
+          </View>
         </View>
-        {slots.length > 0 ? (
-          <>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{slots[0].date}</Text>
+      ) : loading ? (
+        <View style={styles.pad}>
+          <Skeleton height={72} radius={15} />
+          <View style={{ height: 11 }} />
+          <Skeleton height={150} radius={15} />
+          <View style={{ height: 16 }} />
+          <Skeleton height={86} radius={15} />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.pad}>
+          <Card style={styles.arenaCard}>
+            <View style={styles.art}>
+              <CourtArt sport={court?.sport_types[0]} />
             </View>
-            {slots.map((s) => (
-              <View key={s.id} style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Time</Text>
-                <Text style={styles.detailValue}>
-                  {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)} (Rs. {s.price})
-                </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.arenaName} numberOfLines={1}>
+                {arena.data?.name}
+              </Text>
+              <Text style={styles.muted} numberOfLines={1}>
+                {[arena.data?.area, rating.data?.average_rating ? `${Number(rating.data.average_rating).toFixed(1)} ★` : null].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
+          </Card>
+
+          <Card style={styles.info}>
+            <Line label="Sport" value={court?.sport_types[0] ? sportLabel(court.sport_types[0]) : '—'} />
+            <Line label="Date" value={longDate(first.date)} />
+            <Line label="Time" value={`${timeRange(first.start_time, last.end_time)} · ${hoursLabel(slots.length)}`} />
+            <Line label="Court" value={court?.name ?? '—'} />
+            {court?.capacity ? <Line label="Players" value={`Up to ${court.capacity}`} /> : null}
+          </Card>
+
+          <Eyebrow>Price</Eyebrow>
+          <Card style={styles.priceCard}>
+            <Line label={`Slots (${hoursLabel(slots.length)})`} value={p ? formatRs(p.slots_subtotal) : ''} />
+            {p && Number(p.equipment_total) > 0 ? <Line label="Extras" value={formatRs(p.equipment_total)} /> : null}
+            <Line label="Total" value={p ? formatRs(p.total) : ''} bold />
+          </Card>
+
+          {p ? (
+            <View style={{ marginTop: 12 }}>
+              <Note>{p.cancellation_note}</Note>
+            </View>
+          ) : null}
+
+          {extras.length > 0 ? (
+            <>
+              <Eyebrow>Need anything?</Eyebrow>
+              <View style={styles.chips}>
+                {extras.map((e) => {
+                  const on = (picked[e.id] ?? 0) > 0;
+                  return (
+                    <PressableScale
+                      key={e.id}
+                      onPress={() => setPicked((s) => ({ ...s, [e.id]: on ? 0 : 1 }))}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel={`${e.name}, ${formatRs(e.rental_price)}`}
+                      accessibilityState={{ checked: on }}
+                      contentStyle={[styles.chip, on && styles.chipOn]}>
+                      <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                        {on ? '✓ ' : '+ '}
+                        {e.name} {formatRs(e.rental_price)}
+                      </Text>
+                    </PressableScale>
+                  );
+                })}
               </View>
-            ))}
-          </>
-        ) : (
-          <Text style={styles.detailValue}>Slot details unavailable — go back and reselect.</Text>
-        )}
-
-        {allowAdvance ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Plan</Text>
-            <View style={styles.planRow}>
-              {(['full', 'advance'] as PaymentPlan[]).map((plan) => (
-                <Pressable
-                  key={plan}
-                  style={[styles.planChip, paymentType === plan && styles.planChipActive]}
-                  onPress={() => setPaymentType(plan)}>
-                  <Text style={[styles.planChipText, paymentType === plan && styles.planChipTextActive]}>
-                    {plan === 'full' ? 'Pay in Full' : `Pay Advance (${arena.data?.advance_percentage}%)`}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {equipment.data && equipment.data.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Equipment Rental</Text>
-            {equipment.data
-              .filter((e) => e.is_active && e.quantity_available > 0)
-              .map((e) => {
-                const qty = selectedEquipment[e.id] ?? 0;
-                return (
-                  <View key={e.id} style={styles.equipRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.equipName}>{e.name}</Text>
-                      <Text style={styles.equipPrice}>Rs. {e.rental_price} /day</Text>
-                    </View>
-                    <View style={styles.stepper}>
-                      <Pressable
-                        style={styles.stepperBtn}
-                        onPress={() =>
-                          setSelectedEquipment((s) => ({ ...s, [e.id]: Math.max(0, (s[e.id] ?? 0) - 1) }))
-                        }>
-                        <Text style={styles.stepperBtnText}>−</Text>
-                      </Pressable>
-                      <Text style={styles.stepperValue}>{qty}</Text>
-                      <Pressable
-                        style={styles.stepperBtn}
-                        onPress={() =>
-                          setSelectedEquipment((s) => ({
-                            ...s,
-                            [e.id]: Math.min(e.quantity_available, (s[e.id] ?? 0) + 1),
-                          }))
-                        }>
-                        <Text style={styles.stepperBtnText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })}
-          </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Discount Code</Text>
-          <TextField
-            placeholder="Enter code (optional)"
-            autoCapitalize="characters"
-            value={discountCode}
-            onChangeText={setDiscountCode}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Price Details</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Court booking</Text>
-            <Text style={styles.detailValue}>Rs. {slotsTotal}</Text>
-          </View>
-          {equipmentTotal > 0 ? (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Equipment</Text>
-              <Text style={styles.detailValue}>Rs. {equipmentTotal}</Text>
-            </View>
+            </>
           ) : null}
-          <View style={styles.detailRow}>
-            <Text style={styles.totalLabel}>Estimated Total</Text>
-            <Text style={styles.totalValue}>Rs. {estimatedTotal}</Text>
-          </View>
-          {discountCode.trim() ? (
-            <Text style={styles.discountHint}>Discount code is applied at checkout.</Text>
-          ) : null}
-        </View>
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      )}
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Button
-          title="Continue to Payment"
-          loading={mutation.isPending}
-          disabled={slots.length === 0}
-          onPress={() => {
-            setError(null);
-            mutation.mutate();
-          }}
-        />
-      </View>
+      <StickyBar>
+        <Button title="Continue to payment" disabled={slots.length === 0 || failed || loading} onPress={goPay} />
+      </StickyBar>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
-  content: { padding: 20, paddingBottom: 24, gap: 4 },
-  card: { backgroundColor: Colors.light.lineSoft, borderRadius: 12, padding: 14, marginBottom: 12 },
-  arenaName: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
-  arenaLocation: { fontSize: 12, color: Colors.light.muted, marginTop: 2 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  detailLabel: { fontSize: 13, color: Colors.light.muted },
-  detailValue: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
-  section: { marginTop: 20 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.light.text, marginBottom: 10 },
-  planRow: { flexDirection: 'row', gap: 10 },
-  planChip: { flex: 1, borderWidth: 1, borderColor: Colors.light.border, borderRadius: 10, padding: 12, alignItems: 'center' },
-  planChipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
-  planChipText: { fontSize: 12, fontWeight: '600', color: Colors.light.text, textAlign: 'center' },
-  planChipTextActive: { color: '#fff' },
-  equipRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
-  equipName: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
-  equipPrice: { fontSize: 12, color: Colors.light.muted },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepperBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperBtnText: { fontSize: 16, color: Colors.light.text },
-  stepperValue: { fontSize: 14, fontWeight: '600', minWidth: 16, textAlign: 'center' },
-  totalLabel: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
-  totalValue: { fontSize: 16, fontWeight: '700', color: Colors.light.tint },
-  discountHint: { fontSize: 11, color: Colors.light.muted, marginTop: 6 },
-  errorText: { color: Colors.light.destructive, fontSize: 13, marginTop: 12 },
-  footer: { padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.light.border },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  pad: { paddingHorizontal: 18, paddingTop: 2 },
+  arenaCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10 },
+  art: { width: 60, height: 52, borderRadius: 10, overflow: 'hidden' },
+  arenaName: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  muted: { fontSize: 14, color: Colors.light.muted, marginTop: 2 },
+  info: { padding: 12, marginTop: 11 },
+  priceCard: { padding: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 11, justifyContent: 'center', backgroundColor: Colors.light.lineSoft, borderWidth: 1, borderColor: Colors.light.lineSoft },
+  chipOn: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },
+  chipText: { fontSize: 14, fontWeight: '600', color: Colors.light.text2 },
+  chipTextOn: { color: Colors.light.paper },
+  center: { flex: 1, alignItems: 'center', paddingTop: 60, paddingHorizontal: 18 },
+  stateIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  stateTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text, marginTop: 14 },
+  stateText: { fontSize: 14, lineHeight: 21, color: Colors.light.muted, marginTop: 6, marginBottom: 16, textAlign: 'center' },
+  stateButton: { width: 200 },
 });

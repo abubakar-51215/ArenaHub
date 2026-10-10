@@ -1,6 +1,6 @@
 /** Player-facing booking API calls. */
 import { api } from '../lib/api';
-import type { Booking, BookingGroup, BookingStatus, Page, PaymentPlan } from '../types';
+import type { Booking, BookingGroup, BookingGroupDetails, BookingPreview, BookingStatus, Page, PaymentPlan } from '../types';
 
 export interface BookingCreateInput {
   court_id: string;
@@ -29,4 +29,25 @@ export function cancelBooking(bookingId: string, reason?: string): Promise<Booki
 
 export function rescheduleBooking(bookingId: string, newSlotId: string): Promise<Booking> {
   return api.post<Booking>(`/bookings/${bookingId}/reschedule`, { new_slot_id: newSlotId });
+}
+
+export interface BookingPreviewInput {
+  court_id: string;
+  slot_ids: string[];
+  discount_code?: string;
+  equipment?: { equipment_id: string; quantity: number }[];
+}
+
+/** The price of a checkout with nothing reserved (a 409 means a time was taken). */
+export function previewBooking(data: BookingPreviewInput): Promise<BookingPreview> {
+  return api.post<BookingPreview>('/bookings/preview', data);
+}
+
+export function getBookingGroup(groupId: string): Promise<BookingGroupDetails> {
+  return api.get<BookingGroupDetails>(`/bookings/group/${groupId}`);
+}
+
+/** Leave checkout and give the times back. */
+export function releaseBookingGroup(groupId: string): Promise<BookingGroupDetails> {
+  return api.post<BookingGroupDetails>(`/bookings/group/${groupId}/release`);
 }
