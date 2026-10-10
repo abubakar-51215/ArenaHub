@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ArenaMark } from "@/components/brand/arena-mark";
 import { AuthPhotoPanel } from "@/components/auth/auth-photo-panel";
 
 interface AuthStat {
@@ -49,16 +50,8 @@ const BRAND_SUBTITLE: Record<AuthVariant, string> = {
   admin: "Platform admin",
 };
 
-function BrandMark({ variant }: { variant: AuthVariant }) {
-  const admin = variant === "admin";
-  return (
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className="size-8 shrink-0">
-      <rect width="32" height="32" rx="9" className={admin ? "fill-lime" : "fill-ink"} />
-      <path d="M9 22.5 16 8l7 14.5" strokeWidth="2.4" strokeLinejoin="round" className={admin ? "stroke-ink" : "stroke-lime"} />
-      <path d="M12.4 19h7.2" strokeWidth="2.4" strokeLinecap="round" className={admin ? "stroke-ink" : "stroke-lime"} />
-      <circle cx="16" cy="16" r="1.9" className={admin ? "fill-ink" : "fill-lime"} />
-    </svg>
-  );
+function BrandMark() {
+  return <ArenaMark tone="system" className="size-8 shrink-0" />;
 }
 
 /**
@@ -112,7 +105,7 @@ export function SplitAuthShell({
     <div data-theme="arena" className="grid min-h-screen bg-card lg:grid-cols-2">
       <div className="mx-auto flex w-full max-w-[640px] flex-col justify-center overflow-y-auto px-6 py-10 sm:px-[8vw]">
         <div className="mb-11 flex items-center gap-2.5">
-          <BrandMark variant={resolvedVariant} />
+          <BrandMark />
           <div className="font-display leading-[1.05] font-bold tracking-[-0.01em] text-foreground [font-variation-settings:'wdth'_100]">
             Arena Hub
             <small className="mt-0.5 block text-[8.5px] tracking-[0.2em] text-muted-foreground uppercase">

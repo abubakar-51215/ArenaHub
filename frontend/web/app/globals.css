@@ -4592,3 +4592,86 @@ html[data-theme="dark"] [data-admin] .ah-toast {
     font-size: 14px;
   }
 }
+
+/* ---- ArenaHub mark (components/brand/arena-mark.tsx): one drawing per tone, CSS picks one ---- */
+.am {
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+  width: 28px;
+  height: 28px;
+}
+.am svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.am .am-d {
+  display: none;
+}
+.am-dark .am-l {
+  display: none;
+}
+.am-dark .am-d {
+  display: block;
+}
+html[data-theme="dark"] .am-theme .am-l {
+  display: none;
+}
+html[data-theme="dark"] .am-theme .am-d {
+  display: block;
+}
+@media (prefers-color-scheme: dark) {
+  .am-system .am-l {
+    display: none;
+  }
+  .am-system .am-d {
+    display: block;
+  }
+}
+
+/* ---- first page load: the 72px loader over the page ---- */
+.am-firstload {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: #f1f2ef;
+  transition: opacity 200ms ease-out;
+}
+.am-firstload[data-phase="fade"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.am-firstload .am-fl-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  .am-firstload {
+    background: #0f1a15;
+  }
+  .am-firstload .am-fl-light {
+    display: none;
+  }
+  .am-firstload .am-fl-dark {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .am-firstload .bm-lrun,
+  .am-firstload .bm-lball,
+  .am-firstload .bm-lsp,
+  .am-firstload .bm-lf {
+    animation: none !important;
+  }
+  .am-firstload .bm-lrun {
+    opacity: 0;
+  }
+  .am-firstload .bm-lf.bm-k0 {
+    opacity: 1;
+  }
+  .am-firstload .bm-lball {
+    offset-distance: 62%;
+  }
+}
