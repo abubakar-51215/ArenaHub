@@ -132,7 +132,7 @@ Screen-level requirements already written down:
 
 ## Open conflict
 
-- **14px text vs the prototype's sizes.** The auth frames use 12.5 to 13.5px for the line under a title, links and rule lists (and 11 to 12px for field messages). The 14px rule (labels, badges and chart text exempt) is not met by those; the screens follow the frames. Needs the user's decision: keep the frames' sizes, or raise body copy to 14px.
+- **14px text (resolved).** The updated `arena-hub-player-app-auth-2.html` uses 14px for body copy, links, messages, rule lists, the sheet text and the toast; the G1 screens follow it (exceptions: uppercase labels, badges, the idle field label).
 - **Backend: a second reset code within 60 s.** `POST /auth/forgot-password` sends no new code within 60 s of the last one, with the same answer as always. After a refused code, "Send a new code" within that minute leaves the old code in place; if that code is used up (5 wrong tries), the user waits for the 60 s countdown. Nothing was changed.
 
 ## Unconfirmed
