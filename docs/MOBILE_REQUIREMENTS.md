@@ -147,7 +147,7 @@ Screen-level requirements already written down:
 | 58 | **Later work:** the full-screen photo viewer and sharing. | Later |
 | 59 | **States to build:** loading, error, one section failing, no courts, no reviews yet. | Done |
 
-- **Dropped from the Arena screen because the frame does not draw them (later work if wanted):** the Location map with "Get Directions", "You might also like", and the peak-pricing lines under each court.
+- **Dropped from the Arena screen because the frame does not draw them (later work if wanted):** the Location map with "Get Directions", "You might also like", and the peak-pricing lines under each court. **Decided at the G3 release: they stay dropped and are later work that needs a frame first** (the user will draw a Location block frame later; "Get Directions" belongs to it). Not built until the frames exist.
 - **Pick a slot:** the "fully booked" day suggests up to two other days or courts that still have open times. Past times today are judged by the phone's clock.
 
 ## Confirmed, not built yet (the user will make prototype frames first)
