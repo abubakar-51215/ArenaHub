@@ -114,6 +114,17 @@ Screen-level requirements already written down:
 
 ---
 
+## G2 decisions (Home and Search) — recorded, not built; the frames come first
+
+| # | Decision | Source | Status |
+|---|---|---|---|
+| 45 | The Search tab opens a Search screen: search field, Recent searches, a Filters button, then the results. The Filters screen from the prototype is pushed from that button. | earlier prompt (user decision) | Not started: waits for frames |
+| 46 | Smart search (for example "cheap futsal in Lahore") is kept, with small "Understood" chips under the field. | earlier prompt (user decision) | Not started: waits for frames |
+| 47 | The price filter is a two-thumb slider as in the prototype (₨200 to ₨5,000+). | earlier prompt (user decision) | Not started: waits for frames |
+| 48 | Cards show rating, review count and price only when the backend sends them; otherwise the card hides that part (no fake numbers). Distance shows only after the near-me feature (item 42) is built. | earlier prompt (user decision) | Backend done (`avg_rating`, `review_count`, `min_price` on the arena list); the cards do not read them yet |
+| 49 | Sport chips use the backend's own sport values. A Football chip is not shown until the data exists. | earlier prompt (user decision) | In place (chips use the backend's values) |
+| 50 | The promo "-30%" stays dropped. "Free tonight" waits for an availability endpoint. | earlier prompt (user decision) | Dropped / waiting |
+
 ## Confirmed, not built yet (the user will make prototype frames first)
 
 | # | Requirement | Source | Status |
