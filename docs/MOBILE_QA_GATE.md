@@ -50,6 +50,26 @@ h) **G4 Payment screen:** it must list exactly Card, Bank transfer, JazzCash, Ea
 
 i) **Temporary screens:** the admin landing ("Hello, Admin" with Log out) is **temporary until the admin group**.
 
+## Checking rule: numbers and text first, pictures only when needed (user decision)
+
+Save credit. For every commit run automatic checks and report them as a short table (screen, width, pass/fail, value). No pictures for passing checks. Measure with a script at 360, 375, 390 and 430 wide:
+
+- Every text is at least 14px. List only the exceptions: uppercase labels, badges, the idle field label and chart text.
+- Every tap target is at least 44px, with `hitSlop` counted. (react-native-web ignores `hitSlop`, so the script adds the declared `hitSlop` to the measured box.)
+- The shared Button is 46px high.
+- Mail and lock fields: about 138px (at 390 wide) when empty and not focused, and 52px when focused or filled.
+- No sideways scroll, no console errors, no failed requests.
+- The pixel-diff percentage against the approved baseline for each screen.
+- A plain text dump of each screen (the visible texts in order), so the wording can be checked without a picture.
+
+Pictures are allowed only in these cases:
+
+- A brand-new screen with no baseline: ONE picture at 390 wide.
+- A screen whose pixel-diff is above 1%: ONE picture of that screen only.
+- Never separate pictures for 360, 375 and 430. If they are needed, put the widths side by side in ONE contact sheet, scaled to about 900px wide in total.
+- At the end of each group (not each commit): ONE contact sheet of all screens of that group (at most 12 screens per sheet, scaled down). That is the only picture reviewed.
+- Pictures are not retaken for screens that passed the numeric checks and did not change.
+
 ## Comparison baseline — the rule for every regression diff
 
 Regression diffs compare against a **same-time capture of HEAD**, not against

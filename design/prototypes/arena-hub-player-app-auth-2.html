@@ -30,7 +30,7 @@ p.lead{color:var(--muted);max-width:760px;margin:8px 0 28px;line-height:1.5;font
 .back:active{transform:scale(.94)}
 .back svg{width:16px;height:16px}
 h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:-.025em;line-height:1.1;margin-top:20px}
-.sub{color:var(--muted);font-size:13.5px;line-height:1.45;margin-top:6px}
+.sub{color:var(--muted);font-size:14px;line-height:1.45;margin-top:6px}
 .sub b{color:var(--ink);font-weight:600}
 
 /* Fields: icon is LARGE while the field is empty and idle, and settles to its normal size on focus or when it has text */
@@ -45,11 +45,11 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
 .field:not(:focus-within):has(input:placeholder-shown) .eye{opacity:0}
 .field:focus-within{border-color:var(--ink);box-shadow:0 0 0 3px rgba(196,245,70,.45)}
 .field.err{border-color:var(--red)}
-.msg{color:var(--red);font-size:12px;margin:5px 4px 0}
-.eye{margin-left:auto;width:16px;height:16px;color:#6C7771;flex:none}
+.msg{color:var(--red);font-size:14px;margin:5px 4px 0}
+.eye{margin-left:auto;width:18px;height:18px;color:#6C7771;flex:none;cursor:pointer;transition:transform .15s var(--ease),color .15s}.eye:active{transform:scale(.88)}.eye.on{color:var(--ink)}
 
 .rules{list-style:none;padding:0;margin-top:12px;display:grid;gap:6px}
-.rules li{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted)}
+.rules li{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--muted)}
 .rules .d{width:17px;height:17px;border-radius:50%;background:var(--soft);display:grid;place-items:center;flex:none;transition:background .2s}
 .rules .d i{width:4px;height:4px;border-radius:50%;background:#8B958F}
 .rules li.ok{color:var(--lime-deep)}
@@ -68,9 +68,9 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
 .btn.loading span{opacity:0}
 .btn.loading::before{content:"";position:absolute;width:18px;height:18px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;z-index:2}
 @keyframes spin{to{transform:rotate(360deg)}}
-.foot{text-align:center;color:var(--muted);font-size:13px;margin-top:18px}
+.foot{text-align:center;color:var(--muted);font-size:14px;margin-top:18px}
 .foot b{color:var(--ink);font-weight:700}
-.link{display:block;text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
+.link{display:block;text-align:center;font-size:14px;color:var(--muted);margin-top:16px}
 .link b{color:var(--ink);font-weight:700}
 
 .codes{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:20px}
@@ -88,7 +88,7 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
 .center{text-align:center}
 .replay{font-size:11px;color:var(--lime-deep);cursor:pointer;background:none;border:0;font-family:inherit;margin-top:2px}
 
-.note{display:flex;gap:10px;background:#FBEAEA;border:1px solid #F1C9C9;color:#8E2A2A;border-radius:13px;padding:10px 12px;font-size:12.5px;line-height:1.4;margin-top:16px}
+.note{display:flex;gap:10px;background:#FBEAEA;border:1px solid #F1C9C9;color:#8E2A2A;border-radius:13px;padding:10px 12px;font-size:14px;line-height:1.4;margin-top:16px}
 .note.info{background:#EEF6D6;border-color:#D9EBA0;color:#4D6410}
 
 /* Admin placeholder */
@@ -101,11 +101,11 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
 .dim{position:absolute;inset:0;background:rgba(15,26,21,.45);backdrop-filter:blur(2px);animation:fade .2s var(--ease)}
 .sheet{position:absolute;left:14px;right:14px;bottom:26px;background:var(--white);border-radius:26px;padding:20px 18px 18px;animation:rise .34s var(--ease)}
 .sheet h3{font-family:Archivo,sans-serif;font-size:19px;letter-spacing:-.02em}
-.sheet p{color:var(--muted);font-size:13px;line-height:1.45;margin-top:6px}
+.sheet p{color:var(--muted);font-size:14px;line-height:1.45;margin-top:6px}
 .sheet .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .sheet .btn{margin-top:0;height:44px;font-size:14px}
 .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:-8px auto 14px}
-.toast{position:absolute;left:20px;right:20px;top:54px;background:var(--ink);color:#fff;border-radius:15px;padding:12px 14px;font-size:13px;display:flex;gap:10px;align-items:center;animation:drop .4s var(--ease)}
+.toast{position:absolute;left:20px;right:20px;top:54px;background:var(--ink);color:#fff;border-radius:15px;padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:center;animation:drop .4s var(--ease)}
 .toast i{width:20px;height:20px;border-radius:50%;background:var(--lime);display:grid;place-items:center;flex:none}
 @keyframes fade{from{opacity:0}}
 @keyframes rise{from{transform:translateY(40px);opacity:0}}
@@ -124,6 +124,7 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
     <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 8l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10V8a4 4 0 018 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.1 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.1-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
@@ -211,7 +212,7 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
   <button class="btn"><span>Send a new code</span></button>
   <button class="btn ghost"><span>Back to log in</span></button>
   <div class="home"></div>
-</div><div class="cap">6 · Reset failed<em>Shown when the last step is refused (wrong, expired or used code)</em></div></div>
+</div><div class="cap">6 · Reset failed<em>Shown when the last step is refused. “Send a new code” can wait for the 60 s timer, shown as “Send a new code in 0:41” (grey)</em></div></div>
 
 <!-- 7 ADMIN CODE -->
 <div class="frame-wrap"><div class="phone">
@@ -236,12 +237,12 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
   <div class="codes bad shake" data-shake>
     <input value="4" readonly><input value="8" readonly><input value="2" readonly><input value="9" readonly><input value="1" readonly><input value="3" readonly>
   </div>
-  <p class="msg">That code is wrong, expired or already used. 3 tries left.</p>
+  <p class="msg">That code is wrong, expired or already used.</p>
   <button class="btn"><span>Verify and sign in</span></button>
   <p class="link"><b>Send a new code</b></p>
   <div class="center"><button class="replay" data-shakebtn>▶ replay shake</button></div>
   <div class="home"></div>
-</div><div class="cap">8 · Wrong code<em>Boxes shake once, message under them. Too many tries: “Start again” returns to Log in</em></div></div>
+</div><div class="cap">8 · Wrong code<em>Boxes shake once, message under them. The server’s own message is shown</em></div></div>
 
 <!-- 9 ADMIN HOME -->
 <div class="frame-wrap"><div class="phone">
@@ -313,6 +314,9 @@ document.querySelectorAll('[data-count]').forEach(el=>{ let s=58; setInterval(()
 const pw=document.querySelector('[data-pw]');
 if(pw){ pw.addEventListener('input',()=>{ const v=pw.value; const t={len:v.length>=8,up:/[A-Z]/.test(v),num:/\d/.test(v),sp:/[^A-Za-z0-9]/.test(v)};
   document.querySelectorAll('[data-rules] li').forEach(li=>{ const ok=t[li.dataset.r]; li.classList.toggle('ok',ok); li.querySelector('.d').innerHTML= ok?'<svg><use href="#i-check"/></svg>':'<i></i>'; }); }); }
+
+// show / hide password: eye turns into a crossed-out eye while the password is visible
+document.querySelectorAll('svg.eye').forEach(e=>{ e.addEventListener('click',()=>{ const inp=e.parentElement.querySelector('input'); const show=inp.type==='password'; inp.type=show?'text':'password'; e.classList.toggle('on',show); e.querySelector('use').setAttribute('href',show?'#i-eyeoff':'#i-eye'); inp.focus(); }); });
 // replay tick
 document.querySelector('[data-replay]')?.addEventListener('click',()=>{ const t=document.querySelector('[data-tick]'); const c=t.cloneNode(true); t.replaceWith(c); });
 // replay shake
