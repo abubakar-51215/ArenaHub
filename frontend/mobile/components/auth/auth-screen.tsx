@@ -15,7 +15,8 @@ import { Colors } from '@/constants/theme';
 // -0.03em) and the 12.5px muted line under it. The back button is drawn 30px;
 // hitSlop makes its touch area 44.
 interface AuthScreenProps {
-  title: string;
+  /** Left out when the screen draws its own headline (the success screen). */
+  title?: string;
   subtitle?: ReactNode;
   /** Gap between the subtitle and the content: 22 under the code boxes, 18 above fields. */
   subtitleGap?: number;
@@ -41,9 +42,11 @@ export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack
             onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login')))}
           />
         </View>}
-        <Text variant="archivo" style={styles.title} accessibilityRole="header">
-          {title}
-        </Text>
+        {title ? (
+          <Text variant="archivo" style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
+        ) : null}
         {subtitle ? <Text style={[styles.subtitle, { marginBottom: subtitleGap }]}>{subtitle}</Text> : null}
         <FieldScrollContext.Provider value={{ scrollRef, contentRef }}>
           <View ref={contentRef} collapsable={false}>
