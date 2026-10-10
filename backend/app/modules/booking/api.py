@@ -15,7 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.modules.booking import service
 from app.modules.booking.model import BookingStatus
-from app.modules.booking.schema import BookingCreateRequest, CancelRequest, RescheduleRequest
+from app.modules.booking.schema import (
+    BookingCreateRequest,
+    BookingPreviewRequest,
+    CancelRequest,
+    RescheduleRequest,
+)
 from app.modules.user.model import User
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, paginated, pagination_params
@@ -35,6 +40,36 @@ async def create_booking(
 ) -> dict[str, Any]:
     result = await service.create_booking(db, user, data)
     return success(data=result, message="Booking created, awaiting payment.")
+
+
+@router.post("/preview", summary="Price a checkout without reserving anything")
+async def preview_booking(
+    data: BookingPreviewRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    result = await service.preview_booking(db, user, data)
+    return success(data=result, message="Booking priced.")
+
+
+@router.get("/group/{group_id}", summary="One booking group with arena, court, money and rules")
+async def get_group(
+    group_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    details = await service.get_group_details(db, user, group_id)
+    return success(data=details, message="Booking retrieved.")
+
+
+@router.post("/group/{group_id}/release", summary="Leave checkout and give the times back")
+async def release_group(
+    group_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    details = await service.release_group(db, user, group_id)
+    return success(data=details, message="Times released.")
 
 
 @router.get("", summary="List my bookings")

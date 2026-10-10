@@ -76,6 +76,7 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-ra -q"
+markers = ["real_gateway_rules: run with the real card/wallet availability rules"]
 # Tests use short dummy JWT secrets; the weak-key warning is noise here.
 filterwarnings = ["ignore::jwt.warnings.InsecureKeyLengthWarning"]
 

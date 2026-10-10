@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.modules.payment import service
+from app.modules.payment import methods, service
 from app.modules.payment.schema import PaymentInitiateRequest, ReceiptUploadRequest, RejectRequest
 from app.modules.user.model import User
 from app.shared.auth import get_current_user, require_role
@@ -28,6 +28,11 @@ webhook_router = APIRouter(prefix="/webhooks", tags=["payments-webhooks"])
 
 _owner = require_role("owner")
 _admin = require_role("admin")
+
+
+@router.get("/methods", summary="The four ways to pay and whether each works yet")
+async def list_payment_methods(_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    return success(data=methods.list_methods(), message="Payment methods retrieved.")
 
 
 @router.get("/my", summary="My payment history")

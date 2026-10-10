@@ -25,10 +25,14 @@ from app.modules.booking import repository as repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentPlan, PaymentStatus
 from app.modules.booking.schema import (
     BookingCreateRequest,
+    BookingGroupDetails,
     BookingGroupResponse,
+    BookingPreviewRequest,
+    BookingPreviewResponse,
     BookingResponse,
 )
 from app.modules.court import repository as court_repo
+from app.modules.equipment import repository as equipment_repo
 from app.modules.equipment import service as equipment_service
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus, TimeSlot
@@ -36,7 +40,7 @@ from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams
 from app.shared.pricing import apply_discount
-from app.shared.refunds import resolve_refund_percentage
+from app.shared.refunds import describe_refund_policy, resolve_refund_percentage
 from app.websocket.manager import broadcast_slot_status
 
 STALE_PENDING_PAYMENT_AFTER = timedelta(hours=24)
@@ -59,6 +63,132 @@ def _is_discount_usable(discount: DiscountCode, subtotal: Decimal, now: datetime
     if discount.max_uses is not None and discount.used_count >= discount.max_uses:
         return False
     return subtotal >= discount.min_booking_amount
+
+
+_NOT_VALID_CODE = "That code is not valid or has expired."
+
+
+def _discount_problem(
+    discount: DiscountCode | None, subtotal: Decimal, now: datetime
+) -> str | None:
+    """Why a code cannot be used, in words for the player (None when it works)."""
+    if discount is None or not discount.is_active:
+        return _NOT_VALID_CODE
+    if discount.valid_from and now < discount.valid_from.replace(tzinfo=None):
+        return _NOT_VALID_CODE
+    if discount.valid_until and now > discount.valid_until.replace(tzinfo=None):
+        return _NOT_VALID_CODE
+    if discount.max_uses is not None and discount.used_count >= discount.max_uses:
+        return _NOT_VALID_CODE
+    if subtotal < discount.min_booking_amount:
+        return f"This code needs a booking of at least ₨ {int(discount.min_booking_amount):,}."
+    return None
+
+
+def plan_for_arena(arena) -> PaymentPlan:
+    """The first payment is the arena's advance when it takes one, else the full price."""
+    if arena.require_full_payment or arena.advance_percentage >= 100:
+        return PaymentPlan.full
+    return PaymentPlan.advance
+
+
+async def preview_booking(
+    db: AsyncSession, user: User, data: BookingPreviewRequest
+) -> BookingPreviewResponse:
+    """Price a checkout without reserving anything: slot total, discount code,
+    equipment, total, what is paid now and what is left for the arena. Raises a
+    409 when one of the slots is no longer free, so the app can send the player
+    back to pick again before any payment starts."""
+    if user.role != UserRole.player:
+        raise ForbiddenError("Only players can create bookings.")
+    court = await court_repo.get_court(db, data.court_id)
+    if court is None or not court.is_available:
+        raise NotFoundError("Court not found.")
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or not arena.is_live:
+        raise NotFoundError("Arena not found.")
+
+    slots: list[TimeSlot] = []
+    for slot_id in dict.fromkeys(data.slot_ids):
+        slot = await slot_repo.get_slot(db, slot_id)
+        if slot is None or slot.court_id != court.id:
+            raise NotFoundError(f"Slot {slot_id} not found.")
+        slots.append(slot)
+    slots.sort(key=lambda s: (s.date, s.start_time))
+    if len({s.date for s in slots}) > 1:
+        raise ValidationError("All slots in one booking must be on the same date.")
+    if any(s.status != SlotStatus.available for s in slots):
+        raise ConflictError("One of the selected slots is no longer available.")
+
+    subtotal = sum((s.price for s in slots), Decimal("0"))
+    discounted_total = subtotal
+    discount_status, discount_message = "none", None
+    code = (data.discount_code or "").strip().upper()
+    if code:
+        discount = await arena_repo.get_discount_by_code(db, arena.id, code)
+        problem = _discount_problem(discount, subtotal, datetime.now())
+        if problem is None and discount is not None:
+            discounted_total = apply_discount(subtotal, discount)
+            discount_status = "applied"
+        else:
+            discount_status, discount_message = "refused", problem
+
+    equipment_total = Decimal("0")
+    if data.equipment:
+        found = await equipment_repo.get_equipment_by_ids(
+            db, [i.equipment_id for i in data.equipment]
+        )
+        rows = {e.id: e for e in found}
+        for item in data.equipment:
+            eq = rows.get(item.equipment_id)
+            if eq is None or eq.arena_id != arena.id or not eq.is_active:
+                raise ValidationError("That extra is not available at this arena.")
+            if eq.quantity_available < item.quantity:
+                raise ValidationError(f"Not enough '{eq.name}' available.")
+            equipment_total += (eq.rental_price * item.quantity).quantize(Decimal("0.01"))
+
+    plan = plan_for_arena(arena)
+    total = discounted_total + equipment_total
+    # the same per-slot split the booking itself uses, so pay_now matches exactly
+    shares: list[Decimal] = []
+    allocated = Decimal("0")
+    for i, slot in enumerate(slots):
+        if i == len(slots) - 1:
+            share = discounted_total - allocated
+        else:
+            share = (
+                (slot.price / subtotal * discounted_total).quantize(Decimal("0.01"))
+                if subtotal
+                else Decimal("0")
+            )
+        allocated += share
+        shares.append(share)
+    shares[0] += equipment_total
+    if plan == PaymentPlan.advance:
+        pay_now = sum(
+            (
+                (share * Decimal(arena.advance_percentage) / Decimal(100)).quantize(Decimal("0.01"))
+                for share in shares
+            ),
+            Decimal("0"),
+        )
+    else:
+        pay_now = total
+    cents = Decimal("0.01")
+    return BookingPreviewResponse(
+        slots_subtotal=subtotal.quantize(cents),
+        equipment_total=equipment_total.quantize(cents),
+        discount_amount=(subtotal - discounted_total).quantize(cents),
+        total=total.quantize(cents),
+        payment_type=plan,
+        pay_now=pay_now.quantize(cents),
+        due_at_arena=(total - pay_now).quantize(cents),
+        discount_status=discount_status,
+        discount_message=discount_message,
+        cancellation_note=describe_refund_policy(
+            arena.refund_policy, datetime.combine(slots[0].date, slots[0].start_time)
+        ),
+    )
 
 
 async def create_booking(
@@ -107,7 +237,9 @@ async def create_booking(
         discounted_total = subtotal
         discount = None
         if data.discount_code:
-            discount = await arena_repo.get_discount_by_code(db, arena.id, data.discount_code)
+            discount = await arena_repo.get_discount_by_code(
+                db, arena.id, data.discount_code.strip().upper()
+            )
             if discount is None or not _is_discount_usable(discount, subtotal, datetime.now()):
                 raise ValidationError("Invalid or inapplicable discount code.")
             discounted_total = apply_discount(subtotal, discount)
@@ -534,3 +666,78 @@ async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None)
     if sent:
         await db.commit()
     return sent
+
+
+def booking_code_for(group_id: uuid.UUID) -> str:
+    """The short reference a player reads out or sends with a bank transfer."""
+    return "AHB-" + group_id.hex[:6].upper()
+
+
+async def _group_for_player(db: AsyncSession, user: User, group_id: uuid.UUID) -> list[Booking]:
+    bookings = await repo.list_group(db, group_id)
+    if not bookings or bookings[0].player_id != user.id:
+        raise NotFoundError("Booking not found.")
+    return bookings
+
+
+async def get_group_details(
+    db: AsyncSession, user: User, group_id: uuid.UUID
+) -> BookingGroupDetails:
+    bookings = await _group_for_player(db, user, group_id)
+    first, last = bookings[0], bookings[-1]
+    arena = await arena_repo.get_arena(db, first.arena_id)
+    court = await court_repo.get_court(db, first.court_id)
+    if arena is None or court is None:
+        raise NotFoundError("Booking not found.")
+    from app.modules.payment import repository as payment_repo
+
+    payment = await payment_repo.get_payment_by_group(db, group_id)
+    total = sum((b.total_amount for b in bookings), Decimal("0"))
+    pay_now = sum((b.advance_amount for b in bookings), Decimal("0"))
+    return BookingGroupDetails(
+        booking_group_id=group_id,
+        arena_id=arena.id,
+        arena_name=arena.name,
+        arena_address=", ".join(x for x in (arena.area, str(arena.city.value)) if x),
+        court_id=court.id,
+        court_name=court.name,
+        booking_date=first.booking_date,
+        start_time=first.start_time,
+        end_time=last.end_time,
+        slot_count=len(bookings),
+        status=first.status,
+        payment_status=first.payment_status,
+        payment_type=first.payment_type,
+        total=total,
+        pay_now=pay_now,
+        due_at_arena=total - pay_now,
+        payment_id=payment.id if payment else None,
+        payment_method=payment.payment_method.value if payment else None,
+        payment_lifecycle=payment.lifecycle_status.value if payment else None,
+        booking_code=booking_code_for(group_id),
+        cancellation_note=describe_refund_policy(arena.refund_policy, _booking_start(first)),
+        booking_ids=[b.id for b in bookings],
+    )
+
+
+async def release_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> BookingGroupDetails:
+    """The player leaves checkout: give the times back. Only a group still
+    waiting for payment can be released; one with a receipt sent is left alone."""
+    await _group_for_player(db, user, group_id)
+    bookings = await repo.list_group_for_update(db, group_id)
+    if any(b.status != BookingStatus.pending_payment for b in bookings):
+        raise ValidationError("Only a booking that is still waiting for payment can be released.")
+    for booking in bookings:
+        await _apply_cancellation(
+            db, booking, reason="Left the payment screen.", refund_percentage=0
+        )
+    from app.modules.payment import repository as payment_repo
+    from app.modules.payment import state_machine
+    from app.modules.payment.model import PaymentLifecycleStatus as Lifecycle
+
+    payment = await payment_repo.get_payment_by_group(db, group_id)
+    if payment is not None and payment.status == PaymentStatus.pending:
+        payment.status = PaymentStatus.failed
+        await state_machine.advance(db, payment, Lifecycle.expired, note="Player left checkout.")
+    await db.commit()
+    return await get_group_details(db, user, group_id)
