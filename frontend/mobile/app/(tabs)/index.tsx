@@ -10,13 +10,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ArenaCard } from "@/components/arena-card";
 import { Colors } from "@/constants/theme";
+import { SPORT_VALUES, sportLabel } from "@/constants/sports";
 import { useArenaSearch } from "@/hooks/useArenas";
 import { getRecommendations } from "@/services/ai";
 import { getTrendingArenas } from "@/services/arenas";
 import { useAuthStore } from "@/store/auth";
 import { useLocationStore, type LocationStatus } from "@/store/location";
 
-const SPORTS = ["All", "futsal", "cricket", "padel", "badminton", "tennis"];
+const SPORTS = ["All", ...SPORT_VALUES];
 
 const LOCATION_LABEL: Record<LocationStatus, string> = {
   idle: "Detect my location",
@@ -113,7 +114,7 @@ export default function HomeScreen() {
                       })
                     }
                   >
-                    <Text style={styles.sportChipText}>{item}</Text>
+                    <Text style={styles.sportChipText}>{item === "All" ? item : sportLabel(item)}</Text>
                   </Pressable>
                 )}
               />

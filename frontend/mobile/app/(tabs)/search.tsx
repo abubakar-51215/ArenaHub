@@ -10,13 +10,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ArenaCard } from "@/components/arena-card";
 import { TextField } from "@/components/ui/text-field";
 import { Colors } from "@/constants/theme";
+import { SPORT_VALUES, sportLabel } from "@/constants/sports";
 import { useArenaSearch } from "@/hooks/useArenas";
 import { nlpSearch } from "@/services/ai";
 import { useLocationStore } from "@/store/location";
 import { useSearchHistory } from "@/store/search-history";
 import { ARENA_CITIES, type ArenaCity } from "@/types";
 
-const SPORTS = ["futsal", "cricket", "padel", "badminton", "tennis"];
+const SPORTS = SPORT_VALUES;
 type SortOption = "newest" | "price_asc" | "price_desc" | "rating_desc";
 const SORTS: { value: SortOption; label: string }[] = [
   { value: "newest", label: "Newest" },
@@ -165,7 +166,7 @@ export default function SearchScreen() {
               {SPORTS.map((s) => (
                 <Chip
                   key={s}
-                  label={s}
+                  label={sportLabel(s)}
                   active={sport === s}
                   onPress={() => setSport(sport === s ? undefined : s)}
                 />

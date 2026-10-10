@@ -9,12 +9,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { MatchCard } from '@/components/match-card';
 import { Colors, Shadow } from '@/constants/theme';
+import { SPORTS, sportLabel } from '@/constants/sports';
 import { useMyMatches, useOpenMatches } from '@/hooks/useMatches';
 import { ApiError } from '@/lib/api';
 import { joinMatch } from '@/services/matches';
 import type { Match } from '@/types';
 
-const SPORTS = ['futsal', 'cricket', 'padel', 'badminton', 'tennis'];
 
 export default function PlayScreen() {
   const [tab, setTab] = useState<'open' | 'mine'>('open');
@@ -78,12 +78,12 @@ export default function PlayScreen() {
           showsHorizontalScrollIndicator={false}
           style={styles.filterBar}
           contentContainerStyle={styles.filterBarContent}>
-          {SPORTS.map((s) => (
+          {SPORTS.map((o) => o.value).map((s) => (
             <Pressable
               key={s}
               style={[styles.chip, sport === s && styles.chipActive]}
               onPress={() => setSport(sport === s ? undefined : s)}>
-              <Text style={[styles.chipText, sport === s && styles.chipTextActive]}>{s}</Text>
+              <Text style={[styles.chipText, sport === s && styles.chipTextActive]}>{sportLabel(s)}</Text>
             </Pressable>
           ))}
         </ScrollView>

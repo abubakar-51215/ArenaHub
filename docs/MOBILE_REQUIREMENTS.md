@@ -125,6 +125,12 @@ Screen-level requirements already written down:
 | 49 | Sport chips use the backend's own sport values. A Football chip is not shown until the data exists. | earlier prompt (user decision) | In place (chips use the backend's values) |
 | 50 | The promo "-30%" stays dropped. "Free tonight" waits for an availability endpoint. | earlier prompt (user decision) | Dropped / waiting |
 
+## Later work logged during G2 (not built)
+
+- **Backend sport value check.** `sports_offered` and `sport_types` accept any word today. A check against the shared list of ten (futsal, cricket, padel, badminton, table_tennis, squash, basketball, volleyball, snooker, tennis) is later work. It must keep loading old rows (an old "football" is shown as Futsal) and should land only after the owner picker exists.
+- **Filters rows left out for now (no backend):** the radius row (needs the near-me feature), the time-of-day row and the "Must have" amenity row.
+- **Cards:** no distance, no promo, no "Free tonight".
+
 ## Confirmed, not built yet (the user will make prototype frames first)
 
 | # | Requirement | Source | Status |

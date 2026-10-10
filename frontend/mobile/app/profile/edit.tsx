@@ -12,13 +12,13 @@ import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
+import { SPORTS, sportLabel } from '@/constants/sports';
 import { resolveMediaUrl } from '@/lib/media';
 import { updateProfile } from '@/services/auth';
 import { uploadImage } from '@/services/uploads';
 import { useAuthStore } from '@/store/auth';
 import { ARENA_CITIES } from '@/types';
 
-const SPORTS = ['futsal', 'cricket', 'padel', 'badminton', 'tennis'];
 
 export default function EditProfileScreen() {
   const user = useAuthStore((s) => s.user);
@@ -114,12 +114,12 @@ export default function EditProfileScreen() {
 
           <Text style={styles.sectionLabel}>Preferred Sports</Text>
           <View style={styles.chipRow}>
-            {SPORTS.map((s) => (
+            {SPORTS.map((o) => o.value).map((s) => (
               <Pressable
                 key={s}
                 style={[styles.chip, sports.includes(s) && styles.chipActive]}
                 onPress={() => toggle(sports, setSports, s)}>
-                <Text style={[styles.chipText, sports.includes(s) && styles.chipTextActive]}>{s}</Text>
+                <Text style={[styles.chipText, sports.includes(s) && styles.chipTextActive]}>{sportLabel(s)}</Text>
               </Pressable>
             ))}
           </View>

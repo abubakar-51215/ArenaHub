@@ -1,6 +1,7 @@
 import { Image, type ImageProps } from 'expo-image';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { CourtArt } from '@/components/ui/court-art';
 import { Colors } from '@/constants/theme';
 import { resolveMediaUrl } from '@/lib/media';
 
@@ -19,6 +20,8 @@ interface ArenaImageProps extends Omit<ImageProps, 'source' | 'style'> {
    * the avatar, which keeps its own initials-on-circle fallback rather than
    * the ink block (nothing in the spec says an avatar should go blank). */
   fallback?: React.ReactNode;
+  /** With no photo and no `fallback`, the court picture for this sport is drawn (the plain pitch for most sports). */
+  sport?: string;
 }
 
 /** `.m-vis` (arena-hub-player-app.html): ink block when there's no photo —
@@ -32,7 +35,7 @@ interface ArenaImageProps extends Omit<ImageProps, 'source' | 'style'> {
  * when a custom `fallback` is given (the avatar): that fallback replaces
  * this layer entirely rather than sitting under the photo, matching the
  * avatar's original card-background-and-initials look with no ink flash. */
-export function ArenaImage({ photo, style, children, fallback, ...props }: ArenaImageProps) {
+export function ArenaImage({ photo, style, children, fallback, sport, ...props }: ArenaImageProps) {
   const uri = resolveMediaUrl(photo);
   return (
     <View style={[styles.container, style]}>
@@ -40,7 +43,7 @@ export function ArenaImage({ photo, style, children, fallback, ...props }: Arena
       {uri ? (
         <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" {...props} />
       ) : (
-        (fallback ?? null)
+        (fallback ?? (sport !== undefined ? <CourtArt sport={sport} /> : null))
       )}
       {children}
     </View>

@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 
 import { Button } from '@/components/ui/button';
 import { Colors, Shadow } from '@/constants/theme';
+import { sportLabel } from '@/constants/sports';
 import type { Match } from '@/types';
 
 const SPORT_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
@@ -14,6 +15,11 @@ const SPORT_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']>
   badminton: 'tennisball-outline',
   tennis: 'tennisball-outline',
   padel: 'tennisball-outline',
+  table_tennis: 'tennisball-outline',
+  squash: 'tennisball-outline',
+  basketball: 'basketball-outline',
+  volleyball: 'basketball-outline',
+  snooker: 'ellipse-outline',
 };
 
 const STATUS_LABEL: Record<Match['status'], string> = {
@@ -54,7 +60,7 @@ export function MatchCard({
       </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={1}>
-          {match.sport} · {match.max_players} players
+          {sportLabel(match.sport)} · {match.max_players} players
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
           {match.arena_name} · {match.match_date}, {match.start_time.slice(0, 5)}
