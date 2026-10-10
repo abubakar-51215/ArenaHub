@@ -35,6 +35,22 @@ class SlotGenerateResult(BaseModel):
     skipped_window_too_short: list[date] = []
 
 
+class DayAvailability(BaseModel):
+    """One day of a court's availability: how many slots are still open."""
+
+    date: date
+    open_count: int
+
+
+class CourtToday(BaseModel):
+    """One court's slots for the rest of today: how many are still open and
+    the lowest price among them (None when none is open)."""
+
+    court_id: uuid.UUID
+    open_count: int
+    lowest_price: Decimal | None = None
+
+
 class SlotUpdate(BaseModel):
     status: SlotStatus | None = None
     price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)

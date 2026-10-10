@@ -15,6 +15,8 @@ from app.modules.court.model import Court
 from app.modules.slot import repository as repo
 from app.modules.slot.model import SlotStatus, TimeSlot
 from app.modules.slot.schema import (
+    CourtToday,
+    DayAvailability,
     SlotGenerateRequest,
     SlotGenerateResult,
     SlotResponse,
@@ -25,6 +27,13 @@ from app.shared.pricing import resolve_peak_price
 from app.websocket.manager import broadcast_slot_status
 
 SLOT_LENGTH = timedelta(hours=1)
+MAX_AVAILABILITY_DAYS = 31
+
+
+def _now() -> datetime:
+    """The arena's local time (slots are stored as local dates and times)."""
+    return datetime.now()
+
 
 _WEEKDAY_NAMES = [
     "monday",
@@ -166,6 +175,55 @@ async def list_public_slots(
         raise NotFoundError("Court not found.")
     rows = await repo.list_slots(db, court_id, target_date)
     return [SlotResponse.model_validate(r) for r in rows]
+
+
+async def _public_court(db: AsyncSession, court_id: uuid.UUID) -> Court:
+    court = await court_repo.get_court(db, court_id)
+    if court is None or not court.is_available:
+        raise NotFoundError("Court not found.")
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or arena.is_suspended or arena.is_deleted:
+        raise NotFoundError("Court not found.")
+    return court
+
+
+async def court_availability(
+    db: AsyncSession, court_id: uuid.UUID, start: date, end: date
+) -> list[DayAvailability]:
+    """Open slot count for each date from ``start`` to ``end`` (zero for a day
+    with none), for the 7-day strip. At most 31 days."""
+    if end < start:
+        raise ValidationError("'to' must be on or after 'from'.")
+    if (end - start).days >= MAX_AVAILABILITY_DAYS:
+        raise ValidationError(f"Ask for at most {MAX_AVAILABILITY_DAYS} days at a time.")
+    await _public_court(db, court_id)
+    now = _now()
+    counts = await repo.open_counts_by_date(db, court_id, start, end, now.date(), now.time())
+    return [
+        DayAvailability(
+            date=start + timedelta(days=i), open_count=counts.get(start + timedelta(days=i), 0)
+        )
+        for i in range((end - start).days + 1)
+    ]
+
+
+async def arena_slots_today(db: AsyncSession, arena_id: uuid.UUID) -> list[CourtToday]:
+    """Per bookable court of a live arena: open slots left today and the lowest
+    price among them (the Arena screen's Courts rows)."""
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is None or not arena.is_live:
+        raise NotFoundError("Arena not found.")
+    courts = await court_repo.list_courts(db, arena_id, available_only=True)
+    now = _now()
+    left = await repo.open_today_by_court(db, [c.id for c in courts], now.date(), now.time())
+    return [
+        CourtToday(
+            court_id=c.id,
+            open_count=left.get(c.id, (0, None))[0],
+            lowest_price=left[c.id][1] if c.id in left else None,
+        )
+        for c in courts
+    ]
 
 
 async def _owned_slot(
