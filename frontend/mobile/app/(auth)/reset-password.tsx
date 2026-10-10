@@ -105,7 +105,15 @@ export default function ResetPasswordScreen() {
           <Text style={styles.noteText}>For safety we do not say which one it was. Ask for a new code and try again.</Text>
         </View>
         <View style={styles.stack}>
-          <Button title="Send a new code" loading={resend.isPending} status={btnStatus} onPress={() => resend.mutate()} />
+          {/* the server sends no new code inside 60 s of the last one, so the button waits
+              for the same timer (the frame's grey "Send a new code in 0:41") */}
+          <Button
+            title={wait.running ? `Send a new code in ${formatCountdown(wait.remaining)}` : 'Send a new code'}
+            disabled={wait.running}
+            loading={resend.isPending}
+            status={btnStatus}
+            onPress={() => resend.mutate()}
+          />
           <Button title="Back to log in" variant="ghost" onPress={() => router.dismissTo('/(auth)/login')} />
         </View>
         {error ? <FieldMessage>{error}</FieldMessage> : null}
@@ -209,13 +217,13 @@ const styles = StyleSheet.create({
   form: { gap: 11 },
   gap: { height: 5 },
   strong: { fontWeight: '700', color: Colors.light.text },
-  error: { fontSize: 11, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
+  error: { fontSize: 14, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 20 },
   resendRow: { marginTop: 3, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-  resend: { fontSize: 13, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
+  resend: { fontSize: 14, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
   tick: { alignItems: 'center', marginTop: 18 },
   doneTitle: { fontSize: 25, lineHeight: 27, fontWeight: '700', letterSpacing: -0.75, color: Colors.light.text, textAlign: 'center', marginTop: 20 },
-  doneSub: { fontSize: 13, lineHeight: 19, color: Colors.light.muted, textAlign: 'center', marginTop: 6, marginBottom: 20 },
+  doneSub: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, textAlign: 'center', marginTop: 6, marginBottom: 20 },
   // .note in the failed frame
   note: {
     backgroundColor: '#FBEAEA',
@@ -226,6 +234,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 16,
   },
-  noteText: { fontSize: 12.5, lineHeight: 17.5, color: '#8E2A2A' },
+  noteText: { fontSize: 14, lineHeight: 20, color: '#8E2A2A' },
   stack: { gap: 10 },
 });

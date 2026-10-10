@@ -39,17 +39,17 @@ export function PasswordRules({ password }: { password: string }) {
 
 const styles = StyleSheet.create({
   list: { gap: 5, paddingTop: 2, paddingHorizontal: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   dot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
     backgroundColor: Colors.light.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dotMet: { backgroundColor: Colors.light.limeWash },
   bullet: { fontSize: 9, lineHeight: 11, color: Colors.light.muted },
-  label: { fontSize: 11.5, color: Colors.light.muted },
+  label: { fontSize: 14, color: Colors.light.muted },
   labelMet: { color: Colors.light.limeDeep },
 });

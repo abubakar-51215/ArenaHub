@@ -37,6 +37,9 @@ const useToastStore = create<ToastState>()((set) => ({
 
 export const showToast = (message: string) => useToastStore.getState().show(message);
 
+// The auth screens' back button sits at 20 to 50 below the safe area; the
+// toast starts below it so it never covers the back button.
+const TOP_BELOW_BACK = 64;
 const STAY_MS = 3000;
 const IN_MS = 400;
 const OUT_MS = 250;
@@ -86,7 +89,7 @@ export function ToastHost() {
   if (!shown) return null;
 
   return (
-    <View pointerEvents="none" style={[styles.host, { top: insets.top + 10 }]}>
+    <View pointerEvents="none" style={[styles.host, { top: insets.top + TOP_BELOW_BACK }]}>
       <Animated.View
         style={[styles.toast, style]}
         accessibilityRole="alert"
@@ -120,5 +123,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  text: { flex: 1, fontSize: 13, color: '#FFFFFF' },
+  text: { flex: 1, fontSize: 14, color: '#FFFFFF' },
 });

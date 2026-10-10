@@ -72,5 +72,5 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     marginBottom: 3,
   },
-  subtitle: { fontSize: 12.5, lineHeight: 18.75, color: Colors.light.muted },
+  subtitle: { fontSize: 14, lineHeight: 20, color: Colors.light.muted },
 });

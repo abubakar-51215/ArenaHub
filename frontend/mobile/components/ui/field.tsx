@@ -11,7 +11,6 @@ import {
 import Animated, {
   Easing,
   interpolate,
-  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -22,8 +21,6 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // The one text field of the app. Base look: .m-search (arena-hub-player-app.html)
 // as set out in arena-hub-player-app-auth-2.html: 52 tall, radius 15, 1.5px line
@@ -107,13 +104,14 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
     transform: [{ scale: interpolate(progress.value, [0, 1], [1, ICON_SMALL / hugeIcon]) }],
   }));
   const eyeStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
-  // the crossed-out eye: while the password is visible a slash is drawn over the
-  // eye (about 180 ms); same icon box, so nothing moves
-  const slash = useSharedValue(0);
+  // the eye and the crossed-out eye (frame 4 of the auth-2 prototype) swap by
+  // fading into each other (150 ms) inside one 18px box, so nothing moves
+  const crossed = useSharedValue(0);
   useEffect(() => {
-    slash.value = reduceMotion ? (revealed ? 1 : 0) : withTiming(revealed ? 1 : 0, { duration: 180, easing: EASE });
-  }, [revealed, reduceMotion, slash]);
-  const slashProps = useAnimatedProps(() => ({ strokeDashoffset: 26 * (1 - slash.value) }));
+    crossed.value = reduceMotion ? (revealed ? 1 : 0) : withTiming(revealed ? 1 : 0, { duration: 150, easing: EASE });
+  }, [revealed, reduceMotion, crossed]);
+  const eyeOnStyle = useAnimatedStyle(() => ({ opacity: 1 - crossed.value }));
+  const eyeOffStyle = useAnimatedStyle(() => ({ opacity: crossed.value }));
 
   // after the tap's animation settles, bring the field into view above the keyboard
   useEffect(() => {
@@ -168,26 +166,30 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
           <Animated.View style={eyeStyle} pointerEvents={active ? 'auto' : 'none'}>
             <Pressable
               onPress={() => setRevealed((r) => !r)}
-              hitSlop={14}
+              hitSlop={13}
               accessibilityRole="button"
               accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
               accessibilityState={{ checked: revealed }}>
-              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
-                  stroke={revealed ? Colors.light.ink : '#6C7771'}
-                  strokeWidth={2}
-                />
-                <Circle cx={12} cy={12} r={3} stroke={revealed ? Colors.light.ink : '#6C7771'} strokeWidth={2} />
-                <AnimatedPath
-                  d="M4 4l16 16"
-                  stroke={Colors.light.ink}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeDasharray={26}
-                  animatedProps={slashProps}
-                />
-              </Svg>
+              <View style={styles.eyeBox}>
+                <Animated.View style={[StyleSheet.absoluteFill, eyeOnStyle]}>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                    <Path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="#6C7771" strokeWidth={2} />
+                    <Circle cx={12} cy={12} r={3} stroke="#6C7771" strokeWidth={2} />
+                  </Svg>
+                </Animated.View>
+                <Animated.View style={[StyleSheet.absoluteFill, eyeOffStyle]}>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M2 12s3.5-7 10-7c2 0 3.7.6 5.1 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.1-1.5"
+                      stroke={Colors.light.ink}
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                    />
+                    <Circle cx={12} cy={12} r={3} stroke={Colors.light.ink} strokeWidth={2} />
+                    <Path d="M4 4l16 16" stroke={Colors.light.ink} strokeWidth={2.2} strokeLinecap="round" />
+                  </Svg>
+                </Animated.View>
+              </View>
             </Pressable>
           </Animated.View>
         ) : null}
@@ -207,6 +209,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.line,
     borderRadius: 15,
   },
+  eyeBox: { width: 18, height: 18 },
   normalHeight: { height: FIELD_ACTIVE_HEIGHT },
   focused: { borderColor: Colors.light.ink, boxShadow: '0 0 0 3px rgba(196,245,70,0.45)' },
   error: { borderColor: Colors.light.destructive },
