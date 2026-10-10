@@ -97,6 +97,10 @@ class Settings(BaseSettings):
         tail = key.split("_", 2)[2]
         return len(tail) >= 16 and "xxx" not in tail and "placeholder" not in tail
 
+    # Public address of the web app. Email templates load the logo badge from
+    # {web_public_url}/brand/email-badge@2x.png, so it must be reachable from a mail client.
+    web_public_url: str = Field(default="http://localhost:3000", alias="WEB_PUBLIC_URL")
+
     # Email (OTP + notification delivery). Unset in dev -> console log instead
     # of a real SMTP connection (same seam as deliver_otp).
     email_host: str | None = Field(default=None, alias="EMAIL_HOST")

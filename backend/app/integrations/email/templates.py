@@ -13,6 +13,8 @@ digits. Each helper returns ``(subject, text_body, html_body)`` ready for
 
 import html as html_lib
 
+from app.core.config import get_settings
+
 BRAND = "ArenaHub"
 INK = "#0F1A15"
 PAPER = "#F1F2EF"
@@ -29,7 +31,17 @@ MONO_FONT = "Consolas,'SFMono-Regular',Menlo,'Courier New',monospace"
 _PREHEADER_PAD = "&#847;&zwnj;&nbsp;" * 40
 
 
+def _badge() -> str:
+    """The 40 px ArenaHub badge above the title (the 80 px file, shown at 40 for sharp screens)."""
+    src = f"{get_settings().web_public_url.rstrip('/')}/brand/email-badge@2x.png"
+    return (
+        f'<img src="{html_lib.escape(src)}" width="40" height="40" alt="ArenaHub" '
+        'style="display:block;width:40px;height:40px;border:0;margin:0 0 16px;border-radius:10px;">'
+    )
+
+
 def _layout(title: str, preheader: str, content_html: str) -> str:
+    content_html = _badge() + content_html
     return f"""\
 <!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
