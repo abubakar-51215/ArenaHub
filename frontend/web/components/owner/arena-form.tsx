@@ -238,8 +238,9 @@ export function ArenaForm({
             <Label>Operating Hours</Label>
             <div className="space-y-1.5">
               {WEEKDAY_NAMES.map((day) => (
-                <div key={day} className="flex items-center gap-3">
-                  <label className="flex w-32 items-center gap-2 text-sm capitalize">
+                // on a phone the day name takes its own line, so the two time boxes share the width below it
+                <div key={day} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-sm:mb-2">
+                  <label className="flex w-full items-center gap-2 text-sm capitalize sm:w-32">
                     <Switch
                       checked={days[day].open}
                       onCheckedChange={(v) => setDay(day, { open: v })}
@@ -251,7 +252,7 @@ export function ArenaForm({
                     value={days[day].from}
                     disabled={!days[day].open}
                     onChange={(e) => setDay(day, { from: e.target.value })}
-                    className="w-32"
+                    className="min-w-0 flex-1 sm:w-32 sm:flex-none"
                   />
                   <span className="text-muted-foreground">–</span>
                   <Input
@@ -259,7 +260,7 @@ export function ArenaForm({
                     value={days[day].to}
                     disabled={!days[day].open}
                     onChange={(e) => setDay(day, { to: e.target.value })}
-                    className="w-32"
+                    className="min-w-0 flex-1 sm:w-32 sm:flex-none"
                   />
                 </div>
               ))}

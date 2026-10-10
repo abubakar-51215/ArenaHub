@@ -130,6 +130,8 @@ Screen-level requirements already written down:
 - **Backend sport value check.** `sports_offered` and `sport_types` accept any word today. A check against the shared list of ten (futsal, cricket, padel, badminton, table_tennis, squash, basketball, volleyball, snooker, tennis) is later work. It must keep loading old rows (an old "football" is shown as Futsal) and should land only after the owner picker exists.
 - **Filters rows left out for now (no backend):** the radius row (needs the near-me feature), the time-of-day row and the "Must have" amenity row.
 - **Cards:** no distance, no promo, no "Free tonight".
+- **Results: load more on scroll.** Results shows one page of 30 for now. Loading more as the person scrolls is later work.
+
 
 ## Confirmed, not built yet (the user will make prototype frames first)
 
