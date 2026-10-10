@@ -94,3 +94,14 @@ def test_every_notice_renders_as_an_email(event: str) -> None:
     assert subject == f"ArenaHub — {meta['title']}"
     assert text.startswith(meta["title"])
     assert "<!doctype html>" in html and "prefers-color-scheme: dark" in html
+
+
+def test_every_email_carries_the_40px_badge_above_the_title() -> None:
+    for html in (
+        otp_email("482913", "registration", ttl_minutes=10)[2],
+        reset_email("tok", ttl_minutes=30)[2],
+        notification_email("Booking confirmed", "See you on the court!")[2],
+    ):
+        assert "/brand/email-badge@2x.png" in html
+        assert 'width="40" height="40"' in html
+        assert html.index("email-badge") < html.index("font-size:22px")  # before the heading
