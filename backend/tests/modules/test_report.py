@@ -76,7 +76,8 @@ async def test_player_bookings_report_csv(client: AsyncClient, db_session: Async
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")
     body = resp.text
-    assert "Date,Time,Status,Payment Status,Amount (PKR)" in body
+    assert "Date,Time,Arena,Court,Status,Payment Status,Amount (PKR)" in body
+    assert "Downtown Futsal Arena" in body and "Court A" in body
     assert monday.isoformat() in body
 
     # Filtered outside the booking's date -> header only, no data row.
