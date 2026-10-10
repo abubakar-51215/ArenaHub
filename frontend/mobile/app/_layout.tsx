@@ -12,14 +12,14 @@ import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 import { useEffect } from "react";
 import "react-native-reanimated";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { Colors, Font } from "@/constants/theme";
+import { AnimatedSplash } from "@/components/brand/animated-splash";
 import { ToastHost } from "@/components/ui/toast";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { fetchMe } from "@/services/auth";
 import { queryClient } from "@/lib/query-client";
@@ -74,7 +74,6 @@ function RootNavigator() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const colorScheme = useColorScheme();
   const sessionReady = hydrated && (!accessToken || !!user);
   usePushRegistration(sessionReady && !!accessToken);
 
@@ -98,37 +97,12 @@ function RootNavigator() {
     }
   }, [accessToken, currentUserQuery.isError]);
 
-  if (!hydrated) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: Colors[colorScheme ?? "light"].background,
-        }}
-      >
-        <ActivityIndicator color={Colors[colorScheme ?? "light"].tint} />
-      </View>
-    );
-  }
-
-  if (!sessionReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: Colors[colorScheme ?? "light"].background,
-        }}
-      >
-        <ActivityIndicator color={Colors[colorScheme ?? "light"].tint} />
-      </View>
-    );
-  }
+  // While the session loads the animated splash covers the screen; behind it there is only the page colour.
+  const waiting = !hydrated || !sessionReady;
 
   return (
+    <View style={{ flex: 1, backgroundColor: Colors.light.background }}>
+    {waiting ? null : (
     <Stack>
       <Stack.Protected guard={!accessToken}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -182,6 +156,9 @@ function RootNavigator() {
       />
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
     </Stack>
+    )}
+    <AnimatedSplash ready={!waiting} />
+    </View>
   );
 }
 
@@ -196,9 +173,7 @@ export default function RootLayout() {
   });
   const fontsSettled = fontsLoaded || !!fontError;
 
-  useEffect(() => {
-    if (fontsSettled) SplashScreen.hideAsync();
-  }, [fontsSettled]);
+  // The native splash (the still dark mark) is hidden by AnimatedSplash once it has drawn its first frame.
 
   // A font failure falls through to system fonts rather than blocking the app.
   if (!fontsSettled) return null;
