@@ -140,6 +140,10 @@ before any demo that pays by card.
 
 ---
 
+## DONE — `GET /arenas` has `avg_rating`, `review_count`, `min_price` (commit 31eeab2; the mobile list cards still hide them until G2 reads them)
+
+_The text below is the original ask, kept for the record._
+
 ## HIGH PRIORITY backend ask — `GET /arenas` needs `avg_rating`, `review_count`, `min_price`
 
 The arena list/search response (`GET /arenas`, `/arenas/trending`,
