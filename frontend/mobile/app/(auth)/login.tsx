@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
   form: { gap: 11 },
   // right aligned; the link has 14px above and below so its tap area is 44 high
   forgotRow: { alignItems: 'flex-end', marginTop: -14 },
-  forgot: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingLeft: 12 },
+  forgot: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingLeft: 12, paddingRight: 6 },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', minHeight: 44, marginTop: 4 },
   footerText: { fontSize: 13, color: Colors.light.muted },
-  footerLink: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14 },
+  footerLink: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
 });
