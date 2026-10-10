@@ -86,6 +86,8 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
     <Animated.View style={[styles.wrap, shakeStyle]}>
       <Animated.View style={pressStyle}>
         <Pressable
+          // drawn 42 high (the prototype's .m-btn); 1px more above and below makes the touch area 44
+          hitSlop={{ top: 1, bottom: 1 }}
           {...props}
           disabled={isDisabled}
           // The prototype's own press feedback is the dip above — a Material

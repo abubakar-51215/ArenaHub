@@ -199,5 +199,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footerText: { fontSize: 12, color: Colors.light.muted },
-  footerLink: { fontSize: 12, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14 },
+  footerLink: { fontSize: 12, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
 });
