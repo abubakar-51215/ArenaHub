@@ -10,6 +10,7 @@
  * The rail foot is the owner card; it opens a small menu with Profile and
  * Log out (there is no separate logout button).
  */
+import { ArenaMark } from "@/components/brand/arena-mark";
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -169,14 +170,7 @@ export const OWNER_NAV: { label: string | null; items: OwnerNavItem[] }[] = [
 ];
 
 export function OwnerBrandMark({ className = "ah-brand-mark" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="#1C2B23" />
-      <path d="M9 22.5 16 8l7 14.5" stroke="#C4F546" strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M12.4 19h7.2" stroke="#C4F546" strokeWidth="2.4" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="1.9" fill="#C4F546" />
-    </svg>
-  );
+  return <ArenaMark tone="dark" className={className} />;
 }
 
 function initials(name: string | undefined): string {

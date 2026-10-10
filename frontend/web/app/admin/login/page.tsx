@@ -158,7 +158,7 @@ export default function AdminLoginPage() {
     <div data-theme="arena" data-admin="" className="ah-auth">
       <div className="ah-auth-form">
         <div className="ah-auth-brand">
-          <AdminBrandMark />
+          <AdminBrandMark tone="theme" />
           <div className="ah-brand-name" style={{ color: "var(--text)" }}>
             Arena Hub<small>Platform admin</small>
           </div>
