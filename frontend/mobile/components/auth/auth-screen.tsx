@@ -20,10 +20,12 @@ interface AuthScreenProps {
   /** Gap between the subtitle and the content: 22 under the code boxes, 18 above fields. */
   subtitleGap?: number;
   onBack?: () => void;
+  /** No back button (Log in is the first screen). */
+  hideBack?: boolean;
   children: ReactNode;
 }
 
-export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, children }: AuthScreenProps) {
+export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack, children }: AuthScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
   return (
@@ -33,12 +35,12 @@ export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, children
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         bottomOffset={24}>
-        <View style={styles.head}>
+        {hideBack ? <View style={styles.headSpace} /> : <View style={styles.head}>
           <BackButton
             hitSlop={7}
             onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login')))}
           />
-        </View>
+        </View>}
         <Text variant="archivo" style={styles.title} accessibilityRole="header">
           {title}
         </Text>
@@ -57,6 +59,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   content: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 24 },
   head: { flexDirection: 'row', paddingBottom: 14 },
+  // where the back button would be: the title sits 46px below the top, as in the Log in frame
+  headSpace: { height: 26 },
   title: {
     fontSize: 25,
     lineHeight: 27,

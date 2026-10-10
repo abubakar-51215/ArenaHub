@@ -9,7 +9,7 @@ import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-ru
 import { Button, useButtonStatus } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
-import { Colors } from '@/constants/theme';
+import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { register } from '@/services/auth';
 
@@ -199,5 +199,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footerText: { fontSize: 12, color: Colors.light.muted },
-  footerLink: { fontSize: 12, fontWeight: '700', color: Colors.light.text, paddingVertical: 14 },
+  footerLink: { fontSize: 12, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14 },
 });

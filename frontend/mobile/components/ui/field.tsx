@@ -11,6 +11,7 @@ import {
 import Animated, {
   Easing,
   interpolate,
+  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -21,6 +22,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // The one text field of the app. Base look: .m-search (arena-hub-player-app.html)
 // as set out in arena-hub-player-app-auth-2.html: 52 tall, radius 15, 1.5px line
@@ -104,6 +107,13 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
     transform: [{ scale: interpolate(progress.value, [0, 1], [1, ICON_SMALL / hugeIcon]) }],
   }));
   const eyeStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
+  // the crossed-out eye: while the password is visible a slash is drawn over the
+  // eye (about 180 ms); same icon box, so nothing moves
+  const slash = useSharedValue(0);
+  useEffect(() => {
+    slash.value = reduceMotion ? (revealed ? 1 : 0) : withTiming(revealed ? 1 : 0, { duration: 180, easing: EASE });
+  }, [revealed, reduceMotion, slash]);
+  const slashProps = useAnimatedProps(() => ({ strokeDashoffset: 26 * (1 - slash.value) }));
 
   // after the tap's animation settles, bring the field into view above the keyboard
   useEffect(() => {
@@ -169,6 +179,14 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
                   strokeWidth={2}
                 />
                 <Circle cx={12} cy={12} r={3} stroke={revealed ? Colors.light.ink : '#6C7771'} strokeWidth={2} />
+                <AnimatedPath
+                  d="M4 4l16 16"
+                  stroke={Colors.light.ink}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeDasharray={26}
+                  animatedProps={slashProps}
+                />
               </Svg>
             </Pressable>
           </Animated.View>
