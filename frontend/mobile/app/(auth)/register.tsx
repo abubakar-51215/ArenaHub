@@ -6,7 +6,7 @@ import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FieldMessage } from '@/components/auth/field-message';
 import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-rules';
-import { Button } from '@/components/ui/button';
+import { Button, useButtonStatus } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
@@ -26,6 +26,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [btnStatus, flash] = useButtonStatus();
   const emailRef = useRef<RNTextInput>(null);
   const phoneRef = useRef<RNTextInput>(null);
   const passwordRef = useRef<RNTextInput>(null);
@@ -36,12 +37,19 @@ export default function RegisterScreen() {
     mutationFn: () =>
       register({ full_name: fullName.trim(), email: email.trim(), phone: phone.trim(), password }),
     onSuccess: (result) => {
-      router.push({
-        pathname: '/(auth)/verify-otp',
-        params: { email: result.user.email, sentTo: result.otp_sent_to },
-      });
+      flash('success');
+      // let the tick show for a moment before the code screen opens
+      setTimeout(
+        () =>
+          router.push({
+            pathname: '/(auth)/verify-otp',
+            params: { email: result.user.email, sentTo: result.otp_sent_to },
+          }),
+        500,
+      );
     },
     onError: (err) => {
+      flash('error');
       if (!(err instanceof ApiError)) {
         setFormError('Something went wrong. Try again.');
         return;
@@ -70,6 +78,7 @@ export default function RegisterScreen() {
     if (!passwordMeetsRules(password)) next.password = 'Your password needs every rule below.';
     setErrors(next);
     if (Object.keys(next).length === 0) mutation.mutate();
+    else flash('error');
   };
 
   return (
@@ -162,7 +171,7 @@ export default function RegisterScreen() {
         <PasswordRules password={password} />
         {formError ? <FieldMessage>{formError}</FieldMessage> : null}
         <View style={styles.button}>
-          <Button title="Create account" loading={mutation.isPending} onPress={submit} />
+          <Button title="Create account" loading={mutation.isPending} status={btnStatus} onPress={submit} />
         </View>
       </View>
 
