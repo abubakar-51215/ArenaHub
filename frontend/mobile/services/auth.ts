@@ -60,12 +60,16 @@ export function forgotPassword(email: string): Promise<null> {
   return api.post<null>("/auth/forgot-password", { email });
 }
 
+/** Reset with the emailed 6-digit code. The server has no separate "check the
+ *  code" step: email, code and new password go together, once, at the end. */
 export function resetPassword(
-  token: string,
+  email: string,
+  otp: string,
   newPassword: string,
 ): Promise<null> {
   return api.post<null>("/auth/reset-password", {
-    token,
+    email,
+    otp,
     new_password: newPassword,
   });
 }
