@@ -140,12 +140,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   // .note.info of the auth-2 frames
   note: { backgroundColor: '#EEF6D6', borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
-  noteText: { fontSize: 12.5, lineHeight: 17.5, color: '#4D6410' },
+  noteText: { fontSize: 14, lineHeight: 20, color: '#4D6410' },
   form: { gap: 11 },
   // right aligned; the link has 14px above and below so its tap area is 44 high
   forgotRow: { alignItems: 'flex-end', marginTop: -14 },
-  forgot: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingLeft: 12, paddingRight: 6 },
+  forgot: { fontSize: 14, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingLeft: 12, paddingRight: 6 },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', minHeight: 44, marginTop: 4 },
-  footerText: { fontSize: 13, color: Colors.light.muted },
-  footerLink: { fontSize: 13, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
+  footerText: { fontSize: 14, color: Colors.light.muted },
+  footerLink: { fontSize: 14, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
 });

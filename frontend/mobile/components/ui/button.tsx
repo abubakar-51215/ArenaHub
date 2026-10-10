@@ -86,8 +86,6 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
     <Animated.View style={[styles.wrap, shakeStyle]}>
       <Animated.View style={pressStyle}>
         <Pressable
-          // drawn 42 high (the prototype's .m-btn); 1px more above and below makes the touch area 44
-          hitSlop={{ top: 1, bottom: 1 }}
           {...props}
           disabled={isDisabled}
           // The prototype's own press feedback is the dip above — a Material
@@ -113,7 +111,7 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
             styles.base,
             { backgroundColor: v.bg, borderColor: v.border },
             // Added state, not in the prototype: opacity 0.5, a disabled button.
-            isDisabled && !loading && styles.disabled,
+            isDisabled && !loading && (variant === 'ink' ? styles.offInk : styles.disabled),
           ]}>
           {/* the label always stays in the layout (hidden while loading or on
               success), so the button never changes size; the spinner or tick
@@ -142,16 +140,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
     width: '100%',
-    padding: 12,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: 17,
     borderWidth: 1,
   },
   hidden: { opacity: 0 },
   overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.5 },
+  // .btn.off of the auth frames: a flat grey, no see-through
+  offInk: { backgroundColor: '#808683', borderColor: '#808683', opacity: 1 },
   // 650 isn't a value RN's TextStyle['fontWeight'] union accepts, but it's
   // what the prototype declares and components/ui/text.tsx's
   // normalizeWeight() reads the raw string directly (Number('650') >= 650 ->
   // Bold) rather than relying on RN to understand it.
-  text: { fontSize: 13.5, fontWeight: '650' } as unknown as TextStyle,
+  text: { fontSize: 14.5, fontWeight: '650' } as unknown as TextStyle,
 });

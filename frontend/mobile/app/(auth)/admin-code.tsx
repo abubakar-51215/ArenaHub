@@ -138,8 +138,8 @@ export default function AdminCodeScreen() {
 
 const styles = StyleSheet.create({
   strong: { fontWeight: '700', color: Colors.light.text },
-  error: { fontSize: 11, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
+  error: { fontSize: 14, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 20 },
   resendRow: { marginTop: 3, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-  resend: { fontSize: 13, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
+  resend: { fontSize: 14, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
 });

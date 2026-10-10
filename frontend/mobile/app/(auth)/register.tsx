@@ -198,6 +198,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
     marginTop: 8,
   },
-  footerText: { fontSize: 12, color: Colors.light.muted },
-  footerLink: { fontSize: 12, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
+  footerText: { fontSize: 14, color: Colors.light.muted },
+  footerLink: { fontSize: 14, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
 });

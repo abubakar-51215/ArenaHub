@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10.5, fontWeight: '700', letterSpacing: 1.05, textTransform: 'uppercase', color: Colors.light.lime },
   title: { fontSize: 25, lineHeight: 27, fontWeight: '700', letterSpacing: -0.63, color: Colors.light.text, marginTop: 12 },
-  sub: { fontSize: 13.5, lineHeight: 19.6, color: Colors.light.muted, marginTop: 6 },
+  sub: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 6 },
   card: {
     backgroundColor: Colors.light.card,
     borderColor: Colors.light.line,

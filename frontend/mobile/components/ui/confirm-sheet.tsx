@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -12,6 +12,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import { BlurView } from 'expo-blur';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 
@@ -19,8 +20,9 @@ import { Colors } from '@/constants/theme';
 // rises in 340 ms (ease-out) and closes in 200 ms. The destructive action is
 // the red button and always sits next to a plain "Stay" / "Cancel". It closes
 // by that button, by a tap outside, by a swipe down, or by the Android back
-// button. The back is dimmed only: expo-blur is not installed in this app, and
-// the rules allow no new library, so there is no blur.
+// button. The back is dimmed and blurred (expo-blur). The dim alone is the safe
+// fallback: Android's blur is experimental, so there it is not used, and
+// "reduce transparency" users see the dim only.
 interface ConfirmSheetProps {
   visible: boolean;
   title: string;
@@ -92,6 +94,7 @@ export function ConfirmSheet({
     <Modal transparent visible animationType="none" onRequestClose={onCancel} statusBarTranslucent>
       <GestureHandlerRootView style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.dim, dimStyle]}>
+          {Platform.OS !== 'android' ? <BlurView intensity={12} tint="dark" style={StyleSheet.absoluteFill} /> : null}
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={onCancel}
@@ -146,7 +149,7 @@ const styles = StyleSheet.create({
   },
   grab: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.light.line, alignSelf: 'center', marginBottom: 14 },
   title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.38, color: Colors.light.text },
-  message: { fontSize: 13, lineHeight: 18.85, color: Colors.light.muted, marginTop: 6 },
+  message: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 6 },
   row: { flexDirection: 'row', gap: 10, marginTop: 14 },
   cell: { flex: 1 },
 });
