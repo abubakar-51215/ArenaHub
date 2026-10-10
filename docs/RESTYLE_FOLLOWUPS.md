@@ -658,3 +658,5 @@ Owner Bookings shows "Remind" on a booking that is **Awaiting payment** (status 
 
 - **Courts "Bookable" switch on a phone.** The switch itself is 22px high; its label is the 44px tap area. The user approved leaving it as it is. A larger switch is a future improvement. No code change.
 - **Reports "Arena comparison" avatar initials.** They use the first and last word of the name, so every "Arena Hub ..." arena shows "AL". Future idea: use the distinctive words (for example "JT" for Johar Town). Not changed now.
+- **Booking emails carry no booking details.** The "booking confirmed" and "booking cancelled" emails do not show the arena, court, date, times or amounts. Future improvement: add them (the data is on the booking and its group).
+- **Done (2026-10-10): the owner receipt photo in dev.** The "Verify bank transfer" dialog now puts the API address in front of a relative `/uploads/...` receipt path. Full links (Cloudinary in production) are unchanged.
