@@ -77,6 +77,10 @@ export interface Arena {
   is_active: boolean;
   amenities: Amenity[];
   created_at: string;
+  /** Only the list endpoints send these three (the card hides what is missing). */
+  avg_rating?: number | null;
+  review_count?: number;
+  min_price?: string | null;
 }
 
 export interface Court {

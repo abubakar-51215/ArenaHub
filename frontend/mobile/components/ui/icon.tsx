@@ -12,6 +12,8 @@ interface IconProps {
    * value for some instances of the same shape, e.g. the large confirmation
    * tick — see ConfirmTick). Defaults to the icon's own declared width. */
   strokeWidth?: number;
+  /** Fills the shapes with this colour (a filled heart); the stroke stays `color`. */
+  fill?: string;
 }
 
 /**
@@ -21,7 +23,7 @@ interface IconProps {
  * any shape with its own literal fill/stroke/opacity (none of the 26 do,
  * only the brand mark and glow art) would keep it, but is not expected here.
  */
-export function Icon({ name, size, color = '#0F1A15', strokeWidth }: IconProps) {
+export function Icon({ name, size, color = '#0F1A15', strokeWidth, fill }: IconProps) {
   const def = Icons[name];
   // Only `search` declares its own width/height in the prototype (15x15);
   // every other icon is sized purely by the `size` prop, defaulting to the
@@ -37,7 +39,7 @@ export function Icon({ name, size, color = '#0F1A15', strokeWidth }: IconProps) 
       fill={def.fill === 'currentColor' ? color : 'none'}>
       {def.shapes.map((shape, i) => {
         const key = `${name}-${i}`;
-        const shapeFill = shape.fill ?? (def.fill === 'currentColor' ? color : 'none');
+        const shapeFill = fill ?? shape.fill ?? (def.fill === 'currentColor' ? color : 'none');
         const common = {
           fill: shapeFill,
           stroke: color,
