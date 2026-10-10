@@ -190,7 +190,7 @@ async def set_status(
 # ---- public discovery ---------------------------------------------------
 
 
-async def _list_items(db: AsyncSession, arenas: list) -> list[ArenaListItem]:
+async def list_items(db: AsyncSession, arenas: list) -> list[ArenaListItem]:
     """List-card items: each arena plus its rating, review count and from-price.
     One summary query covers the whole page."""
     summaries = await repo.arena_summaries(db, [a.id for a in arenas])
@@ -230,7 +230,7 @@ async def search_arenas(
         offset=params.offset,
         limit=params.page_size,
     )
-    items = await _list_items(db, arenas)
+    items = await list_items(db, arenas)
     return paginated(items, total, params)
 
 
@@ -247,7 +247,7 @@ async def get_trending_arenas(
         arenas, _ = await repo.search_public_arenas(
             db, q=None, city=city, sport=None, sort="rating_desc", offset=0, limit=limit
         )
-    return await _list_items(db, arenas)
+    return await list_items(db, arenas)
 
 
 async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
@@ -282,7 +282,7 @@ async def list_liked_arenas(db: AsyncSession, user: User, params: PaginationPara
     arenas, total = await repo.list_liked_arenas(
         db, user.id, offset=params.offset, limit=params.page_size
     )
-    items = await _list_items(db, arenas)
+    items = await list_items(db, arenas)
     return paginated(items, total, params)
 
 

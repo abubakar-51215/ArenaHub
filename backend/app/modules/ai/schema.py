@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from app.modules.arena.schema import ArenaResponse
+from app.modules.arena.schema import ArenaListItem
 
 
 class ParsedQuery(BaseModel):
@@ -19,9 +19,9 @@ class ParsedQuery(BaseModel):
 
 class NlpSearchResponse(BaseModel):
     parsed: ParsedQuery
-    items: list[ArenaResponse]
+    items: list[ArenaListItem]
     total: int
 
 
 class RecommendationsResponse(BaseModel):
-    items: list[ArenaResponse]
+    items: list[ArenaListItem]

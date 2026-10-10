@@ -182,7 +182,8 @@ async def search_public_arenas(
     price-range slider filters "arenas with something in this range", not
     "every court is in this range"). ``sort`` supports ``newest`` (default),
     ``name``, ``price_asc``/``price_desc`` (by cheapest court), and
-    ``rating_desc`` (by average review rating, unrated arenas sort last).
+    ``rating_desc`` (by average review rating, unrated arenas sort last) and
+    ``best`` (rating, then review count, then newest).
     """
     reviews, prices = _review_summary(), _price_summary()
     base = (
@@ -215,6 +216,13 @@ async def search_public_arenas(
         order = (prices.c.min_price.desc().nulls_last(),)
     elif sort == "rating_desc":
         order = (reviews.c.avg_rating.desc().nulls_last(),)
+    elif sort == "best":
+        # rating first, then how many people rated it, then the newest
+        order = (
+            reviews.c.avg_rating.desc().nulls_last(),
+            reviews.c.review_count.desc().nulls_last(),
+            Arena.created_at.desc(),
+        )
     else:
         order = (Arena.created_at.desc(),)
 

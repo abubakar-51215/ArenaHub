@@ -15,8 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ai.schema import ParsedQuery
 from app.modules.arena import repository as arena_repo
+from app.modules.arena import service as arena_service
 from app.modules.arena.model import Arena, ArenaCity
-from app.modules.arena.schema import ArenaResponse
+from app.modules.arena.schema import ArenaListItem
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import BookingStatus
 from app.modules.court.model import Court
@@ -26,18 +27,24 @@ from app.shared.pagination import PaginationParams
 
 # ---- §2 NLP search --------------------------------------------------------
 
+# "table tennis" comes before "tennis": the first word found wins.
 SPORT_KEYWORDS = [
     "cricket",
     "football",
     "futsal",
+    "padel",
     "badminton",
+    "table tennis",
     "tennis",
+    "squash",
+    "snooker",
     "basketball",
     "volleyball",
 ]
 # Our seeded taxonomy uses "futsal" rather than "football" for 5-a-side —
 # normalize so a query like "football arena" still matches real data.
-_SPORT_ALIASES = {"football": "futsal"}
+# and the stored spelling of "table tennis" is table_tennis.
+_SPORT_ALIASES = {"football": "futsal", "table tennis": "table_tennis"}
 
 CHEAP_KEYWORDS = ["cheap", "affordable", "budget", "inexpensive", "low price", "low cost"]
 EXPENSIVE_KEYWORDS = ["expensive", "premium", "luxury", "high end"]
@@ -93,7 +100,8 @@ async def nlp_search(db: AsyncSession, query_text: str, params: PaginationParams
         offset=params.offset,
         limit=params.page_size,
     )
-    items = [ArenaResponse.model_validate(a) for a in arenas]
+    # the same list cards as the arena search: rating, review count, from-price
+    items = await arena_service.list_items(db, arenas)
     return {"parsed": parsed, "items": items, "total": total}
 
 
@@ -179,7 +187,7 @@ async def recommend_arenas(
     city: ArenaCity | None = None,
     sport: str | None = None,
     limit: int = 10,
-) -> list[ArenaResponse]:
+) -> list[ArenaListItem]:
     """Top-``limit`` arenas for ``player`` by the weighted content-based
     score from docs/12 §3. ``city``/``sport`` narrow the candidate pool —
     used as-is for Home's "Recommended for You", and scoped to a specific
@@ -233,4 +241,4 @@ async def recommend_arenas(
         scored.append((score, arena))
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [ArenaResponse.model_validate(a) for _, a in scored[:limit]]
+    return await arena_service.list_items(db, [a for _, a in scored[:limit]])
