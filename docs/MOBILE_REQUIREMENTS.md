@@ -23,14 +23,14 @@ current working session.*
 | 2 | Do not invent a screen or pop-up that is not in `arena-hub-player-app.html`, `arena-hub-player-app-auth.html` or a file added to `design/prototypes/`. A missing frame is listed and waits for a prototype. | earlier prompt; standing rules b) | Done as a rule |
 | 3 | Mobile must match `arena-hub-player-app.html` exactly (values come from `design/mobile-spec.md`; a value that differs is a bug). | `RESTYLE_LOG.md` "governing rule"; `design/mobile-spec.md` | Partly (G0 primitives, tab bar, Verify, Register done) |
 | 4 | Light theme only. | `design/mobile-spec.md`; earlier prompt | Done |
-| 5 | Press dips to 97.5% in about 160 ms; loading shows a spinner and keeps the button width; success shows a short tick; errors shake once. | earlier prompt; standing rules c) | Not started (`Button` dips to 99% with opacity 0.9; `ConfirmTick` is static) |
-| 6 | Pop-ups and sheets dim and blur the back and rise in about 340 ms (close about 200 ms). Destructive buttons are red and always have a plain Stay or Cancel. | earlier prompt; standing rules c) | Not started (no shared sheet) |
-| 7 | Toasts drop from the top, stay about 3 seconds and slide away. | earlier prompt; standing rules c) | Not started (no shared toast) |
-| 8 | Light haptic on primary taps, a stronger one on success and error (expo-haptics is installed, 15.0.8; used only by the tab bar today). | earlier prompt; standing rules c) | Not started |
+| 5 | Press dips to 97.5% in about 160 ms; loading shows a spinner and keeps the button width; success shows a short tick; errors shake once. | earlier prompt; standing rules c) | Done (shared `Button`, `useShake`, haptics, drawn `ConfirmTick`) |
+| 6 | Pop-ups and sheets dim and blur the back and rise in about 340 ms (close about 200 ms). Destructive buttons are red and always have a plain Stay or Cancel. | earlier prompt; standing rules c) | Done (`ConfirmSheet`: dim only, no blur, because expo-blur is not installed) |
+| 7 | Toasts drop from the top, stay about 3 seconds and slide away. | earlier prompt; standing rules c) | Done (`Toast`) |
+| 8 | Light haptic on primary taps, a stronger one on success and error (expo-haptics is installed, 15.0.8; used only by the tab bar today). | earlier prompt; standing rules c) | Done (Button press and haptics, Field, Toast, ConfirmSheet, ConfirmTick) |
 | 9 | Everything respects "reduce motion" (instant). Screen changes use the native stack transition. | earlier prompt; standing rules c) | Partly (the Field animation does; nothing else animates yet) |
 | 10 | No new animation library unless already installed (`react-native-reanimated` 4.1.7 is). | earlier prompt; standing rules c) | Done as a rule |
-| 11 | Every password field has a show/hide eye button (44px tap area, labels "Show password" / "Hide password"); while the password is visible the eye is a crossed-out eye, swapped smoothly with no layout jump. **Confirmed.** | earlier prompt (user decision, G1 release) | Partly (eye built, no crossed-out version yet) |
-| 11b | Mail and lock fields are huge while idle and shrink to a normal field on focus or text (300 ms), on every screen that has one: Log in, Register, Forgot password, Reset password, Change password, Change email, and later ones. One shared `Field` behaviour. | earlier prompt; standing rules d); `arena-hub-player-app-auth-2.html` | Partly (shared `Field` built; applied to Register only) |
+| 11 | Every password field has a show/hide eye button (44px tap area, labels "Show password" / "Hide password"); while the password is visible the eye is a crossed-out eye, swapped smoothly with no layout jump. **Confirmed.** | earlier prompt (user decision, G1 release) | Done (shared `Field`; crossed-out eye draws over the eye) |
+| 11b | Mail and lock fields are huge while idle and shrink to a normal field on focus or text (300 ms), on every screen that has one: Log in, Register, Forgot password, Reset password, Change password, Change email, and later ones. One shared `Field` behaviour. | earlier prompt; standing rules d); `arena-hub-player-app-auth-2.html` | Done (Log in, Register, Forgot password, Reset password; Change password and Change email wait for their screens) |
 | 12 | Phone targets are 44px (small links get a 44px tap area through hitSlop); text is 14px except labels, badges and chart text. Same as web. **Confirmed for mobile by the user.** | earlier prompt; `MOBILE_QA_GATE.md` | Partly (auth screens: 44px boxes, fields and links; the old screens are unchecked) |
 | 13 | A new screen is built from the same components and tokens as the rest; a screen the prototype does not draw is marked "proposed, not in the prototype". | earlier prompt; `RESTYLE_FOLLOWUPS.md` sign-in follow-ups | Partly (see Unconfirmed 1) |
 
@@ -49,14 +49,14 @@ current working session.*
 
 | # | Requirement | Source | Status |
 |---|---|---|---|
-| 20 | Log in field says "Email or phone" and is sent to `POST /auth/login` as `identifier`. | earlier prompt; `MOBILE_QA_GATE.md` | Partly (backend and web done; the mobile screen and `login()` still send `email`) |
-| 21 | Google and Apple buttons are left out; plain copy instead of "328 arenas". | earlier prompt; `RESTYLE_FOLLOWUPS.md` | Partly (Register done; Log in not yet) |
+| 20 | Log in field says "Email or phone" and is sent to `POST /auth/login` as `identifier`. | earlier prompt; `MOBILE_QA_GATE.md` | Done |
+| 21 | Google and Apple buttons are left out; plain copy instead of "328 arenas". | earlier prompt; `RESTYLE_FOLLOWUPS.md` | Done |
 | 22 | Sign up: build the one Sign up frame that exists; note "Sign-up variant choice unconfirmed". | earlier prompt; `MOBILE_QA_GATE.md` | Done |
 | 23 | Verify code (registration): six 44px code boxes (paste, auto-advance, backspace goes back), 60 second resend countdown. | earlier prompt | Done |
 | 24 | Register: live password rule list (8 characters, uppercase, number, special character). | earlier prompt | Done |
-| 25 | Forgot password and Reset password (six code boxes, new password with live rules, success step, failed / expired states). The 11 frames of `arena-hub-player-app-auth-2.html` are now the prototype for these; the web `/reset-password` flow is compared with them first, and a difference is reported, not "fixed" in the frames. | earlier prompt | Not started (waits for the user's go) |
-| 26 | Admin accounts can sign in on the phone with the emailed code (`POST /auth/admin/verify-code`, `/auth/admin/resend-code`). The challenge token stays in memory only, never in SecureStore. | earlier prompt; `MOBILE_QA_GATE.md` "Mobile blockers" | Not started |
-| 27 | After admin sign-in the app shows a placeholder screen titled "Admin" with a Log out button, marked "temporary until the admin group". | earlier prompt | Not started |
+| 25 | Forgot password and Reset password (six code boxes, new password with live rules, success step, failed / expired states). The 11 frames of `arena-hub-player-app-auth-2.html` are now the prototype for these; the web `/reset-password` flow is compared with them first, and a difference is reported, not "fixed" in the frames. | earlier prompt | Done (G1) |
+| 26 | Admin accounts can sign in on the phone with the emailed code (`POST /auth/admin/verify-code`, `/auth/admin/resend-code`). The challenge token stays in memory only, never in SecureStore. | earlier prompt; `MOBILE_QA_GATE.md` "Mobile blockers" | Done |
+| 27 | After admin sign-in the app shows a placeholder screen titled "Admin" with a Log out button, marked "temporary until the admin group". | earlier prompt | Done (temporary admin landing) |
 | 28 | Admin in the app later: a small read-only view plus important actions. Which screens: to be decided. | earlier prompt; `MOBILE_QA_GATE.md` | Not started |
 | 29 | Dev CORS allows `http://localhost:8081` (Expo web), dev only. | earlier prompt | Done |
 
@@ -68,11 +68,11 @@ G5 My bookings, G6 Play and match, G7 reviews, G8 profile (grouping from `RESTYL
 
 | Route | Group | Status |
 |---|---|---|
-| `(auth)/login` | G1 | Partly (old layout; "Email or phone" label already in text) |
+| `(auth)/login` | G1 | Done |
 | `(auth)/register` | G1 | Done |
 | `(auth)/verify-otp` | G1 | Done |
-| `(auth)/forgot-password` | G1 | Not started (old layout) |
-| reset password steps, success, failed, admin code, admin landing | G1 | Not started (frames in `arena-hub-player-app-auth-2.html`) |
+| `(auth)/forgot-password` | G1 | Done |
+| `(auth)/reset-password` (code, new password, success, failed), `(auth)/admin-code`, `admin` (temporary) | G1 | Done |
 | `(tabs)/index` (Home) | G2 | Not started (tab bar restyled in G0) |
 | `(tabs)/search` | G2 | Not started |
 | `(tabs)/bookings` | G5 | Not started |
@@ -121,7 +121,7 @@ Screen-level requirements already written down:
 | 41 | A complaints screen for players (file a complaint, see your own complaints and the admin's answer). | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
 | 42 | Distance search ("near me"): the distance on arena cards and a radius search. | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
 | 43 | A booking-history report (download or share your bookings as a file). | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
-| 44 | The final G1 sign-in frames are in `design/prototypes/arena-hub-player-app-auth-2.html`: Log in, Forgot password, the code and new-password steps, success, failed, admin code, wrong code, admin landing (temporary until the admin group), the pop-up pattern and the toast pattern. | earlier prompt | In progress (G1) |
+| 44 | The final G1 sign-in frames are in `design/prototypes/arena-hub-player-app-auth-2.html`: Log in, Forgot password, the code and new-password steps, success, failed, admin code, wrong code, admin landing (temporary until the admin group), the pop-up pattern and the toast pattern. | earlier prompt | Done (G1) |
 
 ## Decided out of scope or settled
 
@@ -129,6 +129,11 @@ Screen-level requirements already written down:
 - **A sign-in step with no frame:** the frames now exist (auth-2 file). Any other screen without a frame waits for a frame.
 - **The old Verify wording that mentioned the backend console:** it does not come back.
 - **Sign-up variant:** stays "unconfirmed, built the only frame".
+
+## Open conflict
+
+- **14px text vs the prototype's sizes.** The auth frames use 12.5 to 13.5px for the line under a title, links and rule lists (and 11 to 12px for field messages). The 14px rule (labels, badges and chart text exempt) is not met by those; the screens follow the frames. Needs the user's decision: keep the frames' sizes, or raise body copy to 14px.
+- **Backend: a second reset code within 60 s.** `POST /auth/forgot-password` sends no new code within 60 s of the last one, with the same answer as always. After a refused code, "Send a new code" within that minute leaves the old code in place; if that code is used up (5 wrong tries), the user waits for the 60 s countdown. Nothing was changed.
 
 ## Unconfirmed
 
