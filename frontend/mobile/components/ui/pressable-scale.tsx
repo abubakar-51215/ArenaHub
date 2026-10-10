@@ -9,11 +9,14 @@ import { tapHaptic } from '@/lib/haptics';
  * under "reduce motion".
  */
 interface PressableScaleProps extends Omit<PressableProps, 'style'> {
+  /** The outer box (the card: border, background, spacing). */
   style?: StyleProp<ViewStyle>;
+  /** The pressable itself, for laying its children out (a row). */
+  contentStyle?: StyleProp<ViewStyle>;
   haptic?: boolean;
 }
 
-export function PressableScale({ style, haptic, onPressIn, onPressOut, children, ...props }: PressableScaleProps) {
+export function PressableScale({ style, contentStyle, haptic, onPressIn, onPressOut, children, ...props }: PressableScaleProps) {
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -24,6 +27,7 @@ export function PressableScale({ style, haptic, onPressIn, onPressOut, children,
     <Animated.View style={[animated, style]}>
       <Pressable
         {...props}
+        style={contentStyle}
         onPressIn={(e) => {
           dip(0.975);
           if (haptic) tapHaptic();

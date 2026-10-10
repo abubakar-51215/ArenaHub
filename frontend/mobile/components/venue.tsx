@@ -128,7 +128,8 @@ export function VenueRow({ arena }: { arena: Arena }) {
   const sport = firstSport(arena);
   return (
     <PressableScale
-      style={styles.rowCard}
+      style={styles.rowBox}
+      contentStyle={styles.rowCard}
       onPress={() => router.push(`/arena/${arena.id}`)}
       accessibilityRole="button"
       accessibilityLabel={arena.name}>
@@ -195,16 +196,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 9,
-    backgroundColor: Colors.light.card,
-    borderColor: Colors.light.line,
-    borderWidth: 1,
-    borderRadius: 15,
-  },
+  // the card box, and inside it the row: picture left, name and tag in the middle, price right
+  rowBox: { backgroundColor: Colors.light.card, borderColor: Colors.light.line, borderWidth: 1, borderRadius: 15 },
+  rowCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 9 },
   rowPic: { width: 60, height: 52, borderRadius: 10, overflow: 'hidden', backgroundColor: Colors.light.ink },
   rowPrice: { alignItems: 'flex-end' },
 });
