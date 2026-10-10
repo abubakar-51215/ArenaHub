@@ -150,6 +150,19 @@ Screen-level requirements already written down:
 - **Dropped from the Arena screen because the frame does not draw them (later work if wanted):** the Location map with "Get Directions", "You might also like", and the peak-pricing lines under each court. **Decided at the G3 release: they stay dropped and are later work that needs a frame first** (the user will draw a Location block frame later; "Get Directions" belongs to it). Not built until the frames exist.
 - **Pick a slot:** the "fully booked" day suggests up to two other days or courts that still have open times. Past times today are judged by the phone's clock.
 
+## G4 decisions (Review booking, Payment, Booking confirmed) - frames in `arena-hub-player-app-booking-payment.html`
+
+| # | Decision | Status |
+|---|---|---|
+| 60 | The booking is made when Pay is tapped (not at Continue). Review booking and Payment get their price from `POST /bookings/preview`, which reserves nothing. A taken time answers 409 and opens Slot lost. | Done |
+| 61 | Payment lists exactly four ways: Card (`stripe`), Bank transfer (`manual`), JazzCash, EasyPaisa. `mock` is never listed, nothing is preselected, no Cash on arrival. `GET /payments/methods` gives each one a state: available, unavailable (Card without a real key: "Not available yet") or coming_soon (the two wallets). Only Bank transfer works. | Done |
+| 62 | Card with an empty or placeholder Stripe key answers a clean 503 "Card payments are not available yet." instead of a 500. The two wallets answer 503 "coming soon" until the real gateway work. Tests that need the simulators opt in through a test fixture. | Done |
+| 63 | No short hold timer; the 24 h sweeper stays. Leaving checkout after the booking exists asks first (Leave payment sheet) and "Leave and release time" gives the times back (`POST /bookings/group/{id}/release`). Before Pay nothing is held, so going back has no sheet. | Done |
+| 64 | "Tax & service" and "Invite players" are dropped. Booking code is `AHB-` plus the first 6 characters of the group id. Reminder text says one hour. Add to calendar shares an .ics file with a one-hour reminder. | Done |
+| 65 | Cancellation rules are shown as text made from the arena refund policy (`cancellation_note`). Pay now is the arena advance when it takes one, else the full price; with an advance, Payment and Booking confirmed add a "Pay at the arena" line (not in the frame). | Done |
+| 66 | Bank transfer reads the arena own account from its bank-transfer settings (default account). Receipts are photos (JPG or PNG, up to 5 MB): the frame says "or PDF", the server does not take PDFs yet. | Done, PDF is later work |
+| 67 | Later work: the old balance screen `/payment/[groupId]` (pay a balance on a confirmed booking) is untouched and still uses the dev simulator for gateways; it moves with the Bookings tab (G5). Real Stripe, JazzCash and EasyPaisa gateways stay last. A payment-method picker for several bank accounts is not built (the default account is shown). | Later |
+
 ## Confirmed, not built yet (the user will make prototype frames first)
 
 | # | Requirement | Source | Status |

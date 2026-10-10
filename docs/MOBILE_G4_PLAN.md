@@ -1,6 +1,6 @@
 # G4 plan: Booking summary, Payment, Booking confirmed
 
-Status: PLAN ONLY. Nothing is built. Source frames: `design/prototypes/arena-hub-player-app.html` (Booking summary, Payment, Booking confirmed). Text and numbers only.
+Status: BUILT (see "G4 decisions" in MOBILE_REQUIREMENTS.md). This note is the plan it was built from. Source frames: `design/prototypes/arena-hub-player-app.html` (Booking summary, Payment, Booking confirmed). Text and numbers only.
 Rule kept: a pop-up, sheet or screen that is not in a prototype file needs a frame first.
 
 ---
