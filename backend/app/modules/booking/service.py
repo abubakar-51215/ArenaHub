@@ -40,7 +40,11 @@ from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams
 from app.shared.pricing import apply_discount
-from app.shared.refunds import describe_refund_policy, resolve_refund_percentage
+from app.shared.refunds import (
+    describe_refund_policy,
+    free_cancel_cutoff,
+    resolve_refund_percentage,
+)
 from app.websocket.manager import broadcast_slot_status
 
 STALE_PENDING_PAYMENT_AFTER = timedelta(hours=24)
@@ -434,7 +438,12 @@ async def cancel_booking(
 
 
 async def _apply_cancellation(
-    db: AsyncSession, booking: Booking, *, reason: str | None, refund_percentage: int
+    db: AsyncSession,
+    booking: Booking,
+    *,
+    reason: str | None,
+    refund_percentage: int,
+    refund: bool = True,
 ):
     """The cancellation itself, shared by a user's cancel and the platform's
     (an admin suspending or removing an arena): free the slot, cancel the
@@ -462,9 +471,9 @@ async def _apply_cancellation(
     # cancellations, where refund_percentage is always 0).
     from app.modules.payment.service import create_refund_for_cancelled_booking
 
-    refund = await create_refund_for_cancelled_booking(db, booking)
+    issued = await create_refund_for_cancelled_booking(db, booking) if refund else None
     await notify_user(db, booking.player_id, "booking_cancelled", booking_id=str(booking.id))
-    return refund
+    return issued
 
 
 async def cancel_future_bookings_for_arena(
@@ -694,6 +703,29 @@ async def get_group_details(
     payment = await payment_repo.get_payment_by_group(db, group_id)
     total = sum((b.total_amount for b in bookings), Decimal("0"))
     pay_now = sum((b.advance_amount for b in bookings), Decimal("0"))
+    refund_amount, refund_status = Decimal("0"), None
+    if payment is not None:
+        refunds = await payment_repo.list_refunds_for_payment(db, payment.id)
+        refund_amount = sum((r.amount for r in refunds), Decimal("0"))
+        states = {r.status.value for r in refunds}
+        refund_status = (
+            None
+            if not refunds
+            else "failed"
+            if "failed" in states
+            else "pending"
+            if "pending" in states
+            else "processed"
+        )
+    live = [b for b in bookings if b.status in _CANCELLABLE]
+    not_started = bool(live) and _booking_start(live[0]) > datetime.now()
+    can_cancel = not_started
+    can_reschedule = (
+        not_started
+        and all(b.status in _RESCHEDULABLE for b in live)
+        and datetime.now() < free_cancel_cutoff(arena.refund_policy, _booking_start(live[0]))
+        and not await _was_rescheduled(db, payment)
+    )
     return BookingGroupDetails(
         booking_group_id=group_id,
         arena_id=arena.id,
@@ -717,6 +749,10 @@ async def get_group_details(
         booking_code=booking_code_for(group_id),
         cancellation_note=describe_refund_policy(arena.refund_policy, _booking_start(first)),
         booking_ids=[b.id for b in bookings],
+        refund_amount=refund_amount,
+        refund_status=refund_status,
+        can_cancel=can_cancel,
+        can_reschedule=can_reschedule,
     )
 
 
@@ -741,3 +777,17 @@ async def release_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> Bo
         await state_machine.advance(db, payment, Lifecycle.expired, note="Player left checkout.")
     await db.commit()
     return await get_group_details(db, user, group_id)
+
+
+RESCHEDULE_NOTE = "Booking rescheduled."
+
+
+async def _was_rescheduled(db: AsyncSession, payment) -> bool:
+    """A booking may be moved once. The move is written on its payment history
+    (no extra column), so a note with this text means it was already moved."""
+    if payment is None:
+        return False
+    from app.modules.payment import repository as payment_repo
+
+    events = await payment_repo.list_payment_events(db, payment.id)
+    return any((e.note or "").startswith(RESCHEDULE_NOTE) for e in events)

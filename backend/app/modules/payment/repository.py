@@ -121,6 +121,13 @@ async def sum_refunds_for_payment(db: AsyncSession, payment_id: uuid.UUID) -> De
     return Decimal(total or 0)
 
 
+async def list_refunds_for_payment(db: AsyncSession, payment_id: uuid.UUID) -> list[Refund]:
+    result = await db.execute(
+        select(Refund).where(Refund.payment_id == payment_id).order_by(Refund.created_at.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def list_payment_events(db: AsyncSession, payment_id: uuid.UUID) -> list[PaymentEvent]:
     result = await db.execute(
         select(PaymentEvent)

@@ -7,18 +7,20 @@
 """
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.modules.booking import service
+from app.modules.booking import group_service, service
 from app.modules.booking.model import BookingStatus
 from app.modules.booking.schema import (
     BookingCreateRequest,
+    BookingGroupListItem,
     BookingPreviewRequest,
     CancelRequest,
+    GroupRescheduleRequest,
     RescheduleRequest,
 )
 from app.modules.user.model import User
@@ -70,6 +72,61 @@ async def release_group(
 ) -> dict[str, Any]:
     details = await service.release_group(db, user, group_id)
     return success(data=details, message="Times released.")
+
+
+@router.get("/groups", summary="My bookings as one card per booking")
+async def list_my_booking_groups(
+    tab: Literal["upcoming", "past", "cancelled"] = Query("upcoming"),
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows, total = await group_service.list_groups(db, user, tab, params.page, params.page_size)
+    items = [BookingGroupListItem(**r) for r in rows]
+    return success(data=paginated(items, total, params), message="Bookings retrieved.")
+
+
+@router.get("/group/{group_id}/cancel-preview", summary="What cancelling now would refund")
+async def cancel_preview(
+    group_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await group_service.cancel_preview(db, user, group_id)
+    return success(data=data, message="Cancel preview.")
+
+
+@router.post("/group/{group_id}/cancel", summary="Cancel a whole booking, refunded once")
+async def cancel_group(
+    group_id: uuid.UUID,
+    data: CancelRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    details = await group_service.cancel_group(db, user, group_id, data.reason)
+    return success(data=details, message="Booking cancelled.")
+
+
+@router.post("/group/{group_id}/reschedule-preview", summary="Price of moving a whole booking")
+async def reschedule_preview(
+    group_id: uuid.UUID,
+    data: GroupRescheduleRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    figures = await group_service.reschedule_preview(db, user, group_id, data.new_slot_ids)
+    return success(data=figures, message="Reschedule preview.")
+
+
+@router.post("/group/{group_id}/reschedule", summary="Move a whole booking to new times")
+async def reschedule_group(
+    group_id: uuid.UUID,
+    data: GroupRescheduleRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    details = await group_service.reschedule_group(db, user, group_id, data.new_slot_ids)
+    return success(data=details, message="Booking rescheduled.")
 
 
 @router.get("", summary="List my bookings")
