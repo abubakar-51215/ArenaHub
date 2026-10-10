@@ -57,7 +57,7 @@ function Tag({ label }: { label: string }) {
 }
 
 /** The heart on a picture: fills with a small pop and a light haptic; no toast unless it fails. */
-export function HeartButton({ arenaId }: { arenaId: string }) {
+export function HeartButton({ arenaId, hero }: { arenaId: string; hero?: boolean }) {
   const liked = useLikedIds().data?.has(arenaId) ?? false;
   const toggle = useToggleLike();
   const reduceMotion = useReducedMotion();
@@ -69,7 +69,7 @@ export function HeartButton({ arenaId }: { arenaId: string }) {
 
   return (
     <Pressable
-      hitSlop={10}
+      hitSlop={hero ? 4 : 10}
       accessibilityRole="button"
       accessibilityLabel={liked ? 'Remove from liked arenas' : 'Add to liked arenas'}
       accessibilityState={{ selected: liked }}
@@ -77,9 +77,9 @@ export function HeartButton({ arenaId }: { arenaId: string }) {
         tapHaptic();
         toggle.mutate({ arenaId, liked });
       }}
-      style={styles.pin}>
+      style={hero ? styles.heroPin : styles.pin}>
       <Animated.View style={pop}>
-        <Icon name="heart" size={13} color={liked ? Colors.light.lime : '#FFFFFF'} fill={liked ? Colors.light.lime : undefined} />
+        <Icon name="heart" size={hero ? 16 : 13} color={liked ? Colors.light.lime : '#FFFFFF'} fill={liked ? Colors.light.lime : undefined} />
       </Animated.View>
     </Pressable>
   );
@@ -198,6 +198,8 @@ const styles = StyleSheet.create({
   },
   // the card box, and inside it the row: picture left, name and tag in the middle, price right
   rowBox: { backgroundColor: Colors.light.card, borderColor: Colors.light.line, borderWidth: 1, borderRadius: 15 },
+  // the heart over the Arena screen's photo: a 36px glass square at the top right
+  heroPin: { position: 'absolute', top: 10, right: 14, width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   rowCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 9 },
   rowPic: { width: 60, height: 52, borderRadius: 10, overflow: 'hidden', backgroundColor: Colors.light.ink },
   rowPrice: { alignItems: 'flex-end' },
