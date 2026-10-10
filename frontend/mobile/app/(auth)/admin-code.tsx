@@ -8,6 +8,7 @@ import { AuthScreen } from '@/components/auth/auth-screen';
 import { Button, useButtonStatus } from '@/components/ui/button';
 import { CodeBoxes } from '@/components/ui/code-boxes';
 import { Text } from '@/components/ui/text';
+import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
 import { useShake } from '@/hooks/use-shake';
@@ -26,7 +27,6 @@ export default function AdminCodeScreen() {
   const email = useAdminChallenge((s) => s.email);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [btnStatus, flash] = useButtonStatus();
   const wait = useCountdown(RESEND_WAIT);
   const { style: shakeStyle, shake } = useShake();
@@ -65,7 +65,7 @@ export default function AdminCodeScreen() {
     onSuccess: () => {
       setError(null);
       setCode('');
-      setNotice(`New code sent to ${maskEmail(email!)}`);
+      showToast(`New code sent to ${maskEmail(email!)}`);
       wait.restart();
     },
     onError: (err) => {
@@ -74,7 +74,6 @@ export default function AdminCodeScreen() {
         return;
       }
       flash('error');
-      setNotice(null);
       setError(err instanceof ApiError ? err.message : 'Could not send a new code. Check your connection.');
     },
   });
@@ -85,7 +84,6 @@ export default function AdminCodeScreen() {
   const submit = () => {
     if (!full || verify.isPending) return;
     setError(null);
-    setNotice(null);
     verify.mutate();
   };
 
@@ -109,8 +107,7 @@ export default function AdminCodeScreen() {
           onChange={(c) => {
             setCode(c);
             setError(null);
-            setNotice(null);
-          }}
+                }}
           error={!!error}
           autoFocus
           onSubmit={submit}
@@ -119,11 +116,6 @@ export default function AdminCodeScreen() {
       {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {error}
-        </Text>
-      ) : null}
-      {notice && !error ? (
-        <Text style={styles.notice} accessibilityRole="alert">
-          {notice}
         </Text>
       ) : null}
       <View style={styles.button}>
@@ -147,7 +139,6 @@ export default function AdminCodeScreen() {
 const styles = StyleSheet.create({
   strong: { fontWeight: '700', color: Colors.light.text },
   error: { fontSize: 11, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
-  notice: { fontSize: 11, color: Colors.light.limeDeep, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 20 },
   resendRow: { marginTop: 3, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   resend: { fontSize: 13, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },

@@ -7,6 +7,7 @@ import { AuthScreen } from '@/components/auth/auth-screen';
 import { Button } from '@/components/ui/button';
 import { CodeBoxes } from '@/components/ui/code-boxes';
 import { Text } from '@/components/ui/text';
+import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
 import { ApiError } from '@/lib/api';
@@ -22,7 +23,6 @@ export default function VerifyOtpScreen() {
   const { email, sentTo } = useLocalSearchParams<{ email?: string; sentTo?: string }>();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const setSession = useAuthStore((s) => s.setSession);
   const wait = useCountdown(RESEND_WAIT);
 
@@ -31,11 +31,10 @@ export default function VerifyOtpScreen() {
     onSuccess: () => {
       setError(null);
       setCode('');
-      setNotice('A new code is on its way.');
+      showToast(`New code sent to ${sentTo ?? email}`);
       wait.restart();
     },
     onError: (err) => {
-      setNotice(null);
       if (err instanceof ApiError && err.status === 422) wait.restart(); // "wait a minute"
       setError(err instanceof ApiError ? err.message : 'Could not resend the code.');
     },
@@ -62,7 +61,6 @@ export default function VerifyOtpScreen() {
   const submit = () => {
     if (code.length < 6 || verify.isPending) return;
     setError(null);
-    setNotice(null);
     verify.mutate();
   };
 
@@ -88,11 +86,6 @@ export default function VerifyOtpScreen() {
       {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {error}
-        </Text>
-      ) : null}
-      {notice && !error ? (
-        <Text style={styles.notice} accessibilityRole="alert">
-          {notice}
         </Text>
       ) : null}
 
@@ -132,7 +125,6 @@ const styles = StyleSheet.create({
   strong: { fontWeight: '700', color: Colors.light.text },
   // .field-err / .field-hint: 11px under the field
   error: { fontSize: 11, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
-  notice: { fontSize: 11, color: Colors.light.limeDeep, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 22 },
   resend: { fontSize: 12, color: Colors.light.muted, textAlign: 'center' },
   // 12px text in a 44px touch row, so the link is easy to hit

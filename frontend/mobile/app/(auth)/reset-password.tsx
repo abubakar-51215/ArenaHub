@@ -11,6 +11,7 @@ import { CodeBoxes } from '@/components/ui/code-boxes';
 import { ConfirmTick } from '@/components/ui/confirm-tick';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
+import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
 import { ApiError } from '@/lib/api';
@@ -40,7 +41,6 @@ export default function ResetPasswordScreen() {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [btnStatus, flash] = useButtonStatus();
   const wait = useCountdown(RESEND_WAIT); // the code was just sent by the screen before this one
 
@@ -49,13 +49,12 @@ export default function ResetPasswordScreen() {
     onSuccess: () => {
       setError(null);
       setCode('');
-      setNotice(`New code sent to ${maskEmail(email!)}`);
+      showToast(`New code sent to ${maskEmail(email!)}`);
       wait.restart();
       setStep('code');
     },
     onError: (err) => {
       flash('error');
-      setNotice(null);
       setError(err instanceof ApiError ? err.message : 'Could not send a new code. Check your connection.');
     },
   });
@@ -171,13 +170,11 @@ export default function ResetPasswordScreen() {
         onChange={(c) => {
           setCode(c);
           setError(null);
-          setNotice(null);
-        }}
+            }}
         autoFocus
         onSubmit={() => full && setStep('password')}
       />
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
-      {notice && !error ? <Text style={styles.notice} accessibilityRole="alert">{notice}</Text> : null}
       <View style={styles.button}>
         <Button title="Continue" disabled={!full} onPress={() => setStep('password')} />
       </View>
@@ -213,7 +210,6 @@ const styles = StyleSheet.create({
   gap: { height: 5 },
   strong: { fontWeight: '700', color: Colors.light.text },
   error: { fontSize: 11, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
-  notice: { fontSize: 11, color: Colors.light.limeDeep, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 20 },
   resendRow: { marginTop: 3, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   resend: { fontSize: 13, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
