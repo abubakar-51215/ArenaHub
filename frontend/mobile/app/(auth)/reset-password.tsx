@@ -91,7 +91,7 @@ export default function ResetPasswordScreen() {
           Password updated
         </Text>
         <Text style={styles.doneSub}>You can log in with your new password. Other devices were signed out.</Text>
-        <Button title="Log in" onPress={() => router.replace('/(auth)/login')} />
+        <Button title="Log in" onPress={() => router.dismissTo('/(auth)/login')} />
       </AuthScreen>
     );
   }
@@ -107,7 +107,7 @@ export default function ResetPasswordScreen() {
         </View>
         <View style={styles.stack}>
           <Button title="Send a new code" loading={resend.isPending} status={btnStatus} onPress={() => resend.mutate()} />
-          <Button title="Back to log in" variant="ghost" onPress={() => router.replace('/(auth)/login')} />
+          <Button title="Back to log in" variant="ghost" onPress={() => router.dismissTo('/(auth)/login')} />
         </View>
         {error ? <FieldMessage>{error}</FieldMessage> : null}
       </AuthScreen>

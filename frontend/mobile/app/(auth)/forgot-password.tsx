@@ -77,7 +77,7 @@ export default function ForgotPasswordScreen() {
       </View>
       <View style={styles.footer}>
         <Text style={styles.footerText}>Remembered it? </Text>
-        <Link href="/(auth)/login" style={styles.footerLink} accessibilityRole="link">
+        <Link href="/(auth)/login" dismissTo style={styles.footerLink} accessibilityRole="link">
           Log in
         </Link>
       </View>
