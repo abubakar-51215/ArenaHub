@@ -1,5 +1,5 @@
 """Match ("Play") endpoints — all authenticated. Lightweight social listing,
-not integrated with slot locking or payment (see modules/match/model.py).
+played on the creator's own confirmed booking, no payment (see modules/match/model.py).
 """
 
 import uuid
@@ -37,11 +37,11 @@ async def list_open_matches(
     sport: str | None = None,
     match_date: date | None = Query(default=None, alias="date"),
     params: PaginationParams = Depends(pagination_params),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     data = await service.list_open_matches(
-        db, city=city, sport=sport, match_date=match_date, params=params
+        db, user, city=city, sport=sport, match_date=match_date, params=params
     )
     return success(data=data, message="Matches retrieved.")
 
@@ -58,10 +58,10 @@ async def list_my_matches(
 @router.get("/{match_id}", summary="Get a match's detail incl. participants")
 async def get_match(
     match_id: uuid.UUID,
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    match = await service.get_match_detail(db, match_id)
+    match = await service.get_match_detail(db, user, match_id)
     return success(data=match, message="Match retrieved.")
 
 
