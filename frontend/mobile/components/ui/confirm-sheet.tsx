@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -32,6 +32,12 @@ interface ConfirmSheetProps {
   /** True: the confirm button is red. */
   destructive?: boolean;
   loading?: boolean;
+  /** The red button cannot be pressed (for example while the figures are still loading). */
+  confirmDisabled?: boolean;
+  /** Extra content between the message and the buttons (for example a card of figures). */
+  children?: ReactNode;
+  /** Buttons one under the other, full width: the red one first, then the plain one. */
+  stacked?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -49,6 +55,9 @@ export function ConfirmSheet({
   cancelLabel = 'Stay',
   destructive = true,
   loading,
+  confirmDisabled,
+  children,
+  stacked,
   onConfirm,
   onCancel,
 }: ConfirmSheetProps) {
@@ -113,20 +122,22 @@ export function ConfirmSheet({
               {title}
             </Text>
             <Text style={styles.message}>{message}</Text>
-            <View style={styles.row}>
-              <View style={styles.cell}>
+            {children}
+            {stacked ? (
+              <View style={styles.stack}>
+                <Button title={confirmLabel} variant={destructive ? 'danger' : 'ink'} hitSlop={2} loading={loading} disabled={confirmDisabled} onPress={onConfirm} />
                 <Button title={cancelLabel} variant="ghost" hitSlop={2} onPress={onCancel} />
               </View>
-              <View style={styles.cell}>
-                <Button
-                  title={confirmLabel}
-                  variant={destructive ? 'danger' : 'ink'}
-                  hitSlop={2}
-                  loading={loading}
-                  onPress={onConfirm}
-                />
+            ) : (
+              <View style={styles.row}>
+                <View style={styles.cell}>
+                  <Button title={cancelLabel} variant="ghost" hitSlop={2} onPress={onCancel} />
+                </View>
+                <View style={styles.cell}>
+                  <Button title={confirmLabel} variant={destructive ? 'danger' : 'ink'} hitSlop={2} loading={loading} disabled={confirmDisabled} onPress={onConfirm} />
+                </View>
               </View>
-            </View>
+            )}
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -151,5 +162,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.38, color: Colors.light.text },
   message: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 6 },
   row: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  stack: { gap: 8, marginTop: 14 },
   cell: { flex: 1 },
 });

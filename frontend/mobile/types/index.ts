@@ -311,6 +311,11 @@ export interface BookingGroupDetails {
   booking_code: string;
   cancellation_note: string;
   booking_ids: string[];
+  slot_ids: string[];
+  refund_amount: string;
+  refund_status: 'pending' | 'processed' | 'failed' | null;
+  can_cancel: boolean;
+  can_reschedule: boolean;
 }
 
 /** GET /payments/methods: exactly four, in this order. */
@@ -320,4 +325,48 @@ export interface PayMethodInfo {
   label: string;
   state: 'available' | 'unavailable' | 'coming_soon';
   message: string | null;
+}
+
+/** One card of My bookings: a whole booking (GET /bookings/groups). */
+export interface BookingGroupItem {
+  booking_group_id: string;
+  booking_code: string;
+  arena_id: string;
+  arena_name: string;
+  arena_photo: string | null;
+  court_id: string;
+  court_name: string;
+  sport: string | null;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  slot_count: number;
+  status: BookingStatus;
+  payment_status: PaymentStatus;
+  total: string;
+  pay_now: string;
+  due_at_arena: string;
+  refund_amount: string;
+  refund_status: 'pending' | 'processed' | 'failed' | null;
+  tab: 'upcoming' | 'past' | 'cancelled';
+  booking_id: string;
+  my_rating: number | null;
+}
+
+/** GET /bookings/group/{id}/cancel-preview */
+export interface CancelPreview {
+  can_cancel: boolean;
+  paid: string;
+  refund_percentage: number;
+  refund_amount: string;
+  policy_text: string;
+}
+
+/** POST /bookings/group/{id}/reschedule-preview */
+export interface ReschedulePreview {
+  old_total: string;
+  new_total: string;
+  paid: string;
+  balance: string;
+  refund: string;
 }
