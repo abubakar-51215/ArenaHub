@@ -681,13 +681,18 @@ RATE_PROMPT_LOOKBACK = timedelta(days=2)
 
 
 async def send_rate_prompts(db: AsyncSession, now: datetime | None = None) -> int:
-    """Send "Rate your last game" once per booking group, after the game is completed (the completion job runs
-    every 15 minutes). A group the player already reviewed gets no notice. Only games from the last two days are
-    looked at, so a job that was off for a while does not send a pile of old notices. Returns how many were sent."""
+    """Send "Rate your last game" once per booking group, after the game is completed (the
+    completion job runs
+    every 15 minutes). A group the player already reviewed gets no notice. Only games from the
+    last two days are
+    looked at, so a job that was off for a while does not send a pile of old notices. Returns
+    how many were sent."""
     from app.modules.review import repository as review_repo
 
     current = now or datetime.now()
-    pending = await repo.list_completed_unprompted_since(db, (current - RATE_PROMPT_LOOKBACK).date())
+    pending = await repo.list_completed_unprompted_since(
+        db, (current - RATE_PROMPT_LOOKBACK).date()
+    )
     groups: dict[uuid.UUID, list[Booking]] = {}
     for booking in pending:
         groups.setdefault(booking.booking_group_id, []).append(booking)

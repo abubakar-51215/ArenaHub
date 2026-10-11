@@ -112,3 +112,38 @@ async def test_register_and_unregister_device_token(
         "/api/v1/notifications/devices/ExponentPushToken[abc]", headers=h
     )
     assert unregistered.status_code == 200
+
+
+async def test_each_settings_switch_maps_to_a_stored_category(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The four Settings switches (booking, reminders, payments, matches) are stored as
+    notification_preferences = {"push": {category: bool}, "email": {category: bool}}; a missing key
+    means on. Every new match event belongs to the "match" category."""
+    from app.modules.notification import service as notification_service
+    from app.modules.notification.service import EVENT_META
+
+    player, user = await make_user(client, db_session, "prefs1@example.com", "player")
+    saved = await client.put(
+        "/api/v1/users/me",
+        headers=auth_header(player),
+        json={
+            "notification_preferences": {
+                "push": {"booking": True, "reminder": False, "payment": True, "match": False},
+                "email": {"booking": True, "reminder": False, "payment": True, "match": False},
+            }
+        },
+    )
+    assert saved.status_code == 200
+    await db_session.refresh(user)
+    check = notification_service._channel_enabled
+    assert check(user, "push", "booking") is True
+    assert check(user, "push", "reminder") is False
+    assert check(user, "email", "match") is False
+    assert check(user, "push", "payment") is True
+    assert check(user, "push", "account") is True  # no switch: account notices always go out
+    for event in ("match_joined", "match_left", "match_cancelled", "match_full"):
+        assert EVENT_META[event]["category"] == "match"
+    assert EVENT_META["booking_reminder_1h"]["category"] == "reminder"
+    assert EVENT_META["refund_completed"]["category"] == "payment"
+    assert EVENT_META["booking_confirmed"]["category"] == "booking"

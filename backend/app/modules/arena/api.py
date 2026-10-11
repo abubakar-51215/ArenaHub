@@ -54,7 +54,8 @@ async def search_arenas(
     params: PaginationParams = Depends(pagination_params),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    # The player's position is only a search parameter: it is never stored (or logged) by the server.
+    # The player's position is only a search parameter: it is never stored (or logged) by the
+    # server.
     if (lat is None) != (lon is None):
         raise ValidationError("Send both lat and lon, or neither.")
     if (sort == "near" or radius_km is not None) and lat is None:

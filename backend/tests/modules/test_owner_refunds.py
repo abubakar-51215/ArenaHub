@@ -106,7 +106,8 @@ async def test_mark_paid_once_only_and_notifies_the_player_once(
     assert refund.processed_at is not None and str(refund.processed_by) == owner_id
     pay = await db_session.get(Payment, refund.payment_id)
     await db_session.refresh(pay)
-    # a receipt-waiting cancel ends the payment as expired (a terminal state); the Refund row holds the money
+    # a receipt-waiting cancel ends the payment as expired (a terminal state); the Refund row
+    # holds the money
     assert pay.lifecycle_status == PaymentLifecycleStatus.expired
     events = (
         await client.get(f"/api/v1/payments/{pay.id}/events", headers=auth_header(player))
