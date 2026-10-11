@@ -131,6 +131,20 @@ async def list_stale_pending_payment_for_update(
     return list(result.scalars().all())
 
 
+async def list_completed_unprompted_since(db: AsyncSession, since: date) -> list[Booking]:
+    """Completed bookings from `since` on that have not had the "Rate your last game" notice yet."""
+    result = await db.execute(
+        select(Booking)
+        .where(
+            Booking.status == BookingStatus.completed,
+            Booking.rate_prompt_sent_at.is_(None),
+            Booking.booking_date >= since,
+        )
+        .order_by(Booking.booking_date, Booking.start_time)
+    )
+    return list(result.scalars().all())
+
+
 async def list_confirmed_bookings_on_dates(db: AsyncSession, dates: list[date]) -> list[Booking]:
     """Confirmed bookings falling on any of ``dates`` — callers narrow to an
     exact time window in Python (booking_date/start_time are separate

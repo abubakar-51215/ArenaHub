@@ -142,6 +142,8 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # window lining up, which duplicates a reminder if a run is delayed).
     reminder_24h_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reminder_1h_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # set when the "Rate your last game" notice was sent (once per booking)
+    rate_prompt_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     player: Mapped["User"] = relationship()
     arena: Mapped["Arena"] = relationship()
