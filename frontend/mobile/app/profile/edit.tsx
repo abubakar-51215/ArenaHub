@@ -16,7 +16,7 @@ import { ApiError } from '@/lib/api';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { resolveMediaUrl } from '@/lib/media';
 import { updateProfile } from '@/services/auth';
-import { uploadImage } from '@/services/uploads';
+import { photoProblem, uploadImage } from '@/services/uploads';
 import { useAuthStore } from '@/store/auth';
 import { ARENA_CITIES } from '@/types';
 
@@ -46,6 +46,11 @@ export default function EditProfileScreen() {
       quality: 0.7,
     });
     if (!result.canceled && result.assets[0]) {
+      const problem = photoProblem(result.assets[0]);
+      if (problem) {
+        setError(problem);
+        return;
+      }
       setPickedAvatarUri(result.assets[0].uri);
     }
   }

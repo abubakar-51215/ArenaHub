@@ -23,7 +23,7 @@ import { formatRs } from '@/lib/money';
 import { getBankDetails } from '@/services/arenas';
 import { getBookingGroup } from '@/services/bookings';
 import { uploadReceipt } from '@/services/payments';
-import { uploadImage } from '@/services/uploads';
+import { photoProblem, uploadImage } from '@/services/uploads';
 
 // Bank transfer, from arena-hub-player-app-booking-payment.html (frame 5). The
 // arena's own account details come from its bank-transfer settings. The person
@@ -56,6 +56,11 @@ export default function BankTransferScreen() {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (!res.canceled && res.assets[0]) {
       const a = res.assets[0];
+      const problem = photoProblem(a);
+      if (problem) {
+        showToast(problem);
+        return;
+      }
       setPhoto({ uri: a.uri, name: a.fileName ?? 'receipt' });
     }
   }
