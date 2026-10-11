@@ -196,3 +196,115 @@ async def test_cancel_preview_for_an_unpaid_booking_refunds_nothing(
     ).json()["data"]
     assert Decimal(p["paid"]) == Decimal("0") and Decimal(p["refund_amount"]) == Decimal("0")
     assert p["refund_percentage"] == 0
+
+
+async def _group_with_receipt(client: AsyncClient, db: AsyncSession, tag: str, with_receipt: bool):
+    """A booking group paid by bank transfer: with a receipt uploaded (awaiting approval) or without one."""
+    owner, _ = await make_user(client, db, f"gco-{tag}@example.com", "owner")
+    player, _ = await make_user(client, db, f"gcp-{tag}@example.com", "player")
+    arena = await client.post(
+        "/api/v1/owner/arenas",
+        headers=auth_header(owner),
+        json=arena_payload(advance_percentage=100),
+    )
+    arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db, f"gca-{tag}@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+    court = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/courts",
+        headers=auth_header(owner),
+        json={"name": "Court A", "sport_types": ["futsal"], "base_price": "2000.00"},
+    )
+    court_id = court.json()["data"]["id"]
+    monday = _next_weekday(1)
+    await client.post(
+        f"/api/v1/owner/courts/{court_id}/slots/generate",
+        headers=auth_header(owner),
+        json={"start_date": monday.isoformat(), "end_date": monday.isoformat()},
+    )
+    slots = await _slots(client, court_id, monday)
+    made = await client.post(
+        "/api/v1/bookings",
+        headers=auth_header(player),
+        json={
+            "court_id": court_id,
+            "slot_ids": [s["id"] for s in slots[:2]],
+            "payment_type": "full",
+        },
+    )
+    gid = made.json()["data"]["booking_group_id"]
+    init = await client.post(
+        "/api/v1/payments/initiate",
+        headers=auth_header(player),
+        json={"booking_group_id": gid, "payment_method": "bank_transfer"},
+    )
+    payment = init.json()["data"]["payment"]
+    if with_receipt:
+        sent = await client.post(
+            f"/api/v1/payments/{payment['id']}/receipt",
+            headers=auth_header(player),
+            json={"receipt_proof_url": "/uploads/receipts/r.jpg"},
+        )
+        assert sent.status_code == 200
+    return owner, player, gid, payment, court_id, monday
+
+
+async def test_cancel_with_a_receipt_waiting_keeps_the_money_as_a_pending_refund(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, player, gid, payment, court_id, monday = await _group_with_receipt(
+        client, db_session, "r1", True
+    )
+    prev = (
+        await client.get(
+            f"/api/v1/bookings/group/{gid}/cancel-preview", headers=auth_header(player)
+        )
+    ).json()["data"]
+    assert Decimal(prev["paid"]) == Decimal("4000.00")
+    assert Decimal(prev["refund_amount"]) == Decimal("4000.00")
+    done = await client.post(
+        f"/api/v1/bookings/group/{gid}/cancel", headers=auth_header(player), json={}
+    )
+    assert done.status_code == 200
+    d = done.json()["data"]
+    assert d["status"] == "cancelled"
+    assert Decimal(d["refund_amount"]) == Decimal("4000.00") and d["refund_status"] == "pending"
+    rows = (
+        (await db_session.execute(select(Refund).where(Refund.payment_id == payment["id"])))
+        .scalars()
+        .all()
+    )
+    assert (
+        len(rows) == 1
+        and rows[0].amount == Decimal("4000.00")
+        and rows[0].status.value == "pending"
+    )
+    # the owner can no longer approve that receipt
+    approve = await client.post(
+        f"/api/v1/owner/payments/{payment['id']}/approve", headers=auth_header(owner)
+    )
+    assert approve.status_code in (403, 404, 409, 422)
+    again = await client.post(
+        f"/api/v1/bookings/group/{gid}/cancel", headers=auth_header(player), json={}
+    )
+    assert again.status_code == 422
+    assert await _refunded(db_session, payment["id"]) == Decimal("4000.00")
+    slots = await _slots(client, court_id, monday)
+    assert all(s["status"] == "available" for s in slots[:2])
+
+
+async def test_cancel_without_a_receipt_has_nothing_to_refund(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, player, gid, payment, _, _ = await _group_with_receipt(client, db_session, "r2", False)
+    prev = (
+        await client.get(
+            f"/api/v1/bookings/group/{gid}/cancel-preview", headers=auth_header(player)
+        )
+    ).json()["data"]
+    assert Decimal(prev["paid"]) == Decimal("0") and Decimal(prev["refund_amount"]) == Decimal("0")
+    done = await client.post(
+        f"/api/v1/bookings/group/{gid}/cancel", headers=auth_header(player), json={}
+    )
+    assert done.status_code == 200 and Decimal(done.json()["data"]["refund_amount"]) == 0
+    assert await _refunded(db_session, payment["id"]) == Decimal("0")

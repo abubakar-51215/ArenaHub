@@ -589,6 +589,44 @@ async def create_refund_for_cancelled_group(
     )
 
 
+async def create_refund_for_waiting_receipt(
+    db: AsyncSession, bookings: list[Booking], reason: str | None
+) -> Refund | None:
+    """The player cancelled while a bank-transfer receipt was still waiting for the
+    owner. The money may already have arrived, so the full amount becomes a pending
+    refund (the owner sends it back and marks it done) instead of being lost."""
+    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
+    if payment is None or not payment.receipt_proof_url:
+        return None
+    siblings = await booking_repo.list_group(db, bookings[0].booking_group_id)
+    group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
+    cancelled_advance = sum((b.advance_amount for b in bookings), Decimal("0"))
+    share = cancelled_advance / group_advance if group_advance > 0 else Decimal("1")
+    return await _issue_refund(
+        db,
+        booking=bookings[0],
+        payment=payment,
+        requested_amount=payment.amount * share,
+        reason=reason or "Cancelled while the receipt was waiting.",
+        kind="cancellation",
+    )
+
+
+async def receipt_waiting_payment(db: AsyncSession, bookings: list[Booking]) -> Payment | None:
+    """The group payment, when every live booking awaits approval and a receipt was sent."""
+    if not bookings or any(b.status != BookingStatus.pending_approval for b in bookings):
+        return None
+    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
+    if (
+        payment is None
+        or payment.status != PaymentStatus.pending
+        or not payment.receipt_proof_url
+        or payment.payment_method != PaymentMethod.bank_transfer
+    ):
+        return None
+    return payment
+
+
 async def retry_pending_refunds(db: AsyncSession, now: datetime | None = None) -> int:
     """Scheduler job: try again every gateway refund that is due. Safe to run
     twice at once: due rows are taken with FOR UPDATE SKIP LOCKED and checked

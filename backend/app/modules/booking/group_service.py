@@ -166,6 +166,17 @@ async def _cancel_figures(
 
     if all(b.status == BookingStatus.pending_payment for b in live):
         return 0, Decimal("0"), Decimal("0")
+    from app.modules.payment import service as payment_service
+
+    waiting = await payment_service.receipt_waiting_payment(db, live)
+    if waiting is not None:
+        # a receipt is with the arena: the money may have arrived, so all of it comes back
+        siblings = await repo.list_group(db, live[0].booking_group_id)
+        group_adv = sum((b.advance_amount for b in siblings), Decimal("0"))
+        live_adv = sum((b.advance_amount for b in live), Decimal("0"))
+        share = live_adv / group_adv if group_adv > 0 else Decimal("1")
+        full = (waiting.amount * share).quantize(_CENT)
+        return 100, full, full
     hours = Decimal((_booking_start(live[0]) - datetime.now()).total_seconds()) / 3600
     pct = resolve_refund_percentage(arena.refund_policy if arena else [], max(hours, Decimal("0")))
     payment = await payment_repo.get_payment_by_group(db, live[0].booking_group_id)
@@ -214,11 +225,17 @@ async def cancel_group(
 
     arena = await arena_repo.get_arena(db, live[0].arena_id)
     pct, _, _ = await _cancel_figures(db, live, arena)
+    from app.modules.payment import service as payment_service
+
+    receipt_waiting = await payment_service.receipt_waiting_payment(db, live) is not None
     for b in live:
         await _apply_cancellation(db, b, reason=reason, refund_percentage=pct, refund=False)
     from app.modules.payment import service as payment_service
 
-    await payment_service.create_refund_for_cancelled_group(db, live, pct, reason)
+    if receipt_waiting:
+        await payment_service.create_refund_for_waiting_receipt(db, live, reason)
+    else:
+        await payment_service.create_refund_for_cancelled_group(db, live, pct, reason)
     await _close_pending_payment(db, group_id, "Booking cancelled by the player.")
     await db.commit()
     return await get_group_details(db, user, group_id)
