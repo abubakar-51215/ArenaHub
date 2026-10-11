@@ -77,7 +77,7 @@ The old mobile screens for G6 exist as code but are in the old style: `app/(tabs
   1. What is the prompt: a pop-up asking for permission before the system one, a banner on Home, or a row in Filters? **Recommended:** one pop-up the first time (explains why, "Use my location" and "Not now"), and the existing detect button after that.
   2. Show "2.4 km" on cards and a "Near me" sort? **Yes**, once the prompt exists.
   3. Radius choices (1, 3, 5, 10 km)? **Recommended:** yes, in Filters.
-  4. What if the player says no? **Recommended:** stay on the saved city, no repeat prompt for 30 days.
+  4. What if the player says no? **Recommended:** stay on the saved city. **Changed later:** not shown again the same calendar day (Asia/Karachi), shown again the next day the app is opened, until location is allowed (see the answers below).
 
 ## 7. Also still without a screen
 
@@ -114,15 +114,15 @@ Frames now in `design/prototypes/`: `arena-hub-player-app-account.html` (33 scre
 
 **Reviews.** Drop tag chips. Write a review in a bottom sheet (stars required, text up to 500, "Post review"). Edit any time, delete allowed, owner reply shown, report review with the three reasons in the frame.
 
-**Help and support.** List of my complaints, New complaint (category chips, text up to 2000), complaint detail with the admin reply, empty and error states, FAQ with 3 questions, contact block (email and hours in ONE constants file; the email in the frame is a sample and is a **placeholder**: no real address was invented). The player gets a notice when the admin replies. Attaching a booking to a complaint: later.
+**Help and support.** List of my complaints, New complaint (category chips, text up to 2000), complaint detail with the admin reply, empty and error states, FAQ with 3 questions, contact block (email and hours in ONE constants file, both **PLACEHOLDERS**: `support@arenahub.pk` and "Monday to Friday, 9:00 AM to 6:00 PM (PKT)"; the frame's hours "Mon to Sat, 10 AM to 8 PM" are replaced). The player gets a notice when the admin replies. Attaching a booking to a complaint: later.
 
 **Matchmaking.** A match is on one of the creator's own upcoming CONFIRMED bookings; one open match per booking. The price line is text only, "about ₨ X each" = booking total divided by total players, worked out on the phone; no payment happens in the app (said on the form and the detail). Players near you use the saved city until near-me exists. Notify the creator on join and leave, everyone when it is cancelled, everyone when it fills up. Matches at suspended arenas are not listable. Joining a full, cancelled, own or past match fails with a clear 409 (toast for full: "Sorry, that match just filled up."). Joining twice does not double.
 
-**Near me.** One pop-up the first time ("Use my location", "Not now"); on Not now or denied, stay on the saved city and do not ask again for 30 days; afterwards the detect button works. Distance on cards and results, a "Near me" sort, radius chips (1, 3, 5, 10 km, Any) in Filters. The player's coordinates are never stored on the server; they are sent only as search parameters. Location has a 6 s timeout and never blocks a screen.
+**Near me.** One pop-up ("Use my location", "Not now"). On "Not now" (or denied) it is not shown again on the same calendar day (Asia/Karachi), however often the app is opened; it is shown again the next day the app is opened, and every day after, until location is allowed. Only the date of the last "Not now" is stored (app storage, no coordinates). Once allowed it is never shown. Meanwhile the app stays on the saved city or "All cities" and the detect button still works. (This replaces the earlier 30-day rule.) Distance on cards and results, a "Near me" sort, radius chips (1, 3, 5, 10 km, Any) in Filters. The player's coordinates are never stored on the server; they are sent only as search parameters. Location has a 6 s timeout and never blocks a screen.
 
 **Equipment rental.** Dropped (the chips on Review booking stay).
 
-**Store identity.** `pk.arenahub.app` for `ios.bundleIdentifier` and `android.package`, `buildNumber` 1, `versionCode` 1.
+**Store identity.** `arenahub.app.pk` for `ios.bundleIdentifier` and `android.package`, `buildNumber` 1, `versionCode` 1. Valid for both stores (Android: at least two dot-separated segments, each starting with a letter, letters/digits/underscore; iOS: letters, digits, hyphen, dot). Neither store checks that you own the domain. It cannot be changed after the first upload.
 
 ## Build order
 Step 1 backend (tests first). Step 2 screens: 1 Notifications, 2 Profile group, 3 Reviews, 4 Help and support, 5 Near me, 6 Matchmaking. Step 3 audit medium items (Karachi time, review date format, failure image, push token re-send, deep link while signed out, tab label size). Step 4 checks.
