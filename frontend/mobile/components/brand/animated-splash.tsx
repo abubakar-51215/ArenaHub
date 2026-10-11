@@ -1,7 +1,7 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { BrandMark } from '@/components/brand/brand-mark';
 import { SPLASH_FADE_MS, SPLASH_SPEED_FIRST_LAUNCH, SPLASH_SPEED_LATER_LAUNCHES } from '@/constants/brand';
@@ -35,9 +35,10 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
       finish();
       return;
     }
-    opacity.value = withTiming(0, { duration: SPLASH_FADE_MS, easing: Easing.out(Easing.quad) }, (done) => {
-      if (done) runOnJS(finish)();
-    });
+    opacity.value = withTiming(0, { duration: SPLASH_FADE_MS, easing: Easing.out(Easing.quad) });
+    // a plain timer ends it (the animation callback is unreliable on web)
+    const t = setTimeout(finish, SPLASH_FADE_MS + 30);
+    return () => clearTimeout(t);
   }, [go]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
