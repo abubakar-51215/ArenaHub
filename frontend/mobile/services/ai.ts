@@ -24,10 +24,11 @@ export function getRecommendations(opts: {
   city?: ArenaCity;
   sport?: string;
   limit?: number;
+  timeoutMs?: number;
 }): Promise<{ items: Arena[] }> {
   const parts: string[] = [];
   if (opts.city) parts.push(`city=${encodeURIComponent(opts.city)}`);
   if (opts.sport) parts.push(`sport=${encodeURIComponent(opts.sport)}`);
   parts.push(`limit=${opts.limit ?? 10}`);
-  return api.get<{ items: Arena[] }>(`/recommendations?${parts.join('&')}`);
+  return api.get<{ items: Arena[] }>(`/recommendations?${parts.join('&')}`, { timeoutMs: opts.timeoutMs });
 }

@@ -19,8 +19,8 @@ export function listMyNotifications(): Promise<NotificationPage> {
 }
 
 /** Just the unread count (the bell dot on Home): one small page. */
-export async function getUnreadCount(): Promise<number> {
-  const page = await api.get<NotificationPage>("/notifications?page_size=1");
+export async function getUnreadCount(opts?: { timeoutMs?: number }): Promise<number> {
+  const page = await api.get<NotificationPage>("/notifications?page_size=1", opts);
   return page.unread_count;
 }
 

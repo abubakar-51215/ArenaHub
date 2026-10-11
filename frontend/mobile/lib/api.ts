@@ -135,10 +135,10 @@ export async function apiRequest<T>(method: Method, path: string, body?: unknown
 
 export const api = {
   get: <T>(path: string, opts?: { timeoutMs?: number }) => apiRequest<T>('GET', path, undefined, opts),
-  post: <T>(path: string, body?: unknown) => apiRequest<T>('POST', path, body),
-  patch: <T>(path: string, body?: unknown) => apiRequest<T>('PATCH', path, body),
-  put: <T>(path: string, body?: unknown) => apiRequest<T>('PUT', path, body),
-  del: <T>(path: string) => apiRequest<T>('DELETE', path),
+  post: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => apiRequest<T>('POST', path, body, opts),
+  patch: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => apiRequest<T>('PATCH', path, body, opts),
+  put: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => apiRequest<T>('PUT', path, body, opts),
+  del: <T>(path: string, opts?: { timeoutMs?: number }) => apiRequest<T>('DELETE', path, undefined, opts),
 };
 
 // ---- unauthenticated helpers (health page) ----

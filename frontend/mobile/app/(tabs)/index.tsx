@@ -13,6 +13,7 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { VenueCard, VenueRow } from '@/components/venue';
+import { HOME_CALL_TIMEOUT_MS } from '@/constants/brand';
 import { Colors } from '@/constants/theme';
 import { useArenaSearch } from '@/hooks/useArenas';
 import { getRecommendations } from '@/services/ai';
@@ -72,14 +73,14 @@ export default function HomeScreen() {
 
   const trending = useQuery({
     queryKey: ['trending-arenas', city],
-    queryFn: () => getTrendingArenas({ days: 7, city: city ?? undefined, limit: 8 }),
+    queryFn: () => getTrendingArenas({ days: 7, city: city ?? undefined, limit: 8, timeoutMs: HOME_CALL_TIMEOUT_MS }),
   });
   const recommended = useQuery({
     queryKey: ['recommendations', city],
-    queryFn: () => getRecommendations({ city: city ?? undefined, limit: 8 }),
+    queryFn: () => getRecommendations({ city: city ?? undefined, limit: 8, timeoutMs: HOME_CALL_TIMEOUT_MS }),
   });
-  const popular = useArenaSearch({ sort: 'rating_desc', page_size: 10 });
-  const unread = useQuery({ queryKey: ['unread-count'], queryFn: getUnreadCount, staleTime: 15_000 });
+  const popular = useArenaSearch({ sort: 'rating_desc', page_size: 10 }, { timeoutMs: HOME_CALL_TIMEOUT_MS });
+  const unread = useQuery({ queryKey: ['unread-count'], queryFn: () => getUnreadCount({ timeoutMs: HOME_CALL_TIMEOUT_MS }), staleTime: 15_000 });
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

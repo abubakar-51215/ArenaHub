@@ -13,7 +13,9 @@ import * as Device from "expo-device";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
+import { PUSH_TIMEOUT_MS } from "@/constants/brand";
 import { loadNotifications, pushAvailable } from "@/lib/push";
+import { startupLog } from "@/lib/startup-log";
 import { registerDeviceToken } from "@/services/notifications";
 
 export function usePushRegistration(enabled: boolean) {
@@ -57,9 +59,18 @@ export function usePushRegistration(enabled: boolean) {
       }
     }
 
-    register();
+    // in the background: never awaited by anything, never throws, and given up on after PUSH_TIMEOUT_MS
+    startupLog("push: registering in the background");
+    const timer = setTimeout(() => {
+      cancelled = true;
+      startupLog(`push: no answer after ${PUSH_TIMEOUT_MS / 1000} s, given up`);
+    }, PUSH_TIMEOUT_MS);
+    register()
+      .catch(() => startupLog("push: registration failed (ignored)"))
+      .finally(() => clearTimeout(timer));
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [enabled]);
 }
