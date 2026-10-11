@@ -10,11 +10,13 @@ import { errorHaptic } from '@/lib/haptics';
 import { getBookingGroup } from '@/services/bookings';
 import { useCheckout } from '@/store/checkout';
 
+import { useBackTo } from '@/hooks/useBackTo';
 // Payment failed, from arena-hub-player-app-booking-payment.html (frame 7). While the
 // booking still holds the time, "Try again" and "Choose another way" go back to Payment.
 // If the time was already let go (the arena turned the receipt down, or it ran out),
 // the buttons offer another time or the arena instead.
 export default function PaymentFailedScreen() {
+  useBackTo('/(tabs)');
   const { groupId, arenaId, courtId } = useLocalSearchParams<{ groupId: string; arenaId?: string; courtId?: string }>();
   const group = useQuery({ queryKey: ['booking-group', groupId], queryFn: () => getBookingGroup(groupId), retry: 1 });
   const g = group.data;
