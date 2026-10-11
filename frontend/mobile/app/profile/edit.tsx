@@ -83,7 +83,7 @@ export default function EditProfileScreen() {
     <>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => router.back()} hitSlop={11} accessibilityRole="button" accessibilityLabel="Back">
             <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
           </Pressable>
           <Text style={styles.title}>Personal Information</Text>
@@ -92,7 +92,7 @@ export default function EditProfileScreen() {
 
         <KeyboardScroll contentContainerStyle={styles.content}>
           <View style={styles.avatarSection}>
-            <Pressable onPress={pickAvatar}>
+            <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel="Change profile photo">
               {avatarPreview ? (
                 <Image source={{ uri: avatarPreview }} style={styles.avatarImage} contentFit="cover" />
               ) : (
