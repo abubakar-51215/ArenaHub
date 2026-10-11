@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SportChips } from '@/components/home/sport-chips';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { LightStatusBar, useDarkTop } from '@/components/ui/light-status-bar';
 import { Icon } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -61,6 +62,7 @@ function InlineError({ onRetry }: { onRetry: () => void }) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const darkTop = useDarkTop(insets.top + 150); // the dark hero is about 300 px tall
   const user = useAuthStore((s) => s.user);
   const { city, status, detect } = useLocationStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -95,7 +97,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.page}>
+      <LightStatusBar light={darkTop.onTop} />
       <ScrollView
+        onScroll={darkTop.onScroll}
+        scrollEventThrottle={darkTop.scrollEventThrottle}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.ink} colors={[Colors.light.ink]} />}
         contentContainerStyle={{ paddingBottom: 28 }}>

@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PhotoGallery } from '@/components/arena/photo-gallery';
+import { LightStatusBar, useDarkTop } from '@/components/ui/light-status-bar';
 import { Badge } from '@/components/ui/badge';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,7 @@ export default function ArenaDetailsScreen() {
   const rating = useArenaRating(id);
   const reviews = useQuery({ queryKey: ['arena-reviews-preview', id], queryFn: () => listArenaReviews(id as string), enabled: !!id });
   const scroll = useRef<ScrollView>(null);
+  const darkTop = useDarkTop(120); // the photo is about 200 px tall
   const courtsY = useRef(0);
 
   const missing = arena.error instanceof ApiError && arena.error.status === 404;
@@ -208,7 +210,8 @@ export default function ArenaDetailsScreen() {
 
   return (
     <View style={styles.page}>
-      <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <LightStatusBar light={darkTop.onTop} />
+      <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }} onScroll={darkTop.onScroll} scrollEventThrottle={darkTop.scrollEventThrottle}>
         <PhotoGallery arenaId={a.id} photos={a.images} sport={a.sports_offered[0]} />
         <View style={styles.pad}>
           <View style={styles.headRow}>
