@@ -27,6 +27,7 @@ def _to_response(complaint: Complaint) -> ComplaintResponse:
         assigned_to_name=complaint.assigned_admin.full_name if complaint.assigned_admin else None,
         resolved_at=complaint.resolved_at,
         created_at=complaint.created_at,
+        updated_at=complaint.updated_at,
     )
 
 

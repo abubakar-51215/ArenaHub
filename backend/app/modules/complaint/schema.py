@@ -32,3 +32,5 @@ class ComplaintResponse(BaseModel):
     assigned_to_name: str | None
     resolved_at: datetime | None
     created_at: datetime
+    # when the complaint last changed: the time of the admin's latest reply
+    updated_at: datetime | None = None
