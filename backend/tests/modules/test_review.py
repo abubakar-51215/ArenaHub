@@ -1,5 +1,5 @@
 """Review tests: submit (completed-booking gated, one per booking), edit
-(30-day window)/delete, owner response, report/flag, rating summary."""
+(any time)/delete, owner response, report/flag, rating summary."""
 
 import uuid
 from datetime import date, datetime, timedelta
@@ -117,7 +117,11 @@ async def test_submit_review_for_completed_booking(
     assert body["reviewer_name"] == "Test User"
 
     summary = await client.get(f"/api/v1/arenas/{arena_id}/reviews/summary")
-    assert summary.json()["data"] == {"average_rating": 5.0, "review_count": 1}
+    assert summary.json()["data"] == {
+        "average_rating": 5.0,
+        "review_count": 1,
+        "breakdown": [0, 0, 0, 0, 1],
+    }
 
 
 async def test_submit_review_rejects_incomplete_booking(
@@ -377,3 +381,81 @@ async def test_admin_moderation_queue_forbidden_for_non_admin(
     player, _ = await make_user(client, db_session, "revplayer12@example.com", "player")
     resp = await client.get("/api/v1/admin/reviews", headers=auth_header(player))
     assert resp.status_code == 403
+
+
+async def test_my_reviews_lists_only_my_own_with_the_arena_name(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "revowner20@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer20@example.com", "player")
+    other, _ = await make_user(client, db_session, "revplayer21@example.com", "player")
+    arena_id, booking_id = await _make_completed_booking(
+        client, db_session, owner, player, "revowner20"
+    )
+    made = await client.post(
+        f"/api/v1/arenas/{arena_id}/reviews",
+        headers=auth_header(player),
+        json={"booking_id": booking_id, "rating": 4, "review_text": "Good."},
+    )
+    assert made.status_code == 201
+    mine = await client.get("/api/v1/reviews/my", headers=auth_header(player))
+    assert mine.status_code == 200
+    items = mine.json()["data"]["items"]
+    assert len(items) == 1 and items[0]["rating"] == 4
+    assert items[0]["arena_name"] and items[0]["arena_id"] == arena_id
+    assert items[0]["booking_id"] == booking_id
+    theirs = await client.get("/api/v1/reviews/my", headers=auth_header(other))
+    assert theirs.json()["data"]["items"] == []
+    assert (await client.get("/api/v1/reviews/my")).status_code == 401
+
+
+async def test_review_text_is_limited_to_500_characters(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "revowner22@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer22@example.com", "player")
+    arena_id, booking_id = await _make_completed_booking(
+        client, db_session, owner, player, "revowner22"
+    )
+    too_long = await client.post(
+        f"/api/v1/arenas/{arena_id}/reviews",
+        headers=auth_header(player),
+        json={"booking_id": booking_id, "rating": 5, "review_text": "x" * 501},
+    )
+    assert too_long.status_code == 422
+    ok = await client.post(
+        f"/api/v1/arenas/{arena_id}/reviews",
+        headers=auth_header(player),
+        json={"booking_id": booking_id, "rating": 5, "review_text": "x" * 500},
+    )
+    assert ok.status_code == 201
+
+
+async def test_a_review_can_be_edited_long_after_it_was_written(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from sqlalchemy import update
+
+    from app.modules.review.model import Review
+
+    owner, _ = await make_user(client, db_session, "revowner23@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer23@example.com", "player")
+    arena_id, booking_id = await _make_completed_booking(
+        client, db_session, owner, player, "revowner23"
+    )
+    created = await client.post(
+        f"/api/v1/arenas/{arena_id}/reviews",
+        headers=auth_header(player),
+        json={"booking_id": booking_id, "rating": 3},
+    )
+    review_id = created.json()["data"]["id"]
+    await db_session.execute(
+        update(Review)
+        .where(Review.id == uuid.UUID(review_id))
+        .values(created_at=datetime.now() - timedelta(days=200))
+    )
+    await db_session.flush()
+    edited = await client.put(
+        f"/api/v1/reviews/{review_id}", headers=auth_header(player), json={"rating": 5}
+    )
+    assert edited.status_code == 200 and edited.json()["data"]["rating"] == 5

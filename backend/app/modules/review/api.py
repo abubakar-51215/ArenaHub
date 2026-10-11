@@ -54,12 +54,26 @@ async def get_rating_summary(
     arena_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
     average, count = await service.get_rating_summary(db, arena_id)
+    breakdown = await service.get_rating_breakdown(db, arena_id)
     return success(
-        data={"average_rating": average, "review_count": count}, message="Rating summary retrieved."
+        data={"average_rating": average, "review_count": count, "breakdown": breakdown},
+        message="Rating summary retrieved.",
     )
 
 
 # ---- player self-service ---------------------------------------------------
+
+
+@router.get("/reviews/my", summary="My own reviews")
+async def list_my_reviews(
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows, total = await service.list_my_reviews(
+        db, user, offset=params.offset, limit=params.page_size
+    )
+    return success(data=paginated(rows, total, params), message="Reviews retrieved.")
 
 
 @router.post(
