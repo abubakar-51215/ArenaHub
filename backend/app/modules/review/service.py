@@ -1,5 +1,5 @@
 """Review business logic: submit (completed bookings only, one per booking),
-edit (30-day window)/delete, owner response, report/flag, and the live
+edit (any time)/delete, owner response, report/flag, and the live
 rating-recompute aggregate (MASTER_DEVELOPMENT_PLAN.md Track B scope).
 
 Booking completion is owned entirely by ``booking.service.
@@ -10,7 +10,7 @@ status; it does not mutate bookings.
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,14 +22,12 @@ from app.modules.review import repository as repo
 from app.modules.review.model import Review
 from app.modules.review.schema import (
     ModerationReviewResponse,
+    MyReviewResponse,
     ReviewCreate,
     ReviewResponse,
     ReviewUpdate,
 )
 from app.modules.user.model import User, UserRole
-
-EDIT_WINDOW = timedelta(days=30)
-
 
 def _to_response(review: Review, reviewer_name: str) -> ReviewResponse:
     return ReviewResponse(
@@ -103,8 +101,22 @@ async def list_owner_arena_reviews(
     return [_to_response(review, name) for review, name in rows], total
 
 
+async def list_my_reviews(
+    db: AsyncSession, user: User, *, offset: int, limit: int
+) -> tuple[list[MyReviewResponse], int]:
+    rows, total = await repo.list_my_reviews(db, user.id, offset=offset, limit=limit)
+    return [
+        MyReviewResponse(**_to_response(review, user.full_name).model_dump(), arena_name=name)
+        for review, name in rows
+    ], total
+
+
 async def get_rating_summary(db: AsyncSession, arena_id: uuid.UUID) -> tuple[float | None, int]:
     return await repo.get_rating_summary(db, arena_id)
+
+
+async def get_rating_breakdown(db: AsyncSession, arena_id: uuid.UUID) -> list[int]:
+    return await repo.get_rating_breakdown(db, arena_id)
 
 
 async def update_review(
@@ -115,9 +127,6 @@ async def update_review(
         raise NotFoundError("Review not found.")
     if review.player_id != user.id:
         raise ForbiddenError("You may only edit your own review.")
-    if datetime.now() - review.created_at > EDIT_WINDOW:
-        raise ConflictError("The 30-day edit window for this review has passed.")
-
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(review, field, value)
     await db.commit()

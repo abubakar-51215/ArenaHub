@@ -9,12 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 class ReviewCreate(BaseModel):
     booking_id: uuid.UUID
     rating: int = Field(ge=1, le=5)
-    review_text: str | None = Field(default=None, max_length=2000)
+    review_text: str | None = Field(default=None, max_length=500)
 
 
 class ReviewUpdate(BaseModel):
     rating: int | None = Field(default=None, ge=1, le=5)
-    review_text: str | None = Field(default=None, max_length=2000)
+    review_text: str | None = Field(default=None, max_length=500)
 
 
 class ReviewReportRequest(BaseModel):
@@ -42,9 +42,17 @@ class ReviewResponse(BaseModel):
     updated_at: datetime
 
 
+class MyReviewResponse(ReviewResponse):
+    """One of the player's own reviews, with the arena it is about."""
+
+    arena_name: str
+
+
 class RatingSummaryResponse(BaseModel):
     average_rating: float | None = None
     review_count: int
+    # how many reviews gave 1, 2, 3, 4 and 5 stars (the bars on the reviews screen)
+    breakdown: list[int] = [0, 0, 0, 0, 0]
 
 
 class ModerationReviewResponse(BaseModel):
