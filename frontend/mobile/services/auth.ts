@@ -26,8 +26,8 @@ export function resendAdminCode(challengeToken: string): Promise<null> {
   return api.post<null>("/auth/admin/resend-code", { challenge_token: challengeToken });
 }
 
-export function fetchMe(): Promise<User> {
-  return api.get<User>("/users/me");
+export function fetchMe(opts?: { timeoutMs?: number }): Promise<User> {
+  return api.get<User>("/users/me", opts);
 }
 
 export function logout(refreshToken: string): Promise<null> {

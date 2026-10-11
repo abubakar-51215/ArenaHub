@@ -8,22 +8,26 @@ import {
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
-import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
+import { FONTS_MAX_MS, SPLASH_MAX_MS, STARTUP_CALL_TIMEOUT_MS } from "@/constants/brand";
 import { Colors, Font } from "@/constants/theme";
 import { AnimatedSplash } from "@/components/brand/animated-splash";
 import { ToastHost } from "@/components/ui/toast";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
+import { ApiError } from "@/lib/api";
+import { setupForegroundNotifications } from "@/lib/push";
+import { startupLog } from "@/lib/startup-log";
 import { fetchMe } from "@/services/auth";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth";
+import { useStartup } from "@/store/startup";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -58,53 +62,78 @@ const NavigationTheme = {
   },
 };
 
-// Show an in-app banner + play a sound when a push arrives while the app is
-// in the foreground (the OS handles it automatically in the background).
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 function RootNavigator() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const sessionReady = hydrated && (!accessToken || !!user);
-  usePushRegistration(sessionReady && !!accessToken);
 
+  // What the app waits for before it leaves the splash: the saved sign-in is read from the phone (hydrated), and, when
+  // one is saved, it is checked with the server (GET /users/me, 8 s limit). If the server cannot be reached the app goes
+  // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
-    queryFn: fetchMe,
+    queryFn: () => fetchMe({ timeoutMs: STARTUP_CALL_TIMEOUT_MS }),
     enabled: hydrated && !!accessToken && !user,
     staleTime: Infinity,
     retry: false,
   });
+  const checkFailed = currentUserQuery.isError;
+  const [gaveUp, setGaveUp] = useState(false);
+  const sessionReady = hydrated && (!accessToken || !!user || checkFailed);
+  usePushRegistration(sessionReady && !!accessToken && !!user);
+
+  useEffect(() => {
+    if (hydrated) startupLog(`saved sign-in read from the phone (${accessToken ? "one is saved" : "none"})`);
+  }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (hydrated && accessToken && !user) startupLog(`checking the saved sign-in with the server (GET /users/me, ${STARTUP_CALL_TIMEOUT_MS / 1000} s limit)`);
+  }, [hydrated, accessToken, user]);
 
   useEffect(() => {
     if (currentUserQuery.data) {
+      startupLog("saved sign-in is valid");
       setUser(currentUserQuery.data);
     }
   }, [currentUserQuery.data, setUser]);
 
+  // A saved sign-in the server turns down (401/403) is removed. A server that cannot be reached is not a reason to log
+  // the player out: the session stays in storage and Log in offers "Try again".
   useEffect(() => {
-    if (currentUserQuery.isError && accessToken) {
-      useAuthStore.getState().clear();
-    }
-  }, [accessToken, currentUserQuery.isError]);
+    if (!currentUserQuery.isError) return;
+    const err = currentUserQuery.error;
+    const refused = err instanceof ApiError && (err.status === 401 || err.status === 403);
+    startupLog(`saved sign-in could not be checked: ${err instanceof Error ? err.message : "unknown"}${refused ? " (turned down, signed out)" : " (kept)"}`);
+    if (refused) useAuthStore.getState().clear();
+  }, [currentUserQuery.isError]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const unreachable = checkFailed && !!accessToken && !user;
+    useStartup.getState().set({ unreachable: unreachable || (gaveUp && !!accessToken && !user), checking: currentUserQuery.isFetching, retry: () => void currentUserQuery.refetch() });
+  }, [checkFailed, gaveUp, accessToken, user, currentUserQuery.isFetching]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      startupLog(`still not ready after ${SPLASH_MAX_MS / 1000} s: leaving the splash for Log in`);
+      setGaveUp(true);
+    }, SPLASH_MAX_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (sessionReady) startupLog("session ready");
+  }, [sessionReady]);
 
   // While the session loads the animated splash covers the screen; behind it there is only the page colour.
-  const waiting = !hydrated || !sessionReady;
+  const waiting = (!hydrated || !sessionReady) && !gaveUp;
+  const ready = !waiting;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.light.background }}>
     {waiting ? null : (
     <Stack>
-      <Stack.Protected guard={!accessToken}>
+      <Stack.Protected guard={!accessToken || !user}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!!accessToken && !!user}>
@@ -152,7 +181,7 @@ function RootNavigator() {
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
     </Stack>
     )}
-    <AnimatedSplash ready={!waiting} />
+    <AnimatedSplash ready={ready} />
     </View>
   );
 }
@@ -166,11 +195,30 @@ export default function RootLayout() {
     InterTight_600SemiBold,
     InterTight_700Bold,
   });
-  const fontsSettled = fontsLoaded || !!fontError;
+  const [fontsGaveUp, setFontsGaveUp] = useState(false);
+  const fontsSettled = fontsLoaded || !!fontError || fontsGaveUp;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!fontsLoaded) startupLog(`fonts not loaded after ${FONTS_MAX_MS / 1000} s: using the system fonts`);
+      setFontsGaveUp(true);
+    }, FONTS_MAX_MS);
+    return () => clearTimeout(t);
+  }, [fontsLoaded]);
+
+  useEffect(() => {
+    if (fontsLoaded) startupLog("fonts loaded");
+    else if (fontError) startupLog(`fonts failed (${fontError.message}): using the system fonts`);
+  }, [fontsLoaded, fontError]);
+
+  // Foreground push banners: a real build only. In Expo Go this does nothing and loads nothing.
+  useEffect(() => {
+    setupForegroundNotifications();
+  }, []);
 
   // The native splash (the still dark mark) is hidden by AnimatedSplash once it has drawn its first frame.
 
-  // A font failure falls through to system fonts rather than blocking the app.
+  // A font failure or a slow font falls through to system fonts rather than blocking the app.
   if (!fontsSettled) return null;
 
   return (
