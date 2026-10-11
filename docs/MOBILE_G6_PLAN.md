@@ -100,3 +100,29 @@ Small groups first. Each line is a frame (or set) not yet in any prototype file.
 - Complaint notice to the player when the admin replies; match notices (join, leave, cancel).
 - Distance filter and distance on search results (after the prompt frame).
 - A price estimate for a match (text only, no payment) and a booking link on a match (if question 1 of section 5 is yes).
+
+---
+
+# Answers recorded (2026-10-11) and the build
+
+Frames now in `design/prototypes/`: `arena-hub-player-app-account.html` (33 screens) and `arena-hub-player-app-play.html` (22 screens), drawn at 300 px width: text that wraps there may not wrap at 360 and wider; the checks are at 360, 375, 390 and 430.
+
+## Decisions
+**Notifications.** Drop the promotion notice. Add "Rate your last game", sent once per booking after a game ends (small scheduled job). Tapping a notice opens what it is about (booking, match, or the reviews screen with the booking). No delete, no swipe.
+
+**Profile.** Drop "Your rating" and "Payment methods". Show Games played and Spent (counted from bookings). Row "Payment history" (payments and refunds from `/payments/my`). Add `GET /reviews/my` with edit and delete for My reviews. Avatar photo upload stays. Delete account stays in Settings behind a red sheet; the server refuses it while the player has upcoming or unpaid bookings, with a plain message. Terms and privacy are in-app screens with the draft text of the frame (Terms and Privacy tabs); final wording later; the text lives in one constants file.
+
+**Reviews.** Drop tag chips. Write a review in a bottom sheet (stars required, text up to 500, "Post review"). Edit any time, delete allowed, owner reply shown, report review with the three reasons in the frame.
+
+**Help and support.** List of my complaints, New complaint (category chips, text up to 2000), complaint detail with the admin reply, empty and error states, FAQ with 3 questions, contact block (email and hours in ONE constants file; the email in the frame is a sample and is a **placeholder**: no real address was invented). The player gets a notice when the admin replies. Attaching a booking to a complaint: later.
+
+**Matchmaking.** A match is on one of the creator's own upcoming CONFIRMED bookings; one open match per booking. The price line is text only, "about ₨ X each" = booking total divided by total players, worked out on the phone; no payment happens in the app (said on the form and the detail). Players near you use the saved city until near-me exists. Notify the creator on join and leave, everyone when it is cancelled, everyone when it fills up. Matches at suspended arenas are not listable. Joining a full, cancelled, own or past match fails with a clear 409 (toast for full: "Sorry, that match just filled up."). Joining twice does not double.
+
+**Near me.** One pop-up the first time ("Use my location", "Not now"); on Not now or denied, stay on the saved city and do not ask again for 30 days; afterwards the detect button works. Distance on cards and results, a "Near me" sort, radius chips (1, 3, 5, 10 km, Any) in Filters. The player's coordinates are never stored on the server; they are sent only as search parameters. Location has a 6 s timeout and never blocks a screen.
+
+**Equipment rental.** Dropped (the chips on Review booking stay).
+
+**Store identity.** `pk.arenahub.app` for `ios.bundleIdentifier` and `android.package`, `buildNumber` 1, `versionCode` 1.
+
+## Build order
+Step 1 backend (tests first). Step 2 screens: 1 Notifications, 2 Profile group, 3 Reviews, 4 Help and support, 5 Near me, 6 Matchmaking. Step 3 audit medium items (Karachi time, review date format, failure image, push token re-send, deep link while signed out, tab label size). Step 4 checks.
