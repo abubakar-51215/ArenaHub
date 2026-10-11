@@ -22,6 +22,7 @@ import { formatRs } from '@/lib/money';
 import { getBookingGroup } from '@/services/bookings';
 import { useCheckout } from '@/store/checkout';
 
+import { useBackTo } from '@/hooks/useBackTo';
 // Booking confirmed, from arena-hub-player-app-booking-payment.html (frame 10): the ArenaHub
 // mark lights its ring and lands the ball once (with the success buzz), the booking code, the time,
 // what was paid and the arena's cancellation rules as text. "Add to calendar" shares a
@@ -29,6 +30,7 @@ import { useCheckout } from '@/store/checkout';
 const METHOD_LABEL: Record<string, string> = { bank_transfer: 'Bank transfer', card: 'Card', jazzcash: 'JazzCash', easypaisa: 'EasyPaisa' };
 
 export default function BookingConfirmedScreen() {
+  useBackTo('/(tabs)/bookings');
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const group = useQuery({ queryKey: ['booking-group', groupId], queryFn: () => getBookingGroup(groupId) });
   const g = group.data;

@@ -10,9 +10,11 @@ import { dayAndMonth, timeRange } from '@/lib/checkout';
 import { errorHaptic } from '@/lib/haptics';
 import { useCheckout } from '@/store/checkout';
 
+import { useBackTo } from '@/hooks/useBackTo';
 // Slot lost, from arena-hub-player-app-booking-payment.html (frame 9): someone else
 // took the time between Pick a slot and Pay. Nothing was charged and nothing was booked.
 export default function SlotLostScreen() {
+  useBackTo('/(tabs)');
   const { courtId, arenaId, date, start, end } = useLocalSearchParams<{ courtId: string; arenaId: string; date: string; start: string; end: string }>();
   const courts = useArenaCourts(arenaId);
   const court = courts.data?.find((c) => c.id === courtId);

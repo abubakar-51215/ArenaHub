@@ -14,10 +14,12 @@ import { formatRs } from '@/lib/money';
 import { getBookingGroup } from '@/services/bookings';
 import { useCheckout } from '@/store/checkout';
 
+import { useBackTo } from '@/hooks/useBackTo';
 // Awaiting approval, from arena-hub-player-app-booking-payment.html (frame 6): the
 // receipt is with the arena. The screen checks every 15 seconds and moves on when
 // the arena confirms (Booking confirmed) or turns the receipt down (Payment failed).
 export default function AwaitingApprovalScreen() {
+  useBackTo('/(tabs)/bookings');
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const forget = useCheckout((s) => s.forget);
   useEffect(() => forget(), [forget]);
