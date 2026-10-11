@@ -126,3 +126,6 @@ Frames now in `design/prototypes/`: `arena-hub-player-app-account.html` (33 scre
 
 ## Build order
 Step 1 backend (tests first). Step 2 screens: 1 Notifications, 2 Profile group, 3 Reviews, 4 Help and support, 5 Near me, 6 Matchmaking. Step 3 audit medium items (Karachi time, review date format, failure image, push token re-send, deep link while signed out, tab label size). Step 4 checks.
+
+## Override (2026-10-12): deferred to the very end
+Not built and not changed now: (1) app identifiers and store identity (`app.json` has none); (2) Terms and privacy: no screens, no draft text, no constants file, and the Profile row is left out; (3) support contact: no email, no hours, no "Contact us" block. Help and support is built with My complaints, New complaint, complaint detail with the admin reply, empty and error states and the three-question FAQ. The earlier lines in this file about `arenahub.app.pk`, the draft Terms text and the placeholder support email are replaced by this override. The open decisions are listed in `docs/BEFORE_GOING_LIVE.md` ("Decide at the very end"). The near-me rule stays: not shown again on the same calendar day (Asia/Karachi) after "Not now", shown again on the next day the app is opened.
