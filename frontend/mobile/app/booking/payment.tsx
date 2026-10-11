@@ -20,7 +20,7 @@ import { ApiError } from '@/lib/api';
 import { hoursLabel, parseEquipment, parseSlots } from '@/lib/checkout';
 import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
-import { createBooking, previewBooking } from '@/services/bookings';
+import { createBooking, getBookingGroup, previewBooking } from '@/services/bookings';
 import { getPaymentByGroup, initiatePayment, listPaymentMethods } from '@/services/payments';
 import { checkoutKey, useCheckout } from '@/store/checkout';
 import type { PayMethodInfo } from '@/types';
@@ -79,7 +79,9 @@ function MethodRow({ m, on, onPress }: { m: PayMethodInfo; on: boolean; onPress:
 }
 
 export default function PaymentScreen() {
-  const { courtId, arenaId, slots: slotsParam, equipment: equipParam } = useLocalSearchParams<{ courtId: string; arenaId: string; slots: string; equipment?: string }>();
+  const { courtId, arenaId, slots: slotsParam, equipment: equipParam, groupId: resumeId } = useLocalSearchParams<{ courtId: string; arenaId: string; slots?: string; equipment?: string; groupId?: string }>();
+  // "Pay now" on an unpaid booking opens this screen for the same booking (no second booking is made)
+  const resume = !!resumeId;
   const slots = useMemo(() => parseSlots(slotsParam), [slotsParam]);
   const picked = useMemo(() => parseEquipment(equipParam), [equipParam]);
   const equipmentList = useMemo(
@@ -92,8 +94,10 @@ export default function PaymentScreen() {
 
   const remembered = useCheckout((s) => s.group);
   const remember = useCheckout((s) => s.remember);
-  const groupId = remembered?.key === key ? remembered.groupId : undefined;
-  const { back, sheet } = useLeaveCheckout(groupId, arenaId);
+  const groupId = resume ? resumeId : remembered?.key === key ? remembered.groupId : undefined;
+  // leaving a resumed payment just goes back: the booking is not given up
+  const { back, sheet } = useLeaveCheckout(resume ? undefined : groupId, arenaId);
+  const resumed = useQuery({ queryKey: ['booking-group', resumeId], queryFn: () => getBookingGroup(resumeId as string), enabled: resume, retry: 1 });
 
   const methods = useQuery({ queryKey: ['payment-methods'], queryFn: listPaymentMethods, retry: 1 });
   const list = methods.data ?? (methods.isError ? FALLBACK : []);
@@ -108,11 +112,17 @@ export default function PaymentScreen() {
   const preview = useQuery({
     queryKey: ['booking-preview', courtId, slotIds.join(','), JSON.stringify(equipmentList), applied],
     queryFn: () => previewBooking({ court_id: courtId, slot_ids: slotIds, equipment: equipmentList, discount_code: applied ?? undefined }),
-    enabled: slots.length > 0 && !!courtId && !groupId,
+    enabled: !resume && slots.length > 0 && !!courtId && !groupId,
     retry: false,
     placeholderData: (prev) => prev,
   });
-  const p = preview.data;
+  const rg = resumed.data;
+  const p = resume
+    ? rg
+      ? { slots_subtotal: rg.total, equipment_total: '0', discount_amount: '0', total: rg.total, payment_type: rg.payment_type, pay_now: rg.pay_now, due_at_arena: rg.due_at_arena, discount_status: 'none' as const, discount_message: null, cancellation_note: rg.cancellation_note }
+      : undefined
+    : preview.data;
+  const slotCount = resume ? (rg?.slot_count ?? 1) : slots.length;
 
   const slotLost = (start?: string) =>
     router.replace({
@@ -120,7 +130,7 @@ export default function PaymentScreen() {
       params: { courtId, arenaId, date: slots[0]?.date ?? '', start: start ?? slots[0]?.start_time ?? '', end: slots[slots.length - 1]?.end_time ?? '' },
     });
   useEffect(() => {
-    if (preview.error instanceof ApiError && preview.error.status === 409) slotLost();
+    if (!resume && preview.error instanceof ApiError && preview.error.status === 409) slotLost();
   }, [preview.error]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function apply() {
@@ -221,7 +231,8 @@ export default function PaymentScreen() {
             : list.map((m) => <MethodRow key={m.key} m={m} on={method?.key === m.key} onPress={() => setMethod(m)} />)}
         </View>
 
-        <Eyebrow top={18}>Promo code</Eyebrow>
+        {resume ? null : <Eyebrow top={18}>Promo code</Eyebrow>}
+        {resume ? null : (
         <View style={styles.codeRow}>
           <View style={[styles.codeBox, codeState === 'bad' && { borderColor: Colors.light.red }, codeState === 'ok' && { borderColor: Colors.light.limeDeep }]}>
             <TextInput
@@ -252,6 +263,7 @@ export default function PaymentScreen() {
             />
           </View>
         </View>
+        )}
         {applied && p ? (
           <Text style={[styles.codeNote, { color: Colors.light.limeDeep }]} accessibilityLiveRegion="polite">
             {applied} applied. You save {formatRs(p.discount_amount)}.
@@ -264,22 +276,22 @@ export default function PaymentScreen() {
 
         {showTotals ? (
           <Card style={styles.totals}>
-            <Line label={`Slots (${hoursLabel(slots.length)})`} value={formatRs(p.slots_subtotal)} />
+            <Line label={`Slots (${hoursLabel(slotCount)})`} value={formatRs(p.slots_subtotal)} />
             {Number(p.equipment_total) > 0 ? <Line label="Extras" value={formatRs(p.equipment_total)} /> : null}
             {applied && Number(p.discount_amount) > 0 ? <Line label={`Promo ${applied}`} value={`− ${formatRs(p.discount_amount)}`} tone="lime" /> : null}
             {advance ? <Line label="Total" value={formatRs(p.total)} /> : null}
             <Line label="Pay now" value={formatRs(p.pay_now)} bold />
             {advance ? <Line label="Pay at the arena" value={formatRs(p.due_at_arena)} /> : null}
           </Card>
-        ) : preview.isLoading || preview.isFetching ? (
+        ) : (resume ? resumed.isLoading : preview.isLoading || preview.isFetching) ? (
           <View style={{ marginTop: 16 }}>
             <Skeleton height={92} radius={15} />
           </View>
-        ) : preview.isError && !(preview.error instanceof ApiError && preview.error.status === 409) ? (
+        ) : (resume ? resumed.isError : preview.isError && !(preview.error instanceof ApiError && preview.error.status === 409)) ? (
           <View style={styles.retry}>
             <Text style={styles.muted}>Could not load the price.</Text>
             <View style={{ width: 160, marginTop: 10 }}>
-              <Button title="Try again" onPress={() => preview.refetch()} />
+              <Button title="Try again" onPress={() => (resume ? resumed.refetch() : preview.refetch())} />
             </View>
           </View>
         ) : null}
