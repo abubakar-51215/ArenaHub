@@ -9,7 +9,8 @@ Simple steps, in order. Tested from the computer as far as possible (see "What w
 - If Expo Go says "Project is incompatible with this version of Expo Go" (the store version is newer than SDK 54):
   - **Android:** open https://expo.dev/go, choose SDK 54 and install that Expo Go file (an APK). Remove the store version first.
   - **iPhone:** the App Store only gives the newest Expo Go and you cannot install an older one. Tell me and I will upgrade the project to the newer SDK, or we make a development build.
-- Expo Go cannot show push notifications and shows its own splash, not the ArenaHub one. The animated ArenaHub splash inside the app still plays.
+- **Expo Go cannot receive push notifications** (Expo removed them from Expo Go in SDK 53). The app knows this: in Expo Go it never loads the push code, registers nothing and logs nothing about it. Push works only in a real build. Expo Go also shows its own splash first, not the ArenaHub one; the animated ArenaHub splash inside the app still plays.
+- Expo Go must match the project: the project now uses `expo ~54.0.37`, `expo-constants ~18.0.14` and `expo-file-system ~19.0.24` (run `npm install` in `frontend/mobile` after pulling).
 
 ## 2. Same Wi-Fi, and the computer's address
 
@@ -105,6 +106,15 @@ $env:DATABASE_URL = "<the DATABASE_URL line from backend\.env, with /arenahub at
 Then set `EXPO_PUBLIC_API_URL=http://<IP>:8001` in `frontend/mobile/.env` and run `npx expo start --clear`. Redis must be running (it is shared with the dev backend).
 
 Note: some scratch bookings are for fixed dates a few days ahead; if they have passed they move to Past on their own. Moving, cancelling or paying changes scratch data only.
+
+## 8b. What you see when the backend cannot be reached
+
+The app never waits forever on the splash. At start-up every network call gives up after 8 seconds, and the splash ends by itself after 12 seconds at the latest.
+
+- **Backend stopped, or the computer unreachable (wrong address, firewall, other Wi-Fi):** the splash plays, then **Log in** opens with a calm green note at the top: "Cannot reach the server. Check your connection." and a **Try again** link. A wrong address takes about 8 seconds longer (the app waits 8 seconds for an answer); a stopped backend is answered at once.
+- If you were signed in before, you are **not** signed out: the saved sign-in stays on the phone. After the backend is back, tap **Try again** and the app goes straight to Home. (A sign-in that the server turns down, for example an expired one, is removed.)
+- If you were not signed in, Log in shows as usual (no network call is made at start-up).
+- In development the Metro terminal prints a short line for each step the splash waits for, for example: `[startup +  253 ms] splash shown`, `saved sign-in read from the phone`, `checking the saved sign-in with the server (GET /users/me, 8 s limit)`, `session ready`, `leaving the splash`. Read these lines and send them to me if the splash ever stays too long.
 
 ## 9. A 15-minute test list
 
