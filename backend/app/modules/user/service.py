@@ -101,6 +101,13 @@ async def verify_password_change(
 async def delete_account(db: AsyncSession, user: User) -> None:
     """Soft-delete with a grace window: mark deleted + deactivate; a scheduled
     job purges later. Sessions are invalidated immediately."""
+    from app.modules.booking import repository as booking_repo
+
+    if await booking_repo.count_open_bookings_for_player(db, user.id, datetime.now()) > 0:
+        raise ConflictError(
+            "You still have upcoming or unpaid bookings. Cancel them or wait until they are "
+            "done, then delete your account."
+        )
     user.deleted_at = _now()
     user.is_active = False
     await db.commit()

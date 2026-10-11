@@ -31,7 +31,9 @@ async def test_owner_reads_reviews_for_own_active_arena(client, db_session):
 
 async def test_owner_still_reads_reviews_after_deactivating_arena(client, db_session):
     owner, arena_id = await _owner_arena(client, db_session, "ownrev-deact@example.com")
-    deactivated = await client.delete(f"/api/v1/owner/arenas/{arena_id}", headers=auth_header(owner))
+    deactivated = await client.delete(
+        f"/api/v1/owner/arenas/{arena_id}", headers=auth_header(owner)
+    )
     assert deactivated.status_code == 200
 
     owner_view = await client.get(

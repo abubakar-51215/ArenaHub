@@ -73,9 +73,7 @@ async def list_my_reviews(
     db: AsyncSession, player_id: uuid.UUID, *, offset: int, limit: int
 ) -> tuple[list[tuple[Review, str]], int]:
     """The player's own reviews with the arena name, newest first."""
-    total = (
-        await db.scalar(select(func.count(Review.id)).where(Review.player_id == player_id)) or 0
-    )
+    total = await db.scalar(select(func.count(Review.id)).where(Review.player_id == player_id)) or 0
     result = await db.execute(
         select(Review, Arena.name)
         .join(Arena, Arena.id == Review.arena_id)

@@ -184,9 +184,10 @@ def distance_km_expr(lat: float, lon: float):
 def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """The same haversine formula in Python (the distance shown on a card)."""
     p1, p2 = math.radians(lat1), math.radians(lat2)
-    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(
-        math.radians(lon2 - lon1) / 2
-    ) ** 2
+    a = (
+        math.sin((p2 - p1) / 2) ** 2
+        + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    )
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(min(1.0, a)))
 
 
@@ -231,7 +232,9 @@ async def search_public_arenas(
     dist = distance_km_expr(*near) if near else None
     if dist is not None and radius_km is not None:
         # an arena with no coordinates is not shown when a radius is set
-        base = base.where(Arena.latitude.is_not(None), Arena.longitude.is_not(None), dist <= radius_km)
+        base = base.where(
+            Arena.latitude.is_not(None), Arena.longitude.is_not(None), dist <= radius_km
+        )
     if price_min is not None:
         base = base.where(price_min <= prices.c.min_price)
     if price_max is not None:

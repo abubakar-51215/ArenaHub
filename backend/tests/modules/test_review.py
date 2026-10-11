@@ -474,7 +474,8 @@ async def test_rate_your_game_notice_is_sent_once_per_booking(
     arena_id, booking_id = await _make_completed_booking(
         client, db_session, owner, player, "revowner30"
     )
-    # the completed booking from the helper was completed "in the future" of its date: look from then
+    # the completed booking from the helper was completed "in the future" of its date: look from
+    # then
     booking = await booking_repo.get_booking(db_session, uuid.UUID(booking_id))
     assert booking is not None
     now = datetime.combine(booking.booking_date, booking.end_time) + timedelta(minutes=20)

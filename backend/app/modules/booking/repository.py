@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ColumnElement, Integer, func, select
+from sqlalchemy import ColumnElement, Integer, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
@@ -143,6 +143,31 @@ async def list_completed_unprompted_since(db: AsyncSession, since: date) -> list
         .order_by(Booking.booking_date, Booking.start_time)
     )
     return list(result.scalars().all())
+
+
+async def count_open_bookings_for_player(
+    db: AsyncSession, player_id: uuid.UUID, now: datetime
+) -> int:
+    """Bookings that keep an account from being deleted: anything waiting for payment or
+    approval, and a
+    confirmed booking that has not finished yet."""
+    today = now.date()
+    result = await db.execute(
+        select(func.count(Booking.id)).where(
+            Booking.player_id == player_id,
+            or_(
+                Booking.status.in_([BookingStatus.pending_payment, BookingStatus.pending_approval]),
+                and_(
+                    Booking.status == BookingStatus.confirmed,
+                    or_(
+                        Booking.booking_date > today,
+                        and_(Booking.booking_date == today, Booking.end_time > now.time()),
+                    ),
+                ),
+            ),
+        )
+    )
+    return int(result.scalar_one() or 0)
 
 
 async def list_confirmed_bookings_on_dates(db: AsyncSession, dates: list[date]) -> list[Booking]:

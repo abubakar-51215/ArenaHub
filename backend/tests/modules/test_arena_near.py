@@ -1,4 +1,5 @@
-"""Arena search by distance: ``lat``/``lon`` with ``radius_km`` and ``sort=near`` (haversine on the arena's
+"""Arena search by distance: ``lat``/``lon`` with ``radius_km`` and ``sort=near`` (haversine
+on the arena's
 coordinates). The player's position is only a search parameter: it is never stored."""
 
 import math
