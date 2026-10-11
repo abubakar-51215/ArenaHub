@@ -11,7 +11,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { Pressable, Text as RNText, View } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 
@@ -27,6 +27,31 @@ import { fetchMe } from "@/services/auth";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth";
 import { useStartup } from "@/store/startup";
+
+/**
+ * What a player sees if a screen fails while it draws (an unexpected reply from the server, say): a calm page with
+ * "Try again" instead of a blank or red screen. In development the real error is still printed to the console.
+ */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  if (__DEV__) console.warn("Screen error:", error);
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: Colors.light.paper }}>
+      <RNText style={{ fontSize: 20, fontWeight: "700", color: Colors.light.text, textAlign: "center" }} accessibilityRole="header">
+        Something went wrong
+      </RNText>
+      <RNText style={{ fontSize: 14, lineHeight: 20, color: Colors.light.muted, textAlign: "center", marginTop: 8 }}>
+        Please try again. If it keeps happening, close the app and open it again.
+      </RNText>
+      <Pressable
+        onPress={retry}
+        accessibilityRole="button"
+        accessibilityLabel="Try again"
+        style={{ minHeight: 46, minWidth: 160, marginTop: 20, borderRadius: 14, backgroundColor: Colors.light.ink, alignItems: "center", justifyContent: "center" }}>
+        <RNText style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>Try again</RNText>
+      </Pressable>
+    </View>
+  );
+}
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -177,10 +202,6 @@ function RootNavigator() {
         <Stack.Screen name="profile/report" options={{ headerShown: false }} />
         <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
       </Stack.Protected>
-      <Stack.Screen
-        name="modal"
-        options={{ presentation: "modal", title: "Modal" }}
-      />
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
     </Stack>
     )}
