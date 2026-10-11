@@ -1,12 +1,16 @@
 """Match business logic: create/join/leave/cancel, all guarded to keep the
 listing consistent.
 
-* A match is played on one of the creator's own confirmed, upcoming bookings (``booking_group_id``); a booking has
+* A match is played on one of the creator's own confirmed, upcoming bookings
+(``booking_group_id``); a booking has
   at most one open match. Nothing is paid in the app.
-* A match is "open" until it hits ``max_players``, then "full" (it drops out of the open list). Leaving as the
+* A match is "open" until it hits ``max_players``, then "full" (it drops out of the open
+list). Leaving as the
   creator cancels the match (there is no "transfer ownership").
-* Joining a full, cancelled, own or past match fails with a 409 and a clear message; joining twice never doubles.
-* Notices: the creator when someone joins or leaves, everyone in the match when it is cancelled, everyone when it
+* Joining a full, cancelled, own or past match fails with a 409 and a clear message; joining
+twice never doubles.
+* Notices: the creator when someone joins or leaves, everyone in the match when it is
+cancelled, everyone when it
   fills up.
 """
 
@@ -68,6 +72,7 @@ def _to_response(
         status=match.status,
         created_at=match.created_at,
         booking_group_id=match.booking_group_id,
+        note=match.note,
         booking_total=booking_total,
         joined_by_me=joined_by_me,
     )
@@ -159,6 +164,7 @@ async def create_match(
         court_id=first.court_id,
         booking_group_id=data.booking_group_id,
         sport=data.sport,
+        note=(data.note or "").strip() or None,
         match_date=first.booking_date,
         start_time=first.start_time,
         end_time=last.end_time,
@@ -212,8 +218,10 @@ async def list_my_matches(db: AsyncSession, user: User) -> dict:
 async def join_match(
     db: AsyncSession, user: User, match_id: uuid.UUID, now: datetime | None = None
 ) -> MatchDetailResponse:
-    # Lock the Match row first — serializes concurrent joins for the same match so the capacity check below
-    # and the participant insert are effectively atomic (a second request blocks here until the first commits).
+    # Lock the Match row first — serializes concurrent joins for the same match so the capacity
+    # check below
+    # and the participant insert are effectively atomic (a second request blocks here until the
+    # first commits).
     match = await repo.get_match_for_update(db, match_id)
     if match is None:
         raise NotFoundError("Match not found.")
