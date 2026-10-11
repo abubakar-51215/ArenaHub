@@ -52,6 +52,13 @@ async def _run_reminders() -> None:
             log.info("scheduler.send_upcoming_reminders", sent=count)
 
 
+async def _run_rate_prompts() -> None:
+    async with SessionFactory() as db:
+        count = await booking_service.send_rate_prompts(db)
+        if count:
+            log.info("scheduler.send_rate_prompts", sent=count)
+
+
 async def _run_cleanup() -> None:
     async with SessionFactory() as db:
         otps, tokens = await auth_service.cleanup_expired(db)
@@ -82,6 +89,9 @@ def create_scheduler() -> AsyncIOScheduler:
     )
     scheduler.add_job(
         _run_reminders, "interval", minutes=REMINDER_INTERVAL_MINUTES, id="booking_reminders"
+    )
+    scheduler.add_job(
+        _run_rate_prompts, "interval", minutes=COMPLETION_INTERVAL_MINUTES, id="rate_prompts"
     )
     scheduler.add_job(_run_cleanup, "interval", minutes=CLEANUP_INTERVAL_MINUTES, id="auth_cleanup")
     scheduler.add_job(

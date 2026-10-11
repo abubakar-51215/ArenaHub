@@ -459,3 +459,61 @@ async def test_a_review_can_be_edited_long_after_it_was_written(
         f"/api/v1/reviews/{review_id}", headers=auth_header(player), json={"rating": 5}
     )
     assert edited.status_code == 200 and edited.json()["data"]["rating"] == 5
+
+
+async def _rate_notices(client: AsyncClient, player: dict) -> list[dict]:
+    got = await client.get("/api/v1/notifications", headers=auth_header(player))
+    return [n for n in got.json()["data"]["items"] if n["event"] == "rate_your_game"]
+
+
+async def test_rate_your_game_notice_is_sent_once_per_booking(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "revowner30@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer30@example.com", "player")
+    arena_id, booking_id = await _make_completed_booking(
+        client, db_session, owner, player, "revowner30"
+    )
+    # the completed booking from the helper was completed "in the future" of its date: look from then
+    booking = await booking_repo.get_booking(db_session, uuid.UUID(booking_id))
+    assert booking is not None
+    now = datetime.combine(booking.booking_date, booking.end_time) + timedelta(minutes=20)
+    assert await booking_service.send_rate_prompts(db_session, now=now) == 1
+    assert await booking_service.send_rate_prompts(db_session, now=now) == 0  # once only
+    notices = await _rate_notices(client, player)
+    assert len(notices) == 1
+    assert notices[0]["data"]["booking_id"] == booking_id
+    assert notices[0]["data"]["arena_id"] == arena_id
+    assert notices[0]["title"] == "Rate your last game"
+
+
+async def test_no_rate_notice_when_the_game_was_already_reviewed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "revowner31@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer31@example.com", "player")
+    arena_id, booking_id = await _make_completed_booking(
+        client, db_session, owner, player, "revowner31"
+    )
+    await client.post(
+        f"/api/v1/arenas/{arena_id}/reviews",
+        headers=auth_header(player),
+        json={"booking_id": booking_id, "rating": 5},
+    )
+    booking = await booking_repo.get_booking(db_session, uuid.UUID(booking_id))
+    assert booking is not None
+    now = datetime.combine(booking.booking_date, booking.end_time) + timedelta(minutes=20)
+    assert await booking_service.send_rate_prompts(db_session, now=now) == 0
+    assert await _rate_notices(client, player) == []
+
+
+async def test_old_completed_games_do_not_get_a_notice(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "revowner32@example.com", "owner")
+    player, _ = await make_user(client, db_session, "revplayer32@example.com", "player")
+    _, booking_id = await _make_completed_booking(client, db_session, owner, player, "revowner32")
+    booking = await booking_repo.get_booking(db_session, uuid.UUID(booking_id))
+    assert booking is not None
+    much_later = datetime.combine(booking.booking_date, booking.end_time) + timedelta(days=10)
+    assert await booking_service.send_rate_prompts(db_session, now=much_later) == 0

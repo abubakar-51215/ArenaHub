@@ -677,6 +677,46 @@ async def send_upcoming_reminders(db: AsyncSession, now: datetime | None = None)
     return sent
 
 
+RATE_PROMPT_LOOKBACK = timedelta(days=2)
+
+
+async def send_rate_prompts(db: AsyncSession, now: datetime | None = None) -> int:
+    """Send "Rate your last game" once per booking group, after the game is completed (the completion job runs
+    every 15 minutes). A group the player already reviewed gets no notice. Only games from the last two days are
+    looked at, so a job that was off for a while does not send a pile of old notices. Returns how many were sent."""
+    from app.modules.review import repository as review_repo
+
+    current = now or datetime.now()
+    pending = await repo.list_completed_unprompted_since(db, (current - RATE_PROMPT_LOOKBACK).date())
+    groups: dict[uuid.UUID, list[Booking]] = {}
+    for booking in pending:
+        groups.setdefault(booking.booking_group_id, []).append(booking)
+    sent = 0
+    for group in groups.values():
+        reviewed = False
+        for b in group:
+            if await review_repo.get_review_by_booking(db, b.id) is not None:
+                reviewed = True
+        first = group[0]
+        if not reviewed:
+            arena = await arena_repo.get_arena(db, first.arena_id)
+            await notify_user(
+                db,
+                first.player_id,
+                "rate_your_game",
+                booking_id=str(first.id),
+                booking_group_id=str(first.booking_group_id),
+                arena_id=str(first.arena_id),
+                arena_name=arena.name if arena else "your arena",
+            )
+            sent += 1
+        for b in group:
+            b.rate_prompt_sent_at = current
+    if groups:
+        await db.commit()
+    return sent
+
+
 def booking_code_for(group_id: uuid.UUID) -> str:
     """The short reference a player reads out or sends with a bank transfer."""
     return "AHB-" + group_id.hex[:6].upper()
