@@ -19,7 +19,8 @@ export interface User {
   preferred_sports: string[];
   preferred_locations: string[];
   profile_picture: string | null;
-  notification_preferences: Record<string, boolean>;
+  /** { push: { booking, reminder, payment, match }, email: { … } } (a missing key means on). */
+  notification_preferences: Record<string, unknown>;
   created_at: string;
 }
 
@@ -185,9 +186,21 @@ export interface Payment {
   created_at: string;
 }
 
+export interface PaymentRefundItem {
+  id: string;
+  amount: string;
+  status: 'pending' | 'processed' | 'failed';
+  reason: string;
+  created_at: string;
+  processed_at: string | null;
+}
+
 export interface PaymentHistoryItem extends Payment {
+  lifecycle_status: string;
   arena_name: string | null;
   booking_date: string | null;
+  booking_code: string | null;
+  refunds: PaymentRefundItem[];
 }
 
 export interface PaymentInitiateResult {
@@ -225,6 +238,13 @@ export interface Review {
 export interface RatingSummary {
   average_rating: number | null;
   review_count: number;
+  /** How many reviews gave 1, 2, 3, 4 and 5 stars. */
+  breakdown?: number[];
+}
+
+/** One of my own reviews (GET /reviews/my): a review plus the arena it is about. */
+export interface MyReview extends Review {
+  arena_name: string;
 }
 
 export interface BankDetails {

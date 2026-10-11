@@ -1,343 +1,135 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { router, type Href } from 'expo-router';
+import { useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
+import { GroupLabel, MenuCard, MenuRow, Switch } from '@/components/g6/profile-ui';
+import { ConfirmSheet } from '@/components/ui/confirm-sheet';
+import { IconExtra } from '@/components/ui/icon-extra';
+import { Icon } from '@/components/ui/icon';
+import { ScreenHead } from '@/components/ui/screen-head';
+import { Text } from '@/components/ui/text';
+import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
-import {
-  deleteAccount,
-  requestEmailChange,
-  requestPhoneChange,
-  updateProfile,
-  verifyEmailChange,
-  verifyPhoneChange,
-} from '@/services/auth';
+import { deleteAccount, updateProfile } from '@/services/auth';
 import { useAuthStore } from '@/store/auth';
 
-const NOTIFICATION_TOGGLES: { key: string; label: string; hint: string }[] = [
-  { key: 'push_enabled', label: 'Push notifications', hint: 'Booking reminders and match updates' },
-  { key: 'email_enabled', label: 'Email notifications', hint: 'Receipts and account activity' },
-  { key: 'match_invites', label: 'Match invites', hint: 'Open matches looking for players' },
-];
+// Settings, from arena-hub-player-app-account.html (frames 10 and 11). The four switches are real stored preferences:
+// notification_preferences = { push: { booking, reminder, payment, match }, email: { … } } (a missing key means on), and the
+// switch sets push and email for its category together. Account notices (a suspension, say) have no switch and always go
+// out. Delete account is a red sheet; the server refuses while there is an upcoming or unpaid booking and says so.
+const SWITCHES = [
+  { key: 'booking', title: 'Booking updates', sub: 'Confirmed, cancelled, moved' },
+  { key: 'reminder', title: 'Reminders', sub: 'One day and one hour before' },
+  { key: 'payment', title: 'Payments and refunds' },
+  { key: 'match', title: 'Matches', sub: 'Joins, leaves, cancellations' },
+] as const;
+type Category = (typeof SWITCHES)[number]['key'];
 
-function errMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : 'Something went wrong.';
-}
+type Channel = Record<string, boolean>;
+const channelOf = (prefs: Record<string, unknown> | undefined, name: 'push' | 'email'): Channel => ((prefs?.[name] as Channel | undefined) ?? {});
 
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clear);
+  const saving = useRef<Set<Category>>(new Set());
+  const [sheet, setSheet] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
-  const prefs = user?.notification_preferences ?? {};
+  const isOn = (cat: Category) => channelOf(user?.notification_preferences, 'push')[cat] !== false;
 
-  const prefsMutation = useMutation({
-    mutationFn: (next: Record<string, boolean>) =>
-      updateProfile({ notification_preferences: next }),
-    onSuccess: (updated) => setUser(updated),
-  });
-
-  function toggle(key: string, value: boolean) {
-    prefsMutation.mutate({ ...prefs, [key]: value });
+  async function toggle(cat: Category, value: boolean) {
+    if (!user || saving.current.has(cat)) return;
+    saving.current.add(cat);
+    const before = user;
+    const prefs = {
+      ...(user.notification_preferences ?? {}),
+      push: { ...channelOf(user.notification_preferences, 'push'), [cat]: value },
+      email: { ...channelOf(user.notification_preferences, 'email'), [cat]: value },
+    };
+    setUser({ ...user, notification_preferences: prefs }); // at once; put back if the server says no
+    try {
+      setUser(await updateProfile({ notification_preferences: prefs }));
+    } catch {
+      setUser(before);
+      showToast('Could not save that. Please try again.');
+    } finally {
+      saving.current.delete(cat);
+    }
   }
 
-  // ---- email change ----
-  const [emailStep, setEmailStep] = useState<'closed' | 'form' | 'otp'>('closed');
-  const [newEmail, setNewEmail] = useState('');
-  const [emailCode, setEmailCode] = useState('');
-  const [emailError, setEmailError] = useState<string | null>(null);
-
-  const requestEmailMutation = useMutation({
-    mutationFn: () => requestEmailChange(newEmail.trim()),
-    onSuccess: () => {
-      setEmailError(null);
-      setEmailStep('otp');
-    },
-    onError: (err) => setEmailError(errMessage(err)),
-  });
-  const verifyEmailMutation = useMutation({
-    mutationFn: () => verifyEmailChange(emailCode),
-    onSuccess: (updated) => {
-      setUser(updated);
-      setEmailStep('closed');
-      setNewEmail('');
-      setEmailCode('');
-    },
-    onError: (err) => setEmailError(errMessage(err)),
-  });
-
-  // ---- phone change ----
-  const [phoneStep, setPhoneStep] = useState<'closed' | 'form' | 'otp'>('closed');
-  const [newPhone, setNewPhone] = useState('');
-  const [phoneCode, setPhoneCode] = useState('');
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-
-  const requestPhoneMutation = useMutation({
-    mutationFn: () => requestPhoneChange(newPhone.trim()),
-    onSuccess: () => {
-      setPhoneError(null);
-      setPhoneStep('otp');
-    },
-    onError: (err) => setPhoneError(errMessage(err)),
-  });
-  const verifyPhoneMutation = useMutation({
-    mutationFn: () => verifyPhoneChange(phoneCode),
-    onSuccess: (updated) => {
-      setUser(updated);
-      setPhoneStep('closed');
-      setNewPhone('');
-      setPhoneCode('');
-    },
-    onError: (err) => setPhoneError(errMessage(err)),
-  });
-
-  // ---- delete account ----
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteAccount(),
-    onSuccess: () => {
+  async function doDelete() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await deleteAccount();
       clear();
-      router.replace('/(auth)/login');
-    },
-    onError: (err) => Alert.alert('Could not delete account', errMessage(err)),
-  });
-
-  function confirmDelete() {
-    Alert.alert(
-      'Delete account',
-      'This schedules your account for deletion. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
-      ],
-    );
+      setSheet(false);
+      router.replace({ pathname: '/(auth)/login', params: { notice: 'Your account was deleted.' } } as unknown as Href);
+    } catch (err) {
+      setRefusal(err instanceof ApiError ? err.message : 'Could not delete your account. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={11} accessibilityRole="button" accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Settings</Text>
-          <View style={{ width: 22 }} />
-        </View>
-
-        <KeyboardScroll contentContainerStyle={styles.content}>
-          <Text style={styles.sectionLabel}>Notifications</Text>
-          {NOTIFICATION_TOGGLES.map((t) => (
-            <View key={t.key} style={styles.toggleRow}>
-              <View style={styles.toggleText}>
-                <Text style={styles.toggleLabel}>{t.label}</Text>
-                <Text style={styles.toggleHint}>{t.hint}</Text>
+    <SafeAreaView style={styles.page} edges={['bottom']}>
+      <ScreenHead title="Settings" />
+      <ScrollView contentContainerStyle={styles.pad} showsVerticalScrollIndicator={false}>
+        <GroupLabel>Notifications</GroupLabel>
+        <MenuCard>
+          {SWITCHES.map((s, i) => (
+            <View key={s.key} style={[styles.swRow, i < SWITCHES.length - 1 && styles.swLine]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.swTitle}>{s.title}</Text>
+                {'sub' in s ? <Text style={styles.swSub}>{s.sub}</Text> : null}
               </View>
-              <Switch
-                value={prefs[t.key] ?? false}
-                onValueChange={(v) => toggle(t.key, v)}
-                trackColor={{ true: Colors.light.tint }}
-              />
+              <Switch value={isOn(s.key)} onChange={(v) => toggle(s.key, v)} label={s.title} />
             </View>
           ))}
+        </MenuCard>
+        <Text style={styles.hint}>Push messages need your phone to allow notifications.</Text>
 
-          <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Account</Text>
+        <GroupLabel>Account</GroupLabel>
+        <MenuCard>
+          <MenuRow icon={<Icon name="lock" size={18} color={Colors.light.text2} />} title="Change password" onPress={() => router.push('/profile/change-password' as unknown as Href)} />
+          <MenuRow
+            icon={<IconExtra name="trash" color={Colors.light.destructive} />}
+            title="Delete account"
+            tone="off"
+            onPress={() => {
+              setRefusal(null);
+              setSheet(true);
+            }}
+            last
+          />
+        </MenuCard>
+      </ScrollView>
 
-          {emailStep === 'closed' ? (
-            <Pressable style={styles.linkRow} onPress={() => setEmailStep('form')}>
-              <Text style={styles.linkLabel}>Change email</Text>
-              <Text style={styles.linkValue}>{user?.email}</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.inlineForm}>
-              {emailStep === 'form' ? (
-                <>
-                  <TextField
-                    label="New email"
-                    kind="email"
-                    value={newEmail}
-                    onChangeText={setNewEmail}
-                    onSubmit={() => {
-                      if (newEmail.trim() && !requestEmailMutation.isPending) {
-                        setEmailError(null);
-                        requestEmailMutation.mutate();
-                      }
-                    }}
-                  />
-                  {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-                  <View style={styles.inlineActions}>
-                    <Button title="Cancel" variant="ghost" onPress={() => setEmailStep('closed')} />
-                    <Button
-                      title="Send code"
-                      loading={requestEmailMutation.isPending}
-                      disabled={!newEmail.trim()}
-                      onPress={() => {
-                        setEmailError(null);
-                        requestEmailMutation.mutate();
-                      }}
-                    />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.otpInfo}>We sent a 6-digit code to {newEmail}.</Text>
-                  <TextField
-                    label="Verification code"
-                    kind="code"
-                    value={emailCode}
-                    onChangeText={setEmailCode}
-                    onSubmit={() => {
-                      if (emailCode.length === 6 && !verifyEmailMutation.isPending) {
-                        setEmailError(null);
-                        verifyEmailMutation.mutate();
-                      }
-                    }}
-                  />
-                  {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-                  <View style={styles.inlineActions}>
-                    <Button title="Back" variant="ghost" onPress={() => setEmailStep('form')} />
-                    <Button
-                      title="Confirm"
-                      loading={verifyEmailMutation.isPending}
-                      disabled={emailCode.length !== 6}
-                      onPress={() => {
-                        setEmailError(null);
-                        verifyEmailMutation.mutate();
-                      }}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          )}
-
-          {phoneStep === 'closed' ? (
-            <Pressable style={styles.linkRow} onPress={() => setPhoneStep('form')}>
-              <Text style={styles.linkLabel}>Change phone number</Text>
-              <Text style={styles.linkValue}>{user?.phone}</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.inlineForm}>
-              {phoneStep === 'form' ? (
-                <>
-                  <TextField
-                    label="New phone number"
-                    kind="phone"
-                    value={newPhone}
-                    onChangeText={setNewPhone}
-                    onSubmit={() => {
-                      if (newPhone.trim() && !requestPhoneMutation.isPending) {
-                        setPhoneError(null);
-                        requestPhoneMutation.mutate();
-                      }
-                    }}
-                  />
-                  {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
-                  <View style={styles.inlineActions}>
-                    <Button title="Cancel" variant="ghost" onPress={() => setPhoneStep('closed')} />
-                    <Button
-                      title="Send code"
-                      loading={requestPhoneMutation.isPending}
-                      disabled={!newPhone.trim()}
-                      onPress={() => {
-                        setPhoneError(null);
-                        requestPhoneMutation.mutate();
-                      }}
-                    />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.otpInfo}>We sent a 6-digit code to {newPhone}.</Text>
-                  <TextField
-                    label="Verification code"
-                    kind="code"
-                    value={phoneCode}
-                    onChangeText={setPhoneCode}
-                    onSubmit={() => {
-                      if (phoneCode.length === 6 && !verifyPhoneMutation.isPending) {
-                        setPhoneError(null);
-                        verifyPhoneMutation.mutate();
-                      }
-                    }}
-                  />
-                  {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
-                  <View style={styles.inlineActions}>
-                    <Button title="Back" variant="ghost" onPress={() => setPhoneStep('form')} />
-                    <Button
-                      title="Confirm"
-                      loading={verifyPhoneMutation.isPending}
-                      disabled={phoneCode.length !== 6}
-                      onPress={() => {
-                        setPhoneError(null);
-                        verifyPhoneMutation.mutate();
-                      }}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          )}
-
-          <Pressable style={styles.dangerRow} onPress={confirmDelete}>
-            <Text style={styles.dangerLabel}>
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete account'}
-            </Text>
-          </Pressable>
-        </KeyboardScroll>
-      </SafeAreaView>
-    </>
+      <ConfirmSheet
+        visible={sheet}
+        title="Delete your account?"
+        message={refusal ?? 'Your profile and sign-in will be removed. Upcoming bookings should be cancelled first. This cannot be undone.'}
+        confirmLabel="Yes, delete my account"
+        loading={busy}
+        stacked
+        onConfirm={doDelete}
+        onCancel={() => !busy && setSheet(false)}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
-  content: { padding: 20, gap: 4 },
-  sectionLabel: { fontSize: 13, fontWeight: '600', color: Colors.light.muted, marginBottom: 6 },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-  },
-  toggleText: { flex: 1, paddingRight: 12 },
-  toggleLabel: { fontSize: 15, color: Colors.light.text },
-  toggleHint: { fontSize: 12, color: Colors.light.muted, marginTop: 2 },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-  },
-  linkLabel: { fontSize: 15, color: Colors.light.text },
-  linkValue: { fontSize: 13, color: Colors.light.muted },
-  inlineForm: {
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-  },
-  inlineActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  otpInfo: { fontSize: 13, color: Colors.light.text, lineHeight: 18 },
-  errorText: { color: Colors.light.destructive, fontSize: 13 },
-  dangerRow: { paddingVertical: 18, alignItems: 'center', marginTop: 16 },
-  dangerLabel: { fontSize: 14, fontWeight: '600', color: Colors.light.destructive },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  pad: { paddingHorizontal: 18, paddingBottom: 28 },
+  swRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 10 },
+  swLine: { borderBottomWidth: 1, borderBottomColor: Colors.light.lineSoft },
+  swTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  swSub: { fontSize: 14, color: Colors.light.muted, marginTop: 1 },
+  hint: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 8 },
 });
