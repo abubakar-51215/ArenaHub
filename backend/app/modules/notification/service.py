@@ -108,6 +108,36 @@ EVENT_META: dict[str, dict[str, str]] = {
         ),
         "category": "booking",
     },
+    "complaint_reply": {
+        "title": "We replied to your complaint",
+        "body": "ArenaHub support replied to your complaint. Open it to read the reply.",
+        "category": "account",
+    },
+    "rate_your_game": {
+        "title": "Rate your last game",
+        "body": "How was {arena_name}? Tell other players in a quick review.",
+        "category": "booking",
+    },
+    "match_joined": {
+        "title": "A player joined your match",
+        "body": "{player_name} joined your {sport} match at {arena_name}.",
+        "category": "match",
+    },
+    "match_left": {
+        "title": "A player left your match",
+        "body": "{player_name} left your {sport} match at {arena_name}.",
+        "category": "match",
+    },
+    "match_cancelled": {
+        "title": "A match was cancelled",
+        "body": "The {sport} match at {arena_name} on {match_date} was cancelled.",
+        "category": "match",
+    },
+    "match_full": {
+        "title": "Your match is full",
+        "body": "The {sport} match at {arena_name} on {match_date} now has all its players.",
+        "category": "match",
+    },
     "refund_to_send": {
         "title": "A refund is waiting for you",
         "body": (

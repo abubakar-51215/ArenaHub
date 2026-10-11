@@ -457,7 +457,9 @@ async def test_refund_created_and_processed_on_cancel_of_confirmed_booking(
 ) -> None:
     owner, _ = await make_user(client, db_session, "payowner8@example.com", "owner")
     player, _ = await make_user(client, db_session, "payplayer8@example.com", "player")
-    _, court_id, monday = await _make_bookable_court(client, db_session, owner, "payowner8", days_ahead=3)
+    _, court_id, monday = await _make_bookable_court(
+        client, db_session, owner, "payowner8", days_ahead=3
+    )
     slots = await _slots(client, court_id, monday)
     group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
 
@@ -675,7 +677,9 @@ async def test_cancel_after_reschedule_refund_is_capped_and_audited(
     player, _ = await make_user(client, db_session, "payrfp1@example.com", "player")
     h = auth_header(owner)
     arena = await client.post(
-        "/api/v1/owner/arenas", headers=h, json=arena_payload(require_full_payment=True, operating_hours=ALL_WEEK_HOURS)
+        "/api/v1/owner/arenas",
+        headers=h,
+        json=arena_payload(require_full_payment=True, operating_hours=ALL_WEEK_HOURS),
     )
     arena_id = arena.json()["data"]["id"]
     admin = await make_admin(client, db_session, "admin-payrf1@example.com")
@@ -696,7 +700,9 @@ async def test_cancel_after_reschedule_refund_is_capped_and_audited(
             "price_multiplier": "1.50",
         },
     )
-    monday = date.today() + timedelta(days=3)  # three days ahead: outside the 24-hour tier on any weekday
+    monday = date.today() + timedelta(
+        days=3
+    )  # three days ahead: outside the 24-hour tier on any weekday
     await client.post(
         f"/api/v1/owner/courts/{court_id}/slots/generate",
         headers=h,

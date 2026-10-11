@@ -88,13 +88,13 @@ async def list_my_reviews(
 
 
 async def get_rating_breakdown(db: AsyncSession, arena_id: uuid.UUID) -> list[int]:
-    """[1-star, 2-star, 3-star, 4-star, 5-star] counts for an arena (flagged reviews left out, like the average)."""
+    """Counts of 1 to 5 star reviews for an arena (flagged ones left out, like the average)."""
     result = await db.execute(
         select(Review.rating, func.count(Review.id))
         .where(Review.arena_id == arena_id, Review.is_flagged.is_(False))
         .group_by(Review.rating)
     )
-    counts = {rating: n for rating, n in result.all()}
+    counts = dict(result.all())
     return [counts.get(star, 0) for star in range(1, 6)]
 
 

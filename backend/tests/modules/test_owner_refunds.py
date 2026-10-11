@@ -108,9 +108,9 @@ async def test_mark_paid_once_only_and_notifies_the_player_once(
     await db_session.refresh(pay)
     # a receipt-waiting cancel ends the payment as expired (a terminal state); the Refund row holds the money
     assert pay.lifecycle_status == PaymentLifecycleStatus.expired
-    events = (await client.get(f"/api/v1/payments/{pay.id}/events", headers=auth_header(player))).json()[
-        "data"
-    ]
+    events = (
+        await client.get(f"/api/v1/payments/{pay.id}/events", headers=auth_header(player))
+    ).json()["data"]
     assert any("marked as paid" in (e["note"] or "") for e in events)
     assert await _count(db_session, "refund_completed", player_id) == 1
 
@@ -145,7 +145,9 @@ async def test_gateway_refunds_cannot_be_marked_by_hand(
     )
     db_session.add(refund)
     await db_session.flush()
-    res = await client.post(f"/api/v1/owner/refunds/{refund.id}/mark-paid", headers=auth_header(owner))
+    res = await client.post(
+        f"/api/v1/owner/refunds/{refund.id}/mark-paid", headers=auth_header(owner)
+    )
     assert res.status_code == 422
     await db_session.refresh(refund)
     assert refund.status == RefundStatus.pending
@@ -159,8 +161,14 @@ async def _first_booking_id(db: AsyncSession, payment_id: str):
 
     pay = await db.get(Payment, payment_id)
     return (
-        await db.execute(select(Booking.id).where(Booking.booking_group_id == pay.booking_group_id))
-    ).scalars().first()
+        (
+            await db.execute(
+                select(Booking.id).where(Booking.booking_group_id == pay.booking_group_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
 
 
 async def test_mark_paid_refuses_a_refund_larger_than_the_payment(
@@ -193,7 +201,11 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
 
     pay = await db_session.get(Payment, payment["id"])
     ids = (
-        (await db_session.execute(select(Booking.id).where(Booking.booking_group_id == pay.booking_group_id)))
+        (
+            await db_session.execute(
+                select(Booking.id).where(Booking.booking_group_id == pay.booking_group_id)
+            )
+        )
         .scalars()
         .all()
     )

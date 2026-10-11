@@ -10,6 +10,7 @@ from app.modules.complaint import repository as repo
 from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintStatus
 from app.modules.complaint.schema import ComplaintCreate, ComplaintResponse
 from app.modules.user.model import User
+from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
 
@@ -92,10 +93,21 @@ async def respond_to_complaint(
     if complaint.assigned_to is None:
         complaint.assigned_admin = admin
         complaint.assigned_to = admin.id
+    # tell the player (the notice opens the complaint)
+    await notify_user(db, complaint.player_id, "complaint_reply", complaint_id=str(complaint.id))
     await db.commit()
     saved = await repo.get_complaint(db, complaint_id)
     assert saved is not None
     return _to_response(saved)
+
+
+async def get_my_complaint(
+    db: AsyncSession, user: User, complaint_id: uuid.UUID
+) -> ComplaintResponse:
+    complaint = await repo.get_complaint(db, complaint_id)
+    if complaint is None or complaint.player_id != user.id:
+        raise NotFoundError("Complaint not found.")
+    return _to_response(complaint)
 
 
 async def count_open(db: AsyncSession) -> int:
