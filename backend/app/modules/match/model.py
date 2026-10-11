@@ -69,6 +69,8 @@ class Match(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # the creator's confirmed booking this match is played on (NULL only for matches made before G6)
     booking_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     sport: Mapped[str] = mapped_column(String(50), nullable=False)
+    # an optional line from the creator ("Friendly game, all levels.")
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     match_date: Mapped[date] = mapped_column(Date, nullable=False)
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)

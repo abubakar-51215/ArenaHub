@@ -50,7 +50,8 @@ Row = tuple[Match, str, str, str, int, "Decimal | None", bool]
 
 
 def _extras(viewer_id: uuid.UUID):
-    """Subqueries every match row needs: players joined, the booking's total price, did the viewer join."""
+    """Subqueries every match row needs: players joined, the booking's total price, did the
+    viewer join."""
     participant = aliased(MatchParticipant)
     joined = (
         select(func.count(participant.id)).where(participant.match_id == Match.id).scalar_subquery()
@@ -105,7 +106,8 @@ async def list_open_matches(
     offset: int,
     limit: int,
 ) -> tuple[list[Row], int]:
-    """Open matches that have not started, at arenas that are live (a suspended arena's matches are not listed),
+    """Open matches that have not started, at arenas that are live (a suspended arena's
+    matches are not listed),
     soonest first."""
     base = (
         _base(viewer_id)

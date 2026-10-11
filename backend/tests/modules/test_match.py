@@ -1,4 +1,5 @@
-"""Matchmaking ("Play"): a match is played on the creator's own confirmed, upcoming booking; join/leave/cancel
+"""Matchmaking ("Play"): a match is played on the creator's own confirmed, upcoming booking;
+join/leave/cancel
 rules, listing rules and the notices."""
 
 import uuid
@@ -84,7 +85,8 @@ async def _book(
 
 
 async def _setup(client: AsyncClient, db: AsyncSession, tag: str, **kw):
-    """(creator tokens, creator user, group_id, arena_id, court_id, day) with a confirmed booking."""
+    """(creator tokens, creator user, group_id, arena_id, court_id, day) with a confirmed
+    booking."""
     _, arena_id, court_id, day = await _arena_and_court(client, db, tag)
     creator, user = await make_user(client, db, f"mcreator-{tag}@example.com", "player")
     group_id = await _book(client, creator, court_id, day, **kw)
@@ -330,3 +332,16 @@ async def test_cancel_only_by_creator_and_my_matches(
     theirs = (await client.get("/api/v1/matches/mine", headers=auth_header(joiner))).json()["data"]
     assert any(m["id"] == match_id and m["joined_by_me"] for m in theirs["joined"])
     assert not any(m["id"] == match_id for m in theirs["created"])
+
+
+async def test_a_match_can_carry_a_short_note(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    creator, _, group_id, *_ = await _setup(client, db_session, "note1")
+    made = await _post(client, creator, group_id, note="  Friendly game, all levels.  ")
+    assert made.status_code == 201
+    assert made.json()["data"]["note"] == "Friendly game, all levels."
+    other, _, g2, *_ = await _setup(client, db_session, "note2")
+    assert (await _post(client, other, g2, note="x" * 201)).status_code == 422
+    plain = await _post(client, other, g2)
+    assert plain.json()["data"]["note"] is None

@@ -15,6 +15,7 @@ class MatchCreate(BaseModel):
     booking_group_id: uuid.UUID
     sport: str = Field(min_length=1, max_length=50)
     max_players: int = Field(ge=2, le=50)
+    note: str | None = Field(default=None, max_length=200)
 
 
 class ParticipantResponse(BaseModel):
@@ -41,7 +42,9 @@ class MatchResponse(BaseModel):
     status: MatchStatus
     created_at: datetime
     booking_group_id: uuid.UUID | None = None
-    # what the creator's booking costs in all; the phone shows "about X each" (text only, nothing is paid in the app)
+    note: str | None = None
+    # what the creator's booking costs in all; the phone shows "about X each" (text only,
+    # nothing is paid in the app)
     booking_total: Decimal | None = None
     # did the player who asked join (or create) this match
     joined_by_me: bool = False
