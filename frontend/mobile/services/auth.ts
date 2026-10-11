@@ -14,8 +14,8 @@ export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChalleng
 }
 
 /** `identifier` is an email or a phone number (the older `email` field still works on the server). */
-export function login(identifier: string, password: string): Promise<Tokens | AdminChallenge> {
-  return api.post<Tokens | AdminChallenge>("/auth/login", { identifier, password });
+export function login(identifier: string, password: string, opts?: { timeoutMs?: number }): Promise<Tokens | AdminChallenge> {
+  return api.post<Tokens | AdminChallenge>("/auth/login", { identifier, password }, opts);
 }
 
 export function verifyAdminCode(challengeToken: string, code: string): Promise<Tokens> {

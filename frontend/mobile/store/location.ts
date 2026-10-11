@@ -12,6 +12,8 @@
 import * as Location from "expo-location";
 import { create } from "zustand";
 
+import { LOCATION_TIMEOUT_MS } from "@/constants/brand";
+import { startupLog } from "@/lib/startup-log";
 import { type ArenaCity } from "@/types";
 
 const CITY_CENTERS: Record<ArenaCity, { lat: number; lon: number }> = {
@@ -77,12 +79,30 @@ export const useLocationStore = create<LocationState>()((set, get) => ({
   detect: async () => {
     if (get().status === "detecting") return;
     set({ status: "detecting" });
+    // Nothing waits for this: after LOCATION_TIMEOUT_MS the lookup is given up on and Home shows the saved city (or
+    // "All cities"). A refused or dismissed permission is a normal answer, not an error.
+    let finished = false;
+    const timer = setTimeout(() => {
+      if (finished) return;
+      finished = true;
+      startupLog(`location: no answer after ${LOCATION_TIMEOUT_MS / 1000} s, using the saved city`);
+      set({ status: "idle", city: null });
+    }, LOCATION_TIMEOUT_MS);
+    const done = (next: { status: LocationStatus; city: ArenaCity | null }) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      set(next);
+    };
     try {
+      startupLog("location: asking for permission");
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        set({ status: "denied", city: null });
+        startupLog("location: permission not given, using the saved city");
+        done({ status: "denied", city: null });
         return;
       }
+      startupLog("location: reading the position");
       const cached = await Location.getLastKnownPositionAsync();
       const cachedIsFresh =
         cached != null && Date.now() - cached.timestamp <= MAX_CACHED_LOCATION_AGE_MS;
@@ -96,11 +116,11 @@ export const useLocationStore = create<LocationState>()((set, get) => ({
         position.coords.latitude,
         position.coords.longitude,
       );
-      set(
-        city ? { status: "detected", city } : { status: "outside", city: null },
-      );
+      startupLog(`location: ${city ?? "outside the supported cities"}`);
+      done(city ? { status: "detected", city } : { status: "outside", city: null });
     } catch {
-      set({ status: "idle", city: null });
+      startupLog("location: could not be read, using the saved city");
+      done({ status: "idle", city: null });
     }
   },
 }));

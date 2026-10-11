@@ -45,6 +45,7 @@ function Splash({ ready }: { ready: boolean }) {
   useEffect(() => {
     if (!go || leaving.current) return;
     leaving.current = true;
+    SplashScreen.hideAsync().catch(() => {}); // always, even if the first frame never drew
     startupLog(`leaving the splash (${forced && !(settled && ready) ? 'safety timer' : 'animation finished and session ready'})`);
     if (reduce) {
       setGone(true);

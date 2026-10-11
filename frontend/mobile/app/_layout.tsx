@@ -12,7 +12,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
@@ -71,16 +71,20 @@ function RootNavigator() {
   // What the app waits for before it leaves the splash: the saved sign-in is read from the phone (hydrated), and, when
   // one is saved, it is checked with the server (GET /users/me, 8 s limit). If the server cannot be reached the app goes
   // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
+  const everReady = useRef(false);
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: () => fetchMe({ timeoutMs: STARTUP_CALL_TIMEOUT_MS }),
-    enabled: hydrated && !!accessToken && !user,
+    enabled: hydrated && !!accessToken && !user && !everReady.current,
     staleTime: Infinity,
     retry: false,
   });
   const checkFailed = currentUserQuery.isError;
   const [gaveUp, setGaveUp] = useState(false);
   const sessionReady = hydrated && (!accessToken || !!user || checkFailed);
+  // Once the app has been ready it stays ready. Without this, Log in (tokens saved a moment before the account is
+  // loaded) put the whole app back to "waiting": the screens were taken away mid sign-in and the splash started again.
+  if (sessionReady || gaveUp) everReady.current = true;
   usePushRegistration(sessionReady && !!accessToken && !!user);
 
   useEffect(() => {
@@ -88,7 +92,7 @@ function RootNavigator() {
   }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (hydrated && accessToken && !user) startupLog(`checking the saved sign-in with the server (GET /users/me, ${STARTUP_CALL_TIMEOUT_MS / 1000} s limit)`);
+    if (hydrated && accessToken && !user && !everReady.current) startupLog(`checking the saved sign-in with the server (GET /users/me, ${STARTUP_CALL_TIMEOUT_MS / 1000} s limit)`);
   }, [hydrated, accessToken, user]);
 
   useEffect(() => {
@@ -126,7 +130,7 @@ function RootNavigator() {
   }, [sessionReady]);
 
   // While the session loads the animated splash covers the screen; behind it there is only the page colour.
-  const waiting = (!hydrated || !sessionReady) && !gaveUp;
+  const waiting = (!hydrated || !sessionReady) && !gaveUp && !everReady.current;
   const ready = !waiting;
 
   return (
@@ -210,6 +214,12 @@ export default function RootLayout() {
     if (fontsLoaded) startupLog("fonts loaded");
     else if (fontError) startupLog(`fonts failed (${fontError.message}): using the system fonts`);
   }, [fontsLoaded, fontError]);
+
+  // The native splash is always taken away, whatever else happens (the animated splash also does it on its first frame).
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), SPLASH_MAX_MS + 500);
+    return () => clearTimeout(t);
+  }, []);
 
   // Foreground push banners: a real build only. In Expo Go this does nothing and loads nothing.
   useEffect(() => {

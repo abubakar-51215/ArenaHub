@@ -10,11 +10,12 @@ import { Button, useButtonStatus } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
-import { ApiError } from '@/lib/api';
+import { ApiError, RequestTimeoutError } from '@/lib/api';
+import { startupLog } from '@/lib/startup-log';
 import { fetchMe, isAdminChallenge, login } from '@/services/auth';
 import { useAdminChallenge } from '@/store/admin-challenge';
-import { LOGIN_LOADER_AFTER_MS } from '@/constants/brand';
-import { useDelayedFlag } from '@/hooks/useDelayedFlag';
+import { LOGIN_CALL_TIMEOUT_MS, LOGIN_LOADER_AFTER_MS, LOGIN_LOADER_MAX_MS } from '@/constants/brand';
+import { useWindowedFlag } from '@/hooks/useDelayedFlag';
 import { useAuthStore } from '@/store/auth';
 import { useStartup } from '@/store/startup';
 
@@ -39,11 +40,15 @@ export default function LoginScreen() {
   const mutation = useMutation({
     mutationFn: async () => {
       const who = identifier.trim();
-      const result = await login(who, password);
+      startupLog('login: checking the password');
+      const result = await login(who, password, { timeoutMs: LOGIN_CALL_TIMEOUT_MS });
+      startupLog('login: password accepted');
       if (isAdminChallenge(result)) return { kind: 'admin' as const, challenge: result, who };
       // Stash the token immediately so the fetchMe call below is authed.
       useAuthStore.getState().setTokens(result);
-      const me = await fetchMe();
+      startupLog('login: loading the account (GET /users/me)');
+      const me = await fetchMe({ timeoutMs: LOGIN_CALL_TIMEOUT_MS });
+      startupLog('login: account loaded, opening Home');
       return { kind: 'ok' as const, tokens: result, me };
     },
     onSuccess: (r) => {
@@ -58,9 +63,14 @@ export default function LoginScreen() {
       router.replace(r.me.role === 'admin' ? ('/admin' as Href) : '/(tabs)');
     },
     onError: (err) => {
+      startupLog(`login: failed (${err instanceof Error ? err.message : 'unknown'})`);
+      // the account could not be loaded after the password was accepted: do not keep half a sign-in
+      if (useAuthStore.getState().accessToken && !useAuthStore.getState().user) useAuthStore.getState().clear();
       flash('error');
       if (err instanceof ApiError && err.status === 429) {
         setError('Too many attempts. Please wait a minute and try again.');
+      } else if (err instanceof RequestTimeoutError) {
+        setError('The server is taking too long. Check your connection and try again.');
       } else if (err instanceof ApiError) {
         setError(err.message);
       } else {
@@ -69,8 +79,8 @@ export default function LoginScreen() {
     },
   });
 
-  // sign-in that takes longer than half a second shows the full-screen loader
-  const slow = useDelayedFlag(mutation.isPending, LOGIN_LOADER_AFTER_MS);
+  // sign-in that takes longer than half a second shows the full-screen loader, and never for longer than 10 seconds
+  const slow = useWindowedFlag(mutation.isPending, LOGIN_LOADER_AFTER_MS, LOGIN_LOADER_MAX_MS);
 
   const submit = () => {
     if (mutation.isPending) return;
