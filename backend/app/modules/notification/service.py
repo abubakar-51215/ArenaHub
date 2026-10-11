@@ -108,6 +108,14 @@ EVENT_META: dict[str, dict[str, str]] = {
         ),
         "category": "booking",
     },
+    "refund_to_send": {
+        "title": "A refund is waiting for you",
+        "body": (
+            "{player_name} cancelled a booking at {arena_name}. Send PKR {amount} back by bank "
+            "transfer, then mark it as paid."
+        ),
+        "category": "payment",
+    },
     "refund_needs_manual": {
         "title": "Your refund is being handled by our team",
         "body": (

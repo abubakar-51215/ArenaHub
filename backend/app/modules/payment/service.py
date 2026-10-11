@@ -22,6 +22,7 @@ from app.integrations.payments import get_provider
 from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
+from app.modules.booking.service import booking_code_for
 from app.modules.equipment import service as equipment_service
 from app.modules.payment import methods, state_machine
 from app.modules.payment import repository as repo
@@ -41,6 +42,8 @@ from app.modules.payment.schema import (
     PaymentHistoryItem,
     PaymentInitiateRequest,
     PaymentInitiateResponse,
+    OwnerRefundItem,
+    OwnerRefundMarkPaidResponse,
     PaymentResponse,
     RefundResponse,
 )
@@ -531,7 +534,114 @@ async def _issue_refund(
     await notify_user(
         db, booking.player_id, "refund_initiated", booking_id=str(booking.id), amount=str(amount)
     )
+    if (
+        payment.payment_method == PaymentMethod.bank_transfer
+        and refund.status == RefundStatus.pending
+    ):
+        await _notify_owner_refund_to_send(db, booking, amount)
     return refund
+
+
+async def _notify_owner_refund_to_send(
+    db: AsyncSession, booking: Booking, amount: Decimal
+) -> None:
+    """A bank-transfer refund waits for the arena owner to send the money: tell them."""
+    arena = await arena_repo.get_arena(db, booking.arena_id)
+    player = await db.get(User, booking.player_id)
+    if arena is None:
+        return
+    await notify_user(
+        db,
+        arena.owner_id,
+        "refund_to_send",
+        booking_id=str(booking.id),
+        amount=str(amount),
+        arena_name=arena.name,
+        player_name=player.full_name if player else "A player",
+    )
+
+
+# ---- owner: pending bank-transfer refunds ----------------------------------
+
+
+def _owner_refund_item(
+    refund: Refund, payment: Payment, booking: Booking, arena_name: str, player_name: str
+) -> OwnerRefundItem:
+    return OwnerRefundItem(
+        id=refund.id,
+        status=refund.status,
+        amount=refund.amount,
+        reason=refund.reason,
+        payment_method=payment.payment_method,
+        player_name=player_name,
+        booking_code=booking_code_for(booking.booking_group_id),
+        arena_name=arena_name,
+        booking_date=booking.booking_date,
+        start_time=booking.start_time,
+        end_time=booking.end_time,
+        created_at=refund.created_at,
+        processed_at=refund.processed_at,
+        can_mark_paid=refund.status == RefundStatus.pending
+        and payment.payment_method == PaymentMethod.bank_transfer,
+    )
+
+
+async def list_owner_refunds(
+    db: AsyncSession, owner: User, status: str, params: PaginationParams
+) -> dict:
+    """The owner's refunds (own arenas only). ``status``: pending | processed | all."""
+    wanted = None if status == "all" else RefundStatus(status)
+    rows, total = await repo.list_refunds_for_owner(
+        db, owner.id, wanted, offset=params.offset, limit=params.page_size
+    )
+    return paginated([_owner_refund_item(*r) for r in rows], total, params)
+
+
+async def mark_refund_paid(
+    db: AsyncSession, owner: User, refund_id: uuid.UUID
+) -> OwnerRefundMarkPaidResponse:
+    """The owner sent a bank-transfer refund back: mark it processed (once). A second
+    call changes nothing and says so. Gateway refunds are never marked by hand."""
+    refund = await repo.get_refund_for_update(db, refund_id)
+    if refund is None:
+        raise NotFoundError("Refund not found.")
+    booking = await booking_repo.get_booking(db, refund.booking_id)
+    arena = await arena_repo.get_arena(db, booking.arena_id) if booking else None
+    if booking is None or arena is None or arena.owner_id != owner.id:
+        raise NotFoundError("Refund not found.")  # not theirs: do not reveal that it exists
+    payment = await repo.get_payment(db, refund.payment_id)
+    if payment is None:
+        raise NotFoundError("Refund not found.")
+    player = await db.get(User, booking.player_id)
+    player_name = player.full_name if player else "A player"
+    if refund.status == RefundStatus.processed:
+        item = _owner_refund_item(refund, payment, booking, arena.name, player_name)
+        return OwnerRefundMarkPaidResponse(refund=item, already_processed=True)
+    if payment.payment_method != PaymentMethod.bank_transfer:
+        raise ValidationError("Only bank-transfer refunds can be marked as paid by hand.")
+    if refund.status != RefundStatus.pending:
+        raise ValidationError("This refund cannot be marked as paid.")
+    refunded = await repo.sum_refunds_for_payment(db, payment.id)
+    if refund.amount > payment.amount or refunded > payment.amount:
+        raise ConflictError("The refund is more than what was paid. Contact support.")
+    refund.status = RefundStatus.processed
+    refund.processed_at = datetime.now()
+    refund.processed_by = owner.id
+    refund.next_attempt_at = None
+    await state_machine.record_note(
+        db, payment, f"Refund of Rs. {refund.amount} marked as paid by the arena owner."
+    )
+    await _mark_refunded_if_fully(db, payment)
+    await notify_user(
+        db,
+        booking.player_id,
+        "refund_completed",
+        booking_id=str(booking.id),
+        amount=str(refund.amount),
+    )
+    await db.commit()
+    item = _owner_refund_item(refund, payment, booking, arena.name, player_name)
+    return OwnerRefundMarkPaidResponse(refund=item, already_processed=False)
 
 
 async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking) -> Refund | None:

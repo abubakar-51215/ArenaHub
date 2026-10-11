@@ -11,7 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
 from app.modules.booking.model import Booking, PaymentStatus
-from app.modules.payment.model import Payment, PaymentEvent, PaymentPurpose, Refund
+from app.modules.payment.model import (
+    Payment,
+    PaymentEvent,
+    PaymentPurpose,
+    Refund,
+    RefundStatus,
+)
+from app.modules.user.model import User
 
 
 async def get_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
@@ -238,3 +245,33 @@ async def revenue_by_day(
     day = func.date(inner.c.created_at).label("day")
     result = await db.execute(select(day, func.sum(inner.c.amount)).group_by(day).order_by(day))
     return [(row_day, Decimal(amount)) for row_day, amount in result.all()]
+
+
+async def list_refunds_for_owner(
+    db: AsyncSession,
+    owner_id: uuid.UUID,
+    status: RefundStatus | None,
+    *,
+    offset: int,
+    limit: int,
+) -> tuple[list[tuple[Refund, Payment, Booking, str, str]], int]:
+    """Refunds on the owner's own arenas, newest first, with the payment, booking,
+    arena name and player name each row needs."""
+    base = (
+        select(Refund, Payment, Booking, Arena.name, User.full_name)
+        .join(Payment, Payment.id == Refund.payment_id)
+        .join(Booking, Booking.id == Refund.booking_id)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .join(User, User.id == Booking.player_id)
+        .where(Arena.owner_id == owner_id)
+    )
+    if status is not None:
+        base = base.where(Refund.status == status)
+    total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    rows = await db.execute(base.order_by(Refund.created_at.desc()).offset(offset).limit(limit))
+    return [(r, p, b, an, pn) for r, p, b, an, pn in rows.all()], total
+
+
+async def get_refund_for_update(db: AsyncSession, refund_id: uuid.UUID) -> Refund | None:
+    result = await db.execute(select(Refund).where(Refund.id == refund_id).with_for_update())
+    return result.scalar_one_or_none()

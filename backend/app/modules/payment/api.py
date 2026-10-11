@@ -23,6 +23,7 @@ from app.shared.response import success
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 owner_router = APIRouter(prefix="/owner/payments", tags=["payments-owner"])
+owner_refund_router = APIRouter(prefix="/owner/refunds", tags=["refunds-owner"])
 admin_router = APIRouter(prefix="/admin/bookings", tags=["payments-admin"])
 webhook_router = APIRouter(prefix="/webhooks", tags=["payments-webhooks"])
 
@@ -139,6 +140,28 @@ async def reject_bank_transfer(
 ) -> dict[str, Any]:
     payment = await service.reject_bank_transfer(db, user, payment_id, data.reason)
     return success(data=payment, message="Payment rejected.")
+
+
+@owner_refund_router.get("", summary="Refunds on my arenas (pending, processed or all)")
+async def list_owner_refunds(
+    status: str = Query("pending", pattern="^(pending|processed|all)$"),
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_owner_refunds(db, user, status, params)
+    return success(data=data, message="Refunds retrieved.")
+
+
+@owner_refund_router.post("/{refund_id}/mark-paid", summary="Mark a bank-transfer refund as paid")
+async def mark_refund_paid(
+    refund_id: uuid.UUID,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    result = await service.mark_refund_paid(db, user, refund_id)
+    message = "Already marked as paid." if result.already_processed else "Refund marked as paid."
+    return success(data=result, message=message)
 
 
 @admin_router.post("/{booking_id}/force-refund", summary="Force a 100% refund (force majeure)")
