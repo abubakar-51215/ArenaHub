@@ -154,6 +154,8 @@ class ArenaListItem(ArenaResponse):
     avg_rating: float | None = None
     review_count: int = 0
     min_price: Decimal | None = None
+    # km from the position the player sent with the search; None when no position was sent
+    distance_km: float | None = None
 
 
 class BlockedDateCreate(BaseModel):
