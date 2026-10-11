@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BankIcon, CardIcon, Eyebrow, IconTile, Line, PhoneIcon, SecureBadge } from '@/components/booking/parts';
@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { Skeleton } from '@/components/ui/skeleton';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { StickyBar } from '@/components/ui/sticky-bar';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
@@ -223,7 +224,13 @@ export default function PaymentScreen() {
         onBack={back}
         right={<SecureBadge />}
       />
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.pad}>
+      <KeyboardScroll
+        contentContainerStyle={styles.pad}
+        footer={
+          <StickyBar>
+            <Button title={payLabel} loading={busy} disabled={!method || !p} onPress={pay} />
+          </StickyBar>
+        }>
         <Eyebrow top={0}>How you will pay</Eyebrow>
         <View style={{ gap: 8 }} accessibilityRole="radiogroup">
           {loadingTop
@@ -246,6 +253,8 @@ export default function PaymentScreen() {
               placeholderTextColor={Colors.light.muted}
               autoCapitalize="characters"
               autoCorrect={false}
+              autoComplete="off"
+              textContentType="none"
               returnKeyType="done"
               onSubmitEditing={apply}
               accessibilityLabel="Promo code"
@@ -297,11 +306,7 @@ export default function PaymentScreen() {
         ) : null}
 
         <Text style={styles.agree}>By paying you agree to the arena cancellation policy.</Text>
-      </ScrollView>
-
-      <StickyBar>
-        <Button title={payLabel} loading={busy} disabled={!method || !p} onPress={pay} />
-      </StickyBar>
+      </KeyboardScroll>
       {sheet}
     </SafeAreaView>
   );

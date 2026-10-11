@@ -3,11 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
@@ -24,6 +25,7 @@ export default function EditProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
 
+  const bioRef = useRef<RNTextInput>(null);
   const [fullName, setFullName] = useState(user?.full_name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
   const [sports, setSports] = useState<string[]>(user?.preferred_sports ?? []);
@@ -73,7 +75,7 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()}>
@@ -83,7 +85,7 @@ export default function EditProfileScreen() {
           <View style={{ width: 22 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <View style={styles.avatarSection}>
             <Pressable onPress={pickAvatar}>
               {avatarPreview ? (
@@ -102,9 +104,11 @@ export default function EditProfileScreen() {
             <Text style={styles.avatarHint}>Tap to change photo</Text>
           </View>
 
-          <TextField label="Full Name" value={fullName} onChangeText={setFullName} />
+          <TextField label="Full Name" kind="name" value={fullName} onChangeText={setFullName} nextRef={bioRef} />
           <TextField
+            ref={bioRef}
             label="Bio"
+            kind="multiline"
             value={bio}
             onChangeText={setBio}
             multiline
@@ -146,9 +150,9 @@ export default function EditProfileScreen() {
               mutation.mutate();
             }}
           />
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 

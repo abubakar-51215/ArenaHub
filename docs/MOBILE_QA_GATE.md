@@ -50,6 +50,37 @@ h) **G4 Payment screen:** it must list exactly Card, Bank transfer, JazzCash, Ea
 
 i) **Temporary screens:** the admin landing ("Hello, Admin" with Log out) is **temporary until the admin group**.
 
+## Keyboard rules (standing, every screen with a text box)
+
+Added after the first phone test (Log in, Search and comment boxes were hidden by the keyboard). Code:
+`components/ui/keyboard-scroll.tsx` (`KeyboardScroll` for a ScrollView, `KeyboardArea` for a FlatList),
+`components/ui/text-field.tsx` (`kind=`), `components/ui/field.tsx`, `lib/keyboard.ts`.
+
+1. A screen with a text box uses `KeyboardScroll` (or `KeyboardArea`). Never a bare ScrollView, never
+   `KeyboardAvoidingView`. A sticky bottom button goes in its `footer` prop so it rises above the keyboard.
+2. The focused field is always fully visible with 24 px under it; tapping an empty area, scrolling and leaving the
+   screen close the keyboard.
+3. Every text box states its kind (`TextField kind="email|phone|password|newPassword|code|promo|name|multiline|number"`,
+   or the matching props on `Field`): right keyboard, capital letters, auto-fill, `textContentType`, `autoComplete`,
+   `secureTextEntry` with a Show/Hide button for passwords, 6-digit one-time codes with auto-fill.
+4. Action key: Next (`nextRef`) moves to the next box; the last box has Done/Go/Search and runs the action or closes the
+   keyboard. A search box has the Search key and runs the search.
+5. A bottom sheet or pop-up with a text box must also move up with the keyboard (none has one today).
+6. Test: `node scripts/keyboard-check.cjs` (geometry) and the web test with the dev hook
+   `globalThis.__arenahubKeyboard.show(top, height)`; the clearance under the focused field is 24 px or more.
+7. Only a real phone can show the real keyboard; say so in the report.
+
+## Badge rules (standing)
+
+A number, dot or count on top of an icon, tab or button:
+1. Use `components/ui/count-badge.tsx` (`CountBadge`). 20 x 20 at least, 14 px bold, centred, grows for two digits,
+   "9+" above nine.
+2. It lies inside the 44 px icon button (top 1, right 1), so no parent that clips and no screen edge can cut it. Never
+   place a badge outside its parent's box (negative offsets).
+3. Prove it with numbers: the badge box is inside every clipping ancestor and the viewport, 0 px clipped
+   (scratch check `badge_check.mjs` style: walk the ancestors, sum the clipped px).
+4. Text follows the phone's font size up to 1.2x (`maxFontSizeMultiplier`); the badge grows with it.
+
 ## Checking rule: numbers and text first, pictures only when needed (user decision)
 
 Save credit. For every commit run automatic checks and report them as a short table (screen, width, pass/fail, value). No pictures for passing checks. Measure with a script at 360, 375, 390 and 430 wide:

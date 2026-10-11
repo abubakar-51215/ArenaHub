@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { CountBadge } from '@/components/ui/count-badge';
 import { Icon } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
@@ -43,6 +44,9 @@ export function SearchBar({
           placeholderTextColor={Colors.light.muted}
           returnKeyType="search"
           autoCorrect={false}
+          autoComplete="off"
+          textContentType="none"
+          enterKeyHint="search"
           autoFocus={autoFocus}
           accessibilityLabel="Search arenas"
           style={styles.input}
@@ -65,11 +69,7 @@ export function SearchBar({
             <Circle cx={16} cy={7} r={2} />
             <Circle cx={8} cy={17} r={2} />
           </Svg>
-          {filterCount ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{filterCount}</Text>
-            </View>
-          ) : null}
+          <CountBadge count={filterCount ?? 0} />
         </View>
       </PressableScale>
       ) : null}
@@ -104,18 +104,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // the count badge: a badge (exempt from the 14px rule)
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    backgroundColor: Colors.light.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { fontSize: 10.5, fontWeight: '700', color: Colors.light.lime },
 });

@@ -14,7 +14,6 @@ import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { FONTS_MAX_MS, SPLASH_MAX_MS, STARTUP_CALL_TIMEOUT_MS } from "@/constants/brand";
 import { Colors, Font } from "@/constants/theme";
@@ -232,7 +231,6 @@ export default function RootLayout() {
   if (!fontsSettled) return null;
 
   return (
-    <KeyboardProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider value={NavigationTheme}>
           <RootNavigator />
@@ -240,6 +238,5 @@ export default function RootLayout() {
           <StatusBar style="dark" />
         </ThemeProvider>
       </QueryClientProvider>
-    </KeyboardProvider>
   );
 }

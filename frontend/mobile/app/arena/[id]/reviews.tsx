@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import { KeyboardArea } from '@/components/ui/keyboard-scroll';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { useArena } from '@/hooks/useArenas';
@@ -61,6 +62,8 @@ export default function ArenaReviewsScreen() {
       ),
   });
 
+  const listRef = useRef<FlatList<Review>>(null);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -71,7 +74,11 @@ export default function ArenaReviewsScreen() {
         <View style={{ width: 22 }} />
       </View>
 
+      <KeyboardArea scrollRef={listRef}>
+      {(sp) => (
       <FlatList
+        ref={listRef}
+        {...sp}
         data={reviews.data?.items ?? []}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.list}
@@ -123,6 +130,7 @@ export default function ArenaReviewsScreen() {
                   </View>
                   <TextField
                     placeholder="Share your experience…"
+                    kind="multiline"
                     value={text}
                     onChangeText={setText}
                     multiline
@@ -154,6 +162,8 @@ export default function ArenaReviewsScreen() {
           )
         }
       />
+      )}
+      </KeyboardArea>
     </SafeAreaView>
   );
 }

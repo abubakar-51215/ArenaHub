@@ -85,6 +85,7 @@ export function CodeBoxes({
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
         autoCorrect={false}
+        returnKeyType="done"
         caretHidden
         accessibilityLabel={`${accessibilityLabel}, ${length} digits`}
         style={styles.input}
