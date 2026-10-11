@@ -217,6 +217,8 @@ async def search_arenas(
     price_min: Decimal | None = None,
     price_max: Decimal | None = None,
     sort: str = "newest",
+    near: tuple[float, float] | None = None,
+    radius_km: float | None = None,
     params: PaginationParams,
 ) -> dict:
     arenas, total = await repo.search_public_arenas(
@@ -229,8 +231,16 @@ async def search_arenas(
         sort=sort,
         offset=params.offset,
         limit=params.page_size,
+        near=near,
+        radius_km=radius_km,
     )
     items = await list_items(db, arenas)
+    if near:
+        # the position was only a search parameter: it is used here and forgotten
+        for item in items:
+            item.distance_km = round(
+                repo.distance_km(near[0], near[1], float(item.latitude), float(item.longitude)), 2
+            )
     return paginated(items, total, params)
 
 

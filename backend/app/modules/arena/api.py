@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ValidationError
 from app.database.session import get_db
 from app.modules.arena import service
 from app.modules.arena.model import ArenaCity
@@ -47,9 +48,18 @@ async def search_arenas(
     price_min: Decimal | None = None,
     price_max: Decimal | None = None,
     sort: str = "newest",
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lon: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
     params: PaginationParams = Depends(pagination_params),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
+    # The player's position is only a search parameter: it is never stored (or logged) by the server.
+    if (lat is None) != (lon is None):
+        raise ValidationError("Send both lat and lon, or neither.")
+    if (sort == "near" or radius_km is not None) and lat is None:
+        raise ValidationError("Searching by distance needs lat and lon.")
+    near = (lat, lon) if lat is not None and lon is not None else None
     data = await service.search_arenas(
         db,
         q=q,
@@ -58,6 +68,8 @@ async def search_arenas(
         price_min=price_min,
         price_max=price_max,
         sort=sort,
+        near=near,
+        radius_km=radius_km,
         params=params,
     )
     return success(data=data, message="Arenas retrieved.")

@@ -5,6 +5,7 @@ transaction (commit in the service). Amenities are eager-loaded so response
 serialization never triggers a lazy load on the async session.
 """
 
+import math
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -12,6 +13,7 @@ from typing import NamedTuple, cast
 
 from sqlalchemy import (
     CursorResult,
+    Float,
     Select,
     UnaryExpression,
     func,
@@ -20,6 +22,7 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy import cast as sa_cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -164,6 +167,29 @@ async def arena_summaries(
     }
 
 
+EARTH_RADIUS_KM = 6371.0
+
+
+def distance_km_expr(lat: float, lon: float):
+    """Haversine distance in km from (lat, lon) to the arena's coordinates, as a SQL expression."""
+    a_lat = func.radians(sa_cast(Arena.latitude, Float))
+    a_lon = func.radians(sa_cast(Arena.longitude, Float))
+    p_lat, p_lon = math.radians(lat), math.radians(lon)
+    h = func.power(func.sin((a_lat - p_lat) / 2), 2) + (
+        math.cos(p_lat) * func.cos(a_lat) * func.power(func.sin((a_lon - p_lon) / 2), 2)
+    )
+    return 2 * EARTH_RADIUS_KM * func.asin(func.sqrt(func.least(1.0, h)))
+
+
+def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """The same haversine formula in Python (the distance shown on a card)."""
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(
+        math.radians(lon2 - lon1) / 2
+    ) ** 2
+    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(min(1.0, a)))
+
+
 async def search_public_arenas(
     db: AsyncSession,
     *,
@@ -175,6 +201,8 @@ async def search_public_arenas(
     sort: str = "newest",
     offset: int,
     limit: int,
+    near: tuple[float, float] | None = None,
+    radius_km: float | None = None,
 ) -> tuple[list[Arena], int]:
     """Approved + active arenas only — the public discovery query.
 
@@ -200,6 +228,10 @@ async def search_public_arenas(
     if sport:
         # sports_offered is a JSONB array of strings.
         base = base.where(Arena.sports_offered.contains([sport]))
+    dist = distance_km_expr(*near) if near else None
+    if dist is not None and radius_km is not None:
+        # an arena with no coordinates is not shown when a radius is set
+        base = base.where(Arena.latitude.is_not(None), Arena.longitude.is_not(None), dist <= radius_km)
     if price_min is not None:
         base = base.where(price_min <= prices.c.min_price)
     if price_max is not None:
@@ -208,7 +240,10 @@ async def search_public_arenas(
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
 
     order: tuple[UnaryExpression]
-    if sort == "name":
+    if sort == "near" and dist is not None:
+        # arenas without coordinates sort last
+        order = (dist.asc().nulls_last(), Arena.name.asc())
+    elif sort == "name":
         order = (Arena.name.asc(),)
     elif sort == "price_asc":
         order = (prices.c.min_price.asc().nulls_last(),)
