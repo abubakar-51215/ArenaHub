@@ -14,7 +14,9 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
+import { queryClient } from '../lib/query-client';
 import type { Tokens, User } from '../types';
+import { useCheckout } from './checkout';
 
 // expo-secure-store has no web implementation (there's no OS keychain in a
 // browser) — fall back to localStorage there. Native (iOS/Android) always
@@ -72,7 +74,13 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (tokens) =>
         set({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token }),
       setUser: (user) => set({ user }),
-      clear: () => set({ accessToken: null, refreshToken: null, user: null }),
+      // signing out (or a refused refresh) also forgets everything fetched for this player, so the next person
+      // who signs in on the phone never sees the previous player's bookings, unread count or half-made booking
+      clear: () => {
+        set({ accessToken: null, refreshToken: null, user: null });
+        queryClient.clear();
+        useCheckout.getState().forget();
+      },
     }),
     {
       name: 'arenahub-auth',
