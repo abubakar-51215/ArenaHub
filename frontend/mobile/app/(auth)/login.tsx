@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
+import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
 import { ScreenLoader } from '@/components/brand/screen-loader';
 import { AuthScreen } from '@/components/auth/auth-screen';
@@ -16,6 +16,7 @@ import { useAdminChallenge } from '@/store/admin-challenge';
 import { LOGIN_LOADER_AFTER_MS } from '@/constants/brand';
 import { useDelayedFlag } from '@/hooks/useDelayedFlag';
 import { useAuthStore } from '@/store/auth';
+import { useStartup } from '@/store/startup';
 
 // Frame 1 of arena-hub-player-app-auth-2.html. The first field takes an email
 // or a phone number and is sent as `identifier`; the server answers a wrong
@@ -30,6 +31,10 @@ export default function LoginScreen() {
   const [btnStatus, flash] = useButtonStatus();
   const passwordRef = useRef<RNTextInput>(null);
   const setSession = useAuthStore((s) => s.setSession);
+  // the saved sign-in could not be checked because the server could not be reached (see the root layout)
+  const unreachable = useStartup((s) => s.unreachable);
+  const checking = useStartup((s) => s.checking);
+  const retryCheck = useStartup((s) => s.retry);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -81,6 +86,14 @@ export default function LoginScreen() {
   return (
     <>
     <AuthScreen hideBack showMark title="Welcome back" subtitle="Log in with your email or phone number.">
+      {unreachable ? (
+        <View style={styles.note} accessibilityRole="alert">
+          <Text style={styles.noteText}>Cannot reach the server. Check your connection.</Text>
+          <Pressable onPress={() => retryCheck?.()} disabled={checking} accessibilityRole="button" accessibilityLabel="Try again" style={styles.retry}>
+            <Text style={styles.retryText}>{checking ? 'Trying…' : 'Try again'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {notice ? (
         <View style={styles.note} accessibilityRole="alert">
           <Text style={styles.noteText}>{notice}</Text>
@@ -155,6 +168,8 @@ const styles = StyleSheet.create({
   loading: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.light.paper, alignItems: 'center', justifyContent: 'center', zIndex: 50 },
   // .note.info of the auth-2 frames
   note: { backgroundColor: '#EEF6D6', borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
+  retry: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  retryText: { fontSize: 14, fontWeight: '700', color: '#4D6410' },
   noteText: { fontSize: 14, lineHeight: 20, color: '#4D6410' },
   form: { gap: 11 },
   // right aligned; the link has 14px above and below so its tap area is 44 high

@@ -53,29 +53,50 @@ async function parse<T>(res: Response): Promise<ApiEnvelope<T>> {
   }
 }
 
+/** How long an ordinary request may take; start-up calls pass a shorter limit. */
+const DEFAULT_TIMEOUT_MS = 20000;
+
+export class RequestTimeoutError extends Error {
+  constructor() {
+    super('The server took too long to answer.');
+    this.name = 'RequestTimeoutError';
+  }
+}
+
 async function rawRequest(
   method: Method,
   path: string,
   body: unknown,
   token: string | null,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<Response> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  return fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (controller.signal.aborted) throw new RequestTimeoutError();
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Attempt a one-shot refresh of the token pair. Returns the new access token. */
-async function tryRefresh(): Promise<string | null> {
+async function tryRefresh(timeoutMs?: number): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
   const { refreshToken, setTokens, clear } = useAuthStore.getState();
   if (!refreshToken) return null;
-  const res = await rawRequest('POST', '/auth/refresh', { refresh_token: refreshToken }, null);
+  const res = await rawRequest('POST', '/auth/refresh', { refresh_token: refreshToken }, null, timeoutMs);
   if (!res.ok) {
     clear();
     return null;
@@ -96,13 +117,13 @@ async function tryRefresh(): Promise<string | null> {
 }
 
 /** Authed request against /api/v1. Throws {@link ApiError} on a failure envelope. */
-export async function apiRequest<T>(method: Method, path: string, body?: unknown): Promise<T> {
+export async function apiRequest<T>(method: Method, path: string, body?: unknown, opts?: { timeoutMs?: number }): Promise<T> {
   const token = useAuthStore.getState().accessToken;
-  let res = await rawRequest(method, path, body, token);
+  let res = await rawRequest(method, path, body, token, opts?.timeoutMs);
 
   if (res.status === 401 && token) {
-    const fresh = await tryRefresh();
-    if (fresh) res = await rawRequest(method, path, body, fresh);
+    const fresh = await tryRefresh(opts?.timeoutMs);
+    if (fresh) res = await rawRequest(method, path, body, fresh, opts?.timeoutMs);
   }
 
   const env = await parse<T>(res);
@@ -113,7 +134,7 @@ export async function apiRequest<T>(method: Method, path: string, body?: unknown
 }
 
 export const api = {
-  get: <T>(path: string) => apiRequest<T>('GET', path),
+  get: <T>(path: string, opts?: { timeoutMs?: number }) => apiRequest<T>('GET', path, undefined, opts),
   post: <T>(path: string, body?: unknown) => apiRequest<T>('POST', path, body),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>('PATCH', path, body),
   put: <T>(path: string, body?: unknown) => apiRequest<T>('PUT', path, body),
