@@ -101,3 +101,14 @@ export function buildIcs(opts: { code: string; title: string; place: string; dat
     'END:VCALENDAR',
   ].join('\r\n');
 }
+
+/** "6–8 PM" (or "11 AM – 1 PM" across noon) from "18:00:00" and "20:00:00". */
+export function compactRange(start: string, end: string): string {
+  const f = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return { n: `${h % 12 === 0 ? 12 : h % 12}${m ? ':' + String(m).padStart(2, '0') : ''}`, s: h >= 12 ? 'PM' : 'AM' };
+  };
+  const a = f(start);
+  const b = f(end);
+  return a.s === b.s ? `${a.n}–${b.n} ${b.s}` : `${a.n} ${a.s} – ${b.n} ${b.s}`;
+}

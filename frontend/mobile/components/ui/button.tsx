@@ -21,7 +21,7 @@ import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
 //   error     one shake
 //   haptics   light on a primary press, success and error buzz on those states
 //   reduce motion: the dip is instant and nothing shakes.
-export type ButtonVariant = 'ink' | 'ghost' | 'lime' | 'danger';
+export type ButtonVariant = 'ink' | 'ghost' | 'lime' | 'danger' | 'dangerOutline' | 'off';
 export type ButtonStatus = 'success' | 'error' | undefined;
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
@@ -38,6 +38,9 @@ const VARIANTS: Record<ButtonVariant, { bg: string; border: string; text: string
   lime: { bg: Colors.light.lime, border: Colors.light.lime, text: '#0F1A15' },
   // destructive: red, always shown next to a plain Stay / Cancel
   danger: { bg: Colors.light.red, border: Colors.light.red, text: '#FFFFFF' },
+  // a red-outlined plain button (Cancel booking) and the flat grey one that says an action is not available
+  dangerOutline: { bg: Colors.light.card, border: Colors.light.red, text: Colors.light.red },
+  off: { bg: Colors.light.line, border: Colors.light.line, text: Colors.light.muted },
 };
 
 /**
@@ -96,7 +99,7 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
           onPressIn={(e) => {
             if (!isDisabled) {
               dip(0.975);
-              if (variant !== 'ghost') tapHaptic();
+              if (variant !== 'ghost' && variant !== 'dangerOutline') tapHaptic();
             }
             onPressIn?.(e);
           }}
@@ -111,7 +114,7 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
             styles.base,
             { backgroundColor: v.bg, borderColor: v.border },
             // Added state, not in the prototype: opacity 0.5, a disabled button.
-            isDisabled && !loading && (variant === 'ink' ? styles.offInk : styles.disabled),
+            isDisabled && !loading && variant !== 'off' && (variant === 'ink' ? styles.offInk : styles.disabled),
           ]}>
           {/* the label always stays in the layout (hidden while loading or on
               success), so the button never changes size; the spinner or tick

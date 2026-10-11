@@ -114,9 +114,15 @@ export function CalendarMark({ color = Colors.light.text2, size = 32 }: { color?
 }
 
 /** A small status pill with a dot, text at 14px (the shared Badge is 11.5px). */
-export function StatusPill({ label, tone }: { label: string; tone: 'wait' | 'ok' }) {
-  const bg = tone === 'wait' ? Colors.light.amberWash : Colors.light.limeWash;
-  const fg = tone === 'wait' ? Colors.light.amber : Colors.light.limeDeep;
+export type PillTone = 'wait' | 'ok' | 'off' | 'idle';
+const PILL: Record<PillTone, { bg: string; fg: string }> = {
+  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeDeep },
+  wait: { bg: Colors.light.amberWash, fg: Colors.light.amber },
+  off: { bg: Colors.light.redWash, fg: Colors.light.destructive },
+  idle: { bg: Colors.light.lineSoft, fg: Colors.light.muted },
+};
+export function StatusPill({ label, tone }: { label: string; tone: PillTone }) {
+  const { bg, fg } = PILL[tone];
   return (
     <View style={[styles.secure, { backgroundColor: bg }]}>
       <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: fg }} />
