@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -9,12 +10,10 @@ from app.modules.match.model import MatchStatus
 
 
 class MatchCreate(BaseModel):
-    arena_id: uuid.UUID
-    court_id: uuid.UUID
+    """A match on one of my own upcoming confirmed bookings."""
+
+    booking_group_id: uuid.UUID
     sport: str = Field(min_length=1, max_length=50)
-    match_date: date
-    start_time: time
-    end_time: time
     max_players: int = Field(ge=2, le=50)
 
 
@@ -41,6 +40,11 @@ class MatchResponse(BaseModel):
     players_joined: int
     status: MatchStatus
     created_at: datetime
+    booking_group_id: uuid.UUID | None = None
+    # what the creator's booking costs in all; the phone shows "about X each" (text only, nothing is paid in the app)
+    booking_total: Decimal | None = None
+    # did the player who asked join (or create) this match
+    joined_by_me: bool = False
 
 
 class MatchDetailResponse(MatchResponse):
