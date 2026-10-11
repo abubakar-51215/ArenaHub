@@ -1,7 +1,7 @@
 """Pydantic request/response models for the payment module."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -80,3 +80,28 @@ class PaymentEventResponse(BaseModel):
     to_status: PaymentLifecycleStatus
     note: str | None = None
     created_at: datetime
+
+
+class OwnerRefundItem(BaseModel):
+    """One refund on the arena owner's own arenas (the owner Refunds list)."""
+
+    id: uuid.UUID
+    status: RefundStatus
+    amount: Decimal
+    reason: str
+    payment_method: PaymentMethod
+    player_name: str
+    booking_code: str
+    arena_name: str
+    booking_date: date
+    start_time: time
+    end_time: time
+    created_at: datetime
+    processed_at: datetime | None = None
+    # true only for a pending bank-transfer refund: the owner sends the money and marks it paid
+    can_mark_paid: bool
+
+
+class OwnerRefundMarkPaidResponse(BaseModel):
+    refund: OwnerRefundItem
+    already_processed: bool
