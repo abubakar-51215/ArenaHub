@@ -47,11 +47,25 @@ class PaymentResponse(BaseModel):
     created_at: datetime
 
 
+class PaymentRefundItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    amount: Decimal
+    status: RefundStatus
+    reason: str
+    created_at: datetime
+    processed_at: datetime | None = None
+
+
 class PaymentHistoryItem(PaymentResponse):
     """A payment plus display context for the player's history list."""
 
     arena_name: str | None = None
     booking_date: date | None = None
+    booking_code: str | None = None
+    # refunds taken from this payment (a cancelled booking, a cheaper reschedule), oldest first
+    refunds: list["PaymentRefundItem"] = []
 
 
 class PaymentInitiateResponse(BaseModel):

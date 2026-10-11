@@ -42,6 +42,7 @@ from app.modules.payment.schema import (
     OwnerRefundMarkPaidResponse,
     PaymentEventResponse,
     PaymentHistoryItem,
+    PaymentRefundItem,
     PaymentInitiateRequest,
     PaymentInitiateResponse,
     PaymentResponse,
@@ -124,14 +125,18 @@ async def list_my_payments(db: AsyncSession, user: User, params: PaginationParam
     rows, total = await repo.list_payments_for_player(
         db, user.id, offset=params.offset, limit=params.page_size
     )
-    items = [
-        PaymentHistoryItem(
-            **PaymentResponse.model_validate(payment).model_dump(),
-            arena_name=arena_name,
-            booking_date=booking_date,
+    items = []
+    for payment, arena_name, booking_date in rows:
+        refunds = await repo.list_refunds_for_payment(db, payment.id)
+        items.append(
+            PaymentHistoryItem(
+                **PaymentResponse.model_validate(payment).model_dump(),
+                arena_name=arena_name,
+                booking_date=booking_date,
+                booking_code=booking_code_for(payment.booking_group_id),
+                refunds=[PaymentRefundItem.model_validate(r) for r in refunds],
+            )
         )
-        for payment, arena_name, booking_date in rows
-    ]
     return paginated(items, total, params)
 
 
@@ -542,9 +547,7 @@ async def _issue_refund(
     return refund
 
 
-async def _notify_owner_refund_to_send(
-    db: AsyncSession, booking: Booking, amount: Decimal
-) -> None:
+async def _notify_owner_refund_to_send(db: AsyncSession, booking: Booking, amount: Decimal) -> None:
     """A bank-transfer refund waits for the arena owner to send the money: tell them."""
     arena = await arena_repo.get_arena(db, booking.arena_id)
     player = await db.get(User, booking.player_id)
