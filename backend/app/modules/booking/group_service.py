@@ -203,8 +203,16 @@ async def cancel_preview(db: AsyncSession, user: User, group_id: uuid.UUID) -> C
             policy_text=policy,
         )  # fmt: skip
     pct, paid, amount = await _cancel_figures(db, live, arena)
+    from app.modules.payment import service as payment_service
+
+    waiting = await payment_service.receipt_waiting_payment(db, live) is not None
     return CancelPreview(
-        can_cancel=True, paid=paid, refund_percentage=pct, refund_amount=amount, policy_text=policy
+        can_cancel=True,
+        paid=paid,
+        refund_percentage=pct,
+        refund_amount=amount,
+        policy_text=policy,
+        receipt_waiting=waiting,
     )
 
 

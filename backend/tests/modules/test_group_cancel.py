@@ -199,7 +199,7 @@ async def test_cancel_preview_for_an_unpaid_booking_refunds_nothing(
 
 
 async def _group_with_receipt(client: AsyncClient, db: AsyncSession, tag: str, with_receipt: bool):
-    """A booking group paid by bank transfer: with a receipt uploaded (awaiting approval) or without one."""
+    """A bank-transfer booking group, with a receipt uploaded (awaiting approval) or without."""
     owner, _ = await make_user(client, db, f"gco-{tag}@example.com", "owner")
     player, _ = await make_user(client, db, f"gcp-{tag}@example.com", "player")
     arena = await client.post(
@@ -262,6 +262,7 @@ async def test_cancel_with_a_receipt_waiting_keeps_the_money_as_a_pending_refund
     ).json()["data"]
     assert Decimal(prev["paid"]) == Decimal("4000.00")
     assert Decimal(prev["refund_amount"]) == Decimal("4000.00")
+    assert prev["receipt_waiting"] is True
     done = await client.post(
         f"/api/v1/bookings/group/{gid}/cancel", headers=auth_header(player), json={}
     )
@@ -303,8 +304,31 @@ async def test_cancel_without_a_receipt_has_nothing_to_refund(
         )
     ).json()["data"]
     assert Decimal(prev["paid"]) == Decimal("0") and Decimal(prev["refund_amount"]) == Decimal("0")
+    assert prev["receipt_waiting"] is False
     done = await client.post(
         f"/api/v1/bookings/group/{gid}/cancel", headers=auth_header(player), json={}
     )
     assert done.status_code == 200 and Decimal(done.json()["data"]["refund_amount"]) == 0
     assert await _refunded(db_session, payment["id"]) == Decimal("0")
+
+
+async def test_rejected_receipt_shows_the_owner_reason_on_the_group(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, player, gid, payment, _, _ = await _group_with_receipt(client, db_session, "r3", True)
+    rej = await client.post(
+        f"/api/v1/owner/payments/{payment['id']}/reject",
+        headers=auth_header(owner),
+        json={"reason": "The amount does not match."},
+    )
+    assert rej.status_code == 200
+    d = (await client.get(f"/api/v1/bookings/group/{gid}", headers=auth_header(player))).json()[
+        "data"
+    ]
+    assert d["status"] == "rejected" and d["cancellation_reason"] == "The amount does not match."
+    items = (
+        await client.get(
+            "/api/v1/bookings/groups", headers=auth_header(player), params={"tab": "cancelled"}
+        )
+    ).json()["data"]["items"]
+    assert [i["status"] for i in items] == ["rejected"]
