@@ -750,6 +750,9 @@ async def get_group_details(
         cancellation_note=describe_refund_policy(arena.refund_policy, _booking_start(first)),
         booking_ids=[b.id for b in bookings],
         slot_ids=[b.slot_id for b in bookings],
+        cancellation_reason=next(
+            (b.cancellation_reason for b in bookings if b.cancellation_reason), None
+        ),
         refund_amount=refund_amount,
         refund_status=refund_status,
         can_cancel=can_cancel,

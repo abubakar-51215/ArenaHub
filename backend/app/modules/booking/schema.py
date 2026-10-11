@@ -121,6 +121,8 @@ class BookingGroupDetails(BaseModel):
     cancellation_note: str
     booking_ids: list[uuid.UUID]
     slot_ids: list[uuid.UUID] = Field(default_factory=list)
+    # why it was cancelled or turned down (the owner reason for a rejected receipt), if given
+    cancellation_reason: str | None = None
     # what was refunded (or is on its way) for a cancelled group
     refund_amount: Decimal = Decimal("0")
     refund_status: str | None = None
@@ -136,6 +138,8 @@ class CancelPreview(BaseModel):
     refund_percentage: int
     refund_amount: Decimal
     policy_text: str
+    # a bank-transfer receipt is with the arena: the whole amount comes back if it arrived
+    receipt_waiting: bool = False
 
 
 class GroupRescheduleRequest(BaseModel):
