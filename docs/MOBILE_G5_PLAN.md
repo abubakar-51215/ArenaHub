@@ -1,6 +1,6 @@
 # G5 plan: My bookings, booking detail, cancel, reschedule, the old balance screen
 
-Status: PLAN ONLY. Nothing is built. Source frame: `design/prototypes/arena-hub-player-app.html`, screen "My bookings" (the only G5 frame that exists). Text and numbers only.
+Status: BUILT (see "G5 decisions" in MOBILE_REQUIREMENTS.md). This note is the plan it was built from; the 12 approved answers are recorded in section 12. Source frame: `design/prototypes/arena-hub-player-app.html`, screen "My bookings" (the only G5 frame that exists). Text and numbers only.
 Rule kept: a pop-up, sheet or screen that is not in a prototype file needs a frame first.
 
 ---
@@ -129,3 +129,20 @@ Past card tags, Cancelled card with refund line, empty state per tab, Booking de
 ## 11. Open items from the restyle checklist that belong here
 
 `components/booking-card.tsx` image fallback (lineSoft, should be ink), My bookings tab control (the segmented track with the white active button), reschedule `slotDisabled` (dashed look). All three are fixed by this group.
+
+## 12. The 12 approved answers (recorded 2026-10-11)
+
+All twelve recommended answers were approved by the user:
+
+1. One card per booking (group) through a grouped list endpoint: **yes**.
+2. Cancelled tab included: **yes**.
+3. Cancel the whole booking only, and fix the refund calculation with a test: **yes** (done, 687590f).
+4. Show the refund amount in the cancel sheet before confirming, from the arena policy: **yes**.
+5. Reschedule moves the whole booking, same court only: **yes**.
+6. Reschedule only before the free-cancellation time, once per booking: **yes**.
+7. A dearer new time leaves the extra to pay at the arena (no online balance payment until real gateways exist); the old balance screen is removed: **yes**.
+8. "View pass": **dropped for now** (no frame).
+9. "You keep coming back to": **yes**, counted on the phone. The new frames (arena-hub-player-app-bookings.html) do not draw it, so it is not built; it stays later work until a frame shows it.
+10. "Rate this game" on the Past tab: first said later with the Reviews group; the user then asked for it to show when the review screen exists. It does (the Reviews screen takes a booking), so it is built.
+11. Report: PDF, from Profile, with arena and court columns: **yes**.
+12. The notifications bell stays out of My bookings (the new frame has no bell).

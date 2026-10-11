@@ -163,6 +163,18 @@ Screen-level requirements already written down:
 | 66 | Bank transfer reads the arena own account from its bank-transfer settings (default account). Receipts are photos (JPG or PNG, up to 5 MB): the frame says "or PDF", the server does not take PDFs yet. | Done, PDF is later work |
 | 67 | Later work: the old balance screen `/payment/[groupId]` (pay a balance on a confirmed booking) is untouched and still uses the dev simulator for gateways; it moves with the Bookings tab (G5). Real Stripe, JazzCash and EasyPaisa gateways stay last. A payment-method picker for several bank accounts is not built (the default account is shown). | Later |
 
+## G5 decisions (My bookings, detail, cancel, move, history report) - frames in `arena-hub-player-app-bookings.html`
+
+| # | Decision | Status |
+|---|---|---|
+| 68 | My bookings has the tabs Upcoming, Past and Cancelled from `GET /bookings/groups`; the server decides the tab. Cards show a date block, arena, time and court, a status tag and, on Cancelled, "Refunded Rs X", "Refund pending" or "No refund". Pull to refresh, skeletons, an empty state per tab and "Could not load your bookings". | Done |
+| 69 | Past: "Rate this game" opens the existing Reviews screen with the booking; "Rated N stars" once rated. The booking id and the stars come from the grouped list. | Done |
+| 70 | Booking detail shows the code, status, arena, info, payment and the free-cancel note. The server says what is allowed: "Reschedule not available" (grey) when `can_reschedule` is false; Cancel booking only when `can_cancel`. | Done |
+| 71 | Cancel sheet uses `cancel-preview` (You paid / Kept by arena / You get back); the late variant is the same sheet with the server numbers. After a cancel: toast and the Cancelled tab. | Done |
+| 72 | Move: day strip and start times on the same court and the same length; `reschedule-preview` and `reschedule`. A dearer time leaves the extra "to pay at the arena" (the approved answer 7); there is no online balance payment, so the old balance screen is removed. The frame button "Pay Rs 400 and move" is therefore "Move booking". | Done, deviation |
+| 73 | Booking history is a Profile row ("Booking History"), not part of My bookings. Period chips, "Bookings found", "Total spent", a PDF from `GET /reports/my-bookings` shared through the system share sheet. Found and spent are counted on the phone from the grouped list. | Done |
+| 74 | Not built (no frame): paying an unpaid ("Awaiting payment") booking from My bookings, "View pass", "You keep coming back to", the receipt PDF download that the old card had (the service call is kept), a bell on My bookings. | Later |
+
 ## Confirmed, not built yet (the user will make prototype frames first)
 
 | # | Requirement | Source | Status |
