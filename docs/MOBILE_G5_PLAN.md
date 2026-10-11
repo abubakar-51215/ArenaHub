@@ -146,3 +146,5 @@ All twelve recommended answers were approved by the user:
 10. "Rate this game" on the Past tab: first said later with the Reviews group; the user then asked for it to show when the review screen exists. It does (the Reviews screen takes a booking), so it is built.
 11. Report: PDF, from Profile, with arena and court columns: **yes**.
 12. The notifications bell stays out of My bookings (the new frame has no bell).
+
+Move to a dearer time: the extra is paid at the arena, so the Confirm move screen says To pay at the arena and the button says Move booking. (Frame 11 in `arena-hub-player-app-bookings.html` still shows the old wording "Pay Rs 400 and move"; a corrected frame will follow.)

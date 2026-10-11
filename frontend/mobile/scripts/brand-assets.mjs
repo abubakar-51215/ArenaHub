@@ -1,3 +1,4 @@
+/* global mark, P, iconBase, KEYS, FACES, Buffer */
 // Builds every ArenaHub logo asset from the geometry in design/brand/arenahub-logo.html
 // (the source of truth: its mark(), P palettes and iconBase are called in the page).
 // Run from frontend/mobile:  node scripts/brand-assets.mjs
