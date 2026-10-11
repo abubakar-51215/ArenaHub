@@ -26,6 +26,11 @@ const MENU_ITEMS = [
     href: "/profile/payments" as const,
   },
   {
+    label: "Booking History",
+    icon: "time-outline" as const,
+    href: "/profile/report" as const,
+  },
+  {
     label: "Change Password",
     icon: "lock-closed-outline" as const,
     href: "/profile/change-password" as const,

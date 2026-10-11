@@ -120,10 +120,6 @@ function RootNavigator() {
           name="booking/[courtId]"
           options={{ headerShown: false }}
         />
-        <Stack.Screen
-          name="payment/[groupId]"
-          options={{ headerShown: false }}
-        />
         <Stack.Screen name="booking/payment" options={{ headerShown: false }} />
         <Stack.Screen name="booking/bank/[groupId]" options={{ headerShown: false }} />
         <Stack.Screen name="booking/awaiting/[groupId]" options={{ headerShown: false, gestureEnabled: false }} />
@@ -136,10 +132,8 @@ function RootNavigator() {
         />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="booking/reschedule/[bookingId]"
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="booking/detail/[groupId]" options={{ headerShown: false }} />
+        <Stack.Screen name="booking/move/[groupId]" options={{ headerShown: false }} />
         <Stack.Screen name="play/[matchId]" options={{ headerShown: false }} />
         <Stack.Screen name="play/create" options={{ headerShown: false }} />
         <Stack.Screen
@@ -148,6 +142,7 @@ function RootNavigator() {
         />
         <Stack.Screen name="profile/liked" options={{ headerShown: false }} />
         <Stack.Screen name="profile/payments" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/report" options={{ headerShown: false }} />
         <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen
