@@ -13,6 +13,8 @@ export function statusPill(status: BookingStatus): { label: string; tone: PillTo
       return { label: 'Awaiting approval', tone: 'wait' };
     case 'completed':
       return { label: 'Completed', tone: 'idle' };
+    case 'rejected':
+      return { label: 'Receipt not accepted', tone: 'off' };
     default:
       return { label: 'Cancelled', tone: 'off' };
   }

@@ -216,6 +216,7 @@ export default function MoveBookingScreen() {
               <Line label="Nothing more to pay" value={formatRs(0)} bold />
             )}
           </Card>
+          {pv && Number(pv.refund) > 0 ? <Text style={styles.refundNote}>{`Your ${formatRs(pv.refund)} refund is pending. The arena sends it to your bank.`}</Text> : null}
           <View style={{ marginTop: 12 }}>
             <Note>This is your one move. After this you can still cancel, but you cannot move it again.</Note>
           </View>
@@ -255,5 +256,6 @@ const styles = StyleSheet.create({
   slotText: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
   sum: { padding: 12, marginTop: 16 },
   sum0: { padding: 12 },
+  refundNote: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 10 },
   err: { fontSize: 14, lineHeight: 20, color: Colors.light.red, marginTop: 8 },
 });
