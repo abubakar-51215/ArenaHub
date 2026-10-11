@@ -8,7 +8,7 @@ const babel = require('@babel/core');
 const path = require('path');
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ['lib/brand-motion.ts', 'components/brand/brand-mark.tsx', 'components/brand/animated-splash.tsx', 'components/ui/button.tsx', 'components/ui/confirm-sheet.tsx', 'components/ui/confirm-tick.tsx', 'components/ui/field.tsx', 'components/ui/pressable-scale.tsx', 'components/ui/range-slider.tsx', 'components/ui/skeleton.tsx', 'components/ui/toast.tsx', 'components/venue.tsx', 'hooks/use-shake.ts', 'components/parallax-scroll-view.tsx'];
+  : ['lib/brand-motion.ts', 'components/brand/brand-mark.tsx', 'components/brand/animated-splash.tsx', 'components/ui/button.tsx', 'components/ui/confirm-sheet.tsx', 'components/ui/confirm-tick.tsx', 'components/ui/field.tsx', 'components/ui/pressable-scale.tsx', 'components/ui/range-slider.tsx', 'components/ui/skeleton.tsx', 'components/ui/toast.tsx', 'components/venue.tsx', 'hooks/use-shake.ts', 'components/g6/profile-ui.tsx', 'components/ui/bottom-sheet.tsx'];
 const SAFE = new Set(['runOnJS', 'runOnUI', 'interpolate', 'interpolateColor', 'withTiming', 'withDelay', 'withRepeat', 'withSequence', 'withSpring', 'cancelAnimation', 'Easing', 'Extrapolation', 'clamp', 'Math', 'Number', 'String', 'Boolean', 'Array', 'Object', 'isNaN', 'parseFloat', 'parseInt', '_ref0']);
 const compiled = files.map((f) => ({ f, code: babel.transformFileSync(path.resolve(f), { babelrc: false, configFile: false, presets: [['babel-preset-expo', { jsxRuntime: 'automatic' }]], caller: { name: 'metro', platform: 'android', bundler: 'metro', isDev: true } }).code }));
 // every worklet function name defined anywhere (an imported helper is safe only when it is one of these)

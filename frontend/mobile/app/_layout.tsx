@@ -201,6 +201,14 @@ function RootNavigator() {
         <Stack.Screen name="profile/payments" options={{ headerShown: false }} />
         <Stack.Screen name="profile/report" options={{ headerShown: false }} />
         <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/change-email" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/change-phone" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/legal" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/reviews" options={{ headerShown: false }} />
+        <Stack.Screen name="support/index" options={{ headerShown: false }} />
+        <Stack.Screen name="support/new" options={{ headerShown: false }} />
+        <Stack.Screen name="support/faq" options={{ headerShown: false }} />
+        <Stack.Screen name="support/[id]" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
     </Stack>

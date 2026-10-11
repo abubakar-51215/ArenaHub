@@ -42,5 +42,5 @@ const styles = StyleSheet.create({
   },
   button: { flex: 1, paddingVertical: 7, borderRadius: 9, alignItems: 'center' },
   active: { backgroundColor: Colors.light.card, ...Shadow.segmentActive },
-  label: { fontSize: 12, fontWeight: '600' },
+  label: { fontSize: 14, fontWeight: '600' },
 });

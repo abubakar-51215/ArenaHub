@@ -80,7 +80,7 @@ export function updateProfile(data: {
   profile_picture?: string | null;
   preferred_sports?: string[];
   preferred_locations?: string[];
-  notification_preferences?: Record<string, boolean>;
+  notification_preferences?: Record<string, unknown>;
 }): Promise<User> {
   return api.put<User>("/users/me", data);
 }

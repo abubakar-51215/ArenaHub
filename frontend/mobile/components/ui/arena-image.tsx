@@ -1,4 +1,5 @@
 import { Image, type ImageProps } from 'expo-image';
+import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { CourtArt } from '@/components/ui/court-art';
@@ -37,11 +38,14 @@ interface ArenaImageProps extends Omit<ImageProps, 'source' | 'style'> {
  * avatar's original card-background-and-initials look with no ink flash. */
 export function ArenaImage({ photo, style, children, fallback, sport, ...props }: ArenaImageProps) {
   const uri = resolveMediaUrl(photo);
+  // a photo that fails to load shows the same picture as no photo (never a blank hole)
+  const [failed, setFailed] = useState(false);
+  const showImage = !!uri && !failed;
   return (
     <View style={[styles.container, style]}>
       {fallback === undefined && <View style={[StyleSheet.absoluteFill, styles.fallback]} />}
-      {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" {...props} />
+      {showImage ? (
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" {...props} onError={(e) => { setFailed(true); props.onError?.(e); }} />
       ) : (
         (fallback ?? (sport !== undefined ? <CourtArt sport={sport} /> : null))
       )}

@@ -58,18 +58,28 @@ interface TextFieldProps extends TextInputProps {
   nextRef?: React.RefObject<RNTextInput | null>;
   /** Run when the action key is pressed on the last box (Done / Send / Search). */
   onSubmit?: () => void;
+  /** A link at the right end of the box (Change). At least 44 high. */
+  action?: { label: string; onPress: () => void };
+  /** A grey line under the box. */
+  hint?: string;
 }
 
+/**
+ * The labelled text box of the account frames: label above (14, semi-bold), a 52 high box with a 1.5 px line, an ink
+ * border and a soft lime ring while it has focus, a red border with a message under it on error, and a Show/Hide
+ * link for passwords.
+ */
 export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextField(
-  { label, error, style, kind = 'text', nextRef, onSubmit, onSubmitEditing, ...props },
+  { label, error, style, kind = 'text', nextRef, onSubmit, onSubmitEditing, action, hint, editable, onFocus, onBlur, ...props },
   ref,
 ) {
   const preset = PRESETS[kind];
   const [revealed, setRevealed] = useState(false);
+  const [focused, setFocused] = useState(false);
   const isPassword = kind === 'password' || kind === 'newPassword';
   const multiline = props.multiline ?? preset.multiline;
   const common = {
-    placeholderTextColor: Colors.light.muted,
+    placeholderTextColor: '#8B958F',
     returnKeyType: multiline ? ('default' as const) : nextRef ? ('next' as const) : ('done' as const),
     submitBehavior: multiline ? ('newline' as const) : nextRef ? ('submit' as const) : ('blurAndSubmit' as const),
     onSubmitEditing: (e: Parameters<NonNullable<TextInputProps['onSubmitEditing']>>[0]) => {
@@ -80,25 +90,43 @@ export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextFi
     accessibilityLabel: label,
     ...preset,
     ...props,
+    editable,
+    onFocus: (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
+      setFocused(true);
+      onFocus?.(e);
+    },
+    onBlur: (e: Parameters<NonNullable<TextInputProps['onBlur']>>[0]) => {
+      setFocused(false);
+      onBlur?.(e);
+    },
   };
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      {isPassword ? (
-        <View style={[styles.input, styles.passwordRow, error && styles.inputError]}>
-          <TextInput ref={ref} {...common} secureTextEntry={!revealed} style={[styles.passwordInput, style]} />
-          <Pressable
-            onPress={() => setRevealed((r) => !r)}
-            accessibilityRole="button"
-            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
-            style={styles.eye}>
-            <Text style={styles.eyeText}>{revealed ? 'Hide' : 'Show'}</Text>
+      <View style={[styles.box, multiline && styles.boxMulti, focused && !error && styles.focused, !!error && styles.boxError, editable === false && styles.boxOff]}>
+        <TextInput
+          ref={ref}
+          {...common}
+          secureTextEntry={isPassword ? !revealed : props.secureTextEntry}
+          style={[styles.input, multiline && styles.inputMulti, style]}
+        />
+        {isPassword ? (
+          <Pressable onPress={() => setRevealed((r) => !r)} accessibilityRole="button" accessibilityLabel={revealed ? 'Hide password' : 'Show password'} style={styles.link}>
+            <Text style={styles.linkText}>{revealed ? 'Hide' : 'Show'}</Text>
           </Pressable>
-        </View>
-      ) : (
-        <TextInput ref={ref} {...common} style={[styles.input, error && styles.inputError, style]} />
-      )}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        ) : action ? (
+          <Pressable onPress={action.onPress} accessibilityRole="button" accessibilityLabel={`${action.label} ${label ?? ''}`.trim()} style={styles.link}>
+            <Text style={styles.linkText}>{action.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {error ? (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      ) : hint ? (
+        <Text style={styles.hint}>{hint}</Text>
+      ) : null}
     </View>
   );
 });
@@ -106,21 +134,15 @@ export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextFi
 const styles = StyleSheet.create({
   container: { gap: 6 },
   label: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: Colors.light.text,
-    backgroundColor: Colors.light.card,
-  },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', paddingRight: 0 },
-  passwordInput: { flex: 1, fontSize: 15, color: Colors.light.text, padding: 0, height: '100%' },
-  // the Show / Hide button: 44 wide and the full height of the box
-  eye: { minWidth: 56, height: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  eyeText: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
-  inputError: { borderColor: Colors.light.destructive },
-  error: { fontSize: 14, color: Colors.light.destructive },
+  box: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingLeft: 13, paddingRight: 4, backgroundColor: Colors.light.card, borderWidth: 1.5, borderColor: Colors.light.line, borderRadius: 15 },
+  boxMulti: { alignItems: 'flex-start', paddingTop: 8, paddingRight: 13 },
+  focused: { borderColor: Colors.light.ink, boxShadow: '0 0 0 3px rgba(196,245,70,0.45)' },
+  boxError: { borderColor: Colors.light.destructive },
+  boxOff: { backgroundColor: Colors.light.lineSoft },
+  input: { flex: 1, minHeight: 48, fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
+  inputMulti: { minHeight: 96, textAlignVertical: 'top' },
+  link: { minWidth: 56, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  linkText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
+  error: { fontSize: 14, lineHeight: 20, color: Colors.light.destructive },
+  hint: { fontSize: 14, lineHeight: 20, color: Colors.light.muted },
 });
