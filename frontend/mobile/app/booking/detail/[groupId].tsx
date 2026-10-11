@@ -61,6 +61,14 @@ export default function BookingDetailScreen() {
 
   const cancelled = g && (g.status === 'cancelled' || g.status === 'rejected');
   const live = g && (g.status === 'confirmed' || g.status === 'pending_payment' || g.status === 'pending_approval');
+  const unpaid = g?.status === 'pending_payment';
+  const startPast = g ? new Date(`${g.booking_date}T${g.start_time}`) <= new Date() : false;
+  // an unpaid booking whose time has passed, or one the server let go after 24 hours, can no longer be paid
+  const released = !!g && ((unpaid && startPast) || (!!cancelled && g.status === 'cancelled' && /^Auto-cancelled/.test(g.cancellation_reason ?? '')));
+  const rejected = g?.status === 'rejected';
+  const ownerReason = rejected && g?.cancellation_reason ? g.cancellation_reason : null;
+  const active = !!live && !released;
+  const refundPending = !!g && live && Number(g.refund_amount) > 0 && g.refund_status !== 'processed';
   const pill = g ? statusPill(g.status) : null;
   const paid = g && g.payment_status === 'completed' ? g.pay_now : '0';
   const p = preview.data;
@@ -124,12 +132,29 @@ export default function BookingDetailScreen() {
           <Eyebrow>Payment</Eyebrow>
           <Card style={styles.info2}>
             <Line label={`Slots (${hoursLabel(g.slot_count)})`} value={formatRs(g.total)} />
-            <Line label="Paid with" value={g.payment_method ? (METHOD[g.payment_method] ?? '—') : '—'} />
+            <Line label="Paid with" value={unpaid ? 'Not paid yet' : g.payment_method ? (METHOD[g.payment_method] ?? '—') : '—'} />
             <Line label="Total paid" value={formatRs(paid)} bold />
-            {live && Number(g.due_at_arena) > 0 ? <Line label="Pay at the arena" value={formatRs(g.due_at_arena)} /> : null}
+            {active && Number(g.due_at_arena) > 0 ? <Line label="Pay at the arena" value={formatRs(g.due_at_arena)} /> : null}
           </Card>
 
-          {cancelled ? (
+          {refundPending && g ? (
+            <Text style={styles.refundNote}>{`Your ${formatRs(g.refund_amount)} refund is pending. The arena sends it to your bank.`}</Text>
+          ) : null}
+
+          {released ? (
+            <View style={[styles.greyNote, { marginTop: 12 }]}>
+              <Text style={styles.greyNoteText}>This booking was released because it was not paid in time.</Text>
+            </View>
+          ) : rejected ? (
+            <>
+              <Eyebrow>Receipt</Eyebrow>
+              <Card style={styles.info2}>
+                <Text style={styles.receiptText}>The arena could not match your receipt.</Text>
+                {ownerReason ? <Text style={styles.reasonText}>{ownerReason}</Text> : null}
+              </Card>
+              <Text style={styles.refundNote}>No money comes back for this booking.</Text>
+            </>
+          ) : cancelled && g ? (
             <>
               <Eyebrow>Refund</Eyebrow>
               <Card style={styles.info2}>
@@ -147,9 +172,13 @@ export default function BookingDetailScreen() {
                     : 'The arena sends your refund to your bank. We will tell you here when it is done.'}
               </Text>
             </>
-          ) : live ? (
+          ) : active && g ? (
             <View style={{ marginTop: 12 }}>
-              {g.can_reschedule ? (
+              {unpaid ? (
+                <View style={styles.greyNote}>
+                  <Text style={styles.greyNoteText}>Pay first. After that you can move or cancel this booking.</Text>
+                </View>
+              ) : g.can_reschedule ? (
                 <Note>{`${g.cancellation_note} You can move this booking once, before that time.`}</Note>
               ) : (
                 <View style={styles.greyNote}>
@@ -162,9 +191,11 @@ export default function BookingDetailScreen() {
         </ScrollView>
       )}
 
-      {g && live ? (
+      {g && active ? (
         <StickyBar>
-          {g.can_reschedule ? (
+          {unpaid ? (
+            <Button title="Pay now" onPress={() => router.push({ pathname: '/booking/payment', params: { groupId, arenaId: g.arena_id, courtId: g.court_id } })} />
+          ) : g.can_reschedule ? (
             <Button title="Reschedule" variant="ghost" onPress={() => router.push({ pathname: '/booking/move/[groupId]', params: { groupId } })} />
           ) : (
             <Button title="Reschedule not available" variant="off" disabled />
@@ -182,7 +213,7 @@ export default function BookingDetailScreen() {
         stacked
         title="Cancel this booking?"
         message={
-          p && Number(p.paid) > 0 && p.refund_percentage < 100
+          p && Number(p.paid) > 0 && p.refund_percentage < 100 && !p.receipt_waiting
             ? 'Free cancellation time has passed.'
             : g
               ? `${dayAndMonth(g.booking_date).replace(', ', ' ')}, ${timeRange(g.start_time, g.end_time)} at ${g.arena_name}.`
@@ -203,7 +234,9 @@ export default function BookingDetailScreen() {
               <Line label="Kept by arena" value={formatRs(Number(p.paid) - Number(p.refund_amount))} />
               <Line label="You get back" value={formatRs(p.refund_amount)} bold />
             </Card>
-            {Number(p.paid) > 0 && p.refund_percentage >= 100 ? (
+            {p.receipt_waiting ? (
+              <Text style={styles.sheetNote}>Your receipt is with the arena. If your money arrived, the arena will send it back after checking.</Text>
+            ) : Number(p.paid) > 0 && p.refund_percentage >= 100 ? (
               <Text style={styles.sheetNote}>Free cancellation applies. The refund goes back to your bank within a few working days.</Text>
             ) : Number(p.paid) <= 0 ? (
               <Text style={styles.sheetNote}>No money has been taken for this booking, so there is nothing to refund.</Text>
@@ -232,6 +265,8 @@ const styles = StyleSheet.create({
   info2: { padding: 12 },
   greyNote: { padding: 12, borderRadius: 11, backgroundColor: Colors.light.lineSoft, borderWidth: 1, borderColor: Colors.light.line },
   greyNoteText: { fontSize: 14, lineHeight: 20, color: Colors.light.text2 },
+  receiptText: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: Colors.light.text },
+  reasonText: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 6 },
   refundNote: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 10 },
   center: { flex: 1, alignItems: 'center', paddingTop: 60, paddingHorizontal: 18 },
   stateTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text },

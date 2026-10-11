@@ -312,6 +312,7 @@ export interface BookingGroupDetails {
   cancellation_note: string;
   booking_ids: string[];
   slot_ids: string[];
+  cancellation_reason: string | null;
   refund_amount: string;
   refund_status: 'pending' | 'processed' | 'failed' | null;
   can_cancel: boolean;
@@ -360,6 +361,7 @@ export interface CancelPreview {
   refund_percentage: number;
   refund_amount: string;
   policy_text: string;
+  receipt_waiting: boolean;
 }
 
 /** POST /bookings/group/{id}/reschedule-preview */
