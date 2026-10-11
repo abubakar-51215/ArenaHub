@@ -91,7 +91,9 @@ export const BALL_DIST: Stop[] = [
 export const BALL_SHOW: Stop[] = [[0, 0], [9.9, 0], [10, 1], [100, 1]];
 export const GHOST_DELAY_PCT = [0.045 / 7.2 * 100, 0.09 / 7.2 * 100]; // .gh.g1 and .gh.g2 start .045 s and .09 s later
 export const GHOST_OPACITY = [0.42, 0.2];
-export const ghostStops = (go: number): Stop[] => [[0, 0], [22, 0], [22.6, go], [65.5, go], [67.5, 0], [100, 0]];
+const ghostStops = (go: number): Stop[] => [[0, 0], [22, 0], [22.6, go], [65.5, go], [67.5, 0], [100, 0]];
+/** built here, once, as plain arrays: a worklet must not call an ordinary function */
+export const GHOST_STOPS: Stop[][] = [ghostStops(GHOST_OPACITY[0]), ghostStops(GHOST_OPACITY[1])];
 const SQ = (list: [number, number, number][]): [Stop[], Stop[]] => [
   list.map(([p, x]) => [p, x, EASE_IN_OUT] as Stop),
   list.map(([p, , y]) => [p, y, EASE_IN_OUT] as Stop),
@@ -105,11 +107,11 @@ export const [SQ_X, SQ_Y] = SQ([
 export const SPIN: Stop[] = [[0, 0, [0.2, 0.6, 0.4, 1]], [22, 0, [0.2, 0.6, 0.4, 1]], [68, 1260], [100, 1260]];
 /** which of the four balls shows (hF1 to hF4): [start percent, end percent] of each one's visible time */
 export const FACE_WINDOWS: readonly [number, number][] = [[0, 26], [26, 40.4], [40.4, 54.8], [54.8, 100]];
-export const faceOpacity = (p: number, i: number): number => {
+export function faceOpacity(p: number, i: number): number {
   'worklet';
-  const [a, b] = FACE_WINDOWS[i];
-  return p >= a && p < b ? 1 : 0;
-};
+  const w = FACE_WINDOWS[i];
+  return p >= w[0] && (p < w[1] || w[1] >= 100) ? 1 : 0; // the last ball stays once the timeline ends
+}
 
 // ---- impact and landing
 export const BURST_OPACITY: Stop[] = [[0, 0], [21.6, 0], [21.9, 1], [25, 0], [100, 0]];

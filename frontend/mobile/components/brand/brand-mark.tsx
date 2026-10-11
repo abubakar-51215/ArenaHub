@@ -1,24 +1,67 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, {
-  Easing,
-  cancelAnimation,
-  runOnJS,
-  useAnimatedProps,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 import { BALL_FACES, BALL_KEYS } from '@/constants/brand-faces.generated';
 import { Font } from '@/constants/theme';
 import { PAL, pickHeroBalls, type BallKey, type BrandMarkProps, type BrandMode, type BrandTone } from '@/components/brand/brand-shared';
-import * as M from '@/lib/brand-motion';
+import {
+  BALL_DIST,
+  BALL_SHOW,
+  BT_DROP,
+  BT_OPACITY,
+  BT_ROT,
+  BURST_OPACITY,
+  BURST_SCALE,
+  DOT_MOVE,
+  DOT_OPACITY,
+  DOT_SCALE,
+  GHOST_DELAY_PCT,
+  GHOST_STOPS,
+  GLINT_OFFSET,
+  GLINT_OPACITY,
+  HERO_MS,
+  HERO_PATH,
+  LAND_PCT,
+  LAP_MS,
+  LETTER_DELAY_PCT,
+  LETTER_OPACITY,
+  LETTER_RISE,
+  LETTER_SCALE,
+  LOOP_PATH,
+  PULSE_OPACITY,
+  PULSE_SCALE,
+  RING2_LEN,
+  RING_LEN,
+  RK_DROP,
+  RK_OPACITY,
+  RK_ROT,
+  SHAKE_X,
+  SHAKE_Y,
+  SHOCK_OPACITY,
+  SHOCK_SCALE,
+  SPARK_MOVE,
+  SPARK_OPACITY,
+  SPARK_SCALE,
+  SPIN,
+  SQ_X,
+  SQ_Y,
+  Stop,
+  TAG_OPACITY,
+  TAG_RISE,
+  TRACK_OFFSET,
+  TRACK_OPACITY,
+  TRAIL_LEN,
+  TRAIL_OFFSET,
+  TRAIL_OPACITY,
+  WORD_WRAP,
+  bezier,
+  faceOpacity,
+  kf,
+  pointAt,
+  shuffled,
+} from '@/lib/brand-motion';
 import { tapHaptic } from '@/lib/haptics';
 
 // The ArenaHub mark, drawn from design/brand/arenahub-logo.html (viewBox 0 0 120 120).
@@ -57,10 +100,6 @@ function Face({ ball, tone, opacity = 1 }: { ball: BallKey; tone: BrandTone; opa
     </G>
   );
 }
-
-const AG = Animated.createAnimatedComponent(G);
-const AP = Animated.createAnimatedComponent(Path);
-const AC = Animated.createAnimatedComponent(Circle);
 
 const RING_D = 'M52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V54 A38 38 0 0 1 52 16 Z';
 const TRAIL_D = 'M14 58 V54 A38 38 0 0 1 52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V54 A38 38 0 0 1 52 16 H60';
@@ -113,315 +152,211 @@ function Still({ tone, ball = 'football', noBall, ringColor, ringDash }: { tone:
   );
 }
 
+// ------------------------------------------------------------------ the clock
+// The marks are drawn on the JavaScript thread: a clock gives the elapsed time about 30 times a second and each frame is
+// worked out with plain functions and handed to react-native-svg as ordinary props. There are no worklets here: a worklet
+// runs on the UI thread, where an ordinary helper function does not exist (that crashed the splash in Expo Go), and
+// react-native-svg's transform props are not reliably animatable from there.
+function useClock(durationMs: number, loop: boolean, still: boolean, fps = 30): number {
+  const [el, setEl] = useState(still ? durationMs : 0);
+  useEffect(() => {
+    if (still) {
+      setEl(durationMs);
+      return;
+    }
+    let raf = 0;
+    let last = 0;
+    const start = Date.now();
+    const frame = () => {
+      const t = Date.now() - start;
+      if (!loop && t >= durationMs) {
+        setEl(durationMs);
+        return;
+      }
+      if (t - last >= 1000 / fps) {
+        last = t;
+        setEl(t);
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [durationMs, loop, still, fps]);
+  return el;
+}
+
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+
 // ------------------------------------------------------------------ hero
 const SPARKS: [number, number, 'ac' | 'spk', number][] = [[11, -7, 'ac', 1.3], [13, 2, 'spk', 1.1], [9, 9, 'ac', 1.3], [4, -11, 'spk', 1]];
 const DOTS: [number, number, 'ac' | 'spk', number][] = [[18, 0, 'ac', 1.4], [12.7, 10.2, 'spk', 1.1], [0, 14.4, 'ac', 1.4], [-12.7, 10.2, 'spk', 1.1], [-18, 0, 'ac', 1.4], [-12.7, -10.2, 'spk', 1.1], [0, -14.4, 'ac', 1.4], [12.7, -10.2, 'spk', 1.1]];
+const WORD = 'ArenaHub'.split('');
 
-export interface HeroProps {
-  tone?: BrandTone;
-  /** mark width in px (the wordmark and tagline scale with it) */
-  size?: number;
-  /** playback speed: 1 is the 7.2 s timeline, 2 plays it in half the time */
-  speed?: number;
-  /** the four balls to show (bowled, two laps, landing); picked at random when omitted */
-  balls?: BallKey[];
-  /** the ball has landed in the middle (a light tap is felt) */
-  onLand?: () => void;
-  /** the wordmark and tagline are in */
-  onSettled?: () => void;
-  withWord?: boolean;
-}
-
-function Hero({ tone = 'dark', size = 264, speed = 1, balls, onLand, onSettled, withWord = true }: HeroProps) {
+function Hero({ tone = 'dark', size = 264, speed = 1, balls, onLand, onSettled, withWord = true }: BrandMarkProps) {
   const pal = PAL[tone];
   const reduce = useReducedMotion();
-  const t = useSharedValue(reduce ? 1 : 0);
+  const total = HERO_MS / speed;
+  const el = useClock(total, false, reduce);
+  const p = clamp01(el / total) * 100;
   const four = useMemo(() => balls ?? pickHeroBalls(), [balls]);
   const k = size / 120;
+
   const landed = useRef(false);
   const settled = useRef(false);
-  const fireLand = () => {
-    if (landed.current) return;
-    landed.current = true;
-    tapHaptic();
-    onLand?.();
-  };
-  const fireSettled = () => {
-    if (settled.current) return;
-    settled.current = true;
-    onSettled?.();
-  };
-
   useEffect(() => {
-    if (reduce) {
-      t.value = 1;
-      fireLand();
-      fireSettled();
-      return;
+    if (!landed.current && p >= LAND_PCT) {
+      landed.current = true;
+      tapHaptic();
+      onLand?.();
     }
-    t.value = 0;
-    t.value = withTiming(1, { duration: M.HERO_MS / speed, easing: Easing.linear });
-    return () => cancelAnimation(t);
-  }, [reduce, speed]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!settled.current && p >= 82) {
+      settled.current = true;
+      onSettled?.();
+    }
+  }, [p]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useAnimatedReaction(
-    () => Math.floor(t.value * 100 * 10),
-    (v, prev) => {
-      if (v >= M.LAND_PCT * 10 && (prev ?? 0) < M.LAND_PCT * 10) runOnJS(fireLand)();
-      if (v >= 820 && (prev ?? 0) < 820) runOnJS(fireSettled)();
-    },
-  );
+  const [bx, by] = pointAt(HERO_PATH, kf(p, BALL_DIST));
+  const ghost = (i: number) => {
+    const q = p - GHOST_DELAY_PCT[i];
+    const [gx, gy] = pointAt(HERO_PATH, kf(q, BALL_DIST));
+    return { x: gx, y: gy, o: kf(q, GHOST_STOPS[i]) };
+  };
+  const g0 = ghost(0);
+  const g1 = ghost(1);
+  const pad = 100; // room around the mark for the sparks and the shock ring
+  const svgSize = size * ((120 + 2 * pad) / 120);
+  const shockR = 27.3 * k;
+  const s = size / 264;
 
-  const P = () => t.value * 100;
-  const ringProps = useAnimatedProps(() => ({
-    strokeDashoffset: (M.kf(P(), M.TRACK_OFFSET) / 240) * M.RING_LEN,
-    strokeOpacity: M.kf(P(), M.TRACK_OPACITY),
-  }));
-  const glintProps = useAnimatedProps(() => ({
-    strokeDashoffset: (M.kf(P(), M.GLINT_OFFSET) / 240) * M.RING_LEN,
-    strokeOpacity: M.kf(P(), M.GLINT_OPACITY),
-  }));
-  const trailProps = useAnimatedProps(() => ({
-    strokeDashoffset: (M.kf(P(), M.TRAIL_OFFSET) / 100) * M.TRAIL_LEN,
-    strokeOpacity: M.kf(P(), M.TRAIL_OPACITY),
-  }));
-  const rkProps = useAnimatedProps(() => ({
-    opacity: M.kf(P(), M.RK_OPACITY),
-    transform: `rotate(${M.kf(P(), M.RK_ROT)} 60 24) translate(0 ${M.kf(P(), M.RK_DROP)})`,
-  }));
-  const btProps = useAnimatedProps(() => ({
-    opacity: M.kf(P(), M.BT_OPACITY),
-    transform: `rotate(${M.kf(P(), M.BT_ROT)} 60 24) translate(0 ${M.kf(P(), M.BT_DROP)})`,
-  }));
-  const shakeProps = useAnimatedProps(() => ({ transform: `translate(${M.kf(P(), M.SHAKE_X)} ${M.kf(P(), M.SHAKE_Y)})` }));
-  const burstProps = useAnimatedProps(() => ({
-    opacity: M.kf(P(), M.BURST_OPACITY),
-    transform: `translate(60 71) scale(${M.kf(P(), M.BURST_SCALE)}) translate(-60 -71)`,
-  }));
-  const pulseProps = useAnimatedProps(() => ({
-    opacity: M.kf(P(), M.PULSE_OPACITY),
-    transform: `translate(60 71) scale(${M.kf(P(), M.PULSE_SCALE)}) translate(-60 -71)`,
-  }));
-  const ballProps = useAnimatedProps(() => {
-    const p = P();
-    const [x, y] = M.pointAt(M.HERO_PATH, M.kf(p, M.BALL_DIST));
-    const sx = M.kf(p, M.SQ_X);
-    const sy = M.kf(p, M.SQ_Y);
-    return { opacity: M.kf(p, M.BALL_SHOW), transform: `translate(${x} ${y}) translate(0 3.6) scale(${sx} ${sy}) translate(0 -3.6) rotate(${M.kf(p, M.SPIN)})` };
-  });
-  const g0 = useAnimatedProps(() => {
-    const p = P() - M.GHOST_DELAY_PCT[0];
-    const [x, y] = M.pointAt(M.HERO_PATH, M.kf(p, M.BALL_DIST));
-    return { opacity: M.kf(p, M.ghostStops(M.GHOST_OPACITY[0])), cx: x, cy: y };
-  });
-  const g1 = useAnimatedProps(() => {
-    const p = P() - M.GHOST_DELAY_PCT[1];
-    const [x, y] = M.pointAt(M.HERO_PATH, M.kf(p, M.BALL_DIST));
-    return { opacity: M.kf(p, M.ghostStops(M.GHOST_OPACITY[1])), cx: x, cy: y };
-  });
-  const shockStyle = useAnimatedStyle(() => ({ opacity: M.kf(P(), M.SHOCK_OPACITY), transform: [{ scale: M.kf(P(), M.SHOCK_SCALE) }] }));
-
-  const pad = 100; // room around the mark for sparks and the shock ring
   return (
     <View style={styles.lockup}>
       <View style={{ width: size, height: size }}>
-        <Animated.View
+        <View
           pointerEvents="none"
-          style={[
-            {
-              position: 'absolute',
-              left: size / 2 - 27.3 * k,
-              top: 71 * k - 27.3 * k,
-              width: 54.6 * k,
-              height: 54.6 * k,
-              borderRadius: 54.6 * k,
-              borderWidth: Math.max(1, 0.9 * k),
-              borderColor: pal.ac,
-            },
-            shockStyle,
-          ]}
+          style={{
+            position: 'absolute',
+            left: size / 2 - shockR,
+            top: 71 * k - shockR,
+            width: shockR * 2,
+            height: shockR * 2,
+            borderRadius: shockR,
+            borderWidth: Math.max(1, 0.9 * k),
+            borderColor: pal.ac,
+            opacity: kf(p, SHOCK_OPACITY),
+            transform: [{ scale: kf(p, SHOCK_SCALE) }],
+          }}
         />
-        <Svg
-          width={size * ((120 + 2 * pad) / 120)}
-          height={size * ((120 + 2 * pad) / 120)}
-          viewBox={`${-pad} ${-pad} ${120 + 2 * pad} ${120 + 2 * pad}`}
-          style={{ position: 'absolute', left: -pad * k, top: -pad * k }}
-          accessibilityRole="image"
-          accessibilityLabel="ArenaHub logo">
-          <AG animatedProps={shakeProps}>
-            <AP d={RING_D} fill="none" stroke={pal.ring} strokeWidth={3.2} strokeLinecap="round" strokeDasharray={`${M.RING_LEN} ${M.RING_LEN}`} animatedProps={ringProps} />
-            <AP d={RING_D} fill="none" stroke={pal.ac} strokeWidth={4.6} strokeLinecap="round" strokeDasharray={`${(40 / 240) * M.RING_LEN} ${(400 / 240) * M.RING_LEN}`} animatedProps={glintProps} />
-            <AP d={TRAIL_D} fill="none" stroke={pal.ac} strokeWidth={4.4} strokeLinecap="round" strokeDasharray={`${(14 / 100) * M.TRAIL_LEN} ${(300 / 100) * M.TRAIL_LEN}`} animatedProps={trailProps} />
+        <Svg width={svgSize} height={svgSize} viewBox={`${-pad} ${-pad} ${120 + 2 * pad} ${120 + 2 * pad}`} style={{ position: 'absolute', left: -pad * k, top: -pad * k }} accessibilityRole="image" accessibilityLabel="ArenaHub logo">
+          <G transform={`translate(${kf(p, SHAKE_X)} ${kf(p, SHAKE_Y)})`}>
+            <Path d={RING_D} fill="none" stroke={pal.ring} strokeWidth={3.2} strokeLinecap="round" strokeDasharray={`${RING_LEN} ${RING_LEN}`} strokeDashoffset={(kf(p, TRACK_OFFSET) / 240) * RING_LEN} strokeOpacity={kf(p, TRACK_OPACITY)} />
+            <Path d={RING_D} fill="none" stroke={pal.ac} strokeWidth={4.6} strokeLinecap="round" strokeDasharray={`${(40 / 240) * RING_LEN} ${(400 / 240) * RING_LEN}`} strokeDashoffset={(kf(p, GLINT_OFFSET) / 240) * RING_LEN} strokeOpacity={kf(p, GLINT_OPACITY)} />
+            <Path d={TRAIL_D} fill="none" stroke={pal.ac} strokeWidth={4.4} strokeLinecap="round" strokeDasharray={`${(14 / 100) * TRAIL_LEN} ${(300 / 100) * TRAIL_LEN}`} strokeDashoffset={(kf(p, TRAIL_OFFSET) / 100) * TRAIL_LEN} strokeOpacity={kf(p, TRAIL_OPACITY)} />
             <G transform="translate(-2.5 0)">
-              <AG animatedProps={rkProps}>
+              <G opacity={kf(p, RK_OPACITY)} transform={`rotate(${kf(p, RK_ROT)} 60 24) translate(0 ${kf(p, RK_DROP)})`}>
                 <Racket c={pal.mk} hole={pal.hole} />
-              </AG>
-              <AG animatedProps={btProps}>
+              </G>
+              <G opacity={kf(p, BT_OPACITY)} transform={`rotate(${kf(p, BT_ROT)} 60 24) translate(0 ${kf(p, BT_DROP)})`}>
                 <Bat c={pal.mk} ridge={pal.hole} />
-              </AG>
+              </G>
             </G>
-            <AG animatedProps={burstProps}>
+            <G opacity={kf(p, BURST_OPACITY)} transform={`translate(60 71) scale(${kf(p, BURST_SCALE)}) translate(-60 -71)`}>
               <Path d="M70 71 h6 M68.5 64.5 l4.2 -3.2 M68.5 77.5 l4.2 3.2" stroke={pal.spk} strokeWidth={1.6} strokeLinecap="round" fill="none" />
-            </AG>
-            {SPARKS.map(([dx, dy, c, r], i) => (
-              <Spark key={`s${i}`} t={t} dx={dx} dy={dy} r={r} fill={c === 'ac' ? pal.ac : pal.spk} cx={66} cy={71} kind="spark" />
-            ))}
-            <AC cx={60} cy={71} r={8} fill="none" stroke={pal.ac} strokeWidth={1.4} animatedProps={pulseProps} />
-            {DOTS.map(([dx, dy, c, r], i) => (
-              <Spark key={`d${i}`} t={t} dx={dx} dy={dy} r={r} fill={c === 'ac' ? pal.ac : pal.spk} cx={60} cy={71} kind="dot" />
-            ))}
-            <AC r={6.5} fill={pal.ac} animatedProps={g1} />
-            <AC r={6.5} fill={pal.ac} animatedProps={g0} />
-            <AG animatedProps={ballProps}>
+            </G>
+            {SPARKS.map(([dx, dy, c, r], i) => {
+              const f = kf(p, SPARK_MOVE);
+              return <Circle key={`s${i}`} cx={66} cy={71} r={r} fill={c === 'ac' ? pal.ac : pal.spk} opacity={kf(p, SPARK_OPACITY)} transform={`translate(${dx * f} ${dy * f}) translate(66 71) scale(${kf(p, SPARK_SCALE)}) translate(-66 -71)`} />;
+            })}
+            <Circle cx={60} cy={71} r={8} fill="none" stroke={pal.ac} strokeWidth={1.4} opacity={kf(p, PULSE_OPACITY)} transform={`translate(60 71) scale(${kf(p, PULSE_SCALE)}) translate(-60 -71)`} />
+            {DOTS.map(([dx, dy, c, r], i) => {
+              const f = kf(p, DOT_MOVE);
+              return <Circle key={`d${i}`} cx={60} cy={71} r={r} fill={c === 'ac' ? pal.ac : pal.spk} opacity={kf(p, DOT_OPACITY)} transform={`translate(${dx * f} ${dy * f}) translate(60 71) scale(${kf(p, DOT_SCALE)}) translate(-60 -71)`} />;
+            })}
+            <Circle cx={g1.x} cy={g1.y} r={6.5} fill={pal.ac} opacity={g1.o} />
+            <Circle cx={g0.x} cy={g0.y} r={6.5} fill={pal.ac} opacity={g0.o} />
+            <G opacity={kf(p, BALL_SHOW)} transform={`translate(${bx} ${by}) translate(0 3.6) scale(${kf(p, SQ_X)} ${kf(p, SQ_Y)}) translate(0 -3.6) rotate(${kf(p, SPIN)})`}>
               {four.map((b, i) => (
-                <FaceFade key={i} t={t} index={i} ball={b} tone={tone} />
+                <Face key={i} ball={b} tone={tone} opacity={faceOpacity(p, i)} />
               ))}
-            </AG>
-          </AG>
+            </G>
+          </G>
         </Svg>
       </View>
-      {withWord ? <WordAndTag t={t} size={size} color={pal.wd} tag={pal.tg} /> : null}
+      {withWord ? (
+        <>
+          <View style={[styles.word, { marginTop: 18 * s, opacity: kf(p, WORD_WRAP) }]} accessibilityRole="header" accessibilityLabel="ArenaHub">
+            {WORD.map((ch, i) => {
+              const q = p - i * LETTER_DELAY_PCT;
+              const fs = 58 * s;
+              return (
+                <Text
+                  key={i}
+                  style={{ fontFamily: Font.display, fontSize: fs, lineHeight: fs * 1.05, letterSpacing: -0.025 * fs, color: pal.wd, opacity: kf(q, LETTER_OPACITY), transform: [{ translateY: kf(q, LETTER_RISE) * s }, { scale: kf(q, LETTER_SCALE) }] }}>
+                  {ch}
+                </Text>
+              );
+            })}
+          </View>
+          <Text style={{ fontFamily: Font.body, fontSize: 17 * s, color: pal.tg, marginTop: 18 * s, opacity: kf(p, TAG_OPACITY), transform: [{ translateY: kf(p, TAG_RISE) * s }] }}>Find a court. Get a game.</Text>
+        </>
+      ) : null}
     </View>
   );
-}
-
-function FaceFade({ t, index, ball, tone }: { t: { value: number }; index: number; ball: BallKey; tone: BrandTone }) {
-  const props = useAnimatedProps(() => ({ opacity: M.faceOpacity(t.value * 100, index) }));
-  return (
-    <AG animatedProps={props}>
-      <Face ball={ball} tone={tone} />
-    </AG>
-  );
-}
-
-function Spark({ t, dx, dy, r, fill, cx, cy, kind }: { t: { value: number }; dx: number; dy: number; r: number; fill: string; cx: number; cy: number; kind: 'spark' | 'dot' }) {
-  const props = useAnimatedProps(() => {
-    const p = t.value * 100;
-    const o = kind === 'spark' ? M.SPARK_OPACITY : M.DOT_OPACITY;
-    const mv = kind === 'spark' ? M.SPARK_MOVE : M.DOT_MOVE;
-    const sc = kind === 'spark' ? M.SPARK_SCALE : M.DOT_SCALE;
-    const f = M.kf(p, mv);
-    return { opacity: M.kf(p, o), transform: `translate(${dx * f} ${dy * f}) translate(${cx} ${cy}) scale(${M.kf(p, sc)}) translate(${-cx} ${-cy})` };
-  });
-  return <AC cx={cx} cy={cy} r={r} fill={fill} animatedProps={props} />;
-}
-
-const WORD = 'ArenaHub'.split('');
-
-function WordAndTag({ t, size, color, tag }: { t: { value: number }; size: number; color: string; tag: string }) {
-  const s = size / 264;
-  const wrapStyle = useAnimatedStyle(() => ({ opacity: M.kf(t.value * 100, M.WORD_WRAP) }));
-  const tagStyle = useAnimatedStyle(() => ({ opacity: M.kf(t.value * 100, M.TAG_OPACITY), transform: [{ translateY: M.kf(t.value * 100, M.TAG_RISE) * s }] }));
-  return (
-    <>
-      <Animated.View style={[styles.word, { marginTop: 18 * s }, wrapStyle]} accessibilityRole="header" accessibilityLabel="ArenaHub">
-        {WORD.map((ch, i) => (
-          <Letter key={i} t={t} i={i} ch={ch} fs={58 * s} color={color} />
-        ))}
-      </Animated.View>
-      <Animated.Text style={[{ fontFamily: Font.body, fontSize: 17 * s, color: tag, marginTop: 18 * s }, tagStyle]}>Find a court. Get a game.</Animated.Text>
-    </>
-  );
-}
-
-function Letter({ t, i, ch, fs, color }: { t: { value: number }; i: number; ch: string; fs: number; color: string }) {
-  const style = useAnimatedStyle(() => {
-    const p = t.value * 100 - i * M.LETTER_DELAY_PCT;
-    return { opacity: M.kf(p, M.LETTER_OPACITY), transform: [{ translateY: M.kf(p, M.LETTER_RISE) * (fs / 58) }, { scale: M.kf(p, M.LETTER_SCALE) }] };
-  });
-  return <Animated.Text style={[{ fontFamily: Font.display, fontSize: fs, lineHeight: fs * 1.05, letterSpacing: -0.025 * fs, color }, style]}>{ch}</Animated.Text>;
 }
 
 // ------------------------------------------------------------------ loader
 function Loader({ tone = 'light', size = 72 }: { tone?: BrandTone; size?: number }) {
   const pal = PAL[tone];
   const reduce = useReducedMotion();
-  const order = useMemo(() => M.shuffled(BALL_KEYS), []);
-  const u = useSharedValue(0);
-  useEffect(() => {
-    if (reduce) return;
-    u.value = 0;
-    u.value = withRepeat(withTiming(8, { duration: M.LAP_MS * 8, easing: Easing.linear }), -1, false);
-    return () => cancelAnimation(u);
-  }, [reduce, u]);
-
-  const runProps = useAnimatedProps(() => ({ strokeDashoffset: ((-74 - 100 * (u.value - Math.floor(u.value))) / 200) * M.RING2_LEN }));
-  const ballProps = useAnimatedProps(() => {
-    const frac = u.value - Math.floor(u.value);
-    const [x, y] = M.pointAt(M.LOOP_PATH, frac * 100);
-    const lap = Math.floor(u.value) % 8;
-    const sway = -14 * Math.cos(frac * 2 * Math.PI);
-    const spin = order[lap] === 'shuttle' ? sway : frac * 360;
-    return { transform: `translate(${x} ${y}) rotate(${spin})` };
-  });
+  const order = useMemo(() => shuffled(BALL_KEYS), []);
+  const el = useClock(LAP_MS, true, reduce);
+  const u = el / LAP_MS;
+  const lap = Math.floor(u) % 8;
+  const frac = u - Math.floor(u);
+  const [x, y] = pointAt(LOOP_PATH, reduce ? 62 : frac * 100);
+  const ball = order[reduce ? 0 : lap];
+  const spin = ball === 'shuttle' ? -14 * Math.cos(frac * 2 * Math.PI) : frac * 360;
   return (
     <View style={{ width: size, height: size }} accessibilityRole="progressbar" accessibilityLabel="Loading">
       <Svg width={size} height={size} viewBox="0 0 120 120" style={{ overflow: 'visible' }}>
         <Still tone={tone} noBall />
-        {reduce ? null : <AP d={RING2_D} fill="none" stroke={pal.run} strokeWidth={4.6} strokeLinecap="round" strokeDasharray={`${(26 / 200) * M.RING2_LEN} ${(400 / 200) * M.RING2_LEN}`} animatedProps={runProps} />}
-        {reduce ? (
-          <G transform={`translate(${M.pointAt(M.LOOP_PATH, 62)[0]} ${M.pointAt(M.LOOP_PATH, 62)[1]})`}>
-            <Face ball={order[0]} tone={tone} />
-          </G>
-        ) : (
-          <AG animatedProps={ballProps}>
-            {order.map((b, k) => (
-              <LapFace key={b} u={u} k={k} ball={b} tone={tone} />
-            ))}
-          </AG>
-        )}
+        {reduce ? null : <Path d={RING2_D} fill="none" stroke={pal.run} strokeWidth={4.6} strokeLinecap="round" strokeDasharray={`${(26 / 200) * RING2_LEN} ${(400 / 200) * RING2_LEN}`} strokeDashoffset={((-74 - 100 * frac) / 200) * RING2_LEN} />}
+        <G transform={`translate(${x} ${y}) rotate(${reduce ? 0 : spin})`}>
+          <Face ball={ball} tone={tone} />
+        </G>
       </Svg>
     </View>
-  );
-}
-
-function LapFace({ u, k, ball, tone }: { u: { value: number }; k: number; ball: BallKey; tone: BrandTone }) {
-  const props = useAnimatedProps(() => ({ opacity: Math.floor(u.value) % 8 === k ? 1 : 0 }));
-  return (
-    <AG animatedProps={props}>
-      <Face ball={ball} tone={tone} />
-    </AG>
   );
 }
 
 // ------------------------------------------------------------------ success
 // okB of the logo file: 0% high and small, 20% visible, 62% lands squashed, 80% bounces 5 up, 100% rests
 const OK_E = [0.4, 0, 0.6, 1] as const;
-const OK_Y: M.Stop[] = [[0, -34, OK_E], [62, 0, OK_E], [80, -5, OK_E], [100, 0]];
-const OK_SX: M.Stop[] = [[0, 0.7, OK_E], [62, 1.08, OK_E], [80, 1, OK_E], [100, 1]];
-const OK_SY: M.Stop[] = [[0, 0.7, OK_E], [62, 0.86, OK_E], [80, 1, OK_E], [100, 1]];
-const OK_OPACITY: M.Stop[] = [[0, 0, OK_E], [20, 1, OK_E], [100, 1]];
+const OK_Y: Stop[] = [[0, -34, OK_E], [62, 0, OK_E], [80, -5, OK_E], [100, 0]];
+const OK_SX: Stop[] = [[0, 0.7, OK_E], [62, 1.08, OK_E], [80, 1, OK_E], [100, 1]];
+const OK_SY: Stop[] = [[0, 0.7, OK_E], [62, 0.86, OK_E], [80, 1, OK_E], [100, 1]];
+const OK_OPACITY: Stop[] = [[0, 0, OK_E], [20, 1, OK_E], [100, 1]];
+const SUCCESS_MS = 1200;
+
 function Success({ tone = 'light', size = 120, onDone }: { tone?: BrandTone; size?: number; onDone?: () => void }) {
   const pal = PAL[tone];
   const reduce = useReducedMotion();
-  const ring = useSharedValue(reduce ? 0 : 240);
-  const drop = useSharedValue(reduce ? 1 : 0);
-  const pulse = useSharedValue(reduce ? 1 : 0);
+  const el = useClock(SUCCESS_MS, false, reduce);
+  const done = useRef(false);
   useEffect(() => {
-    if (reduce) {
+    if (!done.current && el >= SUCCESS_MS) {
+      done.current = true;
       onDone?.();
-      return;
     }
-    ring.value = withTiming(0, { duration: 600, easing: Easing.bezier(0.6, 0, 0.2, 1) });
-    drop.value = withDelay(250, withTiming(1, { duration: 500, easing: Easing.bezier(0.4, 0, 0.6, 1) }));
-    pulse.value = withDelay(600, withTiming(1, { duration: 600, easing: Easing.out(Easing.quad) }, (f) => {
-      if (f && onDone) runOnJS(onDone)();
-    }));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const ringProps = useAnimatedProps(() => ({ strokeDashoffset: (ring.value / 240) * M.RING_LEN }));
-  const ballProps = useAnimatedProps(() => {
-    const d = drop.value * 100;
-    return {
-      opacity: M.kf(d, OK_OPACITY),
-      transform: `translate(60 71) translate(0 ${M.kf(d, OK_Y)}) scale(${M.kf(d, OK_SX)} ${M.kf(d, OK_SY)})`,
-    };
-  });
-  const pulseProps = useAnimatedProps(() => ({ opacity: pulse.value <= 0 ? 0 : 0.8 * (1 - pulse.value), transform: `translate(60 71) scale(${1 + 2.6 * pulse.value}) translate(-60 -71)` }));
+  }, [el]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ring = (1 - bezier([0.6, 0, 0.2, 1], clamp01(el / 600))) * 240;
+  const d = clamp01((el - 250) / 500) * 100;
+  const pulse = clamp01((el - 600) / 600);
+  const pulseE = 1 - (1 - pulse) * (1 - pulse);
   const faint = tone === 'light' ? 'rgba(15,26,21,.18)' : 'rgba(196,245,70,.2)';
   return (
     <Svg width={size} height={size} viewBox="0 0 120 120" accessibilityRole="image" accessibilityLabel="Done">
       <Path d={RING_D} fill="none" stroke={faint} strokeWidth={3.2} />
-      <AP d={RING_D} fill="none" stroke={pal.ac} strokeWidth={3.6} strokeLinecap="round" strokeDasharray={`${M.RING_LEN} ${M.RING_LEN}`} animatedProps={ringProps} />
+      <Path d={RING_D} fill="none" stroke={pal.ac} strokeWidth={3.6} strokeLinecap="round" strokeDasharray={`${RING_LEN} ${RING_LEN}`} strokeDashoffset={(ring / 240) * RING_LEN} />
       <G transform="translate(-2.5 0)">
         <G transform="rotate(24 60 24)">
           <Racket c={pal.mk} hole={pal.hole} />
@@ -430,10 +365,10 @@ function Success({ tone = 'light', size = 120, onDone }: { tone?: BrandTone; siz
           <Bat c={pal.mk} ridge={pal.hole} />
         </G>
       </G>
-      <AC cx={60} cy={71} r={8} fill="none" stroke={pal.ac} strokeWidth={1.4} animatedProps={pulseProps} />
-      <AG animatedProps={ballProps}>
+      <Circle cx={60} cy={71} r={8} fill="none" stroke={pal.ac} strokeWidth={1.4} opacity={pulse <= 0 ? 0 : 0.8 * (1 - pulseE)} transform={`translate(60 71) scale(${1 + 2.6 * pulseE}) translate(-60 -71)`} />
+      <G opacity={kf(d, OK_OPACITY)} transform={`translate(60 71) translate(0 ${kf(d, OK_Y)}) scale(${kf(d, OK_SX)} ${kf(d, OK_SY)})`}>
         <Face ball="football" tone={tone} />
-      </AG>
+      </G>
     </Svg>
   );
 }
@@ -441,13 +376,8 @@ function Success({ tone = 'light', size = 120, onDone }: { tone?: BrandTone; siz
 // ------------------------------------------------------------------ offline
 function Offline({ size = 120 }: { size?: number }) {
   const reduce = useReducedMotion();
-  const y = useSharedValue(0);
-  useEffect(() => {
-    if (reduce) return;
-    y.value = withRepeat(withTiming(3, { duration: 1500, easing: Easing.inOut(Easing.quad) }), -1, true);
-    return () => cancelAnimation(y);
-  }, [reduce, y]);
-  const ballProps = useAnimatedProps(() => ({ transform: `translate(0 ${y.value})` }));
+  const el = useClock(3000, true, reduce, 15);
+  const y = reduce ? 0 : 1.5 - 1.5 * Math.cos((el / 3000) * 2 * Math.PI);
   const grey = '#8A968F';
   return (
     <Svg width={size} height={size} viewBox="0 0 120 120" accessibilityRole="image" accessibilityLabel="No connection">
@@ -460,29 +390,59 @@ function Offline({ size = 120 }: { size?: number }) {
           <Bat c={grey} ridge="#F1F2EF" />
         </G>
       </G>
-      <AG animatedProps={ballProps}>
+      <G transform={`translate(0 ${y})`}>
         <G transform="translate(60 71)">
           <Circle r={8} fill="#C9D0CB" stroke={grey} strokeWidth={1.1} />
           <Path d="M0 -3.8 L3.6 -1.2 L2.2 3 H-2.2 L-3.6 -1.2 Z" fill={grey} />
         </G>
         <Path d="M50 83 L70 59" stroke="#CF4141" strokeWidth={3} strokeLinecap="round" />
-      </AG>
+      </G>
     </Svg>
   );
 }
 
 // ------------------------------------------------------------------ the one component
+/** If an animated mark ever fails to draw, the still mark is shown instead (the app carries on). */
+class MarkBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: Error) {
+    if (__DEV__) console.log('[brand] the animated mark failed, showing the still one:', error.message);
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
 export function BrandMark({ mode = 'still', tone = 'light', ball = 'football', size, speed, balls, onLand, onSettled, onDone, withWord }: BrandMarkProps) {
-  if (mode === 'hero') return <Hero tone={tone} size={size} speed={speed} balls={balls} onLand={onLand} onSettled={onSettled} withWord={withWord} />;
-  if (mode === 'loader') return <Loader tone={tone} size={size} />;
-  if (mode === 'success') return <Success tone={tone} size={size} onDone={onDone} />;
-  if (mode === 'offline') return <Offline size={size} />;
   const s = size ?? 72;
-  return (
+  const still = (
     <Svg width={s} height={s} viewBox="0 0 120 120" accessibilityRole="image" accessibilityLabel="ArenaHub">
       <Still tone={tone} ball={ball} />
     </Svg>
   );
+  if (mode === 'still') return still;
+  // the animated modes: when one fails, the still mark stands in, and the callbacks the screen waits for still fire
+  const fallback = <FallbackStill still={still} onLand={onLand} onSettled={onSettled} onDone={onDone} />;
+  return (
+    <MarkBoundary fallback={fallback}>
+      {mode === 'hero' ? <Hero tone={tone} size={size} speed={speed} balls={balls} onLand={onLand} onSettled={onSettled} withWord={withWord} /> : null}
+      {mode === 'loader' ? <Loader tone={tone} size={size} /> : null}
+      {mode === 'success' ? <Success tone={tone} size={size} onDone={onDone} /> : null}
+      {mode === 'offline' ? <Offline size={size} /> : null}
+    </MarkBoundary>
+  );
+}
+
+function FallbackStill({ still, onLand, onSettled, onDone }: { still: ReactNode; onLand?: () => void; onSettled?: () => void; onDone?: () => void }) {
+  useEffect(() => {
+    onLand?.();
+    onSettled?.();
+    onDone?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <>{still}</>;
 }
 
 const styles = StyleSheet.create({
@@ -490,5 +450,5 @@ const styles = StyleSheet.create({
   word: { flexDirection: 'row' },
 });
 
-export { M as brandMotion, pickHeroBalls };
+export { pickHeroBalls };
 export type { BallKey, BrandMarkProps, BrandMode, BrandTone };
