@@ -128,9 +128,21 @@ async def list_groups(
                 "refund_amount": refund_amount,
                 "refund_status": refund_status,
                 "tab": tab,
+                "booking_id": items[0].id,
+                "my_rating": await _my_rating(db, items),
             }
         )
     return out, total
+
+
+async def _my_rating(db: AsyncSession, rows: list[Booking]) -> int | None:
+    from app.modules.review import repository as review_repo
+
+    for b in rows:
+        review = await review_repo.get_review_by_booking(db, b.id)
+        if review is not None:
+            return review.rating
+    return None
 
 
 async def _refund_summary(db: AsyncSession, payment) -> tuple[Decimal, str | None]:

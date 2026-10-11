@@ -175,3 +175,6 @@ class BookingGroupListItem(BaseModel):
     refund_amount: Decimal
     refund_status: str | None = None
     tab: str
+    # for Rate this game: one booking of the group, and the stars already given (None = not rated)
+    booking_id: uuid.UUID
+    my_rating: int | None = None

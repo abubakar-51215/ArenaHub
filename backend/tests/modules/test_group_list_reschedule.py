@@ -28,6 +28,9 @@ async def test_grouped_list_has_one_card_per_booking_and_the_server_picks_the_ta
     assert up[0]["status"] == "confirmed" and Decimal(up[0]["total"]) == Decimal("6000.00")
     assert up[0]["booking_code"].startswith("AHB-") and up[0]["refund_status"] is None
     assert (
+        up[0]["booking_id"] in [b["id"] for b in group["bookings"]] and up[0]["my_rating"] is None
+    )
+    assert (
         await _tab(client, player, "past") == [] and await _tab(client, player, "cancelled") == []
     )
 
