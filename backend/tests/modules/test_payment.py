@@ -32,14 +32,29 @@ def _next_weekday(target_iso_weekday: int) -> date:
     return today + timedelta(days=days_ahead)
 
 
+# open every day, for the tests that book a fixed number of days ahead (whatever weekday that is)
+ALL_WEEK_HOURS = {
+    day: {"open": "08:00", "close": "23:59"}
+    for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+}
+
+
 async def _make_bookable_court(
-    client: AsyncClient, db_session: AsyncSession, owner: dict, owner_email: str
+    client: AsyncClient,
+    db_session: AsyncSession,
+    owner: dict,
+    owner_email: str,
+    days_ahead: int | None = None,
 ) -> tuple[str, str, date]:
     h = auth_header(owner)
     arena = await client.post(
         "/api/v1/owner/arenas",
         headers=h,
-        json=arena_payload(advance_percentage=50, require_full_payment=False),
+        json=arena_payload(
+            advance_percentage=50,
+            require_full_payment=False,
+            **({"operating_hours": ALL_WEEK_HOURS} if days_ahead else {}),
+        ),
     )
     arena_id = arena.json()["data"]["id"]
     admin = await make_admin(client, db_session, f"admin-{owner_email}@example.com")
@@ -52,7 +67,9 @@ async def _make_bookable_court(
     )
     court_id = court.json()["data"]["id"]
 
-    monday = _next_weekday(1)
+    # the next Monday, or a fixed number of days ahead for tests about the 24-hour refund tier
+    # (the next Monday is only a day away on a Sunday)
+    monday = date.today() + timedelta(days=days_ahead) if days_ahead else _next_weekday(1)
     await client.post(
         f"/api/v1/owner/courts/{court_id}/slots/generate",
         headers=h,
@@ -440,7 +457,7 @@ async def test_refund_created_and_processed_on_cancel_of_confirmed_booking(
 ) -> None:
     owner, _ = await make_user(client, db_session, "payowner8@example.com", "owner")
     player, _ = await make_user(client, db_session, "payplayer8@example.com", "player")
-    _, court_id, monday = await _make_bookable_court(client, db_session, owner, "payowner8")
+    _, court_id, monday = await _make_bookable_court(client, db_session, owner, "payowner8", days_ahead=3)
     slots = await _slots(client, court_id, monday)
     group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
 
@@ -658,7 +675,7 @@ async def test_cancel_after_reschedule_refund_is_capped_and_audited(
     player, _ = await make_user(client, db_session, "payrfp1@example.com", "player")
     h = auth_header(owner)
     arena = await client.post(
-        "/api/v1/owner/arenas", headers=h, json=arena_payload(require_full_payment=True)
+        "/api/v1/owner/arenas", headers=h, json=arena_payload(require_full_payment=True, operating_hours=ALL_WEEK_HOURS)
     )
     arena_id = arena.json()["data"]["id"]
     admin = await make_admin(client, db_session, "admin-payrf1@example.com")
@@ -679,7 +696,7 @@ async def test_cancel_after_reschedule_refund_is_capped_and_audited(
             "price_multiplier": "1.50",
         },
     )
-    monday = _next_weekday(1)
+    monday = date.today() + timedelta(days=3)  # three days ahead: outside the 24-hour tier on any weekday
     await client.post(
         f"/api/v1/owner/courts/{court_id}/slots/generate",
         headers=h,
