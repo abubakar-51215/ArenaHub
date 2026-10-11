@@ -749,6 +749,7 @@ async def get_group_details(
         booking_code=booking_code_for(group_id),
         cancellation_note=describe_refund_policy(arena.refund_policy, _booking_start(first)),
         booking_ids=[b.id for b in bookings],
+        slot_ids=[b.slot_id for b in bookings],
         refund_amount=refund_amount,
         refund_status=refund_status,
         can_cancel=can_cancel,

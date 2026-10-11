@@ -174,6 +174,7 @@ async def test_group_details_and_release(client: AsyncClient, db_session: AsyncS
     assert d["booking_code"] == "AHB-" + group_id.replace("-", "")[:6].upper()
     assert d["arena_name"] and d["court_name"] == "Court A"
     assert d["payment_method"] == "bank_transfer"
+    assert d["slot_ids"] == [slots[0]["id"]]
     assert float(d["pay_now"]) == 2000.0 and float(d["due_at_arena"]) == 0.0
 
     rel = await client.post(

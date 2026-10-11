@@ -120,6 +120,7 @@ class BookingGroupDetails(BaseModel):
     booking_code: str
     cancellation_note: str
     booking_ids: list[uuid.UUID]
+    slot_ids: list[uuid.UUID] = Field(default_factory=list)
     # what was refunded (or is on its way) for a cancelled group
     refund_amount: Decimal = Decimal("0")
     refund_status: str | None = None
