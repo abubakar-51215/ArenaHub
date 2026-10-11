@@ -58,7 +58,7 @@ export default function ChangePasswordScreen() {
     <>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => router.back()} hitSlop={11} accessibilityRole="button" accessibilityLabel="Back">
             <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
           </Pressable>
           <Text style={styles.title}>Change Password</Text>

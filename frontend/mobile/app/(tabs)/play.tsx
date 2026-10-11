@@ -45,7 +45,7 @@ export default function PlayScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Matchmaking</Text>
-        <Pressable onPress={() => setShowFilters((s) => !s)}>
+        <Pressable onPress={() => setShowFilters((s) => !s)} hitSlop={11} accessibilityRole="button" accessibilityLabel="Filters">
           <Ionicons name="filter-outline" size={22} color={Colors.light.text} />
         </Pressable>
       </View>
