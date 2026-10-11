@@ -1,8 +1,9 @@
 import { router, type Href } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/components/search/search-bar';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -33,7 +34,7 @@ export default function ResultsScreen() {
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
       <ScreenHead title={f.title ?? 'Results'} />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.pad}>
+      <KeyboardScroll contentContainerStyle={styles.pad}>
         <SearchBar
           value={f.q}
           onChangeText={f.setQ}
@@ -124,7 +125,7 @@ export default function ResultsScreen() {
             </View>
           </>
         )}
-      </ScrollView>
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }

@@ -1,13 +1,11 @@
 import { router } from 'expo-router';
-import { useRef } from 'react';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, type ScrollView } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { BrandMark } from '@/components/brand/brand-mark';
 import { BackButton } from '@/components/ui/back-button';
-import { FieldScrollContext } from '@/components/ui/field';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 
@@ -30,15 +28,9 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack, showMark, children }: AuthScreenProps) {
-  const scrollRef = useRef<ScrollView>(null);
-  const contentRef = useRef<View>(null);
   return (
     <SafeAreaView style={styles.page} edges={['top', 'bottom']}>
-      <KeyboardAwareScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        bottomOffset={24}>
+      <KeyboardScroll contentContainerStyle={styles.content}>
         {hideBack ? (
           showMark ? (
             <View style={styles.markRow}>
@@ -66,12 +58,8 @@ export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack
           </Text>
         ) : null}
         {subtitle ? <Text style={[styles.subtitle, { marginBottom: subtitleGap }]}>{subtitle}</Text> : null}
-        <FieldScrollContext.Provider value={{ scrollRef, contentRef }}>
-          <View ref={contentRef} collapsable={false}>
-            {children}
-          </View>
-        </FieldScrollContext.Provider>
-      </KeyboardAwareScrollView>
+        {children}
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }

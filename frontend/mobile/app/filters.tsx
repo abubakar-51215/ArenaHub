@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/components/search/search-bar';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Button } from '@/components/ui/button';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { RangeSlider } from '@/components/ui/range-slider';
@@ -50,7 +51,7 @@ export default function FiltersScreen() {
             </Pressable>
           }
         />
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.pad}>
+        <KeyboardScroll contentContainerStyle={styles.pad}>
           <SearchBar value={f.q} onChangeText={f.setQ} onSubmit={() => {}} />
 
           <Text style={styles.eyebrow} accessibilityRole="header">
@@ -83,7 +84,7 @@ export default function FiltersScreen() {
             onChange={f.setPrice}
             topLabel={(v) => `₨ ${v.toLocaleString('en-PK')}+`}
           />
-        </ScrollView>
+        </KeyboardScroll>
         <View style={styles.sticky}>
           <Button title={r.isLoading ? 'Show arenas' : `Show ${r.total} ${r.total === 1 ? 'arena' : 'arenas'}`} onPress={show} />
         </View>

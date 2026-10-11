@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
 import { useArenaCourts } from '@/hooks/useArenas';
@@ -82,7 +83,21 @@ export default function CreateMatchScreen() {
         <View style={{ width: 22 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardScroll
+        contentContainerStyle={styles.content}
+        footer={
+      <View style={styles.footer}>
+        <Button
+          title="Create Match"
+          loading={mutation.isPending}
+          disabled={!canSubmit}
+          onPress={() => {
+            setError(null);
+            mutation.mutate();
+          }}
+        />
+      </View>
+        }>
         <Text style={styles.sectionTitle}>Arena</Text>
         {arena ? (
           <View style={styles.selectedRow}>
@@ -102,6 +117,8 @@ export default function CreateMatchScreen() {
           <>
             <TextField
               placeholder="Search for an arena"
+              returnKeyType="search"
+              autoCorrect={false}
               value={arenaQuery}
               onChangeText={setArenaQuery}
             />
@@ -214,19 +231,8 @@ export default function CreateMatchScreen() {
         ) : null}
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </ScrollView>
+      </KeyboardScroll>
 
-      <View style={styles.footer}>
-        <Button
-          title="Create Match"
-          loading={mutation.isPending}
-          disabled={!canSubmit}
-          onPress={() => {
-            setError(null);
-            mutation.mutate();
-          }}
-        />
-      </View>
     </SafeAreaView>
   );
 }

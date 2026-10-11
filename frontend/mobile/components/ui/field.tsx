@@ -1,10 +1,9 @@
-import { createContext, forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
   useWindowDimensions,
   View,
-  type ScrollView,
   type TextInput as RNTextInput,
   type TextInputProps,
 } from 'react-native';
@@ -43,12 +42,6 @@ const ICON_HUGE: Partial<Record<IconName, number>> = { mail: 104, lock: 88 }; //
 const EASE = Easing.bezier(0.2, 0.8, 0.2, 1);
 const MS = 300;
 
-/** A screen's scroll view, so a focused field can bring itself into view above the keyboard. */
-export const FieldScrollContext = createContext<{
-  scrollRef: React.RefObject<ScrollView | null>;
-  contentRef: React.RefObject<View | null>;
-} | null>(null);
-
 interface FieldProps extends TextInputProps {
   icon?: IconName;
   /** Use the huge-when-idle behaviour (mail and lock fields only). */
@@ -65,8 +58,6 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const inner = useRef<RNTextInput>(null);
-  const box = useRef<View>(null);
-  const scroll = useContext(FieldScrollContext);
   useImperativeHandle(ref, () => inner.current as RNTextInput);
 
   const reduceMotion = useReducedMotion();
@@ -113,25 +104,9 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
   const eyeOnStyle = useAnimatedStyle(() => ({ opacity: 1 - crossed.value }));
   const eyeOffStyle = useAnimatedStyle(() => ({ opacity: crossed.value }));
 
-  // after the tap's animation settles, bring the field into view above the keyboard
-  useEffect(() => {
-    if (!focused || !huge || !scroll?.scrollRef.current || !scroll.contentRef.current || !box.current) return;
-    const id = setTimeout(
-      () => {
-        box.current?.measureLayout(
-          scroll.contentRef.current as never,
-          (_x, y) => scroll.scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true }),
-          () => {},
-        );
-      },
-      reduceMotion ? 0 : MS + 40,
-    );
-    return () => clearTimeout(id);
-  }, [focused, huge, reduceMotion, scroll]);
-
   const showEye = revealable && secureTextEntry;
   return (
-    <Pressable accessible={false} onPress={() => inner.current?.focus()} ref={box as never}>
+    <Pressable accessible={false} onPress={() => inner.current?.focus()}>
       <Animated.View
         style={[styles.base, focused && !error && styles.focused, error && styles.error, huge && boxStyle, !huge && styles.normalHeight]}>
         {icon ? (

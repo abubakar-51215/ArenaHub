@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
@@ -17,6 +18,8 @@ export default function ChangePasswordScreen() {
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
 
+  const newRef = useRef<RNTextInput>(null);
+  const confirmRef = useRef<RNTextInput>(null);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -52,7 +55,7 @@ export default function ChangePasswordScreen() {
     currentPassword.length > 0 && newPassword.length >= 8 && newPassword === confirmPassword;
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()}>
@@ -62,24 +65,34 @@ export default function ChangePasswordScreen() {
           <View style={{ width: 22 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           {step === 'form' ? (
             <>
               <TextField
                 label="Current Password"
-                secureTextEntry
+                kind="password"
+                nextRef={newRef}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
               />
               <TextField
+                ref={newRef}
                 label="New Password"
-                secureTextEntry
+                kind="newPassword"
+                nextRef={confirmRef}
                 value={newPassword}
                 onChangeText={setNewPassword}
               />
               <TextField
+                ref={confirmRef}
                 label="Confirm New Password"
-                secureTextEntry
+                kind="newPassword"
+                onSubmit={() => {
+                  if (formValid && !requestMutation.isPending) {
+                    setError(null);
+                    requestMutation.mutate();
+                  }
+                }}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 error={
@@ -113,8 +126,13 @@ export default function ChangePasswordScreen() {
               </Text>
               <TextField
                 label="Verification Code"
-                keyboardType="number-pad"
-                maxLength={6}
+                kind="code"
+                onSubmit={() => {
+                  if (code.length === 6 && !verifyMutation.isPending) {
+                    setError(null);
+                    verifyMutation.mutate();
+                  }
+                }}
                 value={code}
                 onChangeText={setCode}
               />
@@ -133,9 +151,9 @@ export default function ChangePasswordScreen() {
               <Button title="Back" variant="ghost" onPress={() => setStep('form')} />
             </>
           )}
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 

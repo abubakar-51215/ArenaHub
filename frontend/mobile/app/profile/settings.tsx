@@ -2,10 +2,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { Colors } from '@/constants/theme';
@@ -119,7 +120,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()}>
@@ -129,7 +130,7 @@ export default function SettingsScreen() {
           <View style={{ width: 22 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <Text style={styles.sectionLabel}>Notifications</Text>
           {NOTIFICATION_TOGGLES.map((t) => (
             <View key={t.key} style={styles.toggleRow}>
@@ -158,10 +159,15 @@ export default function SettingsScreen() {
                 <>
                   <TextField
                     label="New email"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
+                    kind="email"
                     value={newEmail}
                     onChangeText={setNewEmail}
+                    onSubmit={() => {
+                      if (newEmail.trim() && !requestEmailMutation.isPending) {
+                        setEmailError(null);
+                        requestEmailMutation.mutate();
+                      }
+                    }}
                   />
                   {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
                   <View style={styles.inlineActions}>
@@ -182,10 +188,15 @@ export default function SettingsScreen() {
                   <Text style={styles.otpInfo}>We sent a 6-digit code to {newEmail}.</Text>
                   <TextField
                     label="Verification code"
-                    keyboardType="number-pad"
-                    maxLength={6}
+                    kind="code"
                     value={emailCode}
                     onChangeText={setEmailCode}
+                    onSubmit={() => {
+                      if (emailCode.length === 6 && !verifyEmailMutation.isPending) {
+                        setEmailError(null);
+                        verifyEmailMutation.mutate();
+                      }
+                    }}
                   />
                   {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
                   <View style={styles.inlineActions}>
@@ -216,9 +227,15 @@ export default function SettingsScreen() {
                 <>
                   <TextField
                     label="New phone number"
-                    keyboardType="phone-pad"
+                    kind="phone"
                     value={newPhone}
                     onChangeText={setNewPhone}
+                    onSubmit={() => {
+                      if (newPhone.trim() && !requestPhoneMutation.isPending) {
+                        setPhoneError(null);
+                        requestPhoneMutation.mutate();
+                      }
+                    }}
                   />
                   {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
                   <View style={styles.inlineActions}>
@@ -239,10 +256,15 @@ export default function SettingsScreen() {
                   <Text style={styles.otpInfo}>We sent a 6-digit code to {newPhone}.</Text>
                   <TextField
                     label="Verification code"
-                    keyboardType="number-pad"
-                    maxLength={6}
+                    kind="code"
                     value={phoneCode}
                     onChangeText={setPhoneCode}
+                    onSubmit={() => {
+                      if (phoneCode.length === 6 && !verifyPhoneMutation.isPending) {
+                        setPhoneError(null);
+                        verifyPhoneMutation.mutate();
+                      }
+                    }}
                   />
                   {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
                   <View style={styles.inlineActions}>
@@ -267,9 +289,9 @@ export default function SettingsScreen() {
               {deleteMutation.isPending ? 'Deleting…' : 'Delete account'}
             </Text>
           </Pressable>
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
