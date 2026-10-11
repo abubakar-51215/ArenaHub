@@ -29,6 +29,7 @@ from app.modules.review.schema import (
 )
 from app.modules.user.model import User, UserRole
 
+
 def _to_response(review: Review, reviewer_name: str) -> ReviewResponse:
     return ReviewResponse(
         id=review.id,

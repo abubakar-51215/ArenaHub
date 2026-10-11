@@ -47,6 +47,16 @@ async def list_my_complaints(
     return success(data=data, message="Complaints retrieved.")
 
 
+@router.get("/{complaint_id}", summary="Get one of my complaints")
+async def get_my_complaint(
+    complaint_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    complaint = await service.get_my_complaint(db, user, complaint_id)
+    return success(data=complaint, message="Complaint retrieved.")
+
+
 @admin_router.get("", summary="Get all complaints")
 async def list_all_complaints(
     status: ComplaintStatus | None = None,
