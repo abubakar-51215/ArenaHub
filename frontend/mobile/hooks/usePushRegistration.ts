@@ -10,19 +10,22 @@
  */
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
+import { loadNotifications, pushAvailable } from "@/lib/push";
 import { registerDeviceToken } from "@/services/notifications";
 
 export function usePushRegistration(enabled: boolean) {
   useEffect(() => {
-    if (!enabled || !Device.isDevice) return;
+    // Expo Go cannot receive push (removed in SDK 53): nothing is loaded, nothing is logged
+    if (!pushAvailable || !enabled || !Device.isDevice) return;
 
     let cancelled = false;
 
     async function register() {
+      const Notifications = loadNotifications();
+      if (!Notifications) return;
       const { status: existing } = await Notifications.getPermissionsAsync();
       let status = existing;
       if (status !== "granted") {
