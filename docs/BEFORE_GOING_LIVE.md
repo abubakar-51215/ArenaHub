@@ -10,6 +10,12 @@ Nothing here has been changed; this is only the list.
 5. **STRIPE_SECRET_KEY** / **STRIPE_WEBHOOK_SECRET** in `backend/.env` are placeholders (`sk_test_xxx`, `whsec_xxx`). Card payments answer "Card payments are not available yet" until a real key is set. JazzCash and EasyPaisa are "coming soon" until their gateway work is done.
 6. **EMAIL_*** settings in `backend/.env` (host, username, password, from). The admin sign-in code is sent by email, so mail must work before launch.
 7. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev, and the dev OTP logging must not be used.
-8. **Replace the draft Terms and Privacy text** (mobile, `frontend/mobile/constants/legal.ts`) with the final wording before any Play Store or App Store upload.
-9. **Replace the PLACEHOLDER support email and hours** (mobile, `frontend/mobile/constants/support.ts`: `support@arenahub.pk` and "Monday to Friday, 9:00 AM to 6:00 PM (PKT)") with the real ones before any Play Store or App Store upload.
-10. **App identifier** `arenahub.app.pk` (`ios.bundleIdentifier` and `android.package` in `frontend/mobile/app.json`, build number 1, version code 1) cannot be changed after the first upload to a store. Both stores accept the format; neither checks that you own the domain.
+
+## Decide at the very end (do not build yet)
+
+Open decisions only. Nothing here is chosen, and nothing for them is built in the app today.
+
+1. **App identifiers** (`ios.bundleIdentifier`, `android.package`, build number, version code): which domain they will be based on. They cannot be changed after the first upload to a store.
+2. **Final Terms and Privacy text**, and where it lives (in the app or on a web page). The Profile row "Terms and privacy" is left out until then.
+3. **Real support email and support hours.** The "Contact us" block of Help and support is left out until then.
+4. **The production web address** (`WEB_PUBLIC_URL`, and the matching `NEXT_PUBLIC_SITE_URL`).

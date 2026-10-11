@@ -203,7 +203,6 @@ function RootNavigator() {
         <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
         <Stack.Screen name="profile/change-email" options={{ headerShown: false }} />
         <Stack.Screen name="profile/change-phone" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/legal" options={{ headerShown: false }} />
         <Stack.Screen name="profile/reviews" options={{ headerShown: false }} />
         <Stack.Screen name="support/index" options={{ headerShown: false }} />
         <Stack.Screen name="support/new" options={{ headerShown: false }} />

@@ -21,6 +21,7 @@ import { useAuthStore } from '@/store/auth';
 
 // Profile, from arena-hub-player-app-account.html (frames 05 and 06): who I am, two numbers counted from my bookings
 // (Games played, Spent), the rows that lead to the rest of the account, and Log out behind a red sheet with a plain Stay.
+// The "Terms and privacy" row is left out for now (its text is decided at the very end: docs/BEFORE_GOING_LIVE.md).
 // "Your rating" and "Payment methods" are not here (no data for them).
 
 const initials = (name: string) =>
@@ -137,8 +138,7 @@ export default function ProfileScreen() {
           />
           <MenuRow icon={<Icon name="bell" size={18} color={Colors.light.text2} />} title="Notifications" onPress={() => go('/notifications')} />
           <MenuRow icon={<Icon name="set" size={18} color={Colors.light.text2} />} title="Settings" onPress={() => go('/profile/settings')} />
-          <MenuRow icon={<IconExtra name="lifebuoy" color={Colors.light.text2} />} title="Help and support" onPress={() => go('/support')} />
-          <MenuRow icon={<IconExtra name="doc" color={Colors.light.text2} />} title="Terms and privacy" onPress={() => go('/profile/legal')} last />
+          <MenuRow icon={<IconExtra name="lifebuoy" color={Colors.light.text2} />} title="Help and support" onPress={() => go('/support')} last />
         </MenuCard>
 
         <MenuCard style={{ marginTop: 14 }}>
