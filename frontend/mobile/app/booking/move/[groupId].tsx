@@ -17,27 +17,20 @@ import { Colors } from '@/constants/theme';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
 import { ApiError } from '@/lib/api';
 import { compactRange, hoursLabel, shortDate } from '@/lib/checkout';
-import { toLocalDateString } from '@/lib/dates';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { groupSlots, hidePast, hourLabel } from '@/lib/slots';
 import { getBookingGroup, previewReschedule, rescheduleBookingGroup } from '@/services/bookings';
 import type { TimeSlot } from '@/types';
 
+import { dayStrip, formatDayLong } from '@/lib/karachi';
 // Reschedule and Confirm move, from arena-hub-player-app-bookings.html. The same court and the same length;
 // the server prices the move (reschedule-preview) and does it (reschedule). A dearer time leaves the extra
 // to pay at the arena (no online balance payment while the gateways are not live); a cheaper one is refunded.
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// the seven days start at today in Asia/Karachi, whatever time zone the phone is set to (lib/karachi.ts)
 function nextDays(n: number) {
-  const out = [];
-  const today = new Date();
-  for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    out.push({ iso: toLocalDateString(d), weekday: WEEKDAY[d.getDay()], num: d.getDate(), long: d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) });
-  }
-  return out;
+  return dayStrip(n).map((d) => ({ iso: d.iso, weekday: d.weekday, num: d.num, long: formatDayLong(d.iso) }));
 }
 
 export default function MoveBookingScreen() {

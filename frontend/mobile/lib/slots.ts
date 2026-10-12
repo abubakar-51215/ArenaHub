@@ -1,5 +1,6 @@
 import type { OperatingHours, TimeSlot } from '@/types';
 
+import { karachiMinutes, karachiParts } from '@/lib/karachi';
 /** "18:00:00" -> "6 PM", "18:30" -> "6:30 PM". */
 export function hourLabel(time: string): string {
   const [h, m] = time.split(':').map(Number);
@@ -16,7 +17,7 @@ const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'frida
  * left out) or has no hours.
  */
 export function openTillLabel(hours: OperatingHours | undefined, now: Date = new Date()): string | null {
-  const today = hours?.[WEEKDAYS[now.getDay()]];
+  const today = hours?.[WEEKDAYS[karachiParts(now).dow]];
   if (!today?.close) return null;
   return `Open till ${hourLabel(today.close)}`;
 }
@@ -59,7 +60,7 @@ export function groupSlots(slots: TimeSlot[], base: number): SlotGroup[] {
 
 /** Today's slots that have already started are hidden. `date` is YYYY-MM-DD. */
 export function hidePast(slots: TimeSlot[], todayIso: string, now: Date = new Date()): TimeSlot[] {
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const minutes = karachiMinutes(now);
   return slots.filter((s) => {
     if (s.date !== todayIso) return true;
     const [h, m] = s.start_time.split(':').map(Number);

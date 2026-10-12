@@ -24,6 +24,8 @@ export function usePushRegistration(enabled: boolean) {
     if (!pushAvailable || !enabled || !Device.isDevice) return;
 
     let cancelled = false;
+    let lastSent: string | null = null;
+    let sub: { remove: () => void } | null = null;
 
     async function register() {
       const Notifications = loadNotifications();
@@ -48,12 +50,26 @@ export function usePushRegistration(enabled: boolean) {
         projectId ? { projectId } : undefined,
       );
       if (cancelled) return;
+      await send(token);
 
+      // The system can change the device token while the app is installed (a restore, an app update, a Google refresh):
+      // when it does, ask for the push token again and send it if it is a new one. Real builds only (this hook returns
+      // early in Expo Go and on the web).
+      sub = Notifications.addPushTokenListener(async () => {
+        try {
+          const fresh = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+          await send(fresh.data);
+        } catch {
+          // best-effort
+        }
+      });
+    }
+
+    async function send(token: string) {
+      if (token === lastSent) return;
       try {
-        await registerDeviceToken(
-          token,
-          Platform.OS === "ios" ? "ios" : "android",
-        );
+        await registerDeviceToken(token, Platform.OS === "ios" ? "ios" : "android");
+        lastSent = token;
       } catch {
         // Best-effort — a failed registration just means no push this session.
       }
@@ -70,6 +86,7 @@ export function usePushRegistration(enabled: boolean) {
       .finally(() => clearTimeout(timer));
     return () => {
       cancelled = true;
+      sub?.remove();
       clearTimeout(timer);
     };
   }, [enabled]);

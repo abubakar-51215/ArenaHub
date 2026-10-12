@@ -25,6 +25,7 @@ import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { cancelBookingGroup, getBookingGroup, getCancelPreview } from '@/services/bookings';
 
+import { hasStarted } from '@/lib/karachi';
 // Booking detail, Cancel booking (sheet), Cancel late (same sheet, the server's numbers), Cannot move and
 // Cancelled detail, from arena-hub-player-app-bookings.html. The server says what is allowed
 // (can_cancel, can_reschedule) and what a cancel would refund (cancel-preview).
@@ -62,7 +63,7 @@ export default function BookingDetailScreen() {
   const cancelled = g && (g.status === 'cancelled' || g.status === 'rejected');
   const live = g && (g.status === 'confirmed' || g.status === 'pending_payment' || g.status === 'pending_approval');
   const unpaid = g?.status === 'pending_payment';
-  const startPast = g ? new Date(`${g.booking_date}T${g.start_time}`) <= new Date() : false;
+  const startPast = g ? hasStarted(g.booking_date, g.start_time) : false;
   // an unpaid booking whose time has passed, or one the server let go after 24 hours, can no longer be paid
   const released = !!g && ((unpaid && startPast) || (!!cancelled && g.status === 'cancelled' && /^Auto-cancelled/.test(g.cancellation_reason ?? '')));
   const rejected = g?.status === 'rejected';

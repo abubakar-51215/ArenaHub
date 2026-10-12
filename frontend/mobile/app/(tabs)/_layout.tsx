@@ -11,7 +11,7 @@ import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth';
 
-const BAR_HEIGHT = 60.25;
+const BAR_HEIGHT = 61;
 const ICON_SIZE = 19;
 
 // design/mobile-spec.md "Tab bar". @react-navigation/bottom-tabs' own web
@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: Font.bodySemi,
-    fontSize: 9.5,
-    lineHeight: 14.25,
+    fontSize: 11,
+    lineHeight: 15,
     letterSpacing: BodyLetterSpacing,
   },
 });
