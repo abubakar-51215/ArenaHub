@@ -18,13 +18,13 @@ import { Colors, Font } from '@/constants/theme';
 import { useArenaCourts } from '@/hooks/useArenas';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
 import { useAvailability } from '@/hooks/useSlotsInfo';
-import { toLocalDateString } from '@/lib/dates';
 import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { groupSlots, hidePast, hourLabel, rangeLabel, slotKind, toggleSlot } from '@/lib/slots';
 import { getAvailability } from '@/services/courts';
 import type { TimeSlot } from '@/types';
 
+import { dayStrip, formatDayLong, formatDayShort, weekdayName } from '@/lib/karachi';
 // Pick a slot, from arena-hub-player-app-arena-slots.html: a 7-day strip with
 // a dot per day, a court switch, the day's times in groups (Morning / Afternoon
 // / Evening, "cheaper" or "peak" decided here from the court's base price),
@@ -33,24 +33,17 @@ import type { TimeSlot } from '@/types';
 // your selection with a toast; one held mid-booking shows "Held" and cannot be
 // tapped; times already past today are hidden.
 const MAX_SLOTS_PER_BOOKING = 8; // mirrors backend MAX_SLOTS_PER_BOOKING
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// the seven days start at today in Asia/Karachi, whatever time zone the phone is set to (lib/karachi.ts)
 function nextDays(n: number) {
-  const out = [];
-  const today = new Date();
-  for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    out.push({
-      iso: toLocalDateString(d),
-      weekday: WEEKDAY[d.getDay()],
-      num: d.getDate(),
-      long: d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }),
-      short: `${WEEKDAY[d.getDay()]} ${d.getDate()} ${d.toLocaleDateString('en-GB', { month: 'short' })}`,
-      dayName: d.toLocaleDateString('en-GB', { weekday: 'long' }),
-    });
-  }
-  return out;
+  return dayStrip(n).map((d) => ({
+    iso: d.iso,
+    weekday: d.weekday,
+    num: d.num,
+    long: formatDayLong(d.iso),
+    short: formatDayShort(d.iso),
+    dayName: weekdayName(d.iso),
+  }));
 }
 
 function Pill({ slot, on, kind, onPress }: { slot: TimeSlot; on: boolean; kind: 'open' | 'cheaper' | 'peak'; onPress: () => void }) {

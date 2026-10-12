@@ -14,12 +14,12 @@ import { StickyBar } from '@/components/ui/sticky-bar';
 import { Text } from '@/components/ui/text';
 import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
-import { toLocalDateString } from '@/lib/dates';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { listBookingGroups, type BookingTab } from '@/services/bookings';
 import { fetchMyBookingsReport } from '@/services/reports';
 
+import { addDays, karachiToday } from '@/lib/karachi';
 // Booking history, from arena-hub-player-app-bookings.html (frame "History report"): a period, how many bookings
 // and how much was spent in it, and a download. The file comes from GET /reports/my-bookings (PDF) and is
 // handed to the system share sheet.
@@ -31,13 +31,13 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'all', label: 'All time' },
 ];
 
+// periods are counted back from today in Asia/Karachi (lib/karachi.ts)
 function startOf(p: Period): string | undefined {
-  const d = new Date();
-  if (p === 'last30') d.setDate(d.getDate() - 30);
-  else if (p === 'last3m') d.setMonth(d.getMonth() - 3);
-  else if (p === 'year') return `${d.getFullYear()}-01-01`;
-  else return undefined;
-  return toLocalDateString(d);
+  const today = karachiToday();
+  if (p === 'last30') return addDays(today, -30);
+  if (p === 'last3m') return addDays(today, -91);
+  if (p === 'year') return `${today.slice(0, 4)}-01-01`;
+  return undefined;
 }
 
 export default function BookingHistoryScreen() {

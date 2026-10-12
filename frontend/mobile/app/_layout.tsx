@@ -8,6 +8,7 @@ import {
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
+import * as Linking from "expo-linking";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -21,6 +22,7 @@ import { AnimatedSplash } from "@/components/brand/animated-splash";
 import { ToastHost } from "@/components/ui/toast";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { ApiError } from "@/lib/api";
+import { pathFromUrl, rememberLink } from "@/lib/deeplink";
 import { setupForegroundNotifications } from "@/lib/push";
 import { startupLog } from "@/lib/startup-log";
 import { fetchMe } from "@/services/auth";
@@ -95,6 +97,16 @@ function RootNavigator() {
   // What the app waits for before it leaves the splash: the saved sign-in is read from the phone (hydrated), and, when
   // one is saved, it is checked with the server (GET /users/me, 8 s limit). If the server cannot be reached the app goes
   // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
+  // a link opened while signed out is kept, and opened after Log in (lib/deeplink.ts)
+  useEffect(() => {
+    const keep = (url: string | null) => {
+      if (!useAuthStore.getState().accessToken) rememberLink(pathFromUrl(url));
+    };
+    Linking.getInitialURL().then(keep).catch(() => {});
+    const sub = Linking.addEventListener("url", (e) => keep(e.url));
+    return () => sub.remove();
+  }, []);
+
   const everReady = useRef(false);
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],

@@ -82,6 +82,9 @@ export function formatDayShort(iso: string): string {
   return `${WEEKDAYS[weekdayOf(iso)]} ${d} ${MONTHS[m - 1]}`;
 }
 
+/** "Thursday" for a "YYYY-MM-DD" day. */
+export const weekdayName = (iso: string): string => WEEKDAYS_LONG[weekdayOf(iso)];
+
 /** "Thursday 22 May" (the long form used by the slot day names). */
 export function formatDayLong(iso: string): string {
   const [, m, d] = iso.slice(0, 10).split('-').map(Number);
