@@ -27,7 +27,7 @@ Frame files are in `design/prototypes/`: **auth** = `arena-hub-player-app-auth.h
 | `court/[id]/slots` | slots (Choose a time) | Y | yes | 2026-10-12 |
 | `booking/[courtId]` Review booking | pay (Review booking) | Y | yes | 2026-10-11 |
 | `booking/payment` | pay (Payment, Leave payment) | Y | yes | 2026-10-11 |
-| `booking/bank/[groupId]` | pay (Bank transfer) + states (Upload progress, stopped, failed, too big) | Y | yes | 2026-10-12 |
+| `booking/bank/[groupId]` | pay (Bank transfer) + states (Upload progress, stopped, failed, too big) | Y | yes | 2026-10-12 (upload states tested) |
 | `booking/awaiting/[groupId]` | pay (Awaiting approval) | Y | yes | 2026-10-11 |
 | `booking/confirmed/[groupId]` | pay (Confirmed) | Y | yes | 2026-10-11 |
 | `booking/failed/[groupId]` | pay (Payment failed / rejected) | n/a | yes | 2026-10-11 |

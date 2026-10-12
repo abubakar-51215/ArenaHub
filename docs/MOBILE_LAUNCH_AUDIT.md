@@ -23,7 +23,7 @@ decision or text only you can give.
 * Medium 3, the old profile screens are replaced by the account frames (Personal information, Settings, Saved arenas, Payment history,
   My reviews, Help and support). Low 2, the template components are removed.
 
-**Still open and "needs frame": offline banner (medium 6), cancel an upload in progress (medium 7).**
+**Done in the offline and upload step (frame `arena-hub-player-app-states.html`): offline banner (medium 6), cancel an upload in progress (medium 7).** Still open: nothing in this list needs a frame.
 **Deferred to the very end by decision (docs/BEFORE_GOING_LIVE.md, "Decide at the very end"):** blockers B2 (Terms and privacy text, and the
 Help contact) and B3 (app identifiers) stay open on purpose.
 
@@ -81,9 +81,10 @@ Help contact) and B3 (app identifiers) stay open on purpose.
 4. **Large phone font (130% / 150%) not measured.** Count badge is capped at 1.2x; other text grows freely. Needs a pass on a
    phone with the system font at 150% (cards, chips, tab labels at 9.5 px).
 5. **Tab labels are 9.5 px** (the frame says so; below the 14 px rule). Needs frame or a decision.
-6. **No network banner.** There is no "You are offline" line; each screen shows its own "Could not load" with Try again. Add
-   `@react-native-community/netinfo` plus a small bar (needs frame).
-7. **Upload cannot be cancelled** while sending (the Send button shows a spinner). Needs a Cancel in the frame.
+6. **Network banner. Done.** NetInfo plus the dark offline bar and the lime "Back online. Updating…" bar (`NetworkShell`); actions that
+   need the server say "... needs a connection" and toast "No connection. Your change was not saved."
+7. **Upload cancel. Done.** Progress with a percent, Cancel opens the red "Stop uploading?" sheet ("Keep uploading"), then the stopped,
+   failed and too-big states (`components/booking/receipt-box.tsx`).
 8. **No retry on mutations** (pay, cancel, move). Correct on purpose (no double charge); the message says "try again".
 9. **Push token is registered once per start**; a token that changes while the app runs is not re-sent.
 10. **Image lists**: the arena photo list uses a fixed height, so no jump; avatar and receipt images have no failure state
