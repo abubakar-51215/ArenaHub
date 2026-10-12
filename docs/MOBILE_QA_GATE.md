@@ -85,6 +85,17 @@ Added after the first phone test (Log in, Search and comment boxes were hidden b
    action is a red sheet with a plain "Stay"; every action that creates, pays, cancels, moves, joins, leaves or deletes is guarded
    against a double tap.
 
+## Offline and upload rules (standing, added with `arena-hub-player-app-states.html`)
+1. The offline bar belongs to `NetworkShell` only. It pushes the screens down by exactly its height and slides back (no layout jump),
+   never covers a screen's own header, turns the status-bar icons light while it is shown, and is instant under "reduce motion".
+2. A screen that has saved data keeps it offline; a screen with nothing saved shows "No connection." with Try again
+   (`ErrorState` / `ErrorCopy`), never a blank or a spinner. Back online, the open screens load again.
+3. Every button that needs the server takes `offlineLabel` ("Pay needs a connection"). A tap on it gives a soft haptic and the toast
+   "No connection. Your change was not saved." and sends nothing.
+4. React Query uses `networkMode: 'always'`, so an offline request fails at once instead of waiting.
+5. An upload shows its percent, can be stopped (red "Stop uploading?" sheet with a plain "Keep uploading"), keeps the 60 s limit,
+   and ends in one of: stopped, failed (Try again, Choose another), too big or wrong type. Prove with a slow, an offline and a 6 MB test.
+
 ## Badge rules (standing)
 
 A number, dot or count on top of an icon, tab or button:
