@@ -9,7 +9,7 @@ scheduler jobs in ``app/tasks/scheduler.py``).
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from app.modules.notification import repository as repo
 from app.modules.notification.model import Notification
 from app.modules.notification.schema import NotificationResponse
 from app.modules.user.model import User
+from app.shared.display import karachi_date, plural, rupees, sport_name, time_12h
 from app.shared.pagination import PaginationParams, paginated
 
 EVENT_META: dict[str, dict[str, str]] = {
@@ -51,12 +52,12 @@ EVENT_META: dict[str, dict[str, str]] = {
     },
     "new_confirmed_booking": {
         "title": "New booking received",
-        "body": "You have {count} new confirmed booking(s).",
+        "body": "You have {new_bookings}.",
         "category": "booking",
     },
     "refund_initiated": {
         "title": "Refund initiated",
-        "body": "A refund of PKR {amount} has been initiated for your booking.",
+        "body": "A refund of {amount} has been initiated for your booking.",
         "category": "payment",
     },
     "balance_paid": {
@@ -97,7 +98,7 @@ EVENT_META: dict[str, dict[str, str]] = {
     },
     "refund_completed": {
         "title": "Refund completed",
-        "body": "Your refund of PKR {amount} has been completed.",
+        "body": "Your refund of {amount} has been completed.",
         "category": "payment",
     },
     "payment_reminder": {
@@ -130,18 +131,21 @@ EVENT_META: dict[str, dict[str, str]] = {
     },
     "match_cancelled": {
         "title": "A match was cancelled",
-        "body": "The {sport} match at {arena_name} on {match_date} was cancelled.",
+        "body": "The {sport} match at {arena_name} on {match_date} at {match_time} was cancelled.",
         "category": "match",
     },
     "match_full": {
         "title": "Your match is full",
-        "body": "The {sport} match at {arena_name} on {match_date} now has all its players.",
+        "body": (
+            "The {sport} match at {arena_name} on {match_date} at {match_time} now has all "
+            "its players."
+        ),
         "category": "match",
     },
     "refund_to_send": {
         "title": "A refund is waiting for you",
         "body": (
-            "{player_name} cancelled a booking at {arena_name}. Send PKR {amount} back by bank "
+            "{player_name} cancelled a booking at {arena_name}. Send {amount} back by bank "
             "transfer, then mark it as paid."
         ),
         "category": "payment",
@@ -149,7 +153,7 @@ EVENT_META: dict[str, dict[str, str]] = {
     "refund_needs_manual": {
         "title": "Your refund is being handled by our team",
         "body": (
-            "We could not complete your refund of PKR {amount} automatically. Our team will "
+            "We could not complete your refund of {amount} automatically. Our team will "
             "process it and contact you."
         ),
         "category": "payment",
@@ -163,12 +167,42 @@ DEFAULT_EVENT = {
 }
 
 
+def display_context(context: dict[str, object]) -> dict[str, object]:
+    """The values of a notice as people read them (the saved ``data`` keeps the raw ones for links).
+
+    amount -> "₨ 2,000", sport -> "Futsal", match_date -> "Tue 13 Oct", match_time -> "7:00 PM",
+    count -> "1 new confirmed booking" / "3 new confirmed bookings" (as ``new_bookings``)."""
+    shown = dict(context)
+    if "amount" in shown:
+        shown["amount"] = rupees(shown["amount"])
+    if isinstance(shown.get("sport"), str):
+        shown["sport"] = sport_name(str(shown["sport"]))
+    if isinstance(shown.get("match_date"), str | date):
+        shown["match_date"] = karachi_date(shown["match_date"])  # type: ignore[arg-type]
+    if isinstance(shown.get("match_time"), str | time):
+        shown["match_time"] = time_12h(shown["match_time"])  # type: ignore[arg-type]
+    if isinstance(shown.get("count"), int):
+        n = int(shown["count"])  # type: ignore[call-overload]
+        shown["new_bookings"] = plural(n, "new confirmed booking", "new confirmed bookings")
+    return shown
+
+
 def _channel_enabled(user: User, channel: str, category: str) -> bool:
     """``notification_preferences`` is free-form JSON shaped like
     ``{"push": {"booking": true, ...}, "email": {...}}``; an absent key
     defaults to enabled so existing users (empty dict) keep getting notified."""
     channel_prefs = user.notification_preferences.get(channel, {})
     return bool(channel_prefs.get(category, True))
+
+
+def render(event: str, context: dict[str, object]) -> tuple[str, str, str]:
+    """(title, body, category) of a notice, written for people (see ``display_context``)."""
+    meta = EVENT_META.get(event, DEFAULT_EVENT)
+    try:
+        body = meta["body"].format(**display_context(context))
+    except (KeyError, IndexError):
+        body = meta["body"]
+    return meta["title"], body, meta["category"]
 
 
 async def notify(
@@ -183,13 +217,7 @@ async def notify(
     if user is None:
         return None
 
-    meta = EVENT_META.get(event, DEFAULT_EVENT)
-    title = meta["title"]
-    try:
-        body = meta["body"].format(**context)
-    except (KeyError, IndexError):
-        body = meta["body"]
-    category = meta["category"]
+    title, body, category = render(event, context)
 
     notification = Notification(
         user_id=user_id, event=event, title=title, body=body, data=dict(context)
