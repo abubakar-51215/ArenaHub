@@ -124,7 +124,7 @@ async def _notify_people(
             match_id=str(match.id),
             sport=match.sport,
             arena_name=arena_name,
-            match_date=match.match_date.isoformat(),
+            match_date=match.match_date.strftime("%a %d %b"),
             **extra,
         )
 

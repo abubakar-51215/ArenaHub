@@ -44,11 +44,13 @@ export function ArenaImage({ photo, style, children, fallback, sport, ...props }
   return (
     <View style={[styles.container, style]}>
       {fallback === undefined && <View style={[StyleSheet.absoluteFill, styles.fallback]} />}
+      {/* a custom fallback (the avatar's initials) is always drawn underneath, so a photo that never arrives leaves it showing */}
+      {fallback !== undefined ? fallback : null}
       {showImage ? (
         <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" {...props} onError={(e) => { setFailed(true); props.onError?.(e); }} />
-      ) : (
-        (fallback ?? (sport !== undefined ? <CourtArt sport={sport} /> : null))
-      )}
+      ) : fallback === undefined && sport !== undefined ? (
+        <CourtArt sport={sport} />
+      ) : null}
       {children}
     </View>
   );
