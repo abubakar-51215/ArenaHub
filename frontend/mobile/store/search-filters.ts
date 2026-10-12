@@ -7,7 +7,10 @@ import type { ArenaCity } from '@/types';
  * text, the filters, and the sort. A "See all" link from Home sets a title and
  * a sort and clears the rest.
  */
-export type SortChoice = 'best' | 'price_asc' | 'rating_desc' | 'newest';
+export type SortChoice = 'best' | 'price_asc' | 'rating_desc' | 'newest' | 'near';
+
+/** The "How far" chips of Filters, in km (null = Any). */
+export const RADIUS_CHOICES = [1, 3, 5, 10] as const;
 
 export const PRICE_MIN = 200;
 export const PRICE_MAX = 5000; // "5,000+": no upper limit
@@ -18,6 +21,8 @@ interface SearchFiltersState {
   sport?: string;
   priceMin: number;
   priceMax: number;
+  /** Only arenas within this many km (needs the player's location); null = any distance. */
+  radiusKm: number | null;
   sort: SortChoice;
   /** True once the person picked a sort: smart search then stops choosing one ("cheap" means price). */
   sortTouched: boolean;
@@ -28,13 +33,14 @@ interface SearchFiltersState {
   setSport: (sport?: string) => void;
   setPrice: (min: number, max: number) => void;
   setSort: (sort: SortChoice) => void;
+  setRadius: (km: number | null) => void;
   /** Open Results fresh: everything cleared, then these set. */
   open: (preset: { q?: string; sport?: string; sort?: SortChoice; title?: string }) => void;
   /** Clear filters: the filters AND the search text. */
   clearAll: () => void;
 }
 
-const BLANK = { q: '', city: undefined, sport: undefined, priceMin: PRICE_MIN, priceMax: PRICE_MAX, sort: 'best' as SortChoice, sortTouched: false, title: undefined };
+const BLANK = { q: '', city: undefined, sport: undefined, priceMin: PRICE_MIN, priceMax: PRICE_MAX, radiusKm: null as number | null, sort: 'best' as SortChoice, sortTouched: false, title: undefined };
 
 export const useSearchFilters = create<SearchFiltersState>()((set) => ({
   ...BLANK,
@@ -43,11 +49,12 @@ export const useSearchFilters = create<SearchFiltersState>()((set) => ({
   setSport: (sport) => set({ sport }),
   setPrice: (priceMin, priceMax) => set({ priceMin, priceMax }),
   setSort: (sort) => set({ sort, sortTouched: true }),
+  setRadius: (radiusKm) => set({ radiusKm }),
   open: (preset) => set({ ...BLANK, ...preset, sortTouched: preset.sort !== undefined }),
   clearAll: () => set({ ...BLANK }),
 }));
 
-/** The number on the Filters button: city, sport and a changed price range. */
-export function activeFilterCount(s: Pick<SearchFiltersState, 'city' | 'sport' | 'priceMin' | 'priceMax'>): number {
-  return (s.city ? 1 : 0) + (s.sport ? 1 : 0) + (s.priceMin > PRICE_MIN || s.priceMax < PRICE_MAX ? 1 : 0);
+/** The number on the Filters button: city, sport, a changed price range and a distance. */
+export function activeFilterCount(s: Pick<SearchFiltersState, 'city' | 'sport' | 'priceMin' | 'priceMax'> & { radiusKm?: number | null }): number {
+  return (s.city ? 1 : 0) + (s.sport ? 1 : 0) + (s.priceMin > PRICE_MIN || s.priceMax < PRICE_MAX ? 1 : 0) + (s.radiusKm ? 1 : 0);
 }

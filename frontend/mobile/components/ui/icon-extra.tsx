@@ -3,7 +3,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Colors } from '@/constants/theme';
 
 /** A few line icons the G6 frames use that the generated icon set does not have. Same 24 grid, 1.9 stroke, round caps. */
-export type ExtraIconName = 'clock' | 'receipt' | 'doc' | 'trash' | 'camera' | 'share' | 'check' | 'lifebuoy' | 'edit' | 'flag' | 'minus' | 'plus' | 'bookings' | 'people' | 'close';
+export type ExtraIconName = 'clock' | 'receipt' | 'doc' | 'trash' | 'camera' | 'share' | 'check' | 'lifebuoy' | 'edit' | 'flag' | 'minus' | 'plus' | 'locate' | 'bookings' | 'people' | 'close';
 
 const SHAPES: Record<ExtraIconName, (c: string) => React.ReactNode> = {
   clock: (c) => (
@@ -32,6 +32,13 @@ const SHAPES: Record<ExtraIconName, (c: string) => React.ReactNode> = {
   ),
   edit: (c) => <Path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4" stroke={c} />,
   flag: (c) => <Path d="M5 21V4M5 4h11l-2 4 2 4H5" stroke={c} />,
+  locate: (c) => (
+    <>
+      <Circle cx={12} cy={12} r={4} stroke={c} />
+      <Circle cx={12} cy={12} r={8} stroke={c} />
+      <Path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke={c} />
+    </>
+  ),
   minus: (c) => <Path d="M5 12h14" stroke={c} />,
   plus: (c) => <Path d="M12 5v14M5 12h14" stroke={c} />,
   bookings: (c) => (

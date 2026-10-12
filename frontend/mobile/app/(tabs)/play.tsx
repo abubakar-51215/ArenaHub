@@ -1,184 +1,127 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { ScreenLoader } from '@/components/brand/screen-loader';
-import { Text } from '@/components/ui/text';
+import { router, type Href } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MatchCard } from '@/components/g6/match-card';
 import { Button } from '@/components/ui/button';
-import { MatchCard } from '@/components/match-card';
-import { Colors, Shadow } from '@/constants/theme';
-import { SPORTS, sportLabel } from '@/constants/sports';
+import { IconExtra } from '@/components/ui/icon-extra';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, ErrorState } from '@/components/ui/state-view';
+import { Segmented } from '@/components/ui/segmented';
+import { Text } from '@/components/ui/text';
+import { Colors } from '@/constants/theme';
 import { useMyMatches, useOpenMatches } from '@/hooks/useMatches';
-import { ApiError } from '@/lib/api';
-import { joinMatch } from '@/services/matches';
-import type { Match } from '@/types';
+import { useAuthStore } from '@/store/auth';
+import type { ArenaCity, Match } from '@/types';
 
+// Matchmaking, from arena-hub-player-app-play.html (frames 06 to 10): "Short a player?" with Post a match, Open matches and
+// My matches, a card per match, and empty / loading / error states. Open matches are the ones in the player's saved city (until
+// the near-me search covers matches too). A match is always on one of the creator's own booked games.
+type Tab = 'open' | 'mine';
+const post = () => router.push('/play/create' as unknown as Href);
+
+function SkeletonCard() {
+  return (
+    <View style={styles.skCard}>
+      <Skeleton height={14} width="55%" radius={7} />
+      <Skeleton height={14} width="70%" radius={7} />
+      <Skeleton height={14} width="85%" radius={7} />
+    </View>
+  );
+}
 
 export default function PlayScreen() {
-  const [tab, setTab] = useState<'open' | 'mine'>('open');
-  const [sport, setSport] = useState<string | undefined>(undefined);
-  const [showFilters, setShowFilters] = useState(false);
-  const queryClient = useQueryClient();
+  const me = useAuthStore((s) => s.user);
+  const [tab, setTab] = useState<Tab>('open');
+  const [refreshing, setRefreshing] = useState(false);
+  const city = me?.preferred_locations?.[0] as ArenaCity | undefined;
 
-  const openParams = useMemo(() => ({ sport, page_size: 30 }), [sport]);
-  const open = useOpenMatches(openParams);
+  const params = useMemo(() => ({ city, page_size: 30 }), [city]);
+  const open = useOpenMatches(params);
   const mine = useMyMatches();
+  const q = tab === 'open' ? open : mine;
 
-  const joinMutation = useMutation({
-    mutationFn: (matchId: string) => joinMatch(matchId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['open-matches'] });
-      queryClient.invalidateQueries({ queryKey: ['my-matches'] });
-    },
-    onError: (err) =>
-      Alert.alert('Could not join', err instanceof ApiError ? err.message : 'Please try again.'),
-  });
+  const items: Match[] = useMemo(() => {
+    if (tab === 'open') return open.data?.items ?? [];
+    if (!mine.data) return [];
+    const all = [...mine.data.created, ...mine.data.joined];
+    return all.sort((a, b) => (a.match_date + a.start_time < b.match_date + b.start_time ? 1 : -1));
+  }, [tab, open.data, mine.data]);
 
-  const isLoading = tab === 'open' ? open.isLoading : mine.isLoading;
-  const openItems = open.data?.items ?? [];
-  const myItems = mine.data ? [...mine.data.created, ...mine.data.joined] : [];
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await q.refetch();
+    setRefreshing(false);
+  }, [q]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Matchmaking</Text>
-        <Pressable onPress={() => setShowFilters((s) => !s)} hitSlop={11} accessibilityRole="button" accessibilityLabel="Filters">
-          <Ionicons name="filter-outline" size={22} color={Colors.light.text} />
-        </Pressable>
-      </View>
-
+    <SafeAreaView style={styles.page} edges={['top']}>
+      <Text variant="archivo" style={styles.title} accessibilityRole="header">
+        Play
+      </Text>
       <View style={styles.hero}>
-        <View style={styles.heroIcon}>
-          <Ionicons name="people" size={22} color="#fff" />
+        <View style={{ flex: 1 }}>
+          <Text variant="archivo" style={styles.heroTitle}>
+            Short a player?
+          </Text>
+          <Text style={styles.heroText}>Post your booked game. Others can join.</Text>
         </View>
-        <View style={styles.heroTextWrap}>
-          <Text style={styles.heroTitle}>Find players. Join matches.</Text>
-          <Text style={styles.heroSubtitle}>Team up and play together!</Text>
+        <View style={{ minWidth: 126 }}>
+          <Button title="Post a match" variant="lime" onPress={post} />
         </View>
       </View>
-
-      <View style={styles.tabs}>
-        {(['open', 'mine'] as const).map((t) => (
-          <Pressable
-            key={t}
-            style={[styles.tab, tab === t && styles.tabActive]}
-            onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'open' ? 'Open Matches' : 'My Matches'}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.seg}>
+        <Segmented
+          options={[
+            { value: 'open', label: 'Open matches' },
+            { value: 'mine', label: 'My matches' },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
       </View>
 
-      {tab === 'open' && showFilters ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterBar}
-          contentContainerStyle={styles.filterBarContent}>
-          {SPORTS.map((o) => o.value).map((s) => (
-            <Pressable
-              key={s}
-              style={[styles.chip, sport === s && styles.chipActive]}
-              onPress={() => setSport(sport === s ? undefined : s)}>
-              <Text style={[styles.chipText, sport === s && styles.chipTextActive]}>{sportLabel(s)}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      ) : null}
-
-      {isLoading ? (
-        <ScreenLoader />
+      {q.isLoading ? (
+        <View style={styles.list}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
+      ) : q.isError && !q.data ? (
+        <ErrorState title="Could not load matches." onRetry={() => q.refetch()} />
       ) : (
         <FlatList
-          data={tab === 'open' ? openItems : myItems}
-          keyExtractor={(m: Match) => m.id}
+          data={items}
+          keyExtractor={(m) => m.id}
+          renderItem={({ item }) => <MatchCard match={item} myId={me?.id} showPill={tab === 'mine'} />}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) =>
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.ink} colors={[Colors.light.ink]} />}
+          ListEmptyComponent={
             tab === 'open' ? (
-              <MatchCard
-                match={item}
-                joining={joinMutation.isPending && joinMutation.variables === item.id}
-                onJoin={(match) => joinMutation.mutate(match.id)}
+              <EmptyState
+                icon={<IconExtra name="people" size={30} color={Colors.light.limeDeep} />}
+                title="No open matches."
+                text="Be the first. Post a match for a game you have booked."
+                buttonTitle="Post a match"
+                onButton={post}
               />
             ) : (
-              <MatchCard match={item} showStatus />
+              <EmptyState icon={<IconExtra name="people" size={30} color={Colors.light.limeDeep} />} title="No matches yet." text="Matches you post or join will show up here." />
             )
-          }
-          ListEmptyComponent={
-            <Text style={styles.empty}>
-              {tab === 'open' ? 'No open matches right now.' : "You haven't created or joined any matches yet."}
-            </Text>
           }
         />
       )}
-
-      <View style={styles.footer}>
-        <Button title="Create a Match" onPress={() => router.push('/play/create')} />
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-  title: { fontSize: 20, fontWeight: '700', color: Colors.light.text },
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginHorizontal: 20,
-    marginTop: 14,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: Colors.light.ink,
-    ...Shadow.brand,
-  },
-  heroIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  heroTextWrap: { flex: 1 },
-  heroTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  heroSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-  tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 14 },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: Colors.light.lineSoft,
-  },
-  tabActive: { backgroundColor: Colors.light.tint },
-  tabText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
-  tabTextActive: { color: '#fff' },
-  filterBar: { flexGrow: 0, marginBottom: 8 },
-  filterBarContent: { paddingHorizontal: 20, gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
-  chipText: { fontSize: 12, color: Colors.light.text, textTransform: 'capitalize' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
-  list: { paddingHorizontal: 20, paddingBottom: 12 },
-  empty: { textAlign: 'center', color: Colors.light.muted, marginTop: 32 },
-  footer: { padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.light.border },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  title: { fontSize: 25, fontWeight: '700', letterSpacing: -0.75, color: Colors.light.text, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 12 },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 18, backgroundColor: Colors.light.ink, borderRadius: 18, padding: 16, marginBottom: 12 },
+  heroTitle: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
+  heroText: { fontSize: 14, lineHeight: 20, color: '#A9B5AE', marginTop: 4 },
+  seg: { paddingHorizontal: 18, paddingBottom: 10 },
+  list: { paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
+  skCard: { backgroundColor: Colors.light.card, borderWidth: 1, borderColor: Colors.light.line, borderRadius: 15, padding: 14, gap: 10, marginBottom: 10 },
 });

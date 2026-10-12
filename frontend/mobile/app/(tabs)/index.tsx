@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NearMePrompt, useNearMe } from '@/components/g6/near-me-prompt';
 import { SportChips } from '@/components/home/sport-chips';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
@@ -64,14 +65,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const darkTop = useDarkTop(insets.top + 150); // the dark hero is about 300 px tall
   const user = useAuthStore((s) => s.user);
-  const { city, status, detect } = useLocationStore();
+  const { city, detect } = useLocationStore();
+  const nearMe = useNearMe();
   const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    // One-shot auto-detect on first mount; the location line re-triggers it.
-    if (status === 'idle') detect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const trending = useQuery({
     queryKey: ['trending-arenas', city],
@@ -266,6 +262,7 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+      <NearMePrompt visible={nearMe.visible} onAllow={nearMe.allow} onNotNow={nearMe.notNow} />
     </View>
   );
 }

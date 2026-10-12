@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { sportLabel } from '@/constants/sports';
 import { useArenaSearch } from '@/hooks/useArenas';
 import { nlpSearch, type ParsedQuery } from '@/services/ai';
+import { useLocationStore } from '@/store/location';
 import { PRICE_MAX, PRICE_MIN, useSearchFilters, type SortChoice } from '@/store/search-filters';
 import type { ArenaCity } from '@/types';
 
@@ -40,6 +41,7 @@ export function understoodChips(parsed: ParsedQuery | undefined): string[] {
  */
 export function useResults(opts: { pageSize?: number } = {}) {
   const f = useSearchFilters();
+  const coords = useLocationStore((s) => s.coords);
   const q = useDebounced(f.q.trim());
   const parse = useQuery({
     queryKey: ['nlp-parse', q],
@@ -50,6 +52,8 @@ export function useResults(opts: { pageSize?: number } = {}) {
   const parsed = parse.data?.parsed;
 
   let sort: SortChoice = f.sort;
+  // "Near me" and a distance need the player's position; without it they quietly do nothing (the screens say why)
+  if (sort === 'near' && !coords) sort = 'best';
   if (!f.sortTouched && parsed && !parsed.used_fallback_text_search && SORT_FROM_WORDS[parsed.sort]) {
     sort = SORT_FROM_WORDS[parsed.sort];
   }
@@ -63,6 +67,9 @@ export function useResults(opts: { pageSize?: number } = {}) {
     price_max: f.priceMax < PRICE_MAX ? f.priceMax : undefined,
     sort: sort === 'newest' ? ('newest' as const) : sort,
     page_size: opts.pageSize ?? 30,
+    // the position goes with the search only to work out distances; the server does not keep it
+    ...(coords ? { lat: coords.lat, lon: coords.lon } : {}),
+    ...(coords && f.radiusKm ? { radius_km: f.radiusKm } : {}),
   };
   const search = useArenaSearch(params);
   return {
