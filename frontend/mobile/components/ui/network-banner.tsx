@@ -53,6 +53,7 @@ export function NetworkShell({ children }: { children: ReactNode }) {
         pointerEvents="none"
         style={[styles.bar, { height, backgroundColor: lime ? Colors.light.lime : Colors.light.ink }]}
         accessibilityElementsHidden={!visible}
+        aria-hidden={!visible}
         importantForAccessibility={visible ? 'yes' : 'no-hide-descendants'}>
         <View style={[styles.row, { height: BAR }]} accessibilityRole="alert" accessibilityLiveRegion="polite">
           {lime ? <Icon name="tick" size={16} color={Colors.light.ink} strokeWidth={2.6} /> : <OfflineIcon />}
