@@ -4675,3 +4675,110 @@ html[data-theme="dark"] .am-theme .am-d {
     offset-distance: 62%;
   }
 }
+
+
+/* owner Payments > Refunds tab (design/prototypes/arena-hub-owner-refunds.html): the filter row, the note, the table that
+   scrolls inside its own box (never the page), the empty / error states and the rows of the confirm dialog. */
+[data-owner] .ah-tab-wait {
+  background: var(--amber-wash, #fdf3dc);
+  color: var(--amber, #d9930b);
+  border-color: transparent;
+}
+[data-owner] .ah-rf-panel {
+  padding: 14px 18px 4px;
+  outline: none;
+}
+[data-owner] .ah-rf-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+[data-owner] .ah-rf-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--lime-wash);
+  border: 1px solid var(--lime-deep);
+  font-size: 13px;
+  color: var(--foreground);
+}
+[data-owner] .ah-rf-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+[data-owner] .ah-rf-scroll:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+[data-owner] .ah-rf-table {
+  min-width: 780px;
+}
+[data-owner] .ah-rf-skeleton {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0 18px;
+}
+[data-owner] .ah-sk-line {
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--line-soft, var(--muted));
+}
+[data-owner] .ah-rf-empty {
+  text-align: center;
+  padding: 34px 10px 38px;
+}
+[data-owner] .ah-rf-empty h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+[data-owner] .ah-rf-empty p {
+  margin: 0 0 14px;
+  color: var(--muted-foreground);
+}
+.ah-rf-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.ah-rf-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.ah-rf-rows dt {
+  color: var(--muted-foreground);
+}
+.ah-rf-rows dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* the arena choice on the Refunds tab (the prototype's .select) */
+[data-owner] .ah-select {
+  min-height: 36px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+}
+[data-owner] .ah-select:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  [data-owner] .ah-select {
+    min-height: 44px;
+  }
+}
