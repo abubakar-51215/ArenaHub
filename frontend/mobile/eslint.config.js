@@ -7,4 +7,9 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    // the check scripts run in Node
+    files: ['scripts/**/*.cjs'],
+    languageOptions: { globals: { __dirname: 'readonly', __filename: 'readonly', require: 'readonly', module: 'readonly', process: 'readonly', console: 'readonly' } },
+  },
 ]);
