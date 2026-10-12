@@ -45,6 +45,7 @@ from app.modules.notification.model import Notification
 from app.modules.payment import repository as payment_repo
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User
+from app.shared.display import karachi_date, time_12h
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
@@ -232,10 +233,8 @@ async def remind_booking(
         )
 
     slot = (
-        f"{booking.booking_date.strftime('%a')} {booking.booking_date.day} "
-        f"{booking.booking_date.strftime('%b')}, "
-        f"{booking.start_time.strftime('%I:%M %p').lstrip('0')} - "
-        f"{booking.end_time.strftime('%I:%M %p').lstrip('0')}"
+        f"{karachi_date(booking.booking_date)}, "
+        f"{time_12h(booking.start_time)} - {time_12h(booking.end_time)}"
     )
     await notify_user(
         db,

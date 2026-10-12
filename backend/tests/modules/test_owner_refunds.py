@@ -242,7 +242,7 @@ async def test_owner_can_filter_refunds_by_arena(
 ) -> None:
     owner, player, payment, refund = await _cancelled_bank_group(client, db_session, "or7")
     listed = (await client.get("/api/v1/owner/refunds", headers=auth_header(owner))).json()["data"]
-    arena_id = listed["items"][0]["arena_id"] if "arena_id" in listed["items"][0] else None
+    arena_id = listed["items"][0].get("arena_id")
     other = "00000000-0000-0000-0000-000000000000"
     none = await client.get(f"/api/v1/owner/refunds?arena_id={other}", headers=auth_header(owner))
     assert none.json()["data"]["items"] == []
