@@ -150,6 +150,26 @@ EVENT_META: dict[str, dict[str, str]] = {
         ),
         "category": "payment",
     },
+    "arena_waiting": {
+        "title": "New arena waiting",
+        "body": "{arena_name} asked to be listed.",
+        "category": "admin",
+    },
+    "complaint_new": {
+        "title": "New complaint",
+        "body": "{player_name} wrote to support.",
+        "category": "admin",
+    },
+    "arena_approved": {
+        "title": "Your arena is approved",
+        "body": "{arena_name} is approved. Players can find and book it.",
+        "category": "account",
+    },
+    "arena_rejected": {
+        "title": "Your arena was not approved",
+        "body": "{arena_name} was not approved. Reason: {reason}",
+        "category": "account",
+    },
     "refund_needs_manual": {
         "title": "Your refund is being handled by our team",
         "body": (

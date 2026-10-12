@@ -24,3 +24,23 @@ async def notify_user(db: AsyncSession, user_id: uuid.UUID, event: str, **contex
     # message itself, so a caller-supplied "event" kwarg would collide.
     log.info("notify_dispatch", user_id=str(user_id), notification_type=event, **context)
     await notification_service.notify(db, user_id, event, context)
+
+
+async def notify_admins(db: AsyncSession, event: str, **context: object) -> int:
+    """Tell every active admin (one notice each). Returns how many were told."""
+    from sqlalchemy import select
+
+    from app.modules.user.model import User, UserRole
+
+    ids = (
+        await db.scalars(
+            select(User.id).where(
+                User.role == UserRole.admin,
+                User.is_active.is_(True),
+                User.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    for admin_id in ids:
+        await notify_user(db, admin_id, event, **context)
+    return len(ids)

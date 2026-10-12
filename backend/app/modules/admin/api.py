@@ -14,11 +14,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.modules.admin import service
+from app.modules.admin import phone, service
 from app.modules.admin.overview import build_overview
 from app.modules.admin.schema import (
     ArenaModerationRequest,
     PlatformSettingsRequest,
+    ReactivateArenaRequest,
     RejectArenaRequest,
     SuspendUserRequest,
 )
@@ -62,6 +63,35 @@ async def get_dashboard_overview(
     the last 30 days or the current quarter, compared with the period before."""
     data = await build_overview(db, city=city, range_=range)
     return success(data=data, message="Dashboard overview retrieved.")
+
+
+@router.get("/phone/overview", summary="Overview numbers for the admin phone app")
+async def get_phone_overview(
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    return success(data=await phone.overview(db), message="Overview retrieved.")
+
+
+@router.get("/arena-cards", summary="Arenas with their owner, by scope (phone lists)")
+async def get_arena_cards(
+    scope: phone.ArenaScope = "waiting",
+    search: str | None = None,
+    params: PaginationParams = Depends(pagination_params),
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await phone.arena_cards(db, scope, search, params)
+    return success(data=data, message="Arenas retrieved.")
+
+
+@router.get("/arenas/{arena_id}/summary", summary="One arena for the phone detail screen")
+async def get_arena_summary(
+    arena_id: uuid.UUID,
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    return success(data=await phone.arena_summary(db, arena_id), message="Arena retrieved.")
 
 
 @router.get("/arenas", summary="Arena verification queue")
@@ -123,11 +153,11 @@ async def suspend_arena(
 @router.post("/arenas/{arena_id}/reactivate", summary="Lift an arena's suspension")
 async def reactivate_arena(
     arena_id: uuid.UUID,
-    data: ArenaModerationRequest,
+    data: ReactivateArenaRequest | None = None,
     user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    arena = await service.reactivate_arena(db, user, arena_id, data.reason)
+    arena = await service.reactivate_arena(db, user, arena_id, data.reason if data else None)
     return success(data=arena, message="Arena reactivated.")
 
 

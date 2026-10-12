@@ -10,7 +10,7 @@ from app.modules.complaint import repository as repo
 from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintStatus
 from app.modules.complaint.schema import ComplaintCreate, ComplaintResponse
 from app.modules.user.model import User
-from app.shared.notify import notify_user
+from app.shared.notify import notify_admins, notify_user
 from app.shared.pagination import PaginationParams, paginated
 
 
@@ -41,6 +41,9 @@ async def submit_complaint(
         status=ComplaintStatus.open,
     )
     await repo.add_complaint(db, complaint)
+    await notify_admins(
+        db, "complaint_new", complaint_id=str(complaint.id), player_name=user.full_name
+    )
     await db.commit()
     saved = await repo.get_complaint(db, complaint.id)
     assert saved is not None

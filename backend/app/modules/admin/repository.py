@@ -51,6 +51,28 @@ async def count_user_bookings(db: AsyncSession, user_id: uuid.UUID) -> int:
     return (await db.scalar(select(func.count()).where(Booking.player_id == user_id))) or 0
 
 
+async def count_user_complaints(db: AsyncSession, user_id: uuid.UUID) -> int:
+    from app.modules.complaint.model import Complaint
+
+    return (await db.scalar(select(func.count()).where(Complaint.player_id == user_id))) or 0
+
+
+async def last_suspend_reason(db: AsyncSession, user_id: uuid.UUID) -> str | None:
+    """The reason in the latest ``user.suspend`` audit line for this account."""
+    row = await db.scalar(
+        select(AuditLog)
+        .where(
+            AuditLog.action == "user.suspend",
+            AuditLog.target_type == "user",
+            AuditLog.target_id == str(user_id),
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(1)
+    )
+    reason = (row.details or {}).get("reason") if row else None
+    return str(reason) if reason else None
+
+
 # ---- platform-wide bookings --------------------------------------------------
 
 
