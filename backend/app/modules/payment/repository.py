@@ -250,15 +250,15 @@ async def revenue_by_day(
 
 async def list_refunds_for_owner(
     db: AsyncSession,
-    owner_id: uuid.UUID,
+    owner_id: uuid.UUID | None,
     status: RefundStatus | None,
     *,
     arena_id: uuid.UUID | None = None,
     offset: int,
     limit: int,
 ) -> tuple[list[tuple[Refund, Payment, Booking, str, str, str]], int]:
-    """Refunds on the owner's own arenas, newest first, with the payment, booking,
-    arena name and player name each row needs."""
+    """Refunds on the owner's own arenas (every arena when ``owner_id`` is None, the admin's view),
+    newest first, with the payment, booking, arena name and player name each row needs."""
     base = (
         select(Refund, Payment, Booking, Arena.name, User.full_name, Court.name)
         .join(Payment, Payment.id == Refund.payment_id)
@@ -266,8 +266,9 @@ async def list_refunds_for_owner(
         .join(Court, Court.id == Booking.court_id)
         .join(Arena, Arena.id == Booking.arena_id)
         .join(User, User.id == Booking.player_id)
-        .where(Arena.owner_id == owner_id)
     )
+    if owner_id is not None:
+        base = base.where(Arena.owner_id == owner_id)
     if status is not None:
         base = base.where(Refund.status == status)
     if arena_id is not None:

@@ -38,6 +38,7 @@ from app.modules.arena.schema import (
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User
+from app.shared.notify import notify_admins
 from app.shared.pagination import PaginationParams, paginated
 
 # Fields that map 1:1 from the update schema onto the model.
@@ -107,6 +108,7 @@ async def create_arena(db: AsyncSession, user: User, data: ArenaCreate) -> Arena
     )
     arena.amenities = amenities
     saved = await repo.add_arena(db, arena)
+    await notify_admins(db, "arena_waiting", arena_id=str(saved.id), arena_name=saved.name)
     await db.commit()
     return ArenaResponse.model_validate(saved)
 
@@ -169,6 +171,7 @@ async def resubmit_for_verification(
         raise ConflictError("Only a rejected arena can be resubmitted.")
     arena.status = ArenaStatus.pending
     arena.rejection_reason = None
+    await notify_admins(db, "arena_waiting", arena_id=str(arena.id), arena_name=arena.name)
     await db.commit()
     refreshed = await repo.get_arena(db, arena.id)
     assert refreshed is not None

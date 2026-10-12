@@ -611,17 +611,39 @@ async def list_owner_refunds(
     return paginated([_owner_refund_item(*r) for r in rows], total, params)
 
 
+async def list_admin_refunds(db: AsyncSession, status: str, params: PaginationParams) -> dict:
+    """Every arena's refunds, for the admin. ``status``: pending | processed | all."""
+    wanted = None if status == "all" else RefundStatus(status)
+    rows, total = await repo.list_refunds_for_owner(
+        db, None, wanted, offset=params.offset, limit=params.page_size
+    )
+    return paginated([_owner_refund_item(*r) for r in rows], total, params)
+
+
 async def mark_refund_paid(
     db: AsyncSession, owner: User, refund_id: uuid.UUID
 ) -> OwnerRefundMarkPaidResponse:
     """The owner sent a bank-transfer refund back: mark it processed (once). A second
     call changes nothing and says so. Gateway refunds are never marked by hand."""
+    return await _mark_paid(db, refund_id, actor=owner, as_admin=False)
+
+
+async def admin_mark_refund_paid(
+    db: AsyncSession, admin: User, refund_id: uuid.UUID
+) -> OwnerRefundMarkPaidResponse:
+    """The same, done by an admin when the owner cannot. Writes an audit line (first time only)."""
+    return await _mark_paid(db, refund_id, actor=admin, as_admin=True)
+
+
+async def _mark_paid(
+    db: AsyncSession, refund_id: uuid.UUID, *, actor: User, as_admin: bool
+) -> OwnerRefundMarkPaidResponse:
     refund = await repo.get_refund_for_update(db, refund_id)
     if refund is None:
         raise NotFoundError("Refund not found.")
     booking = await booking_repo.get_booking(db, refund.booking_id)
     arena = await arena_repo.get_arena(db, booking.arena_id) if booking else None
-    if booking is None or arena is None or arena.owner_id != owner.id:
+    if booking is None or arena is None or (not as_admin and arena.owner_id != actor.id):
         raise NotFoundError("Refund not found.")  # not theirs: do not reveal that it exists
     payment = await repo.get_payment(db, refund.payment_id)
     if payment is None:
@@ -642,10 +664,11 @@ async def mark_refund_paid(
         raise ConflictError("The refund is more than what was paid. Contact support.")
     refund.status = RefundStatus.processed
     refund.processed_at = datetime.now()
-    refund.processed_by = owner.id
+    refund.processed_by = actor.id
     refund.next_attempt_at = None
+    who = "an administrator" if as_admin else "the arena owner"
     await state_machine.record_note(
-        db, payment, f"Refund of Rs. {refund.amount} marked as paid by the arena owner."
+        db, payment, f"Refund of Rs. {refund.amount} marked as paid by {who}."
     )
     await _mark_refunded_if_fully(db, payment)
     await notify_user(
@@ -655,6 +678,17 @@ async def mark_refund_paid(
         booking_id=str(booking.id),
         amount=str(refund.amount),
     )
+    if as_admin:
+        from app.modules.admin.service import record_audit
+
+        await record_audit(
+            db,
+            actor,
+            "refund.mark_paid",
+            "refund",
+            str(refund.id),
+            {"booking_id": str(booking.id), "amount": str(refund.amount)},
+        )
     await db.commit()
     item = _owner_refund_item(refund, payment, booking, arena.name, player_name, court_name)
     return OwnerRefundMarkPaidResponse(refund=item, already_processed=False)

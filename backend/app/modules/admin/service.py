@@ -62,6 +62,9 @@ async def record_audit(
     )
 
 
+ALREADY_HANDLED = "Someone already handled this arena."
+
+
 # ---- arena verification (existing) --------------------------------------------------
 
 
@@ -86,12 +89,13 @@ async def get_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
 
 
 async def approve_arena(db: AsyncSession, actor: User, arena_id: uuid.UUID) -> ArenaResponse:
-    arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None:
-        raise NotFoundError("Arena not found.")
+    arena = await _lock_arena(db, arena_id)
     if arena.is_deleted:
         raise ConflictError("This arena has been removed.")
+    if arena.status != ArenaStatus.pending:
+        raise ConflictError(ALREADY_HANDLED)
     await arena_service.set_status(db, arena, ArenaStatus.approved)
+    await notify_user(db, arena.owner_id, "arena_approved", arena_name=arena.name)
     await record_audit(db, actor, "arena.approve", "arena", str(arena_id))
     await db.commit()
     refreshed = await arena_repo.get_arena(db, arena_id)
@@ -102,12 +106,13 @@ async def approve_arena(db: AsyncSession, actor: User, arena_id: uuid.UUID) -> A
 async def reject_arena(
     db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str
 ) -> ArenaResponse:
-    arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None:
-        raise NotFoundError("Arena not found.")
+    arena = await _lock_arena(db, arena_id)
     if arena.is_deleted:
         raise ConflictError("This arena has been removed.")
+    if arena.status != ArenaStatus.pending:
+        raise ConflictError(ALREADY_HANDLED)
     await arena_service.set_status(db, arena, ArenaStatus.rejected, reason=reason)
+    await notify_user(db, arena.owner_id, "arena_rejected", arena_name=arena.name, reason=reason)
     await record_audit(db, actor, "arena.reject", "arena", str(arena_id), {"reason": reason})
     await db.commit()
     refreshed = await arena_repo.get_arena(db, arena_id)
@@ -171,7 +176,7 @@ async def suspend_arena(
 
 
 async def reactivate_arena(
-    db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str
+    db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str | None = None
 ) -> ArenaResponse:
     """Lift a suspension. Bookings cancelled by it stay cancelled."""
     arena = await _lock_arena(db, arena_id)
@@ -252,7 +257,10 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> AdminUserDeta
         raise NotFoundError("User not found.")
     total_bookings = await repo.count_user_bookings(db, user_id)
     return AdminUserDetailResponse(
-        **AdminUserResponse.model_validate(user).model_dump(), total_bookings=total_bookings
+        **AdminUserResponse.model_validate(user).model_dump(),
+        total_bookings=total_bookings,
+        total_complaints=await repo.count_user_complaints(db, user_id),
+        suspended_reason=None if user.is_active else await repo.last_suspend_reason(db, user_id),
     )
 
 

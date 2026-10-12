@@ -16,14 +16,9 @@ from app.modules.user.model import UserRole
 
 
 class RejectArenaRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+    """Why an arena was not approved: 1 to 500 characters, shown to the owner."""
 
-
-class ArenaModerationRequest(BaseModel):
-    """Suspend, reactivate or remove an arena. The reason is mandatory: it goes
-    to the owner (suspend / remove) and into the audit log."""
-
-    reason: str = Field(min_length=10, max_length=500)
+    reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("reason", mode="before")
     @classmethod
@@ -31,11 +26,34 @@ class ArenaModerationRequest(BaseModel):
         return v.strip() if isinstance(v, str) else v
 
 
+class ArenaModerationRequest(BaseModel):
+    """Suspend, reactivate or remove an arena. The reason is mandatory: it goes
+    to the owner (suspend / remove) and into the audit log."""
+
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _trim(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
+
+
+class ReactivateArenaRequest(BaseModel):
+    """Lifting a suspension needs no reason; one may be given (up to 500 characters)."""
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
 # ---- user management --------------------------------------------------
 
 
 class SuspendUserRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _trim(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
 
 
 class AdminUserResponse(BaseModel):
@@ -53,6 +71,9 @@ class AdminUserResponse(BaseModel):
 
 class AdminUserDetailResponse(AdminUserResponse):
     total_bookings: int
+    total_complaints: int = 0
+    # why an admin suspended the account (the latest suspension), while it is suspended
+    suspended_reason: str | None = None
 
 
 # ---- booking / payment monitoring --------------------------------------------------

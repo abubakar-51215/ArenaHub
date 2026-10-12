@@ -187,14 +187,26 @@ async def test_suspended_filter_on_admin_list(
     assert s["arena_id"] in await ids()
 
 
-@pytest.mark.parametrize("reason", [None, "", "too short", "         short       "])
-async def test_reason_is_required_and_at_least_ten_characters(
+@pytest.mark.parametrize("reason", [None, "", "         "])
+async def test_suspend_and_delete_need_a_reason(
     client: AsyncClient, db_session: AsyncSession, reason
 ) -> None:
     s = await _setup(client, db_session, f"mod5{len(reason or '')}")
-    for action in ("suspend", "reactivate", "delete"):
+    for action in ("suspend", "delete"):
         resp = await _act(client, s["admin"], s["arena_id"], action, reason=reason)
         assert resp.status_code == 422, (action, reason)
+
+
+async def test_a_one_character_reason_is_enough_and_reactivate_needs_none(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    s = await _setup(client, db_session, "mod5b")
+    suspended = await _act(client, s["admin"], s["arena_id"], "suspend", reason="x")
+    assert suspended.status_code == 200
+    lifted = await client.post(
+        f"{API}/admin/arenas/{s['arena_id']}/reactivate", headers=auth_header(s["admin"])
+    )
+    assert lifted.status_code == 200
 
 
 async def test_reason_longer_than_500_is_refused(
