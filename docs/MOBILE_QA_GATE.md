@@ -70,6 +70,21 @@ Added after the first phone test (Log in, Search and comment boxes were hidden b
    `globalThis.__arenahubKeyboard.show(top, height)`; the clearance under the focused field is 24 px or more.
 7. Only a real phone can show the real keyboard; say so in the report.
 
+## Dates, location and links (standing, added in G6)
+
+1. **Dates and "today" are Asia/Karachi** (`lib/karachi.ts`): the day strips, "is it in the past", "open till", report periods, notice
+   groups, "3 days ago". Never `new Date()` plus `getDate()`/`toLocaleDateString()` for these. A time from the server with no "Z" is
+   Karachi time (`parseTs`). Test with `node scripts/karachi-check.cjs` (six time zones).
+2. **Review and notice ages** use `timeAgo` / `shortAgo`; a date uses `formatDate` ("27 Apr", "27 Apr 2025").
+3. **Location never blocks a screen:** 6 second limit, a refusal is not an error, the position lives in memory only and goes to the
+   server only as search parameters. The near-me pop-up follows `lib/nearme.ts` (once per Karachi day after "Not now";
+   `node scripts/nearme-check.cjs`).
+4. **A bottom sheet with a text box** uses `BottomSheet` (rises with the keyboard); a screen with a text box uses `KeyboardScroll`.
+5. **Links opened while signed out** are kept (`lib/deeplink.ts`) and opened after Log in.
+6. **Empty, loading and error states** come from `components/ui/state-view.tsx` (same look on every list screen); every destructive
+   action is a red sheet with a plain "Stay"; every action that creates, pays, cancels, moves, joins, leaves or deletes is guarded
+   against a double tap.
+
 ## Badge rules (standing)
 
 A number, dot or count on top of an icon, tab or button:

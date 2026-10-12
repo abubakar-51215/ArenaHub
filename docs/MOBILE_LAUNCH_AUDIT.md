@@ -9,6 +9,34 @@ Severity: **blocker** (customers get hurt or the app cannot ship), **high** (a l
 "Fixed" means fixed in this round with its own commit. "Needs frame" means a design change is needed first. "Needs you" means a
 decision or text only you can give.
 
+## Update after G6 (2026-10-12)
+
+**Fixed now (from the medium and low lists):**
+* Medium 1, dates and "today" in Asia/Karachi: one helper `lib/karachi.ts` used by the day strips (Slots, Reschedule), past slots,
+  "Open till", "booking started", report periods, notice groups and the near-me rule. Server times with no zone are read as Karachi time.
+  Tested under six phone time zones (`node scripts/karachi-check.cjs`).
+* Medium 2, one review date format ("3 days ago", then "27 Apr" or "27 Apr 2025").
+* Medium 5, tab labels are 11 px (fit at 360: 46 of 70 px for the longest).
+* Medium 9, the push token is sent again when it changes (real builds only).
+* Medium 10, a photo that fails to load shows the picture for "no photo"; avatars keep their initials.
+* Medium 11, a link opened while signed out is kept and opened after Log in (`lib/deeplink.ts`, `node scripts/deeplink-check.cjs`).
+* Medium 3, the old profile screens are replaced by the account frames (Personal information, Settings, Saved arenas, Payment history,
+  My reviews, Help and support). Low 2, the template components are removed.
+
+**Still open and "needs frame": offline banner (medium 6), cancel an upload in progress (medium 7).**
+**Deferred to the very end by decision (docs/BEFORE_GOING_LIVE.md, "Decide at the very end"):** blockers B2 (Terms and privacy text, and the
+Help contact) and B3 (app identifiers) stay open on purpose.
+
+**New items found in G6:**
+| Severity | What | Note |
+|---|---|---|
+| medium | Notifications list shows the latest 50 (no "load more"). | Fine for now; add paging when a player has more. |
+| medium | Games played / Spent on Profile are counted from the first 100 bookings of each tab. | Move to one server total if a player passes 100. |
+| low | Complaint list title is the first words of what the player wrote (the form has no title). | A title field would need a frame. |
+| low | Near me is memory only: after the app is closed the position is asked again (silently when allowed). | By design (the position is never saved). |
+| low | The match list uses the saved city, not the position. | Until matches get distance (needs a decision). |
+| low | The 20 notices of one kind from the server carry English text only. | Urdu is not in scope. |
+
 ## Summary
 
 | Severity | Found | Fixed now | Open |
