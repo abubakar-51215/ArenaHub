@@ -18,6 +18,7 @@ import { useMyMatches } from '@/hooks/useMatches';
 import { ApiError } from '@/lib/api';
 import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
 import { formatClock, formatDayShort } from '@/lib/karachi';
+import { formatRs } from '@/lib/money';
 import { priceEach } from '@/lib/match-ui';
 import { createMatch } from '@/services/matches';
 import { listBookingGroups } from '@/services/bookings';
@@ -154,7 +155,7 @@ export default function PostMatchScreen() {
 
       <View style={styles.note}>
         <Text style={styles.noteText}>
-          {price ? `The court price is ${price} if ${more} more ${more === 1 ? 'joins' : 'join'}. ` : ''}You settle with each other. No payment happens in the app.
+          {chosen && price ? `The booking costs ${formatRs(chosen.total)}. Shared by ${more + 1} players, that is ${price}. ` : ''}You settle it with each other. No payment happens in the app.
         </Text>
       </View>
     </FormScreen>

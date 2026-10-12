@@ -6,7 +6,7 @@ export interface FaqItem {
   note?: string;
 }
 
-/** The three common questions. The first answer is the wording of the frame; the other two are plain draft answers to check. */
+/** The three common questions. Every sentence is checked against the app and the backend rules in docs/G6_CONTENT_CHECK.md. */
 export const FAQ: FaqItem[] = [
   {
     question: 'How do I cancel a booking?',
@@ -15,12 +15,12 @@ export const FAQ: FaqItem[] = [
   },
   {
     question: 'When do I get my refund?',
-    answer: 'A refund is started as soon as you cancel. Card refunds are sent back by the payment service. Bank transfer refunds are sent by the arena, so they can take a few working days. You will get a notice when it is done.',
-    note: 'You can follow every refund in Profile, Payment history.',
+    answer: 'When you cancel, we show how much comes back before you confirm. If it is more than nothing, the refund starts at once. You pay by bank transfer, so the arena sends the money back to you itself. We tell you here when the arena marks it as sent.',
+    note: 'How long it takes depends on the arena. You can follow it on the booking and in Profile, Payment history.',
   },
   {
     question: 'How does bank transfer work?',
-    answer: 'Pick Bank transfer when you pay, send the exact amount to the arena account shown, then upload a photo of your receipt. The arena checks it and confirms your booking.',
+    answer: 'Pick Bank transfer when you pay. Send the exact amount to the arena account shown, with the reference shown, then upload a photo of your receipt (JPG or PNG, up to 5 MB). The arena checks it and confirms or turns down your booking.',
     note: 'Your time is only booked once the arena confirms your receipt.',
   },
 ];
