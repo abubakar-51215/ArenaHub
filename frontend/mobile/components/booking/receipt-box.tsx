@@ -69,7 +69,7 @@ export function ReceiptBox({
         </View>
         <View style={styles.pair}>
           <View style={{ flex: 1 }}>
-            <Button title="Try again" onPress={onRetry} offlineLabel="Try again needs a connection" />
+            <Button title="Try again" onPress={onRetry} offlineLabel="Needs a connection" />
           </View>
           <View style={{ flex: 1 }}>
             <Button title="Choose another" variant="ghost" onPress={onChoose} />
