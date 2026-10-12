@@ -5,7 +5,7 @@ import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
-import { OFFLINE_TEXT, OFFLINE_TITLE, useNetwork } from '@/lib/network';
+import { OFFLINE_TEXT, OFFLINE_TITLE, useNetwork, useOfflineEmpty } from '@/lib/network';
 
 /**
  * The three whole-screen states every list screen has (same look as My bookings): "could not load" with the broken-ring
@@ -13,6 +13,7 @@ import { OFFLINE_TEXT, OFFLINE_TITLE, useNetwork } from '@/lib/network';
  */
 export function ErrorState({ title, text = 'Check your connection and try again.', onRetry }: { title: string; text?: string; onRetry: () => void }) {
   const online = useNetwork((s) => s.online);
+  useOfflineEmpty(!online);
   if (!online) {
     // offline and nothing saved to show: one plain state for every screen
     title = OFFLINE_TITLE;
@@ -37,6 +38,7 @@ export function ErrorState({ title, text = 'Check your connection and try again.
 /** The title and line of a whole-screen "could not load" state; offline it says "No connection." instead (one wording everywhere). */
 export function ErrorCopy({ title, text = 'Check your connection and try again.', titleStyle, textStyle }: { title: string; text?: string; titleStyle: StyleProp<TextStyle>; textStyle: StyleProp<TextStyle> }) {
   const online = useNetwork((s) => s.online);
+  useOfflineEmpty(!online);
   return (
     <>
       <Text variant="archivo" style={titleStyle}>

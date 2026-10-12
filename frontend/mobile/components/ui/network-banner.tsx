@@ -29,6 +29,7 @@ export function NetworkShell({ children }: { children: ReactNode }) {
   const p = useRef(new Animated.Value(0)).current;
   const [shown, setShown] = useState<'offline' | 'back'>('offline');
   const [saved, setSaved] = useState(false);
+  const emptyScreens = useNetwork((s) => s.emptyScreens);
   const visible = phase !== 'online';
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export function NetworkShell({ children }: { children: ReactNode }) {
         <View style={[styles.row, { height: BAR }]} accessibilityRole="alert" accessibilityLiveRegion="polite">
           {lime ? <Icon name="tick" size={16} color={Colors.light.ink} strokeWidth={2.6} /> : <OfflineIcon />}
           <Text style={[styles.text, { color: lime ? Colors.light.ink : '#FFFFFF' }]} numberOfLines={2}>
-            {lime ? 'Back online. Updating…' : saved ? 'You are offline. Showing what we saved earlier.' : 'You are offline.'}
+            {lime ? 'Back online. Updating…' : saved && emptyScreens === 0 ? 'You are offline. Showing what we saved earlier.' : 'You are offline.'}
           </Text>
         </View>
       </Animated.View>

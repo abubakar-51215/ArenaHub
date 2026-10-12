@@ -6,6 +6,7 @@
  * "Online" means connected and, when the phone can tell, the internet reachable.
  */
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
@@ -15,6 +16,9 @@ export type NetPhase = 'online' | 'offline' | 'back';
 
 interface NetworkState {
   online: boolean;
+  /** How many "No connection." screens are showing (a screen with nothing saved). The banner then says only "You are offline." */
+  emptyScreens: number;
+  addEmpty: (by: number) => void;
   /** offline, then "back" for BACK_BANNER_MS after the connection returns, then online. */
   phase: NetPhase;
   set: (online: boolean) => void;
@@ -25,6 +29,8 @@ let backTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useNetwork = create<NetworkState>()((set, get) => ({
   online: true,
+  emptyScreens: 0,
+  addEmpty: (by) => set((s) => ({ emptyScreens: Math.max(0, s.emptyScreens + by) })),
   phase: 'online',
   set: (online) => {
     const was = get().online;
@@ -75,3 +81,13 @@ export const OFFLINE_TOAST = 'No connection. Your change was not saved.';
 /** The whole-screen state when a screen has nothing saved to show and the phone is offline (frame 02). */
 export const OFFLINE_TITLE = 'No connection.';
 export const OFFLINE_TEXT = 'Connect to Wi-Fi or mobile data. We will load this for you when you are back online.';
+
+/** Mark that this screen shows "No connection." (nothing saved) while it is mounted and offline. */
+export function useOfflineEmpty(offline: boolean): void {
+  const addEmpty = useNetwork((s) => s.addEmpty);
+  useEffect(() => {
+    if (!offline) return;
+    addEmpty(1);
+    return () => addEmpty(-1);
+  }, [offline, addEmpty]);
+}
