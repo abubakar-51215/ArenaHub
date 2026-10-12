@@ -51,6 +51,7 @@ async def test_owner_lists_only_refunds_on_own_arenas(
     assert row["id"] == str(refund.id) and row["status"] == "pending"
     assert row["payment_method"] == "bank_transfer" and row["can_mark_paid"] is True
     assert row["booking_code"].startswith("AHB-") and row["player_name"] and row["arena_name"]
+    assert row["court_name"]
     assert row["booking_date"] and row["start_time"] and row["end_time"] and row["created_at"]
     assert Decimal(row["amount"]) <= Decimal(payment["amount"])
 
@@ -234,3 +235,21 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
         select(func.sum(Refund.amount)).where(Refund.payment_id == payment["id"])
     )
     assert total <= pay.amount
+
+
+async def test_owner_can_filter_refunds_by_arena(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, player, payment, refund = await _cancelled_bank_group(client, db_session, "or7")
+    listed = (await client.get("/api/v1/owner/refunds", headers=auth_header(owner))).json()["data"]
+    arena_id = listed["items"][0]["arena_id"] if "arena_id" in listed["items"][0] else None
+    other = "00000000-0000-0000-0000-000000000000"
+    none = await client.get(f"/api/v1/owner/refunds?arena_id={other}", headers=auth_header(owner))
+    assert none.json()["data"]["items"] == []
+    mine = (await client.get("/api/v1/owner/arenas", headers=auth_header(owner))).json()["data"]
+    arenas = mine["items"] if isinstance(mine, dict) else mine
+    one = await client.get(
+        f"/api/v1/owner/refunds?arena_id={arenas[0]['id']}", headers=auth_header(owner)
+    )
+    assert [r["id"] for r in one.json()["data"]["items"]] == [str(refund.id)]
+    assert arena_id is None or arena_id == arenas[0]["id"]
