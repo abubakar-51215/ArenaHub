@@ -23,6 +23,7 @@ from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
 from app.modules.booking.service import booking_code_for
+from app.modules.court import repository as court_repo
 from app.modules.equipment import service as equipment_service
 from app.modules.payment import methods, state_machine
 from app.modules.payment import repository as repo
@@ -568,7 +569,12 @@ async def _notify_owner_refund_to_send(db: AsyncSession, booking: Booking, amoun
 
 
 def _owner_refund_item(
-    refund: Refund, payment: Payment, booking: Booking, arena_name: str, player_name: str
+    refund: Refund,
+    payment: Payment,
+    booking: Booking,
+    arena_name: str,
+    player_name: str,
+    court_name: str,
 ) -> OwnerRefundItem:
     return OwnerRefundItem(
         id=refund.id,
@@ -579,6 +585,7 @@ def _owner_refund_item(
         player_name=player_name,
         booking_code=booking_code_for(booking.booking_group_id),
         arena_name=arena_name,
+        court_name=court_name,
         booking_date=booking.booking_date,
         start_time=booking.start_time,
         end_time=booking.end_time,
@@ -590,12 +597,16 @@ def _owner_refund_item(
 
 
 async def list_owner_refunds(
-    db: AsyncSession, owner: User, status: str, params: PaginationParams
+    db: AsyncSession,
+    owner: User,
+    status: str,
+    params: PaginationParams,
+    arena_id: uuid.UUID | None = None,
 ) -> dict:
     """The owner's refunds (own arenas only). ``status``: pending | processed | all."""
     wanted = None if status == "all" else RefundStatus(status)
     rows, total = await repo.list_refunds_for_owner(
-        db, owner.id, wanted, offset=params.offset, limit=params.page_size
+        db, owner.id, wanted, arena_id=arena_id, offset=params.offset, limit=params.page_size
     )
     return paginated([_owner_refund_item(*r) for r in rows], total, params)
 
@@ -617,8 +628,10 @@ async def mark_refund_paid(
         raise NotFoundError("Refund not found.")
     player = await db.get(User, booking.player_id)
     player_name = player.full_name if player else "A player"
+    court = await court_repo.get_court(db, booking.court_id)
+    court_name = court.name if court else ""
     if refund.status == RefundStatus.processed:
-        item = _owner_refund_item(refund, payment, booking, arena.name, player_name)
+        item = _owner_refund_item(refund, payment, booking, arena.name, player_name, court_name)
         return OwnerRefundMarkPaidResponse(refund=item, already_processed=True)
     if payment.payment_method != PaymentMethod.bank_transfer:
         raise ValidationError("Only bank-transfer refunds can be marked as paid by hand.")
@@ -643,7 +656,7 @@ async def mark_refund_paid(
         amount=str(refund.amount),
     )
     await db.commit()
-    item = _owner_refund_item(refund, payment, booking, arena.name, player_name)
+    item = _owner_refund_item(refund, payment, booking, arena.name, player_name, court_name)
     return OwnerRefundMarkPaidResponse(refund=item, already_processed=False)
 
 

@@ -107,6 +107,7 @@ class OwnerRefundItem(BaseModel):
     player_name: str
     booking_code: str
     arena_name: str
+    court_name: str
     booking_date: date
     start_time: time
     end_time: time

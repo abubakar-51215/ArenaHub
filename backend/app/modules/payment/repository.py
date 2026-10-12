@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
 from app.modules.booking.model import Booking, PaymentStatus
+from app.modules.court.model import Court
 from app.modules.payment.model import (
     Payment,
     PaymentEvent,
@@ -252,24 +253,28 @@ async def list_refunds_for_owner(
     owner_id: uuid.UUID,
     status: RefundStatus | None,
     *,
+    arena_id: uuid.UUID | None = None,
     offset: int,
     limit: int,
-) -> tuple[list[tuple[Refund, Payment, Booking, str, str]], int]:
+) -> tuple[list[tuple[Refund, Payment, Booking, str, str, str]], int]:
     """Refunds on the owner's own arenas, newest first, with the payment, booking,
     arena name and player name each row needs."""
     base = (
-        select(Refund, Payment, Booking, Arena.name, User.full_name)
+        select(Refund, Payment, Booking, Arena.name, User.full_name, Court.name)
         .join(Payment, Payment.id == Refund.payment_id)
         .join(Booking, Booking.id == Refund.booking_id)
+        .join(Court, Court.id == Booking.court_id)
         .join(Arena, Arena.id == Booking.arena_id)
         .join(User, User.id == Booking.player_id)
         .where(Arena.owner_id == owner_id)
     )
     if status is not None:
         base = base.where(Refund.status == status)
+    if arena_id is not None:
+        base = base.where(Arena.id == arena_id)
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
     rows = await db.execute(base.order_by(Refund.created_at.desc()).offset(offset).limit(limit))
-    return [(r, p, b, an, pn) for r, p, b, an, pn in rows.all()], total
+    return [(r, p, b, an, pn, cn) for r, p, b, an, pn, cn in rows.all()], total
 
 
 async def get_refund_for_update(db: AsyncSession, refund_id: uuid.UUID) -> Refund | None:

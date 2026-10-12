@@ -145,11 +145,12 @@ async def reject_bank_transfer(
 @owner_refund_router.get("", summary="Refunds on my arenas (pending, processed or all)")
 async def list_owner_refunds(
     status: str = Query("pending", pattern="^(pending|processed|all)$"),
+    arena_id: uuid.UUID | None = None,
     params: PaginationParams = Depends(pagination_params),
     user: User = Depends(_owner),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.list_owner_refunds(db, user, status, params)
+    data = await service.list_owner_refunds(db, user, status, params, arena_id)
     return success(data=data, message="Refunds retrieved.")
 
 
