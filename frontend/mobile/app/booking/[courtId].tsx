@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Eyebrow, IconTile, Line, Note } from '@/components/booking/parts';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
 import { Card } from '@/components/ui/card';
 import { CourtArt } from '@/components/ui/court-art';
 import { Icon } from '@/components/ui/icon';
@@ -94,10 +95,7 @@ export default function ReviewBookingScreen() {
           <View style={{ marginBottom: 10 }}>
 <BrandMark mode="offline" size={72} />
 </View>
-          <Text variant="archivo" style={styles.stateTitle}>
-            Could not load your booking
-          </Text>
-          <Text style={styles.stateText}>Check your connection and try again.</Text>
+          <ErrorCopy title="Could not load your booking" titleStyle={styles.stateTitle} textStyle={styles.stateText} />
           <View style={styles.stateButton}>
             <Button
               title="Try again"

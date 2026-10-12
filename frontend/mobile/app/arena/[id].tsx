@@ -9,6 +9,7 @@ import { LightStatusBar, useDarkTop } from '@/components/ui/light-status-bar';
 import { Badge } from '@/components/ui/badge';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ReadMore } from '@/components/ui/read-more';
@@ -138,10 +139,7 @@ export default function ArenaDetailsScreen() {
           <View style={{ marginBottom: 10 }}>
 <BrandMark mode="offline" size={72} />
 </View>
-          <Text variant="archivo" style={styles.stateTitle}>
-            Could not load this arena
-          </Text>
-          <Text style={styles.stateText}>Check your connection and try again.</Text>
+          <ErrorCopy title="Could not load this arena" titleStyle={styles.stateTitle} textStyle={styles.stateText} />
           <View style={styles.stateButton}>
             <Button title="Try again" onPress={() => arena.refetch()} />
           </View>

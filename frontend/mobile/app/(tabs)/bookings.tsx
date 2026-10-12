@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookingGroupCard } from '@/components/booking/booking-group-card';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -93,10 +94,7 @@ export default function BookingsScreen() {
           <View style={{ marginBottom: 14 }}>
             <BrandMark mode="offline" size={74} />
           </View>
-          <Text variant="archivo" style={styles.stateTitle}>
-            Could not load your bookings.
-          </Text>
-          <Text style={styles.stateText}>Check your connection and try again.</Text>
+          <ErrorCopy title="Could not load your bookings." titleStyle={styles.stateTitle} textStyle={styles.stateText} />
           <View style={styles.stateButton}>
             <Button title="Try again" onPress={() => q.refetch()} />
           </View>

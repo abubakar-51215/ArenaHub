@@ -9,6 +9,7 @@ import { NearMePrompt, useNearMe } from '@/components/g6/near-me-prompt';
 import { SportChips } from '@/components/home/sport-chips';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
 import { LightStatusBar, useDarkTop } from '@/components/ui/light-status-bar';
 import { Icon } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -147,10 +148,7 @@ export default function HomeScreen() {
             <View style={{ marginBottom: 10 }}>
 <BrandMark mode="offline" size={72} />
 </View>
-            <Text variant="archivo" style={styles.errorTitle}>
-              Could not load arenas
-            </Text>
-            <Text style={styles.errorText}>Check your connection and try again.</Text>
+            <ErrorCopy title="Could not load arenas" titleStyle={styles.errorTitle} textStyle={styles.errorText} />
             <View style={styles.errorButton}>
               <Button title="Try again" onPress={onRefresh} />
             </View>

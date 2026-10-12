@@ -337,7 +337,7 @@ export default function ArenaReviewsScreen() {
         <Text style={styles.counter}>
           {text.length} / {MAX}
         </Text>
-        <Button title={sheet === 'edit' ? 'Save review' : 'Post review'} loading={post.isPending} disabled={rating < 1} onPress={submit} />
+        <Button title={sheet === 'edit' ? 'Save review' : 'Post review'} offlineLabel="Post review needs a connection" loading={post.isPending} disabled={rating < 1} onPress={submit} />
       </BottomSheet>
 
       <BottomSheet visible={!!menu} onClose={() => setMenu(null)} label="Your review">
@@ -393,7 +393,7 @@ export default function ArenaReviewsScreen() {
             );
           })}
         </View>
-        <Button title="Send report" loading={report.isPending} onPress={() => reporting && !report.isPending && report.mutate(reporting)} />
+        <Button title="Send report" offlineLabel="Send needs a connection" loading={report.isPending} onPress={() => reporting && !report.isPending && report.mutate(reporting)} />
       </BottomSheet>
     </SafeAreaView>
   );

@@ -19,6 +19,8 @@ import "react-native-reanimated";
 import { FONTS_MAX_MS, SPLASH_MAX_MS, STARTUP_CALL_TIMEOUT_MS } from "@/constants/brand";
 import { Colors, Font } from "@/constants/theme";
 import { AnimatedSplash } from "@/components/brand/animated-splash";
+import { NetworkShell } from "@/components/ui/network-banner";
+import { startNetworkWatcher } from "@/lib/network";
 import { ToastHost } from "@/components/ui/toast";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { ApiError } from "@/lib/api";
@@ -97,6 +99,8 @@ function RootNavigator() {
   // What the app waits for before it leaves the splash: the saved sign-in is read from the phone (hydrated), and, when
   // one is saved, it is checked with the server (GET /users/me, 8 s limit). If the server cannot be reached the app goes
   // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
+  useEffect(() => startNetworkWatcher(), []);
+
   // a link opened while signed out is kept, and opened after Log in (lib/deeplink.ts)
   useEffect(() => {
     const keep = (url: string | null) => {
@@ -171,6 +175,7 @@ function RootNavigator() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.light.background }}>
+    <NetworkShell>
     {waiting ? null : (
     <Stack>
       <Stack.Protected guard={!accessToken || !user}>
@@ -224,6 +229,7 @@ function RootNavigator() {
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
     </Stack>
     )}
+    </NetworkShell>
     <AnimatedSplash ready={ready} />
     </View>
   );

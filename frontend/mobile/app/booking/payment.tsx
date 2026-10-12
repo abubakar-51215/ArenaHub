@@ -228,7 +228,7 @@ export default function PaymentScreen() {
         contentContainerStyle={styles.pad}
         footer={
           <StickyBar>
-            <Button title={payLabel} loading={busy} disabled={!method || !p} onPress={pay} />
+            <Button title={payLabel} offlineLabel="Pay needs a connection" loading={busy} disabled={!method || !p} onPress={pay} />
           </StickyBar>
         }>
         <Eyebrow top={0}>How you will pay</Eyebrow>

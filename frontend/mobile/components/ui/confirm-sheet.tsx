@@ -34,6 +34,8 @@ interface ConfirmSheetProps {
   loading?: boolean;
   /** The red button cannot be pressed (for example while the figures are still loading). */
   confirmDisabled?: boolean;
+  /** While offline the red button shows this and a tap explains (see Button). */
+  offlineLabel?: string;
   /** Extra content between the message and the buttons (for example a card of figures). */
   children?: ReactNode;
   /** Buttons one under the other, full width: the red one first, then the plain one. */
@@ -56,6 +58,7 @@ export function ConfirmSheet({
   destructive = true,
   loading,
   confirmDisabled,
+  offlineLabel,
   children,
   stacked,
   onConfirm,
@@ -125,7 +128,7 @@ export function ConfirmSheet({
             {children}
             {stacked ? (
               <View style={styles.stack}>
-                <Button title={confirmLabel} variant={destructive ? 'danger' : 'ink'} hitSlop={2} loading={loading} disabled={confirmDisabled} onPress={onConfirm} />
+                <Button title={confirmLabel} variant={destructive ? 'danger' : 'ink'} hitSlop={2} loading={loading} disabled={confirmDisabled} offlineLabel={offlineLabel} onPress={onConfirm} />
                 <Button title={cancelLabel} variant="ghost" hitSlop={2} onPress={onCancel} />
               </View>
             ) : (
@@ -134,7 +137,7 @@ export function ConfirmSheet({
                   <Button title={cancelLabel} variant="ghost" hitSlop={2} onPress={onCancel} />
                 </View>
                 <View style={styles.cell}>
-                  <Button title={confirmLabel} variant={destructive ? 'danger' : 'ink'} hitSlop={2} loading={loading} disabled={confirmDisabled} onPress={onConfirm} />
+                  <Button title={confirmLabel} variant={destructive ? 'danger' : 'ink'} hitSlop={2} loading={loading} disabled={confirmDisabled} offlineLabel={offlineLabel} onPress={onConfirm} />
                 </View>
               </View>
             )}

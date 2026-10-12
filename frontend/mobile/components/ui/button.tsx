@@ -1,3 +1,5 @@
+import { showToast } from '@/components/ui/toast';
+import { OFFLINE_TOAST, useNetwork } from '@/lib/network';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type TextStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -28,6 +30,8 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
   variant?: ButtonVariant;
   loading?: boolean;
+  /** While the phone is offline the button shows this text (for example "Pay needs a connection") and a tap explains. */
+  offlineLabel?: string;
   /** Set to 'success' or 'error' to play that feedback (see useButtonStatus). */
   status?: ButtonStatus;
 }
@@ -64,9 +68,21 @@ export function useButtonStatus(ms = 1100): [ButtonStatus, (s: Exclude<ButtonSta
   return [status, flash];
 }
 
-export function Button({ title, variant = 'ink', loading, status, disabled, onPress, onPressIn, onPressOut, ...props }: ButtonProps) {
+export function Button({ title: titleProp, variant: variantProp = 'ink', loading, status, disabled, onPress, onPressIn, onPressOut, offlineLabel, ...props }: ButtonProps) {
+  // An action that needs the server (Pay, Send, Post, Join, Cancel...) says so while the phone is offline, and a tap explains
+  // instead of failing later (arena-hub-player-app-states.html, frame 03).
+  const online = useNetwork((s) => s.online);
+  const blocked = !!offlineLabel && !online;
+  const title = blocked ? (offlineLabel as string) : titleProp;
+  const variant = blocked ? 'off' : variantProp;
   const v = VARIANTS[variant];
-  const isDisabled = disabled || loading;
+  const isDisabled = blocked ? false : disabled || loading;
+  const press = blocked
+    ? () => {
+        tapHaptic();
+        showToast(OFFLINE_TOAST);
+      }
+    : onPress;
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
   const { style: shakeStyle, shake } = useShake();
@@ -95,9 +111,9 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
           // ripple would add a visual the prototype doesn't draw, so unlike
           // the tab bar (PlatformPressable, G0b-2) this deliberately stays a
           // plain Pressable with no android_ripple.
-          onPress={isDisabled ? undefined : onPress}
+          onPress={isDisabled ? undefined : press}
           onPressIn={(e) => {
-            if (!isDisabled) {
+            if (!isDisabled && !blocked) {
               dip(0.975);
               if (variant !== 'ghost' && variant !== 'dangerOutline') tapHaptic();
             }
@@ -108,7 +124,7 @@ export function Button({ title, variant = 'ink', loading, status, disabled, onPr
             onPressOut?.(e);
           }}
           accessibilityRole={props.accessibilityRole ?? 'button'}
-          accessibilityState={{ ...props.accessibilityState, disabled: isDisabled, busy: !!loading }}
+          accessibilityState={{ ...props.accessibilityState, disabled: isDisabled || blocked, busy: !!loading }}
           accessibilityLabel={props.accessibilityLabel ?? title}
           style={[
             styles.base,
