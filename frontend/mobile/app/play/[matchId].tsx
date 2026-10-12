@@ -23,6 +23,7 @@ import { hasStarted } from '@/lib/karachi';
 import { matchPill, matchWhen, priceEach } from '@/lib/match-ui';
 import { cancelMatch, joinMatch, leaveMatch } from '@/services/matches';
 import { sportLabel } from '@/constants/sports';
+import { formatRs } from '@/lib/money';
 import { useAuthStore } from '@/store/auth';
 
 // Match detail, from arena-hub-player-app-play.html (frames 14 to 22): the arena, when, court, how many players and "about X
@@ -168,7 +169,7 @@ export default function MatchDetailScreen() {
         </View>
 
         <Text style={styles.noteText}>
-          {m.note ? `${m.note} ` : ''}You settle the court price with each other. No payment happens in the app.
+          {m.note ? `${m.note} ` : ''}{m.booking_total ? `The booking costs ${formatRs(m.booking_total)}; the share above is only a guess. ` : ''}You settle it with each other. No payment happens in the app.
         </Text>
       </ScrollView>
 
