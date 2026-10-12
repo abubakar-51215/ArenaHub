@@ -6,6 +6,7 @@ import { SearchBar } from '@/components/search/search-bar';
 import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,10 +89,7 @@ export default function ResultsScreen() {
             <View style={{ marginBottom: 10 }}>
               <BrandMark mode="offline" size={72} />
             </View>
-            <Text style={styles.centerTitle} variant="archivo">
-              Could not load arenas
-            </Text>
-            <Text style={styles.centerText}>Check your connection and try again.</Text>
+            <ErrorCopy title="Could not load arenas" titleStyle={styles.centerTitle} textStyle={styles.centerText} />
             <View style={styles.centerButton}>
               <Button title="Try again" onPress={() => r.query.refetch()} />
             </View>

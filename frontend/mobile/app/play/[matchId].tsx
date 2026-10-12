@@ -112,13 +112,13 @@ export default function MatchDetailScreen() {
   const price = priceEach(m.booking_total, m.max_players);
   const others = Math.max(0, m.players_joined - 1);
 
-  let action: { title: string; variant?: 'lime' | 'ghost' | 'off'; onPress?: () => void; loading?: boolean; disabled?: boolean };
+  let action: { title: string; variant?: 'lime' | 'ghost' | 'off'; onPress?: () => void; loading?: boolean; disabled?: boolean; offlineLabel?: string };
   if (m.status === 'cancelled') action = { title: 'This match was cancelled', variant: 'off', disabled: true };
   else if (host && live) action = { title: 'Cancel match', variant: 'ghost', onPress: () => setSheet('cancel') };
   else if (m.joined_by_me && live) action = { title: 'Leave match', variant: 'ghost', onPress: () => setSheet('leave') };
   else if (!live || started) action = { title: started ? 'This match has started' : 'This match is over', variant: 'off', disabled: true };
   else if (m.status === 'full') action = { title: 'Match is full', variant: 'off', disabled: true };
-  else action = { title: 'Join match', variant: 'lime', onPress: () => !join.isPending && join.mutate(), loading: join.isPending };
+  else action = { title: 'Join match', variant: 'lime', onPress: () => !join.isPending && join.mutate(), loading: join.isPending, offlineLabel: 'Join needs a connection' };
 
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
@@ -174,7 +174,7 @@ export default function MatchDetailScreen() {
       </ScrollView>
 
       <StickyBar>
-        <Button title={action.title} variant={action.variant} loading={action.loading} disabled={action.disabled} onPress={action.onPress} />
+        <Button title={action.title} variant={action.variant} loading={action.loading} disabled={action.disabled} offlineLabel={action.offlineLabel} onPress={action.onPress} />
       </StickyBar>
 
       <ConfirmSheet

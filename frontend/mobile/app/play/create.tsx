@@ -101,7 +101,7 @@ export default function PostMatchScreen() {
   }
 
   return (
-    <FormScreen title="Post a match" footer={<Button title="Post match" loading={post.isPending} disabled={!chosen} onPress={submit} />}>
+    <FormScreen title="Post a match" footer={<Button title="Post match" offlineLabel="Post needs a connection" loading={post.isPending} disabled={!chosen} onPress={submit} />}>
       <Text style={styles.intro}>Pick one of your booked games. Players can join until it is full.</Text>
       <Text style={styles.label} accessibilityRole="header">
         Your booked game

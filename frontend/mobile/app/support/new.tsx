@@ -45,7 +45,7 @@ export default function NewComplaintScreen() {
   };
 
   return (
-    <FormScreen title="New complaint" footer={<Button title="Send complaint" loading={send.isPending} disabled={!category || text.trim().length < 5} onPress={submit} />}>
+    <FormScreen title="New complaint" footer={<Button title="Send complaint" offlineLabel="Send needs a connection" loading={send.isPending} disabled={!category || text.trim().length < 5} onPress={submit} />}>
       <Text style={styles.label} accessibilityRole="header">
         What is it about?
       </Text>

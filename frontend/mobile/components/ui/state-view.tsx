@@ -1,16 +1,23 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
 
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
+import { OFFLINE_TEXT, OFFLINE_TITLE, useNetwork } from '@/lib/network';
 
 /**
  * The three whole-screen states every list screen has (same look as My bookings): "could not load" with the broken-ring
  * mark and Try again, and "nothing here yet" with a round icon and an optional button.
  */
 export function ErrorState({ title, text = 'Check your connection and try again.', onRetry }: { title: string; text?: string; onRetry: () => void }) {
+  const online = useNetwork((s) => s.online);
+  if (!online) {
+    // offline and nothing saved to show: one plain state for every screen
+    title = OFFLINE_TITLE;
+    text = OFFLINE_TEXT;
+  }
   return (
     <View style={styles.state}>
       <View style={{ marginBottom: 14 }}>
@@ -24,6 +31,19 @@ export function ErrorState({ title, text = 'Check your connection and try again.
         <Button title="Try again" onPress={onRetry} />
       </View>
     </View>
+  );
+}
+
+/** The title and line of a whole-screen "could not load" state; offline it says "No connection." instead (one wording everywhere). */
+export function ErrorCopy({ title, text = 'Check your connection and try again.', titleStyle, textStyle }: { title: string; text?: string; titleStyle: StyleProp<TextStyle>; textStyle: StyleProp<TextStyle> }) {
+  const online = useNetwork((s) => s.online);
+  return (
+    <>
+      <Text variant="archivo" style={titleStyle}>
+        {online ? title : OFFLINE_TITLE}
+      </Text>
+      <Text style={textStyle}>{online ? text : OFFLINE_TEXT}</Text>
+    </>
   );
 }
 

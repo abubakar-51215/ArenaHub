@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Eyebrow, Line, Note, StatusPill } from '@/components/booking/parts';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
 import { Card } from '@/components/ui/card';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { CourtArt } from '@/components/ui/court-art';
@@ -82,10 +83,7 @@ export default function BookingDetailScreen() {
           <View style={{ marginBottom: 14 }}>
             <BrandMark mode="offline" size={74} />
           </View>
-          <Text variant="archivo" style={styles.stateTitle}>
-            Could not load your booking
-          </Text>
-          <Text style={styles.stateText}>Check your connection and try again.</Text>
+          <ErrorCopy title="Could not load your booking" titleStyle={styles.stateTitle} textStyle={styles.stateText} />
           <View style={{ width: 200 }}>
             <Button title="Try again" onPress={() => group.refetch()} />
           </View>
@@ -201,7 +199,7 @@ export default function BookingDetailScreen() {
           ) : (
             <Button title="Reschedule not available" variant="off" disabled />
           )}
-          {g.can_cancel ? <Button title="Cancel booking" variant="dangerOutline" onPress={() => setSheet(true)} /> : null}
+          {g.can_cancel ? <Button title="Cancel booking" variant="dangerOutline" offlineLabel="Cancel needs a connection" onPress={() => setSheet(true)} /> : null}
         </StickyBar>
       ) : g ? (
         <StickyBar>
@@ -221,6 +219,7 @@ export default function BookingDetailScreen() {
               : ''
         }
         confirmLabel="Yes, cancel booking"
+        offlineLabel="Cancel needs a connection"
         cancelLabel="Stay"
         loading={cancel.isPending}
         confirmDisabled={!p}

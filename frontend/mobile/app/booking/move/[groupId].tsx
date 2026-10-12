@@ -222,7 +222,7 @@ export default function MoveBookingScreen() {
             <Button title="Review change" disabled={!chosen || !pv || !!previewError} onPress={() => setStep('confirm')} />
           ) : (
             <>
-              <Button title="Move booking" loading={move.isPending} onPress={() => !move.isPending && move.mutate()} />
+              <Button title="Move booking" offlineLabel="Reschedule needs a connection" loading={move.isPending} onPress={() => !move.isPending && move.mutate()} />
               <Button title="Back" variant="ghost" onPress={() => setStep('pick')} />
             </>
           )}
