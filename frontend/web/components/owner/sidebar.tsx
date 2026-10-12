@@ -10,6 +10,7 @@
  * The rail foot is the owner card; it opens a small menu with Profile and
  * Log out (there is no separate logout button).
  */
+import { usePendingRefundCount } from "@/hooks/useOwnerRefunds";
 import { ArenaMark } from "@/components/brand/arena-mark";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -126,7 +127,7 @@ export interface OwnerNavItem {
   label: string;
   href: string;
   icon: IconName;
-  count?: "pendingBookings" | "unread";
+  count?: "pendingBookings" | "unread" | "refunds";
 }
 
 /** Menu names and order as decided; groups follow the prototype's rail. */
@@ -151,7 +152,7 @@ export const OWNER_NAV: { label: string | null; items: OwnerNavItem[] }[] = [
     label: "Money",
     items: [
       { label: "Pricing Rules", href: "/owner/pricing", icon: "pricing" },
-      { label: "Payments", href: "/owner/payments", icon: "payments" },
+      { label: "Payments", href: "/owner/payments", icon: "payments", count: "refunds" },
       { label: "Revenue", href: "/owner/revenue", icon: "revenue" },
       { label: "Reports", href: "/owner/reports", icon: "reports" },
     ],
@@ -184,9 +185,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const [arenaId] = useArenaParam();
   const { data: notifications } = useNotifications();
   const { data: summary } = useDashboardSummary();
+  const { data: waitingRefunds } = usePendingRefundCount();
   const counts = {
     pendingBookings: summary?.pending_approvals ?? 0,
     unread: notifications?.unread_count ?? 0,
+    refunds: waitingRefunds ?? 0,
   };
   const activeHref = OWNER_NAV.flatMap((g) => g.items)
     .map((i) => i.href)
@@ -221,7 +224,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                     title={
                       item.count === "pendingBookings"
                         ? `${count} booking${count === 1 ? "" : "s"} awaiting approval`
-                        : `${count} unread notification${count === 1 ? "" : "s"}`
+                        : item.count === "refunds"
+                          ? `${count} refund${count === 1 ? "" : "s"} waiting for you`
+                          : `${count} unread notification${count === 1 ? "" : "s"}`
                     }
                   >
                     {count > 99 ? "99+" : count}

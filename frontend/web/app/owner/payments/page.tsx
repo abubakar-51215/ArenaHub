@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Owner Payments: bank accounts and discount codes. The prototype has no
+ * Owner Payments: bank accounts, discount codes and the refunds the owner owes players (the Refunds tab). The prototype has no
  * screen for this, so it borrows the Settings card's tab row (as in its
  * Payouts tab) with one tab per section that exists, and the shared table,
  * badge and button styles. Both belong to one arena, so the top bar picker
@@ -17,9 +17,12 @@ import { AdminBadge, AdminEmpty, AdminTag } from "@/components/admin/ui";
 import { BankDetailsForm } from "@/components/owner/bank-details-form";
 import { DiscountForm } from "@/components/owner/discount-form";
 import { PageHeader } from "@/components/owner/page-header";
+import { RefundsTab } from "@/components/owner/refunds-tab";
+import { Toast, useToast } from "@/components/owner/toast";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
+import { usePendingRefundCount } from "@/hooks/useOwnerRefunds";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatDateShort, formatRs, plural } from "@/lib/format";
@@ -27,7 +30,7 @@ import { ApiError } from "@/services/api";
 import { deleteDiscount, listDiscounts } from "@/services/discounts";
 import type { Arena, DiscountCode } from "@/types";
 
-type Tab = "bank" | "discounts";
+type Tab = "bank" | "discounts" | "refunds";
 
 function discountText(d: DiscountCode): string {
   return d.discount_type === "percentage" ? `${Number(d.discount_value)}% off` : `${formatRs(d.discount_value)} off`;
@@ -76,12 +79,14 @@ function PaymentsInner() {
   const qc = useQueryClient();
   const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
-  const [pickedId] = useArenaParam();
+  const [pickedId, setPickedId] = useArenaParam();
   const picked = arenas.find((a) => a.id === pickedId);
   const scope = picked ? [picked] : arenas;
   const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
   const [tab, setTab] = useState<Tab>("bank");
+  const [toast, showToast] = useToast();
+  const { data: waitingRefunds } = usePendingRefundCount();
 
   const discountQueries = useQueries({
     queries: scope.map((a) => ({ queryKey: ["discounts", a.id], queryFn: () => listDiscounts(a.id) })),
@@ -132,14 +137,15 @@ function PaymentsInner() {
     </div>
   );
 
-  const tabs: { key: Tab; label: string; count?: number }[] = [
+  const tabs: { key: Tab; label: string; count?: number; wait?: boolean }[] = [
     { key: "bank", label: "Bank accounts" },
     { key: "discounts", label: "Discount codes", count: discountsLoading ? undefined : discounts.length },
+    { key: "refunds", label: "Refunds", count: waitingRefunds, wait: true },
   ];
 
   return (
     <>
-      <PageHeader title="Payments" subtitle={`Bank transfer accounts and discount codes · ${picked ? picked.name : "All arenas"}`}>
+      <PageHeader title="Payments" subtitle={`Bank accounts, discount codes and refunds you owe players · ${picked ? picked.name : "All arenas"}`}>
         {tab === "discounts" && (
           <Button
             className="ah-lime"
@@ -180,7 +186,15 @@ function PaymentsInner() {
                 onClick={() => setTab(t.key)}
               >
                 {t.label}
-                {t.count != null && <span className="ah-tab-count ah-tag">{t.count}</span>}
+                {t.wait ? (
+                  !!t.count && (
+                    <span className="ah-tab-count ah-tag ah-tab-wait" aria-label={`${t.count} waiting`}>
+                      {t.count}
+                    </span>
+                  )
+                ) : (
+                  t.count != null && <span className="ah-tab-count ah-tag">{t.count}</span>
+                )}
               </button>
             ))}
           </div>
@@ -204,6 +218,8 @@ function PaymentsInner() {
               ))}
             </div>
           )}
+
+          {tab === "refunds" && arenas.length > 0 && <RefundsTab arenas={arenas} arenaId={pickedId} onArena={setPickedId} onToast={showToast} />}
 
           {tab === "discounts" && arenas.length > 0 && (
             <div id="panel-discounts" role="tabpanel" aria-labelledby="tab-discounts">
@@ -291,6 +307,8 @@ function PaymentsInner() {
           )}
         </section>
       </div>
+
+      <Toast message={toast} />
 
       {formOpen && formArenaId && (
         <DiscountForm

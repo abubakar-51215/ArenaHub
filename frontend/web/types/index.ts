@@ -477,3 +477,24 @@ export const WEEKDAY_NAMES = [
   "saturday",
   "sunday",
 ] as const;
+
+/** One refund on the owner's own arenas (GET /owner/refunds). */
+export type RefundStatusValue = "pending" | "processed" | "failed";
+export interface OwnerRefund {
+  id: string;
+  status: RefundStatusValue;
+  amount: string;
+  reason: string;
+  payment_method: "card" | "jazzcash" | "easypaisa" | "bank_transfer";
+  player_name: string;
+  booking_code: string;
+  arena_name: string;
+  court_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  processed_at: string | null;
+  /** True only for a pending bank-transfer refund: the owner sends the money and marks it paid. */
+  can_mark_paid: boolean;
+}
