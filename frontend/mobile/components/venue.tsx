@@ -40,10 +40,14 @@ function RatingBit({ arena }: { arena: Arena }) {
   );
 }
 
+/** "0.8 km" (one decimal under 10 km, whole km above). */
+export const formatKm = (km: number): string => (km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`);
+
 function Where({ arena }: { arena: Arena }) {
   return (
     <Text style={[styles.meta, styles.flex]} numberOfLines={1}>
       {arena.area ?? arena.city}
+      {arena.distance_km != null ? ` · ${formatKm(arena.distance_km)}` : ''}
     </Text>
   );
 }

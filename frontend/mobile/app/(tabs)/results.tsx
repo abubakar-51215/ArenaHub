@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/components/search/search-bar';
@@ -13,6 +13,9 @@ import { Text } from '@/components/ui/text';
 import { VenueRow } from '@/components/venue';
 import { Colors } from '@/constants/theme';
 import { useResults } from '@/hooks/useResults';
+import { IconExtra } from '@/components/ui/icon-extra';
+import { useAuthStore } from '@/store/auth';
+import { useLocationStore } from '@/store/location';
 import { useSearchHistory } from '@/store/search-history';
 import { activeFilterCount, useSearchFilters, type SortChoice } from '@/store/search-filters';
 
@@ -30,6 +33,18 @@ export default function ResultsScreen() {
   const f = useSearchFilters();
   const history = useSearchHistory();
   const r = useResults();
+  const coords = useLocationStore((s) => s.coords);
+  const status = useLocationStore((s) => s.status);
+  const detect = useLocationStore((s) => s.detect);
+  const savedCity = useAuthStore((s) => s.user?.preferred_locations?.[0]);
+  // asked for distance (Near me or a radius) but there is no position: say why, calmly
+  const wantsDistance = f.sort === 'near' || !!f.radiusKm;
+  const noPosition = wantsDistance && !coords;
+  const where = savedCity ?? 'all cities';
+  const turnOn = async () => {
+    await detect();
+    if (useLocationStore.getState().status === 'denied') Linking.openSettings().catch(() => {});
+  };
 
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
@@ -51,6 +66,20 @@ export default function ResultsScreen() {
                 <Text style={styles.chipText}>{c}</Text>
               </View>
             ))}
+          </View>
+        ) : null}
+
+        {noPosition && status !== 'detecting' ? (
+          <View style={styles.banner} accessibilityRole="alert">
+            <IconExtra name="locate" size={20} color={Colors.light.limeDeep} />
+            <Text style={styles.bannerText}>
+              {status === 'unavailable' || status === 'outside' ? `We could not find your location. Showing arenas in ${where}. You can try again from Filters.` : `Location is off. Showing arenas in ${where}.`}
+            </Text>
+            {status === 'unavailable' || status === 'outside' ? null : (
+              <Pressable onPress={turnOn} accessibilityRole="button" accessibilityLabel="Turn on location" style={styles.bannerLink}>
+                <Text style={styles.bannerLinkText}>Turn on</Text>
+              </Pressable>
+            )}
           </View>
         ) : null}
 
@@ -88,10 +117,11 @@ export default function ResultsScreen() {
               ) : (
                 <Text style={styles.count} accessibilityLiveRegion="polite">
                   {r.total} {r.total === 1 ? 'arena' : 'arenas'}
+                  {coords && f.radiusKm ? ` within ${f.radiusKm} km` : ''}
                 </Text>
               )}
               <View style={styles.seg} accessibilityRole="radiogroup">
-                {SORTS.map((s) => {
+                {(coords ? [...SORTS, { label: 'Near me', value: 'near' as SortChoice }] : SORTS).map((s) => {
                   const on = r.sort === s.value;
                   return (
                     <Pressable
@@ -131,6 +161,10 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.light.limeWash, borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 13, padding: 12, marginTop: 12 },
+  bannerText: { flex: 1, fontSize: 14, lineHeight: 20, color: Colors.light.noteText },
+  bannerLink: { minHeight: 44, minWidth: 56, alignItems: 'center', justifyContent: 'center' },
+  bannerLinkText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
   page: { flex: 1, backgroundColor: Colors.light.paper },
   pad: { paddingHorizontal: 18, paddingBottom: 28 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10 },

@@ -65,30 +65,54 @@ export function nearestSupportedCity(
 }
 
 export type LocationStatus =
-  "idle" | "detecting" | "detected" | "denied" | "outside";
+  "idle" | "detecting" | "detected" | "denied" | "outside" | "unavailable";
+
+/** Where the player is (memory only: never saved on the phone, never sent anywhere except as search parameters). */
+export interface Coords {
+  lat: number;
+  lon: number;
+}
 
 interface LocationState {
   city: ArenaCity | null;
   status: LocationStatus;
+  coords: Coords | null;
+  /** True once the system says location is allowed; false when refused; null when not asked yet. */
+  granted: boolean | null;
+  /** Ask the system (no dialog) whether location is already allowed. */
+  refreshPermission: () => Promise<boolean>;
+  /** Find the player. Asks for permission if it is not given yet. Never takes longer than LOCATION_TIMEOUT_MS. */
   detect: () => Promise<void>;
 }
 
 export const useLocationStore = create<LocationState>()((set, get) => ({
   city: null,
   status: "idle",
+  coords: null,
+  granted: null,
+  refreshPermission: async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      const granted = status === "granted";
+      set({ granted: granted ? true : status === "denied" ? false : null });
+      return granted;
+    } catch {
+      return false;
+    }
+  },
   detect: async () => {
     if (get().status === "detecting") return;
     set({ status: "detecting" });
-    // Nothing waits for this: after LOCATION_TIMEOUT_MS the lookup is given up on and Home shows the saved city (or
-    // "All cities"). A refused or dismissed permission is a normal answer, not an error.
+    // Nothing waits for this: after LOCATION_TIMEOUT_MS the lookup is given up on and the screens show the saved city
+    // (or "All cities"). A refused or dismissed permission is a normal answer, not an error.
     let finished = false;
     const timer = setTimeout(() => {
       if (finished) return;
       finished = true;
       startupLog(`location: no answer after ${LOCATION_TIMEOUT_MS / 1000} s, using the saved city`);
-      set({ status: "idle", city: null });
+      set({ status: "unavailable", city: null });
     }, LOCATION_TIMEOUT_MS);
-    const done = (next: { status: LocationStatus; city: ArenaCity | null }) => {
+    const done = (next: Partial<LocationState> & { status: LocationStatus }) => {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
@@ -99,9 +123,10 @@ export const useLocationStore = create<LocationState>()((set, get) => ({
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         startupLog("location: permission not given, using the saved city");
-        done({ status: "denied", city: null });
+        done({ status: "denied", city: null, coords: null, granted: false });
         return;
       }
+      set({ granted: true });
       startupLog("location: reading the position");
       const cached = await Location.getLastKnownPositionAsync();
       const cachedIsFresh =
@@ -112,15 +137,14 @@ export const useLocationStore = create<LocationState>()((set, get) => ({
           : await Location.getCurrentPositionAsync({
               accuracy: Location.Accuracy.Balanced,
             });
-      const city = nearestSupportedCity(
-        position.coords.latitude,
-        position.coords.longitude,
-      );
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const city = nearestSupportedCity(lat, lon);
       startupLog(`location: ${city ?? "outside the supported cities"}`);
-      done(city ? { status: "detected", city } : { status: "outside", city: null });
+      done({ status: city ? "detected" : "outside", city, coords: { lat, lon }, granted: true });
     } catch {
       startupLog("location: could not be read, using the saved city");
-      done({ status: "idle", city: null });
+      done({ status: "unavailable", city: null });
     }
   },
 }));

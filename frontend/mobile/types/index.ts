@@ -79,6 +79,8 @@ export interface Arena {
   amenities: Amenity[];
   created_at: string;
   /** Only the list endpoints send these three (the card hides what is missing). */
+  /** km from the position sent with the search (only when one was sent). */
+  distance_km?: number | null;
   avg_rating?: number | null;
   review_count?: number;
   min_price?: string | null;
@@ -287,6 +289,12 @@ export interface Match {
   players_joined: number;
   status: MatchStatus;
   created_at: string;
+  /** The creator's booking this match is played on. */
+  booking_group_id: string | null;
+  note: string | null;
+  /** What that booking costs in all (the phone shows "about X each": text only, nothing is paid in the app). */
+  booking_total: string | null;
+  joined_by_me: boolean;
 }
 
 export interface MatchDetail extends Match {

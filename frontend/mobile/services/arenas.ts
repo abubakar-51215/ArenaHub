@@ -8,7 +8,11 @@ export interface ArenaSearchParams {
   sport?: string;
   price_min?: number;
   price_max?: number;
-  sort?: "newest" | "name" | "price_asc" | "price_desc" | "rating_desc" | "best";
+  sort?: "newest" | "name" | "price_asc" | "price_desc" | "rating_desc" | "best" | "near";
+  /** The player's position: only a search parameter, never stored by the server. */
+  lat?: number;
+  lon?: number;
+  radius_km?: number;
   page?: number;
   page_size?: number;
 }
