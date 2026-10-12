@@ -181,9 +181,13 @@ function RootNavigator() {
       <Stack.Protected guard={!accessToken || !user}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={!!accessToken && !!user}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      {/* the admin screens: only an admin can open them (the screens check the role again) */}
+      <Stack.Protected guard={!!accessToken && user?.role === 'admin'}>
         <Stack.Screen name="admin" options={{ headerShown: false }} />
+      </Stack.Protected>
+      {/* the player and owner screens: an admin never sees them */}
+      <Stack.Protected guard={!!accessToken && !!user && user.role !== 'admin'}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filters" options={{ headerShown: false }} />
         <Stack.Screen name="arena/[id]" options={{ headerShown: false }} />
         <Stack.Screen

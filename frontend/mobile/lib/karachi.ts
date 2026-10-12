@@ -143,3 +143,16 @@ export function dayStrip(count: number, now: Date = new Date()) {
     return { iso, weekday: WEEKDAYS[weekdayOf(iso)], num: d, month: MONTHS[m - 1], dow: weekdayOf(iso) };
   });
 }
+
+/** "Sun 11 Oct, 12:27 PM" for a moment, in Karachi time. */
+export function formatDayTime(at: Date | string | number): string {
+  const p = karachiParts(at);
+  const iso = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
+  return `${formatDayShort(iso)}, ${formatClock(`${pad(p.hour)}:${pad(p.minute)}`)}`;
+}
+
+/** "Today", "1 day" or "2 days": how long a day-stamped item has been waiting (Karachi calendar days). */
+export function waitingFor(at: Date | string | number, now: Date = new Date()): string {
+  const d = Math.max(0, dayDiff(karachiDate(at), karachiToday(now)));
+  return d === 0 ? 'Today' : d === 1 ? '1 day' : `${d} days`;
+}

@@ -23,19 +23,22 @@ import { successHaptic } from '@/lib/haptics';
 // just appears and disappears. Screen readers hear it (polite live region).
 interface ToastState {
   message: string | null;
+  tone: 'ok' | 'warn';
   id: number;
-  show: (message: string) => void;
+  show: (message: string, tone?: 'ok' | 'warn') => void;
   clear: () => void;
 }
 
 const useToastStore = create<ToastState>()((set) => ({
   message: null,
+  tone: 'ok',
   id: 0,
-  show: (message) => set((s) => ({ message, id: s.id + 1 })),
+  show: (message, tone = 'ok') => set((s) => ({ message, tone, id: s.id + 1 })),
   clear: () => set({ message: null }),
 }));
 
-export const showToast = (message: string) => useToastStore.getState().show(message);
+/** `tone: 'warn'` (amber dot) is for "someone already did this" notes; everything else is the plain lime toast. */
+export const showToast = (message: string, tone: 'ok' | 'warn' = 'ok') => useToastStore.getState().show(message, tone);
 
 // The auth screens' back button sits at 20 to 50 below the safe area; the
 // toast starts below it so it never covers the back button.
@@ -49,6 +52,7 @@ export function ToastHost() {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const message = useToastStore((s) => s.message);
+  const tone = useToastStore((s) => s.tone);
   const id = useToastStore((s) => s.id);
   const [shown, setShown] = useState<string | null>(null);
   const y = useSharedValue(-24);
@@ -95,7 +99,7 @@ export function ToastHost() {
         accessibilityRole="alert"
         accessibilityLiveRegion="polite"
         accessibilityLabel={shown}>
-        <View style={styles.dot}>
+        <View style={[styles.dot, tone === 'warn' && { backgroundColor: Colors.light.amber }]}>
           <Icon name="tick" size={11} color={Colors.light.ink} strokeWidth={3} />
         </View>
         <Text style={styles.text}>{shown}</Text>

@@ -1,6 +1,6 @@
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { PlatformPressable } from '@react-navigation/elements';
-import { Redirect, Tabs, useSegments } from 'expo-router';
+import { Redirect, Tabs, useSegments, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -82,7 +82,7 @@ export default function TabLayout() {
   const role = useAuthStore((s) => s.user?.role);
 
   // an admin signed in earlier (a saved session) opens the admin screen, not the player tabs
-  if (role === 'admin') return <Redirect href="/admin" />;
+  if (role === 'admin') return <Redirect href={'/admin' as unknown as Href} />;
 
   return (
     <Tabs
