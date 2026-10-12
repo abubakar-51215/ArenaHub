@@ -3,11 +3,13 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Eyebrow, IconTile, Line, Note, UploadIcon } from '@/components/booking/parts';
+import { Eyebrow, IconTile, Line, Note } from '@/components/booking/parts';
+import { ReceiptBox } from '@/components/booking/receipt-box';
 import { Button } from '@/components/ui/button';
+import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHead } from '@/components/ui/screen-head';
@@ -23,7 +25,7 @@ import { formatRs } from '@/lib/money';
 import { getBankDetails } from '@/services/arenas';
 import { getBookingGroup } from '@/services/bookings';
 import { uploadReceipt } from '@/services/payments';
-import { photoProblem, uploadImage } from '@/services/uploads';
+import { photoProblem, uploadImage, UploadAbortedError, UploadNetworkError, type PhotoProblem } from '@/services/uploads';
 
 // Bank transfer, from arena-hub-player-app-booking-payment.html (frame 5). The
 // arena's own account details come from its bank-transfer settings. The person
@@ -39,8 +41,14 @@ export default function BankTransferScreen() {
   const { back, sheet } = useLeaveCheckout(groupId, arena);
 
   const [photo, setPhoto] = useState<{ uri: string; name: string } | null>(null);
-  const [busy, setBusy] = useState(false);
+  // what the receipt box shows: ready, uploading (with a percentage), stopped, failed, or a photo that cannot be used
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'stopped' | 'failed'>('idle');
+  const [pct, setPct] = useState(0);
+  const [failMessage, setFailMessage] = useState('Upload failed. Check your connection.');
+  const [bad, setBad] = useState<PhotoProblem | null>(null);
+  const [stopSheet, setStopSheet] = useState(false);
   const sending = useRef(false);
+  const abort = useRef<AbortController | null>(null);
 
   // already sent, confirmed or let go: open the screen that matches
   useEffect(() => {
@@ -52,16 +60,22 @@ export default function BankTransferScreen() {
   }, [group.data, groupId]);
 
   async function choose() {
+    if (sending.current) return;
     tapHaptic();
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (!res.canceled && res.assets[0]) {
       const a = res.assets[0];
       const problem = photoProblem(a);
       if (problem) {
-        showToast(problem);
+        errorHaptic();
+        setBad(problem);
+        setPhoto(null);
+        setPhase('idle');
         return;
       }
-      setPhoto({ uri: a.uri, name: a.fileName ?? 'receipt' });
+      setBad(null);
+      setPhase('idle');
+      setPhoto({ uri: a.uri, name: a.fileName ?? 'receipt.jpg' });
     }
   }
   async function copy() {
@@ -76,17 +90,27 @@ export default function BankTransferScreen() {
   async function send() {
     if (sending.current || !photo) return;
     sending.current = true;
-    setBusy(true);
+    const controller = new AbortController();
+    abort.current = controller;
+    setPct(0);
+    setPhase('uploading');
     try {
-      const url = await uploadImage(photo.uri, 'receipts');
+      const url = await uploadImage(photo.uri, 'receipts', { signal: controller.signal, onProgress: setPct });
       await uploadReceipt(paymentId, url);
       router.replace({ pathname: '/booking/awaiting/[groupId]', params: { groupId } });
     } catch (e) {
-      errorHaptic();
-      showToast(e instanceof ApiError && e.message ? e.message : 'Could not send the receipt. Please try again.');
+      if (e instanceof UploadAbortedError) {
+        // the person stopped it: nothing to report, the "Upload stopped" state shows
+        setPhase('stopped');
+        setPhoto(null);
+      } else {
+        errorHaptic();
+        setFailMessage(e instanceof UploadNetworkError ? e.message : e instanceof ApiError && e.message ? e.message : 'Upload failed. Check your connection.');
+        setPhase('failed');
+      }
     } finally {
       sending.current = false;
-      setBusy(false);
+      abort.current = null;
     }
   }
 
@@ -144,25 +168,43 @@ export default function BankTransferScreen() {
           </Card>
 
           <Eyebrow>Your receipt</Eyebrow>
-          <Pressable
-            onPress={choose}
-            accessibilityRole="button"
-            accessibilityLabel={photo ? 'Receipt chosen. Tap to choose a different photo' : 'Upload a photo of your receipt'}
-            style={[styles.drop, photo && { borderColor: Colors.light.limeDeep }]}>
-            <View style={{ marginBottom: 8 }}>
-              <IconTile tone="lime">
-                <UploadIcon />
-              </IconTile>
-            </View>
-            <Text style={styles.dropTitle}>{photo ? 'Receipt ready' : 'Upload a photo'}</Text>
-            <Text style={styles.dropText}>{photo ? 'Tap to choose a different photo' : 'JPG or PNG, up to 5 MB'}</Text>
-          </Pressable>
+          <ReceiptBox
+            state={
+              bad
+                ? { kind: 'bad', title: bad.title, text: bad.text }
+                : phase === 'uploading' && photo
+                  ? { kind: 'uploading', name: photo.name, pct }
+                  : phase === 'failed' && photo
+                    ? { kind: 'failed', name: photo.name, message: failMessage }
+                    : phase === 'stopped'
+                      ? { kind: 'stopped' }
+                      : photo
+                        ? { kind: 'ready', name: photo.name }
+                        : { kind: 'empty' }
+            }
+            onChoose={choose}
+            onCancel={() => setStopSheet(true)}
+            onRetry={send}
+          />
         </ScrollView>
       )}
       <StickyBar>
-        <Button title="Send receipt" loading={busy} disabled={!ready || !photo} onPress={send} />
+        <Button title="Send receipt" offlineLabel="Send needs a connection" disabled={!ready || !photo || phase === 'uploading' || phase === 'failed'} onPress={send} />
       </StickyBar>
       {sheet}
+      <ConfirmSheet
+        visible={stopSheet}
+        title="Stop uploading?"
+        message="Your receipt will not be sent. You can choose a photo again."
+        confirmLabel="Yes, stop upload"
+        cancelLabel="Keep uploading"
+        stacked
+        onConfirm={() => {
+          setStopSheet(false);
+          abort.current?.abort();
+        }}
+        onCancel={() => setStopSheet(false)}
+      />
     </SafeAreaView>
   );
 }

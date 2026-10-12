@@ -45,7 +45,7 @@ export default function PersonalInformationScreen() {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
     if (res.canceled || !res.assets[0]) return;
     const problem = photoProblem(res.assets[0]);
-    if (problem) return showToast(problem);
+    if (problem) return showToast(problem.title);
     setPickedUri(res.assets[0].uri);
   }
 
