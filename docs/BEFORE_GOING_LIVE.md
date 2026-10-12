@@ -11,6 +11,8 @@ Nothing here has been changed; this is only the list.
 6. **EMAIL_*** settings in `backend/.env` (host, username, password, from). The admin sign-in code is sent by email, so mail must work before launch.
 7. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev, and the dev OTP logging must not be used.
 
+**Rule for the development database: backup first, then migrate, every time** (`pg_dump -Fc` into `backend/backups/`, then `alembic upgrade head`; test and scratch first). Last backup: `backend/backups/arenahub-20261012-112458-after-g6.dump`, restore-checked into a throwaway database (dropped afterwards).
+
 ## Decide at the very end (do not build yet)
 
 Open decisions only. Nothing here is chosen, and nothing for them is built in the app today.
