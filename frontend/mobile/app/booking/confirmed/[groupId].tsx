@@ -23,6 +23,7 @@ import { getBookingGroup } from '@/services/bookings';
 import { useCheckout } from '@/store/checkout';
 
 import { useBackTo } from '@/hooks/useBackTo';
+import { dotJoin } from '@/lib/text';
 // Booking confirmed, from arena-hub-player-app-booking-payment.html (frame 10): the ArenaHub
 // mark lights its ring and lands the ball once (with the success buzz), the booking code, the time,
 // what was paid and the arena's cancellation rules as text. "Add to calendar" shares a
@@ -56,7 +57,7 @@ export default function BookingConfirmedScreen() {
     try {
       const ics = buildIcs({
         code: g.booking_code,
-        title: `${g.arena_name} · ${g.court_name}`,
+        title: dotJoin([g.arena_name, g.court_name]),
         place: [g.arena_name, g.arena_address].filter(Boolean).join(', '),
         date: g.booking_date,
         start: g.start_time,

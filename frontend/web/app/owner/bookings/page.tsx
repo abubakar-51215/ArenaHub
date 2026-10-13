@@ -33,7 +33,7 @@ import {
 import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { useApprovePayment, useOwnerBookings, useRejectPayment, useRemindBooking } from "@/hooks/useDashboard";
-import { formatDateShort, formatRs, formatTime, plural } from "@/lib/format";
+import { formatDateShort, formatRs, formatTime, plural, joinParts } from "@/lib/format";
 import { shortDay } from "@/lib/karachi-date";
 import { PAYMENT_METHOD_LABEL } from "@/lib/payment-methods";
 import { ApiError } from "@/services/api";
@@ -396,7 +396,7 @@ function Bookings() {
                     <AdminPerson name={row.player_name} sub={cleanPhone(row.player_phone)} />
                     <div>
                       <div>
-                        {row.court_name} · {row.arena_name}
+                        {joinParts([row.court_name, row.arena_name])}
                       </div>
                       <div className="ah-sub">{paymentText(row)}</div>
                       <div className="ah-sub tabular-nums">

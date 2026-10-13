@@ -60,3 +60,8 @@ export function plural(n: number, one: string, many = `${one}s`): string {
 export function compactNumber(n: number): string {
   return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
+
+/** Parts of a line joined with " · ", skipping any that are empty (no "A · · B"). */
+export function joinParts(parts: Array<string | null | undefined | false>, sep = " · "): string {
+  return parts.filter((p): p is string => typeof p === "string" && p.trim().length > 0).join(sep);
+}

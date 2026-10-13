@@ -25,6 +25,7 @@ import { cancelMatch, joinMatch, leaveMatch } from '@/services/matches';
 import { sportLabel } from '@/constants/sports';
 import { formatRs } from '@/lib/money';
 import { useAuthStore } from '@/store/auth';
+import { dotJoin } from '@/lib/text';
 
 // Match detail, from arena-hub-player-app-play.html (frames 14 to 22): the arena, when, court, how many players and "about X
 // each" (text only), the players with the host marked, the host's note, and one button for what I can do: Join, Leave, Cancel,
@@ -141,7 +142,7 @@ export default function MatchDetailScreen() {
             <Text style={styles.sub}>{m.city}</Text>
             <View style={styles.rows}>
               <Row label="When" value={matchWhen(m)} />
-              <Row label="Court" value={`${m.court_name} · ${sportLabel(m.sport)}`} />
+              <Row label="Court" value={dotJoin([m.court_name, sportLabel(m.sport)])} />
               <Row label="Players" value={`${m.players_joined} / ${m.max_players}`} />
               {price ? <Row label="Share" value={price} /> : null}
             </View>
