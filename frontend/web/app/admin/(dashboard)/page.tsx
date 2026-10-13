@@ -374,6 +374,7 @@ function DecisionQueue({ overview, city }: { overview?: DashboardOverview; city:
         title="Reject arena"
         description={rejecting ? `${rejecting.name} will be notified with your reason.` : undefined}
         placeholder="Reason for rejection…"
+        maxLength={500}
         confirmLabel="Reject Arena"
         destructive
         pending={reject.isPending}

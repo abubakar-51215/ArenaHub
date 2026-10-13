@@ -2,7 +2,7 @@
 
 /**
  * Suspend / Reactivate / Remove an arena: one dialog for all three, in the
- * style of the other admin dialogs. The reason is required (10-500
+ * style of the other admin dialogs. The reason is required (1-500
  * characters, counted after trimming, as the API counts it); the server's
  * error message is shown inside the dialog.
  */
@@ -24,7 +24,7 @@ import { useArenaModeration, type ArenaAction } from "@/hooks/useAdmin";
 import { ApiError } from "@/services/api";
 import type { Arena } from "@/types";
 
-export const REASON_MIN = 10;
+export const REASON_MIN = 1;
 export const REASON_MAX = 500;
 
 const COPY: Record<
@@ -140,7 +140,7 @@ export function ArenaActionDialog({
           <div id={hintId} className="ah-reason-hint">
             <span>
               {length < REASON_MIN
-                ? `At least ${REASON_MIN} characters`
+                ? "Write a reason"
                 : "Shown to the owner and kept in the audit log"}
             </span>
             <span className="tabular-nums" aria-live="polite">
