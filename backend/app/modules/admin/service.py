@@ -367,6 +367,7 @@ async def list_bookings(
     items = [
         AdminBookingResponse(
             id=b.id,
+            booking_code=booking_service.booking_code_for(b.booking_group_id),
             player_id=b.player_id,
             player_name=pn,
             arena_id=b.arena_id,

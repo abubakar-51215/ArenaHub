@@ -57,9 +57,9 @@ function periodRange(period: Period): { date_from?: string; date_to?: string } {
   return { date_from: karachiDate(period === "7d" ? -6 : -29), date_to: today };
 }
 
-/** The owner panel's booking reference, so one booking reads the same in both. */
-function bookingRef(id: string): string {
-  return `#BK-${id.slice(0, 4).toUpperCase()}`;
+/** The booking reference the player and the owner see (AHB-xxxxxx), so one booking reads the same everywhere. */
+function bookingRef(b: { booking_code?: string; id: string }): string {
+  return b.booking_code || `#BK-${b.id.slice(0, 4).toUpperCase()}`;
 }
 
 export default function AdminBookingsPage() {
@@ -141,7 +141,7 @@ export default function AdminBookingsPage() {
               )}
               {bookings.map((b) => (
                 <TableRow key={b.id}>
-                  <TableCell className="ah-strong tabular-nums">{bookingRef(b.id)}</TableCell>
+                  <TableCell className="ah-strong tabular-nums">{bookingRef(b)}</TableCell>
                   <TableCell>
                     <AdminPerson name={b.player_name} />
                   </TableCell>
@@ -186,7 +186,7 @@ export default function AdminBookingsPage() {
       <Dialog open={!!viewing} onOpenChange={(v) => !v && setViewing(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{viewing ? `Booking ${bookingRef(viewing.id)}` : ""}</DialogTitle>
+            <DialogTitle>{viewing ? `Booking ${bookingRef(viewing)}` : ""}</DialogTitle>
             <DialogDescription>{viewing?.arena_name}</DialogDescription>
           </DialogHeader>
           {viewing && (

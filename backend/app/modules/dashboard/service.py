@@ -24,6 +24,7 @@ from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, Va
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena, ArenaCity
 from app.modules.booking import repository as booking_repo
+from app.modules.booking import service as booking_service
 from app.modules.booking.model import Booking, BookingStatus
 from app.modules.court.model import Court
 from app.modules.dashboard.schema import (
@@ -474,6 +475,7 @@ async def list_owner_bookings(
         items.append(
             OwnerBookingRow(
                 booking_id=booking.id,
+                booking_code=booking_service.booking_code_for(booking.booking_group_id),
                 booking_date=booking.booking_date,
                 start_time=booking.start_time,
                 end_time=booking.end_time,

@@ -408,6 +408,9 @@ async def test_gateway_failure_keeps_refund_pending_and_suspend_succeeds(
     h = auth_header(s["admin"])
     rows = (await client.get(f"{API}/admin/bookings", headers=h)).json()["data"]["items"]
     assert [r["refund_pending"] for r in rows if r["id"] == str(booking.id)] == [True]
+    # with the AHB-xxxxxx reference the player and the owner see
+    code = "AHB-" + booking.booking_group_id.hex[:6].upper()
+    assert [r["booking_code"] for r in rows if r["id"] == str(booking.id)] == [code]
 
 
 async def test_retry_job_completes_refund_on_a_later_try(

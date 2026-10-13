@@ -81,6 +81,8 @@ class AdminUserDetailResponse(AdminUserResponse):
 
 class AdminBookingResponse(BaseModel):
     id: uuid.UUID
+    # the reference the player and the owner see (AHB-xxxxxx)
+    booking_code: str = ""
     player_id: uuid.UUID
     player_name: str
     arena_id: uuid.UUID

@@ -99,8 +99,9 @@ function cleanPhone(phone: string | null | undefined): string | undefined {
   return phone && /^[+\d]/.test(phone) ? phone : undefined;
 }
 
-function bookingRef(id: string): string {
-  return `#BK-${id.slice(0, 4).toUpperCase()}`;
+/** The booking reference the player sees on the phone and writes on a bank transfer (AHB-xxxxxx). */
+function bookingRef(row: { booking_code?: string; booking_id: string }): string {
+  return row.booking_code || `#BK-${row.booking_id.slice(0, 4).toUpperCase()}`;
 }
 
 function rangeLine(from: string, to: string): string {
@@ -360,7 +361,7 @@ function Bookings() {
                   <TableBody>
                     {rows.map((row) => (
                       <TableRow key={row.booking_id}>
-                        <TableCell className="ah-strong tabular-nums">{bookingRef(row.booking_id)}</TableCell>
+                        <TableCell className="ah-strong tabular-nums">{bookingRef(row)}</TableCell>
                         <TableCell>
                           <AdminPerson name={row.player_name} sub={cleanPhone(row.player_phone)} />
                         </TableCell>
@@ -390,7 +391,7 @@ function Bookings() {
                 {rows.map((row) => (
                   <li key={row.booking_id}>
                     <div className="ah-card-line">
-                      <span className="ah-strong tabular-nums">{bookingRef(row.booking_id)}</span>
+                      <span className="ah-strong tabular-nums">{bookingRef(row)}</span>
                       <AdminBadge status={row.status} />
                     </div>
                     <AdminPerson name={row.player_name} sub={cleanPhone(row.player_phone)} />

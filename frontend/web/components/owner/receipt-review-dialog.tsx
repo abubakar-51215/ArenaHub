@@ -33,7 +33,7 @@ export function ReceiptReviewDialog({
         <DialogHeader>
           <DialogTitle>Verify bank transfer</DialogTitle>
           <DialogDescription>
-            {row ? `#BK-${row.booking_id.slice(0, 4).toUpperCase()} — ${row.player_name}` : ""}
+            {row ? `${row.booking_code || `#BK-${row.booking_id.slice(0, 4).toUpperCase()}`} — ${row.player_name}` : ""}
           </DialogDescription>
         </DialogHeader>
 
