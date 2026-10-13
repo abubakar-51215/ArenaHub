@@ -16,6 +16,7 @@ import { Colors } from '@/constants/theme';
 import { ADMIN_KEY, actionFailed } from '@/hooks/useAdmin';
 import { successHaptic } from '@/lib/haptics';
 import { formatDayTime } from '@/lib/karachi';
+import { suspendCountText } from '@/lib/text';
 import { getArenaSummary, reactivateArena, suspendArena } from '@/services/admin';
 
 // One arena (arena-hub-admin-app.html: Arena detail live and suspended, Suspend sheet, Reactivate sheet, toast).
@@ -89,7 +90,7 @@ export default function AdminArenaScreen() {
       <ReasonSheet
         visible={sheet === 'suspend'}
         title={`Suspend ${a?.name ?? 'this arena'}?`}
-        message={`Players cannot find or book it. ${n} upcoming ${n === 1 ? 'booking' : 'bookings'} will be cancelled with a full refund. The owner and the players are told.`}
+        message={`Players cannot find or book it. ${suspendCountText(n)} The owner${n > 0 ? ' and the players are' : ' is'} told.`}
         placeholder="Tell the owner why."
         confirmLabel="Yes, suspend arena"
         offlineLabel="Suspend needs a connection"
