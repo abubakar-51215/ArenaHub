@@ -93,7 +93,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   focused: { borderColor: Colors.light.limeDeep },
-  input: { flex: 1, fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
+  // fills the field's whole height, so a tap anywhere in the box puts the cursor in it
+  input: { flex: 1, alignSelf: 'stretch', fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
   clear: { fontSize: 14, color: Colors.light.muted },
   filters: {
     width: 44,
