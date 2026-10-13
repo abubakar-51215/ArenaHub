@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   pillTimeOn: { color: Colors.light.paper },
   // the price under the time is a small label (12px)
   pillSub: { fontSize: 12, fontWeight: '500', color: Colors.light.muted, marginTop: 2 },
-  pillSubDeal: { color: Colors.light.limeDeep },
+  pillSubDeal: { color: Colors.light.limeText },
   pillSubOn: { color: Colors.light.lime },
   hint: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 14 },
   center: { alignItems: 'center', paddingTop: 34 },

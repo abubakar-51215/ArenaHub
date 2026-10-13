@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: 18 },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 9 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
-  seeAll: { fontSize: 14, fontWeight: '600', color: Colors.light.limeDeep },
+  seeAll: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   hRow: { gap: 11, paddingHorizontal: 18, paddingBottom: 4, marginTop: 10 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
   gridCell: { width: '48.4%' },

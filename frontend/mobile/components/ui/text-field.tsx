@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, minHeight: 48, fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
   inputMulti: { minHeight: 96, textAlignVertical: 'top' },
   link: { minWidth: 56, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  linkText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
-  error: { fontSize: 14, lineHeight: 20, color: Colors.light.destructive },
+  linkText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
+  error: { fontSize: 14, lineHeight: 20, color: Colors.light.redText },
   hint: { fontSize: 14, lineHeight: 20, color: Colors.light.muted },
 });

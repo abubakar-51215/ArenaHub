@@ -22,9 +22,9 @@ import { listMyNotifications, markAllNotificationsRead, markNotificationRead, ty
 // what is unread, "Mark all read", and a tap opens what the notice is about (a booking, a match, the reviews screen for
 // "Rate your last game", a complaint). No delete and no swipe.
 const TONE: Record<NoticeTone, { bg: string; fg: string }> = {
-  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeDeep },
-  wait: { bg: Colors.light.amberWash, fg: Colors.light.amber },
-  off: { bg: Colors.light.redWash, fg: Colors.light.destructive },
+  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeText },
+  wait: { bg: Colors.light.amberWash, fg: Colors.light.amberText },
+  off: { bg: Colors.light.redWash, fg: Colors.light.redText },
   idle: { bg: Colors.light.lineSoft, fg: Colors.light.muted },
 };
 
@@ -216,7 +216,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   markAll: { minHeight: 44, justifyContent: 'center' },
-  markAllText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
+  markAllText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
   list: { paddingHorizontal: 18, paddingBottom: 24, flexGrow: 1 },
   head: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 16, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12, minHeight: 64 },

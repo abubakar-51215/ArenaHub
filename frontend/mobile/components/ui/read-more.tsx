@@ -28,5 +28,5 @@ export function ReadMore({ text, lines = 3, threshold = 150 }: { text: string; l
 const styles = StyleSheet.create({
   text: { fontSize: 14, lineHeight: 21, color: Colors.light.text2 },
   link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  linkText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
+  linkText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
 });

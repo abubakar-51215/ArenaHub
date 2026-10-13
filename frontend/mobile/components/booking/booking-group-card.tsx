@@ -78,5 +78,5 @@ const styles = StyleSheet.create({
   bottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.light.line, borderStyle: 'dashed' },
   rateBox: { position: 'absolute', right: 12, bottom: 4 },
   rate: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  rateText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
+  rateText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
 });

@@ -80,7 +80,7 @@ export default function OverviewScreen() {
           <>
             <Text style={styles.today}>Today · {day}</Text>
             <View style={styles.grid}>
-              <Kpi n={d.pending_arenas} label="Arenas waiting" color={d.pending_arenas ? Colors.light.amber : undefined} />
+              <Kpi n={d.pending_arenas} label="Arenas waiting" color={d.pending_arenas ? Colors.light.amberText : undefined} />
               <Kpi n={d.open_complaints} label="Open complaints" color={d.open_complaints ? Colors.light.destructive : undefined} />
               <Kpi n={d.bookings_today} label="Bookings today" />
               <Kpi n={d.refunds_waiting} label="Refunds waiting" />

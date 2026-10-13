@@ -14,14 +14,17 @@ export const Palette = {
   lineSoft: '#EDEFEB',
   text: '#0F1A15',
   text2: '#46534C',
-  muted: '#79857E',
+  muted: '#656F69', // text grey: 4.5 : 1 or more on card, paper, soft line and lime wash (was #79857E, 3.4 on paper)
   lime: '#C4F546',
   limeInk: '#0F1A15',
-  limeDeep: '#7FA30F',
+  limeDeep: '#7FA30F', // fills, borders and icons only (2.7 : 1 as text)
+  limeText: '#5B750B', // the same lime as TEXT: 4.5 : 1 or more on card, paper, soft line and lime wash
   limeWash: '#F2FBDA',
-  amber: '#D9930B',
+  amber: '#D9930B', // fills, stars and icons only (2.3 : 1 as text)
+  amberText: '#956508', // the same amber as TEXT: 4.5 : 1 or more on amber wash, paper and card
   amberWash: '#FDF3DC',
-  red: '#CF4141',
+  red: '#CF4141', // fills, borders and icons (4.0 : 1 on red wash as text)
+  redText: '#C83333', // the same red as TEXT: 4.5 : 1 or more on red wash, paper and card
   redWash: '#FBE9E9',
   slotOpen: '#F6F7F4',
 

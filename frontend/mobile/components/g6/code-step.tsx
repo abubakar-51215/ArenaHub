@@ -86,7 +86,7 @@ export function useCodeStep({ onVerify, onResend }: { onVerify: (code: string) =
 
 const styles = StyleSheet.create({
   strong: { fontWeight: '700', color: Colors.light.text },
-  error: { fontSize: 14, lineHeight: 20, color: Colors.light.destructive },
+  error: { fontSize: 14, lineHeight: 20, color: Colors.light.redText },
   resend: { fontSize: 14, color: Colors.light.muted, textAlign: 'center' },
   resendPress: { minHeight: 44, justifyContent: 'center' },
 });

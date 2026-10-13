@@ -274,11 +274,11 @@ export default function PaymentScreen() {
         </View>
         )}
         {applied && p ? (
-          <Text style={[styles.codeNote, { color: Colors.light.limeDeep }]} accessibilityLiveRegion="polite">
+          <Text style={[styles.codeNote, { color: Colors.light.limeText }]} accessibilityLiveRegion="polite">
             {applied} applied. You save {formatRs(p.discount_amount)}.
           </Text>
         ) : refused ? (
-          <Text style={[styles.codeNote, { color: Colors.light.red }]} accessibilityLiveRegion="polite">
+          <Text style={[styles.codeNote, { color: Colors.light.redText }]} accessibilityLiveRegion="polite">
             {refused}
           </Text>
         ) : null}

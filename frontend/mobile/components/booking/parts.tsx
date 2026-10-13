@@ -116,9 +116,9 @@ export function CalendarMark({ color = Colors.light.text2, size = 32 }: { color?
 /** A small status pill with a dot, text at 14px (the shared Badge is 11.5px). */
 export type PillTone = 'wait' | 'ok' | 'off' | 'idle';
 const PILL: Record<PillTone, { bg: string; fg: string }> = {
-  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeDeep },
-  wait: { bg: Colors.light.amberWash, fg: Colors.light.amber },
-  off: { bg: Colors.light.redWash, fg: Colors.light.destructive },
+  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeText },
+  wait: { bg: Colors.light.amberWash, fg: Colors.light.amberText },
+  off: { bg: Colors.light.redWash, fg: Colors.light.redText },
   idle: { bg: Colors.light.lineSoft, fg: Colors.light.muted },
 };
 export function StatusPill({ label, tone }: { label: string; tone: PillTone }) {
@@ -143,7 +143,7 @@ export function SecureBadge() {
 
 const styles = StyleSheet.create({
   secure: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 2.5, paddingHorizontal: 8, borderRadius: 20, backgroundColor: Colors.light.limeWash },
-  secureText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeDeep },
+  secureText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   pillText: { fontSize: 14, fontWeight: '600' },
   eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginBottom: 8 },
   line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingVertical: 5 },

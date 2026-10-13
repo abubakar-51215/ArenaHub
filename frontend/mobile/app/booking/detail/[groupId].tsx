@@ -273,5 +273,5 @@ const styles = StyleSheet.create({
   stateText: { fontSize: 14, lineHeight: 21, color: Colors.light.muted, marginTop: 6, marginBottom: 16, textAlign: 'center' },
   sheetCard: { padding: 12, marginTop: 12 },
   sheetNote: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 14 },
-  sheetError: { fontSize: 14, lineHeight: 20, color: Colors.light.red, marginTop: 12 },
+  sheetError: { fontSize: 14, lineHeight: 20, color: Colors.light.redText, marginTop: 12 },
 });

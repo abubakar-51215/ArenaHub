@@ -46,7 +46,7 @@ export function MenuRow({
       style={[styles.row, !last && styles.rowLine]}>
       <IconTile tone={tone}>{icon}</IconTile>
       <View style={styles.rowBody}>
-        <Text style={[styles.rowTitle, danger && { color: Colors.light.destructive }]}>{title}</Text>
+        <Text style={[styles.rowTitle, danger && { color: Colors.light.redText }]}>{title}</Text>
         {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
       </View>
       {right ?? <Icon name="chev" size={15} color={Colors.light.muted} />}

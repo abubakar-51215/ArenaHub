@@ -87,9 +87,9 @@ export function AIcon({ name, size = 22, color = Colors.light.text }: { name: Ad
 
 export type PillTone = 'ok' | 'wait' | 'off' | 'idle';
 const PILL: Record<PillTone, { bg: string; fg: string }> = {
-  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeDeep },
-  wait: { bg: Colors.light.amberWash, fg: Colors.light.amber },
-  off: { bg: Colors.light.redWash, fg: Colors.light.destructive },
+  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeText },
+  wait: { bg: Colors.light.amberWash, fg: Colors.light.amberText },
+  off: { bg: Colors.light.redWash, fg: Colors.light.redText },
   idle: { bg: Colors.light.lineSoft, fg: Colors.light.muted },
 };
 

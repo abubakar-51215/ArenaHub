@@ -68,7 +68,7 @@ function RowCard({ row, onReceipt, receiptBusy }: { row: Row; onReceipt: (p: Pay
           <Text style={styles.title} numberOfLines={2}>
             {[p.arena_name, p.booking_code].filter(Boolean).join(' · ')}
           </Text>
-          <Text style={[styles.amount, refund && { color: Colors.light.limeDeep }]}>
+          <Text style={[styles.amount, refund && { color: Colors.light.limeText }]}>
             {refund ? '+ ' : '− '}
             {formatRs(row.amount)}
           </Text>
@@ -151,5 +151,5 @@ const styles = StyleSheet.create({
   bottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   sub: { fontSize: 14, color: Colors.light.muted },
   receipt: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderTopWidth: 1, borderTopColor: Colors.light.lineSoft },
-  receiptText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
+  receiptText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
 });

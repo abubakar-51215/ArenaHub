@@ -125,7 +125,7 @@ export default function VerifyOtpScreen() {
 const styles = StyleSheet.create({
   strong: { fontWeight: '700', color: Colors.light.text },
   // .field-err / .field-hint: 11px under the field
-  error: { fontSize: 14, color: Colors.light.destructive, marginTop: 10, paddingHorizontal: 2 },
+  error: { fontSize: 14, color: Colors.light.redText, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 22 },
   resend: { fontSize: 14, color: Colors.light.muted, textAlign: 'center' },
   // 12px text in a 44px touch row, so the link is easy to hit

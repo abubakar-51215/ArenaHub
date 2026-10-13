@@ -14,6 +14,6 @@ export function FieldMessage({ children, kind = 'error' }: { children: string; k
 
 const styles = StyleSheet.create({
   base: { fontSize: 14, paddingHorizontal: 2, marginTop: -4 },
-  error: { color: Colors.light.destructive },
+  error: { color: Colors.light.redText },
   hint: { color: Colors.light.muted },
 });
