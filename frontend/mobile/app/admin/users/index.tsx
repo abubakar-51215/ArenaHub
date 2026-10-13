@@ -1,15 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListCard, LoadError, Nothing, Pill, SearchBox, SkeletonCards } from '@/components/admin/kit';
+import { Button } from '@/components/ui/button';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { Segmented } from '@/components/ui/segmented';
+import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { ADMIN_KEY } from '@/hooks/useAdmin';
-import { listAdminUsers } from '@/services/admin';
+import { ADMIN_USERS_PAGE, listAdminUsers } from '@/services/admin';
 
 // Users (arena-hub-admin-app.html: Users list, Users empty): search by name, email or phone; players and owners.
 type Tab = 'all' | 'player' | 'owner';
@@ -23,8 +25,18 @@ export default function AdminUsersScreen() {
     const t = setTimeout(() => setSearch(text), 300);
     return () => clearTimeout(t);
   }, [text]);
-  const q = useQuery({ queryKey: [ADMIN_KEY, 'users', tab, search], queryFn: () => listAdminUsers(tab === 'all' ? undefined : tab, search), retry: 1 });
-  const items = (q.data?.items ?? []).filter((u) => u.role !== 'admin');
+  // 50 at a time; "Show more" asks for the next 50 (there can be thousands of players)
+  const q = useInfiniteQuery({
+    queryKey: [ADMIN_KEY, 'users', tab, search],
+    queryFn: ({ pageParam }) => listAdminUsers(tab === 'all' ? undefined : tab, search, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * ADMIN_USERS_PAGE < last.total ? last.page + 1 : undefined),
+    retry: 1,
+  });
+  const pages = q.data?.pages ?? [];
+  const total = pages[0]?.total ?? 0;
+  const loaded = pages.reduce((n, p) => n + p.items.length, 0);
+  const items = pages.flatMap((p) => p.items).filter((u) => u.role !== 'admin');
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
       <ScreenHead title="Users" onBack={back} />
@@ -59,6 +71,15 @@ export default function AdminUsersScreen() {
             />
           ))
         )}
+        {q.hasNextPage ? (
+          <View style={styles.more}>
+            {/* "All" also counts admin accounts, which this list leaves out, so its total would be off */}
+            {tab !== 'all' ? (
+              <Text style={styles.moreNote}>{`Showing ${loaded.toLocaleString('en-US')} of ${total.toLocaleString('en-US')}`}</Text>
+            ) : null}
+            <Button title="Show more" variant="ghost" loading={q.isFetchingNextPage} onPress={() => void q.fetchNextPage()} />
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -68,4 +89,6 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   pad: { paddingHorizontal: 18, paddingBottom: 10 },
   list: { paddingHorizontal: 18, paddingBottom: 24 },
+  more: { alignItems: 'center', gap: 6, paddingTop: 12 },
+  moreNote: { fontSize: 14, color: Colors.light.muted },
 });
