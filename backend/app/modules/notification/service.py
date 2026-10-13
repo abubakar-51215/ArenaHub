@@ -155,6 +155,14 @@ EVENT_META: dict[str, dict[str, str]] = {
         ),
         "category": "payment",
     },
+    "receipt_to_review": {
+        "title": "Receipt to check",
+        "body": (
+            "{player_name} sent a receipt of {amount} for {booking_code} at {arena_name}. "
+            "Check it and approve or reject the booking."
+        ),
+        "category": "payment",
+    },
     "arena_waiting": {
         "title": "New arena waiting",
         "body": "{arena_name} asked to be listed.",
