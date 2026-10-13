@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Colors, Shadow } from '@/constants/theme';
 import { Text } from '@/components/ui/text';
+import { TapBox } from '@/components/ui/tap-box';
 
 // Values from .m-seg / .m-seg button / .m-seg button.is-on.
 interface SegmentedProps<T extends string> {
@@ -16,17 +17,18 @@ export function Segmented<T extends string>({ options, value, onChange }: Segmen
       {options.map((opt) => {
         const active = opt.value === value;
         return (
-          <Pressable
+          <TapBox
             key={opt.value}
             onPress={() => onChange(opt.value)}
-            hitSlop={{ top: 7, bottom: 7 }}
+            slop={{ y: 7 }}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            style={[styles.button, active && styles.active]}>
+            style={styles.cell}
+            inner={[styles.button, active && styles.active]}>
             <Text style={[styles.label, { color: active ? Colors.light.text : Colors.light.muted }]}>
               {opt.label}
             </Text>
-          </Pressable>
+          </TapBox>
         );
       })}
     </View>
@@ -41,7 +43,8 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     padding: 3,
   },
-  button: { flex: 1, paddingVertical: 7, borderRadius: 9, alignItems: 'center' },
+  cell: { flex: 1 },
+  button: { paddingVertical: 7, borderRadius: 9, alignItems: 'center' },
   active: { backgroundColor: Colors.light.card, ...Shadow.segmentActive },
   label: { fontSize: 14, fontWeight: '600' },
 });

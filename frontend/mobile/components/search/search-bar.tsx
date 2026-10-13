@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
+import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { CountBadge } from '@/components/ui/count-badge';
@@ -8,6 +8,7 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
+import { TapBox } from '@/components/ui/tap-box';
 
 /** The search field and the Filters button (with its count badge) of the Search frames. */
 export function SearchBar({
@@ -52,9 +53,9 @@ export function SearchBar({
           style={styles.input}
         />
         {value ? (
-          <Pressable onPress={() => onChangeText('')} hitSlop={18} accessibilityRole="button" accessibilityLabel="Clear search text">
+          <TapBox onPress={() => onChangeText('')} slop={18} accessibilityRole="button" accessibilityLabel="Clear search text">
             <Text style={styles.clear}>✕</Text>
-          </Pressable>
+          </TapBox>
         ) : null}
       </View>
       {onFilters ? (

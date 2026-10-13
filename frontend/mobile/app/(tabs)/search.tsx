@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/components/search/search-bar';
@@ -12,6 +12,7 @@ import { Colors } from '@/constants/theme';
 import { SPORTS } from '@/constants/sports';
 import { activeFilterCount, useSearchFilters } from '@/store/search-filters';
 import { useSearchHistory } from '@/store/search-history';
+import { TapBox } from '@/components/ui/tap-box';
 
 // Search (frame 4): the field, a Filters button with its count, Recent
 // searches (hidden when there are none; 8 at most, with Clear) and Browse by
@@ -46,9 +47,9 @@ export default function SearchScreen() {
               <Text style={styles.eyebrow} accessibilityRole="header">
                 Recent searches
               </Text>
-              <Pressable onPress={history.clear} hitSlop={14} accessibilityRole="button" accessibilityLabel="Clear recent searches">
+              <TapBox onPress={history.clear} slop={14} accessibilityRole="button" accessibilityLabel="Clear recent searches">
                 <Text style={styles.clear}>Clear</Text>
-              </Pressable>
+              </TapBox>
             </View>
             {history.recent.map((t) => (
               <PressableScale key={t} onPress={() => run(t)} accessibilityRole="button" accessibilityLabel={`Search ${t}`}>

@@ -20,6 +20,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
+import { TapBox } from '@/components/ui/tap-box';
 
 // The one text field of the app. Base look: .m-search (arena-hub-player-app.html)
 // as set out in arena-hub-player-app-auth-2.html: 52 tall, radius 15, 1.5px line
@@ -139,9 +140,9 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
         />
         {showEye ? (
           <Animated.View style={eyeStyle} pointerEvents={active ? 'auto' : 'none'}>
-            <Pressable
+            <TapBox
               onPress={() => setRevealed((r) => !r)}
-              hitSlop={13}
+              slop={13}
               accessibilityRole="button"
               accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
               accessibilityState={{ checked: revealed }}>
@@ -165,7 +166,7 @@ export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
                   </Svg>
                 </Animated.View>
               </View>
-            </Pressable>
+            </TapBox>
           </Animated.View>
         ) : null}
       </Animated.View>

@@ -22,7 +22,7 @@ export function ScreenHead({
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
-      {back ? <BackButton hitSlop={7} onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)')))} /> : null}
+      {back ? <BackButton onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)')))} /> : null}
       <Text variant="archivo" style={styles.title} accessibilityRole="header">
         {title}
       </Text>

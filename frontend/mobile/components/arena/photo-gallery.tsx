@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { FlatList, StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArenaImage } from '@/components/ui/arena-image';
@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { HeartButton } from '@/components/venue';
 import { Colors } from '@/constants/theme';
+import { TapBox } from '@/components/ui/tap-box';
 
 /**
  * The photo area of the Arena screen (arena-hub-player-app-arena-slots.html):
@@ -39,14 +40,15 @@ export function PhotoGallery({ arenaId, photos, sport }: { arenaId: string; phot
       ) : (
         <ArenaImage photo={null} sport={sport} style={{ width, height: 176 + insets.top }} />
       )}
-      <Pressable
+      <TapBox
         onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        hitSlop={4}
+        slop={4}
         accessibilityRole="button"
         accessibilityLabel="Back"
-        style={[styles.glass, { top: insets.top + 10, left: 14 }]}>
+        style={{ position: 'absolute', top: insets.top + 10, left: 14 }}
+        inner={styles.glass}>
         <Icon name="back" size={16} color="#FFFFFF" />
-      </Pressable>
+      </TapBox>
       <View style={{ position: 'absolute', top: insets.top, right: 0, left: 0 }} pointerEvents="box-none">
         <HeartButton arenaId={arenaId} hero />
       </View>
@@ -70,7 +72,7 @@ export function PhotoGallery({ arenaId, photos, sport }: { arenaId: string; phot
 
 const styles = StyleSheet.create({
   box: { backgroundColor: Colors.light.ink },
-  glass: { position: 'absolute', width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  glass: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   counter: { position: 'absolute', bottom: 10, right: 14, backgroundColor: 'rgba(10,16,13,0.6)', paddingVertical: 3, paddingHorizontal: 9, borderRadius: 20 },
   // a small count badge (exempt from the 14px rule)
   counterText: { fontSize: 11, color: '#FFFFFF' },

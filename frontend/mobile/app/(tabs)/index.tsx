@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,6 +25,7 @@ import { getUnreadCount } from '@/services/notifications';
 import { useAuthStore } from '@/store/auth';
 import { useLocationStore } from '@/store/location';
 import { useSearchFilters } from '@/store/search-filters';
+import { TapBox } from '@/components/ui/tap-box';
 
 // Home, from the frames of arena-hub-player-app-home-search.html: the dark
 // hero, the sport chips, and three sections that each load on their own
@@ -43,9 +44,9 @@ function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => vo
         {title}
       </Text>
       {onSeeAll ? (
-        <Pressable onPress={onSeeAll} hitSlop={14} accessibilityRole="link" accessibilityLabel={`See all ${title}`}>
+        <TapBox onPress={onSeeAll} slop={14} accessibilityRole="link" accessibilityLabel={`See all ${title}`}>
           <Text style={styles.seeAll}>See all</Text>
-        </Pressable>
+        </TapBox>
       ) : null}
     </View>
   );
@@ -55,9 +56,9 @@ function InlineError({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={styles.inlineError}>
       <Text style={styles.inlineErrorText}>Could not load.</Text>
-      <Pressable onPress={onRetry} hitSlop={14} accessibilityRole="button" accessibilityLabel="Try again">
+      <TapBox onPress={onRetry} slop={14} accessibilityRole="button" accessibilityLabel="Try again">
         <Text style={styles.inlineErrorLink}>Try again</Text>
-      </Pressable>
+      </TapBox>
     </View>
   );
 }
@@ -110,22 +111,22 @@ export default function HomeScreen() {
           </Svg>
           <View style={styles.heroPad}>
             <View style={styles.heroTop}>
-              <Pressable onPress={detect} hitSlop={10} style={styles.where} accessibilityRole="button" accessibilityLabel="Detect my location">
+              <TapBox onPress={detect} slop={10} inner={styles.where} accessibilityRole="button" accessibilityLabel="Detect my location">
                 <Icon name="pin" size={13} color="#8FA096" />
                 <Text style={styles.whereText}>{city ?? savedCity}</Text>
-              </Pressable>
+              </TapBox>
               <View style={styles.heroMark} pointerEvents="none">
                 <BrandMark mode="still" tone="dark" size={30} />
               </View>
-              <Pressable
+              <TapBox
                 onPress={() => router.push('/notifications')}
-                hitSlop={7}
-                style={styles.bell}
+                slop={7}
+                inner={styles.bell}
                 accessibilityRole="button"
                 accessibilityLabel={unread.data ? `Notifications, ${unread.data} unread` : 'Notifications'}>
                 <Icon name="bell" size={15} color="#8FA096" />
                 {unread.data ? <View style={styles.dot} /> : null}
-              </Pressable>
+              </TapBox>
             </View>
             <Text variant="archivo" style={styles.heroTitle} accessibilityRole="header">
               {`Salaam, ${first}.\nWhere are you playing?`}

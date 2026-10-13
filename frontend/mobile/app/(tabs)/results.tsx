@@ -19,6 +19,7 @@ import { useAuthStore } from '@/store/auth';
 import { useLocationStore } from '@/store/location';
 import { useSearchHistory } from '@/store/search-history';
 import { activeFilterCount, useSearchFilters, type SortChoice } from '@/store/search-filters';
+import { TapBox } from '@/components/ui/tap-box';
 
 // Results (frames 5 and 6): the field with its clear mark, Filters with a
 // count, the "Understood" chips from smart search, the count, the Best /
@@ -122,17 +123,17 @@ export default function ResultsScreen() {
                 {(coords ? [...SORTS, { label: 'Near me', value: 'near' as SortChoice }] : SORTS).map((s) => {
                   const on = r.sort === s.value;
                   return (
-                    <Pressable
+                    <TapBox
                       key={s.value}
                       onPress={() => f.setSort(s.value)}
-                      hitSlop={{ top: 7, bottom: 7 }}
+                      slop={{ y: 7 }}
+                      inner={[styles.segBtn, on && styles.segOn]}
                       accessibilityRole="radio"
                       accessibilityLabel={`Sort by ${s.label}`}
                       accessibilityState={{ checked: on }}
-                      aria-checked={on}
-                      style={[styles.segBtn, on && styles.segOn]}>
+                      aria-checked={on}>
                       <Text style={[styles.segText, on && styles.segTextOn]}>{s.label}</Text>
-                    </Pressable>
+                    </TapBox>
                   );
                 })}
               </View>
