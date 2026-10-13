@@ -27,6 +27,7 @@ export function TextInputDialog({
   pending = false,
   motion = false,
   error,
+  maxLength,
   onSubmit,
 }: {
   open: boolean;
@@ -41,6 +42,8 @@ export function TextInputDialog({
    *  (sweep, spinner, tick or shake) */
   motion?: boolean;
   error?: string | null;
+  /** the longest text the server takes (admin reasons: 500) */
+  maxLength?: number;
   onSubmit: (value: string) => void;
 }) {
   const [value, setValue] = useState("");
@@ -64,6 +67,7 @@ export function TextInputDialog({
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
           rows={4}
+          maxLength={maxLength}
           autoFocus
         />
 
