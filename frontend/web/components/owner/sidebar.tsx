@@ -11,6 +11,7 @@
  * Log out (there is no separate logout button).
  */
 import { usePendingRefundCount } from "@/hooks/useOwnerRefunds";
+import { useUnansweredReviewCount } from "@/hooks/useReviews";
 import { ArenaMark } from "@/components/brand/arena-mark";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -127,7 +128,7 @@ export interface OwnerNavItem {
   label: string;
   href: string;
   icon: IconName;
-  count?: "pendingBookings" | "unread" | "refunds";
+  count?: "pendingBookings" | "unread" | "refunds" | "reviews";
 }
 
 /** Menu names and order as decided; groups follow the prototype's rail. */
@@ -159,7 +160,7 @@ export const OWNER_NAV: { label: string | null; items: OwnerNavItem[] }[] = [
   },
   {
     label: "Reputation",
-    items: [{ label: "Reviews", href: "/owner/reviews", icon: "reviews" }],
+    items: [{ label: "Reviews", href: "/owner/reviews", icon: "reviews", count: "reviews" }],
   },
   {
     label: null,
@@ -186,10 +187,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { data: notifications } = useNotifications();
   const { data: summary } = useDashboardSummary();
   const { data: waitingRefunds } = usePendingRefundCount();
+  const { data: unanswered } = useUnansweredReviewCount();
   const counts = {
     pendingBookings: summary?.pending_approvals ?? 0,
     unread: notifications?.unread_count ?? 0,
     refunds: waitingRefunds ?? 0,
+    reviews: unanswered ?? 0,
   };
   const activeHref = OWNER_NAV.flatMap((g) => g.items)
     .map((i) => i.href)
@@ -226,7 +229,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                         ? `${count} booking${count === 1 ? "" : "s"} awaiting approval`
                         : item.count === "refunds"
                           ? `${count} refund${count === 1 ? "" : "s"} waiting for you`
-                          : `${count} unread notification${count === 1 ? "" : "s"}`
+                          : item.count === "reviews"
+                            ? `${count} review${count === 1 ? "" : "s"} waiting for a reply`
+                            : `${count} unread notification${count === 1 ? "" : "s"}`
                     }
                   >
                     {count > 99 ? "99+" : count}

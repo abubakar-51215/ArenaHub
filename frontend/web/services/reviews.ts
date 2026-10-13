@@ -17,6 +17,12 @@ export function getRatingSummary(arenaId: string): Promise<RatingSummary> {
   return api.get<RatingSummary>(`/arenas/${arenaId}/reviews/summary`);
 }
 
+/** Reviews on the owner's arenas with no reply yet (the Reviews badge in the owner nav). */
+export async function countUnansweredReviews(): Promise<number> {
+  const res = await api.get<{ count: number }>("/owner/reviews/unanswered-count");
+  return res.count;
+}
+
 export function respondToReview(reviewId: string, responseText: string): Promise<Review> {
   return api.post<Review>(`/owner/reviews/${reviewId}/response`, { response_text: responseText });
 }

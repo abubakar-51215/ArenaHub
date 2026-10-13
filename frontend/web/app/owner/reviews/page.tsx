@@ -24,6 +24,7 @@ import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatDateShort, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
+import { UNANSWERED_REVIEWS_KEY } from "@/hooks/useReviews";
 import { getRatingSummary, listOwnerArenaReviews, respondToReview } from "@/services/reviews";
 import type { Review } from "@/types";
 
@@ -131,6 +132,7 @@ function ReviewsInner() {
     try {
       await respondToReview(responding.id, text);
       qc.invalidateQueries({ queryKey: ["reviews", responding.arena_id] });
+      qc.invalidateQueries({ queryKey: UNANSWERED_REVIEWS_KEY });
       setResponding(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not post the response.");
