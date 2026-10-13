@@ -11,7 +11,7 @@
  * Deposit policy cards and "Applies to" (no data for them).
  */
 import { Suspense, useMemo, useState } from "react";
-import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AdminBadge, AdminCard, AdminEmpty, AdminKpi, AdminTag } from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
@@ -31,7 +31,7 @@ import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatRs, formatTime, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import { listCourts } from "@/services/courts";
-import { deletePricingRule, listPricingRules } from "@/services/pricing";
+import { deletePricingRule, listMyPricingRules } from "@/services/pricing";
 import { type Court, type PricingRule, WEEKDAY_LABELS } from "@/types";
 
 interface Row {
@@ -54,19 +54,24 @@ function Pricing() {
   const courts = courtQueries.flatMap((q) => q.data ?? []);
   const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
-  const ruleQueries = useQueries({
-    queries: courts.map((c) => ({ queryKey: ["pricing", c.id], queryFn: () => listPricingRules(c.id) })),
+  // one request for every rule in scope (it used to be one per court)
+  const ruleQuery = useQuery({
+    queryKey: ["pricing", "owner", picked?.id ?? "all"],
+    queryFn: () => listMyPricingRules(picked?.id),
+    enabled: !arenasLoading,
   });
-  const rows: Row[] = courts.flatMap((court, i) =>
-    (ruleQueries[i]?.data ?? []).map((rule) => ({ court, arenaName: arenaName.get(court.arena_id) ?? "", rule })),
-  );
-  const loading = arenasLoading || courtQueries.some((q) => q.isLoading) || ruleQueries.some((q) => q.isLoading);
-  const failed = courtQueries.some((q) => q.isError) || ruleQueries.some((q) => q.isError);
+  const courtById = new Map(courts.map((c) => [c.id, c]));
+  const rows: Row[] = (ruleQuery.data ?? []).flatMap((rule) => {
+    const court = courtById.get(rule.court_id);
+    return court ? [{ court, arenaName: arenaName.get(court.arena_id) ?? "", rule }] : [];
+  });
+  const loading = arenasLoading || courtQueries.some((q) => q.isLoading) || ruleQuery.isLoading;
+  const failed = courtQueries.some((q) => q.isError) || ruleQuery.isError;
 
   const [error, setError] = useState<string | null>(null);
   const del = useMutation({
     mutationFn: ({ courtId, ruleId }: { courtId: string; ruleId: string }) => deletePricingRule(courtId, ruleId),
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["pricing", v.courtId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pricing"] }),
     onError: (err) => setError(err instanceof ApiError ? err.message : "Could not delete this rule."),
   });
 
@@ -155,7 +160,7 @@ function Pricing() {
                 <button
                   type="button"
                   className="ah-link"
-                  onClick={() => [...courtQueries, ...ruleQueries].forEach((q) => void q.refetch())}
+                  onClick={() => [...courtQueries, ruleQuery].forEach((q) => void q.refetch())}
                 >
                   Try again
                 </button>

@@ -191,6 +191,17 @@ async def list_pricing_rules(
     return [PricingRuleResponse.model_validate(r) for r in rows]
 
 
+async def list_my_pricing_rules(
+    db: AsyncSession, user: User, arena_id: uuid.UUID | None = None
+) -> list[PricingRuleResponse]:
+    """The Pricing Rules page in one request: every rule on the owner's courts,
+    or on one of their arenas."""
+    if arena_id is not None:
+        await _owned_arena(db, arena_id, user)
+    rows = await repo.list_pricing_rules_for_owner(db, user.id, arena_id)
+    return [PricingRuleResponse.model_validate(r) for r in rows]
+
+
 async def _owned_rule(
     db: AsyncSession, user: User, court_id: uuid.UUID, rule_id: uuid.UUID
 ) -> CourtPricingRule:

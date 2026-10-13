@@ -173,3 +173,46 @@ async def test_public_courts_only_after_approval(
     public = await client.get(f"/api/v1/arenas/{arena_id}/courts")
     assert public.status_code == 200
     assert len(public.json()["data"]) == 1
+
+
+async def test_owner_pricing_rules_in_one_list(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The Pricing Rules page asks once for every rule on the owner's courts (or one arena's)."""
+    owner, _ = await make_user(client, db_session, "prall-owner@example.com", "owner")
+    other, _ = await make_user(client, db_session, "prall-other@example.com", "owner")
+    h = auth_header(owner)
+    arenas = [await _make_arena(client, owner), await _make_arena(client, owner)]
+    rule_ids = []
+    for arena_id in arenas:
+        for name in ("Court A", "Court B"):
+            court_id = (
+                await client.post(
+                    f"/api/v1/owner/arenas/{arena_id}/courts",
+                    headers=h,
+                    json={"name": name, "sport_types": ["futsal"], "base_price": "2000.00"},
+                )
+            ).json()["data"]["id"]
+            made = await client.post(
+                f"/api/v1/owner/courts/{court_id}/pricing-rules",
+                headers=h,
+                json={
+                    "name": "Evening",
+                    "start_time": "19:00:00",
+                    "end_time": "22:00:00",
+                    "price_multiplier": "1.25",
+                },
+            )
+            rule_ids.append(made.json()["data"]["id"])
+
+    every = await client.get("/api/v1/owner/pricing-rules", headers=h)
+    assert sorted(r["id"] for r in every.json()["data"]) == sorted(rule_ids)
+    one = await client.get("/api/v1/owner/pricing-rules", headers=h, params={"arena_id": arenas[0]})
+    assert sorted(r["id"] for r in one.json()["data"]) == sorted(rule_ids[:2])
+    # another owner sees none of them and cannot ask for this arena
+    theirs = await client.get("/api/v1/owner/pricing-rules", headers=auth_header(other))
+    assert theirs.json()["data"] == []
+    locked = await client.get(
+        "/api/v1/owner/pricing-rules", headers=auth_header(other), params={"arena_id": arenas[0]}
+    )
+    assert locked.status_code == 403
