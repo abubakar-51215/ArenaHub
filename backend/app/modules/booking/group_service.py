@@ -236,8 +236,11 @@ async def cancel_group(
     from app.modules.payment import service as payment_service
 
     receipt_waiting = await payment_service.receipt_waiting_payment(db, live) is not None
-    for b in live:
-        await _apply_cancellation(db, b, reason=reason, refund_percentage=pct, refund=False)
+    # one booking is one event for the player: one "Booking cancelled", whatever the hours
+    for i, b in enumerate(live):
+        await _apply_cancellation(
+            db, b, reason=reason, refund_percentage=pct, refund=False, notify=i == 0
+        )
     from app.modules.payment import service as payment_service
 
     if receipt_waiting:
@@ -382,6 +385,10 @@ async def reschedule_group(
             await state_machine.record_note(
                 db, payment, f"{RESCHEDULE_NOTE} Balance {fig.balance}, refund {fig.refund}."
             )
+        # a match on this booking moves with it
+        from app.modules.match.service import follow_booking_moved
+
+        await follow_booking_moved(db, group_id)
         await db.commit()
         touched = {o.id: o for o in old_slots if o is not None} | {f.id: f for f in fresh}
         for t in touched.values():

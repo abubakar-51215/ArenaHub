@@ -256,6 +256,29 @@ async def join_match(
     return await _detail(db, match_id, user.id)
 
 
+async def follow_booking_cancelled(db: AsyncSession, booking_group_id: uuid.UUID) -> None:
+    """The booking a match is played on was cancelled (by the player, or by an arena
+    suspension): the match is cancelled too and everyone else in it is told once. A no-op
+    when the booking has no live match. Does not commit."""
+    match = await repo.live_match_for_booking(db, booking_group_id)
+    if match is not None:
+        await _cancel(db, match)
+
+
+async def follow_booking_moved(db: AsyncSession, booking_group_id: uuid.UUID) -> None:
+    """The booking was rescheduled: the match moves with it (same day and hours as the
+    booking). Does not commit."""
+    match = await repo.live_match_for_booking(db, booking_group_id)
+    if match is None:
+        return
+    group = await booking_repo.list_group(db, booking_group_id)
+    live = [b for b in group if b.status == BookingStatus.confirmed]
+    if live:
+        match.match_date = live[0].booking_date
+        match.start_time = live[0].start_time
+        match.end_time = live[-1].end_time
+
+
 async def _cancel(db: AsyncSession, match: Match) -> None:
     """Cancel a match and tell everyone else who was in it."""
     people = [p for p in await repo.list_participant_ids(db, match.id) if p != match.creator_id]
