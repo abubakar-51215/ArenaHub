@@ -3,7 +3,7 @@
 Every screen, sheet, dialog and toast of the mobile app (`frontend/mobile`). This is the list used to declare the mobile UI complete.
 Frame files are in `design/prototypes/`: **auth** = `arena-hub-player-app-auth.html` + `-auth-2.html`, **home** = `-home-search.html`,
 **slots** = `-arena-slots.html`, **pay** = `-booking-payment.html`, **bookings** = `-bookings.html`, **account** = `-account.html`,
-**play** = `-play.html`, **states** = `-states.html`.
+**play** = `-play.html`, **states** = `-states.html`, **admin** = `-admin-app.html`.
 "States" means loading / empty / error where the screen has data to wait for (Y = all that apply exist, n/a = nothing to load).
 "Checked" is the last web check at 360, 375, 390 and 430 (numbers) or the last test of the flow; see the end of the file for the sweep.
 **Never built from a frame:** none. **Built without a frame:** marked "no frame" below.
@@ -53,7 +53,19 @@ Frame files are in `design/prototypes/`: **auth** = `arena-hub-player-app-auth.h
 | `(tabs)/play` | play (Matchmaking, My matches, Matches empty, loading, error) | Y | yes | 2026-10-12 |
 | `play/create` | play (Post a match, Post match no bookings) | Y | yes | 2026-10-12 |
 | `play/[matchId]` | play (Match open, joined, mine, full, cancelled) | Y | yes | 2026-10-12 |
-| `admin` | **no frame** (temporary admin landing; see `docs/MOBILE_ADMIN_PLAN.md`) | n/a | yes (placeholder) | 2026-10-11 |
+| `admin/(tabs)/index` Overview | admin (Overview, loading, all clear, error) | Y | yes | 2026-10-13 |
+| `admin/(tabs)/approvals` | admin (Approvals list, empty, loading, error) | Y | yes | 2026-10-13 |
+| `admin/approvals/[id]` | admin (Approval detail, Approve sheet, Reject sheet, empty reason) | Y | yes | 2026-10-13 |
+| `admin/(tabs)/complaints` | admin (Complaints list, empty, loading) | Y | yes | 2026-10-13 |
+| `admin/complaints/[id]` | admin (Complaint detail, reply typed, replied, leave sheet) | Y | yes | 2026-10-13 |
+| `admin/(tabs)/more` | admin (More, Log out sheet) | n/a | yes | 2026-10-13 |
+| `admin/arenas` | admin (Arenas list, suspended, empty) | Y | yes | 2026-10-13 |
+| `admin/arenas/[id]` | admin (Arena detail live and suspended, Suspend sheet, Reactivate sheet) | Y | yes | 2026-10-13 |
+| `admin/users` | admin (Users list, empty) | Y | yes | 2026-10-13 |
+| `admin/users/[id]` | admin (User detail, Suspend user sheet, suspended, Reactivate sheet) | Y | yes | 2026-10-13 |
+| `admin/payments` | admin (Payments list, Refunds waiting, empty, error) | Y | yes | 2026-10-13 |
+| `admin/notifications` | admin (Admin notifications) | Y | yes | 2026-10-13 |
+| `(auth)/index` | **no frame** (signed out, "/" is Log in itself; fixes the address after an expired sign-in) | n/a | yes | 2026-10-13 |
 | `health` | **no frame**, development only (redirects to Home in a release build) | n/a | yes | n/a |
 | Error page (`ErrorBoundary` in `_layout`) | **no frame** | n/a | yes | 2026-10-11 |
 | Splash and loader (`components/brand`) | brand frames (`design/brand/arenahub-logo.html`) | n/a | yes | 2026-10-11 |
@@ -76,15 +88,21 @@ end by decision (`docs/BEFORE_GOING_LIVE.md`). The Equipment rental frame (first
 | My review menu (Edit / Delete) | `BottomSheet` | account (My review menu) | Reviews, My reviews |
 | Report this review | `BottomSheet` | account (Report review) | Reviews |
 | Find arenas near you | `BottomSheet` | play (Near me prompt) | Home |
+| Approve arena / Reactivate arena / Reactivate user | `ConfirmSheet` (plain, "Not yet") | admin (Approve sheet, Reactivate sheet, Reactivate user sheet) | Approval detail, Arena detail, User detail |
+| Reject arena / Suspend arena / Suspend user (reason, n / 500, red, "Stay") | `ReasonSheet` | admin (Reject sheet, Suspend sheet, Suspend user sheet and the empty-reason frames) | Approval detail, Arena detail, User detail |
+| Leave without sending? | `ConfirmSheet` | admin (Complaint leave sheet) | Complaint detail |
+| Mark this refund as paid? | `ConfirmSheet` | admin (Mark paid sheet) | Payments and refunds |
+| Log out? (admin) | `ConfirmSheet` | admin (Log out sheet) | More |
 
 ## Banners and toasts
 
 | What | Component | Frame |
 |---|---|---|
 | Offline / Back online banner | `NetworkShell` | states (Offline banner, Back online) |
+| Amber toast "Someone already handled this arena." (`showToast(..., 'warn')`) | `ToastHost` | admin (Already handled) |
 | "Cannot reach the server" note on Log in | `login.tsx` | no frame |
 | Location off / unavailable banner | `results.tsx` | play (Location denied, unavailable) |
-| Toasts (`showToast`): Saved, Email changed, Phone number changed, New code sent, Complaint sent, Review posted / updated / deleted, Thanks (report), Match posted / cancelled, You joined / left the match, Sorry that match just filled up, Booking moved, Booking cancelled, Account number copied, offline "No connection. Your change was not saved." and the plain "Could not ... Please try again." lines | `ToastHost` | account, play, states |
+| Toasts (`showToast`): Saved, Email changed, Phone number changed, New code sent, Complaint sent, Review posted / updated / deleted, Thanks (report), Match posted / cancelled, You joined / left the match, Sorry that match just filled up, Booking moved, Booking cancelled, Account number copied, `<arena> approved.`, `<arena> rejected.`, `<arena> suspended.`, `<arena> is live again.`, `<user> suspended.`, `<user> is active again.`, Reply sent. The player has been told., Marked as paid. The player has been told. (and "Already marked as paid."), offline "No connection. Your change was not saved." and the plain "Could not ... Please try again." lines | `ToastHost` | account, play, states |
 
 ## Dead code
 Removed in G6: the old profile screens, `arena-card`, `match-card`, `external-link`, `hello-wave`, `parallax-scroll-view`, `haptic-tab`,

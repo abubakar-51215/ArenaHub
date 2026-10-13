@@ -1,43 +1,52 @@
-# Admin on the phone: plan only
+# Admin on the phone: decided and built
 
-Status: **PLAN ONLY. Nothing is built.** No frames exist for the admin on the phone, and a screen that is not in a frame needs a frame first.
-Written 2026-10-12.
+Status: **BUILT** (frames: `design/prototypes/arena-hub-admin-app.html`, 48 frames). Decisions written 2026-10-13.
 
-## Where things stand
-* The phone app has one admin screen today: `app/admin.tsx` ("Admin landing", a temporary page with a Log out). An admin who signs in
-  on the phone is sent there (the sign-in asks for the emailed 6-digit code on `app/(auth)/admin-code.tsx`).
-* Admin work is done on the web (`/admin`, light and dark): overview, arena approvals, complaints, users, bookings, payments,
-  reviews, reports, audit log, settings.
+## Decisions (all decided)
+1. The admin uses the same phone app. The web admin stays as it is.
+2. After the emailed code an admin gets only the admin tab bar: Overview, Approvals, Complaints, More. An admin never sees the
+   player tabs. A player or an owner can never open an admin screen (the root layout hides the whole `admin` group from them, the
+   admin layout checks the role again, and every admin API route answers 403 to anyone who is not an admin).
+3. More has: Arenas, Users, Payments and refunds, Notifications, Log out (red sheet, plain "Stay").
+4. Built in this order: (a) tab bar, Overview, admin notifications; (b) Approvals; (c) Complaints; (d) Arenas suspend and reactivate;
+   (e) Users; (f) Payments and refunds.
+5. Biometric unlock for admins: later. Not built.
+6. The old "Admin landing" screen became Overview (the file is gone).
+7. Reported reviews, the audit log, reports and settings stay on the web. They are not on the phone.
+8. Admin sign-in stays the emailed code only.
 
-## What an admin needs on the phone, and what the backend has
+## Phone routes (`frontend/mobile/app/admin/`)
+| Route | Screen |
+|---|---|
+| `/admin` | Overview (tab) |
+| `/admin/approvals` and `/admin/approvals/[id]` | Approvals list (Waiting, Approved, Rejected) and the arena detail with Approve and Reject |
+| `/admin/complaints` and `/admin/complaints/[id]` | Complaints list (Open, Replied, All), detail with reply |
+| `/admin/more` | More (tab) |
+| `/admin/arenas` and `/admin/arenas/[id]` | Arenas search, Live, Suspended, All; detail with Suspend and Reactivate |
+| `/admin/users` and `/admin/users/[id]` | Users search; detail with Suspend and Reactivate |
+| `/admin/payments` (`?tab=refunds`) | Payments and Refunds (Mark as paid) |
+| `/admin/notifications` | Admin notifications |
 
-| Need | Backend route today | Missing |
-|---|---|---|
-| Emailed-code sign-in | `POST /auth/login` (answers "code required"), `POST /auth/admin/verify-code`, `POST /auth/admin/resend-code`. The phone already has the code screen. | Nothing. |
-| Overview (counts, queue) | `GET /admin/dashboard`, `GET /admin/dashboard/overview` (KPIs, charts, queue of pending arenas and open complaints). | Nothing (the phone would use only the KPI row and the queue). |
-| Approvals: approve and reject an arena | `GET /admin/arenas` (queue), `GET /admin/arenas/{id}`, `POST /admin/arenas/{id}/approve`, `POST /admin/arenas/{id}/reject` (reason). | Nothing. |
-| Complaints with a reply | `GET /admin/complaints` (filters), `GET /admin/complaints/{id}`, `PUT /admin/complaints/{id}` (reply and status). The player gets a notice (G6). | Nothing. |
-| Arena suspend and reactivate with a reason | `POST /admin/arenas/{id}/suspend` (reason), `POST /admin/arenas/{id}/reactivate`, `DELETE /admin/arenas/{id}` (soft delete). | Nothing. |
-| Payments and pending refunds | `GET /admin/payments` (all payments); `POST /admin/bookings/{id}/force-refund`. | **A list of all pending refunds for the admin** (the owner has one at `GET /owner/refunds`; the admin has none) and a way to mark one paid when an owner cannot. |
-| Users | `GET /admin/users`, `GET /admin/users/{id}`, `PATCH /admin/users/{id}/suspend`, `PATCH /admin/users/{id}/reactivate`, `DELETE /admin/users/{id}`. | Nothing. |
-| Reported reviews | `GET /admin/reviews`, `POST /admin/reviews/{id}/dismiss`, `DELETE /reviews/{id}`. | Nothing. |
-| Audit log | `GET /admin/audit-logs`. | Nothing. |
+## Backend added for these screens
+* `GET /admin/phone/overview` (the four numbers, the oldest waiting items, the tab badges).
+* `GET /admin/arena-cards?scope=waiting|approved|rejected|live|suspended|all&search=` and `GET /admin/arenas/{id}/summary` (owner,
+  courts, rating and `upcoming_bookings`: the real number a suspension would cancel with a full refund).
+* `GET /admin/refunds?status=pending|processed|all` and `POST /admin/refunds/{id}/mark-paid` (admin only, pending bank-transfer
+  refunds only, once only: a second call answers "Already marked as paid." and sends nothing; the player gets the same notice as from
+  the owner path; one audit line `refund.mark_paid`).
+* Two admin notices, "New arena waiting" and "New complaint", one per active admin per event (category `admin`). The owner now also
+  gets "Your arena is approved" and "Your arena was not approved" (the frames say the owner will get a message).
+* Approve and reject answer 409 "Someone already handled this arena." when the arena is no longer waiting.
+* Reasons: reject, suspend arena and suspend user take 1 to 500 characters (reject and suspend user were 1000, suspend arena needed
+  10); reactivate needs no reason; a complaint reply takes up to 2000.
+* The user detail shows `total_complaints` and, while suspended, the reason (read from the audit log; no new column).
 
-## Does the "Admin landing" screen stay?
-Not as it is. It is a placeholder that only offers Log out. It should become the Overview tab of the admin app (or be removed if
-the admin stays on the web). Until the frames exist it can stay as a safe place to land.
+## Differences from the frames, and why
+* The complaint detail has no Booking and Arena lines: a complaint does not carry them on the server.
+* The payments list shows the player and the arena (the admin payment list has no booking code).
+* "They will see your reason" on the suspend-user sheet: the player is told by the emailed notice; the Log in screen still says
+  "invalid credentials" for a suspended account (not changed).
+* The frames' 12.5 px rows are built at 14 px.
 
-## Questions, with my recommended answers
-1. **Does the admin need a phone app at all, or is the web enough?** Recommended: build only the three things that cannot wait for a
-   desk: approvals, complaints (read and reply) and arena suspend. Everything else stays on the web.
-2. **One app with a role switch, or an admin tab bar?** Recommended: the same app; after the emailed code the admin gets its own tab
-   bar (Overview, Approvals, Complaints, More) and never sees the player tabs.
-3. **Payments and refunds on the phone?** Recommended: read-only list of pending refunds and a Mark as paid, after the backend gets an
-   admin refunds list (the one missing route). Not in the first version.
-4. **Users on the phone?** Recommended: search and suspend or reactivate only, with a reason, in a red sheet like everywhere else.
-5. **Notifications for the admin** (a new arena waiting, a new complaint)? Recommended: yes, two notice events; small backend work.
-6. **Biometric unlock for admins?** Recommended: later, not now.
-
-## Order I would build it in (after the frames)
-1. Admin tab bar and Overview. 2. Approvals (list, detail, approve, reject with a reason). 3. Complaints (list, detail, reply).
-4. Arena suspend and reactivate. 5. Users. 6. Payments and refunds (after the backend list exists).
+## Still open
+* Nothing in this plan is open. Biometric unlock is a later decision.
