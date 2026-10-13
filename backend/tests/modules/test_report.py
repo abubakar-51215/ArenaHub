@@ -112,6 +112,10 @@ async def test_owner_report_lists_bookings_across_arenas(
     )
     assert resp.status_code == 200
     assert monday.isoformat() in resp.text
+    # the booking code the player sees and the time, so a row can be matched to a bank transfer
+    head, first = resp.text.splitlines()[:2]
+    assert head.startswith("Booking,Date,Time,Arena,Court,Player")
+    assert first.startswith("AHB-") and ",08:00-09:00," in first
 
 
 async def test_owner_report_forbidden_for_players(

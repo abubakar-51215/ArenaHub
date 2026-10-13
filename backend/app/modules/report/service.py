@@ -15,6 +15,7 @@ from app.modules.admin import repository as admin_repo
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
+from app.modules.booking.service import booking_code_for
 from app.modules.court import repository as court_repo
 from app.modules.report.builders import rows_to_csv, rows_to_pdf
 from app.modules.slot import repository as slot_repo
@@ -124,10 +125,23 @@ async def owner_report(
         limit=_LIMIT,
     )
 
-    headers = ["Date", "Arena", "Court", "Player", "Status", "Payment Status", "Amount (PKR)"]
+    # the booking code and the time let an owner match a row to a bank transfer and to the phone
+    headers = [
+        "Booking",
+        "Date",
+        "Time",
+        "Arena",
+        "Court",
+        "Player",
+        "Status",
+        "Payment Status",
+        "Amount (PKR)",
+    ]
     rows = [
         [
+            booking_code_for(booking.booking_group_id),
             booking.booking_date.isoformat(),
+            f"{booking.start_time.strftime('%H:%M')}-{booking.end_time.strftime('%H:%M')}",
             arena_name,
             court_name,
             player_name,
@@ -196,10 +210,12 @@ async def _admin_bookings_rows(
         offset=0,
         limit=_LIMIT,
     )
-    headers = ["Date", "Arena", "Court", "Player", "Status", "Amount (PKR)"]
+    headers = ["Booking", "Date", "Time", "Arena", "Court", "Player", "Status", "Amount (PKR)"]
     rows = [
         [
+            booking_code_for(booking.booking_group_id),
             booking.booking_date.isoformat(),
+            f"{booking.start_time.strftime('%H:%M')}-{booking.end_time.strftime('%H:%M')}",
             arena_name,
             court_name,
             player_name,
