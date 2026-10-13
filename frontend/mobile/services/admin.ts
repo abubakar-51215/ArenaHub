@@ -74,6 +74,7 @@ export interface AdminComplaint {
 
 export interface AdminPayment {
   id: string;
+  booking_code: string;
   player_name: string;
   arena_name: string | null;
   amount: string;

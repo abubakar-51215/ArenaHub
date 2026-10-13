@@ -16,6 +16,7 @@ import { ADMIN_KEY, actionFailed } from '@/hooks/useAdmin';
 import { successHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { listAdminPayments, listAdminRefunds, markRefundPaid, type AdminPayment, type AdminRefund } from '@/services/admin';
+import { dotJoin } from '@/lib/text';
 
 // Payments and refunds (arena-hub-admin-app.html: Payments list, Refunds waiting, Refunds empty, Mark paid sheet and toast, error).
 type Tab = 'payments' | 'refunds';
@@ -94,8 +95,8 @@ export default function PaymentsScreen() {
               return (
                 <ListCard
                   key={p.id}
-                  title={p.player_name}
-                  sub={`${p.arena_name ?? 'Arena'} · ${METHOD[p.payment_method] ?? p.payment_method}`}
+                  title={p.booking_code}
+                  sub={dotJoin([p.player_name, METHOD[p.payment_method] ?? p.payment_method])}
                   right={
                     <View style={styles.amount}>
                       <Text style={styles.amountText}>{formatRs(p.amount)}</Text>
