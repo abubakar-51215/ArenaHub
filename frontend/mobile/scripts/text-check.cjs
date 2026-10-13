@@ -1,4 +1,4 @@
-// Checks the wording helpers of lib/text.ts (join without empty parts, the suspend count, the Overview rows for 1 and more).
+// Checks the wording helpers of lib/text.ts and the money format of lib/money.ts (join without empty parts, the suspend count, the Overview rows for 1 and more).
 // Run: node scripts/text-check.cjs
 const ts = require('typescript');
 const fs = require('fs');
@@ -9,6 +9,10 @@ const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.Co
 const m = new Module('text');
 m._compile(js, 'text.js');
 const T = m.exports;
+const msrc = fs.readFileSync(path.join(__dirname, '..', 'lib', 'money.ts'), 'utf8');
+const mm = new Module('money');
+mm._compile(ts.transpileModule(msrc, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, 'money.js');
+const M = mm.exports;
 let failed = 0;
 const eq = (name, got, want) => {
   if (got !== want) {
@@ -30,5 +34,12 @@ eq('refunds 1', T.needRefunds(1), '1 refund waiting to be paid');
 eq('refunds 3', T.needRefunds(3), '3 refunds waiting to be paid');
 eq('refund total 1', T.refundTotalText(1, '₨ 3,000'), '₨ 3,000');
 eq('refund total 3', T.refundTotalText(3, '₨ 8,000'), '₨ 8,000 in total');
+eq('money whole', M.formatRs('2000.00'), '₨ 2,000');
+eq('money paisa kept', M.formatRs('2500.50'), '₨ 2,500.50');
+eq('money half of 2500.50', M.formatRs('1250.25'), '₨ 1,250.25');
+eq('money millions', M.formatRs(1234567), '₨ 1,234,567');
+eq('money zero', M.formatRs(0), '₨ 0');
+eq('money negative', M.formatRs(-3000), '₨ -3,000');
+eq('money bad', M.formatRs('abc'), '');
 console.log(failed ? `\n${failed} text check(s) FAILED` : '\nall text checks passed');
 process.exit(failed ? 1 : 0);
