@@ -70,6 +70,14 @@ export function TextInputDialog({
           maxLength={maxLength}
           autoFocus
         />
+        {maxLength ? (
+          <div className="ah-reason-hint">
+            <span />
+            <span className="tabular-nums" aria-live="polite">
+              {value.length} / {maxLength}
+            </span>
+          </div>
+        ) : null}
 
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>

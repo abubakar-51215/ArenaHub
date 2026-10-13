@@ -243,8 +243,15 @@ export function UsersView({
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason for suspension…"
             rows={3}
+            maxLength={500}
             autoFocus
           />
+          <div className="ah-reason-hint">
+            <span />
+            <span className="tabular-nums" aria-live="polite">
+              {reason.length} / 500
+            </span>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
