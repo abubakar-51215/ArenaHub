@@ -87,6 +87,7 @@ async def respond_to_complaint(
     complaint = await repo.get_complaint(db, complaint_id)
     if complaint is None:
         raise NotFoundError("Complaint not found.")
+    first_reply = not complaint.admin_response
     complaint.admin_response = admin_response
     complaint.status = status
     complaint.resolved_at = datetime.now() if status == ComplaintStatus.resolved else None
@@ -97,8 +98,12 @@ async def respond_to_complaint(
     if complaint.assigned_to is None:
         complaint.assigned_admin = admin
         complaint.assigned_to = admin.id
-    # tell the player (the notice opens the complaint)
-    await notify_user(db, complaint.player_id, "complaint_reply", complaint_id=str(complaint.id))
+    # tell the player once, on the first reply (the notice opens the complaint);
+    # editing the reply later sends nothing (the frames have no "reply updated" notice)
+    if first_reply:
+        await notify_user(
+            db, complaint.player_id, "complaint_reply", complaint_id=str(complaint.id)
+        )
     await db.commit()
     saved = await repo.get_complaint(db, complaint_id)
     assert saved is not None
