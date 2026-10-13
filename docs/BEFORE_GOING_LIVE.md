@@ -10,6 +10,7 @@ Nothing here has been changed; this is only the list.
 5. **STRIPE_SECRET_KEY** / **STRIPE_WEBHOOK_SECRET** in `backend/.env` are placeholders (`sk_test_xxx`, `whsec_xxx`). Card payments answer "Card payments are not available yet" until a real key is set. JazzCash and EasyPaisa are "coming soon" until their gateway work is done.
 6. **EMAIL_*** settings in `backend/.env` (host, username, password, from). The admin sign-in code is sent by email, so mail must work before launch.
 7. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev, and the dev OTP logging must not be used.
+8. **TRUSTED_PROXIES** in `backend/.env` (setting `trusted_proxies` in `backend/app/core/config.py`; addresses or ranges, comma-separated; empty by default). If production runs behind a proxy or load balancer, set trusted_proxies to that proxy. If it is left empty, every user appears to come from the proxy's address and shares one limit, so people will be blocked.
 
 **Rule for the development database: backup first, then migrate, every time** (`pg_dump -Fc` into `backend/backups/`, then `alembic upgrade head`; test and scratch first). Last backup: `backend/backups/arenahub-20261012-112458-after-g6.dump`, restore-checked into a throwaway database (dropped afterwards).
 

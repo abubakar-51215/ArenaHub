@@ -42,3 +42,55 @@ async def test_dev_allows_expo_web_origin_and_nothing_else(client):
             headers={"Origin": origin, "Access-Control-Request-Method": "POST"},
         )
         assert (res.headers.get("access-control-allow-origin") == origin) is allowed
+
+
+# --- whose address is counted ---------------------------------------------------
+# The test client connects from 127.0.0.1.
+
+
+async def _three_logins(client, forwarded: list[str]) -> list[int]:
+    return [
+        (
+            await client.post(
+                "/api/v1/auth/login", json=INVALID_BODY, headers={"X-Forwarded-For": f}
+            )
+        ).status_code
+        for f in forwarded
+    ]
+
+
+async def test_spoofed_forwarded_header_is_ignored_by_default(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "")
+    # a new made-up address on every request does not buy a new budget
+    codes = await _three_logins(client, ["1.1.1.1", "2.2.2.2", "3.3.3.3"])
+    assert codes == [422, 422, 429]
+
+
+async def test_forwarded_header_is_honoured_only_from_a_trusted_proxy(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16, 127.0.0.1")
+    # three real clients behind the proxy: three budgets
+    assert await _three_logins(client, ["4.4.4.1", "4.4.4.2", "4.4.4.3"]) == [422, 422, 422]
+    # one client, its third request is limited
+    assert await _three_logins(client, ["4.4.4.9"] * 3) == [422, 422, 429]
+    # a client cannot hide behind addresses it writes itself: the right-most
+    # untrusted hop counts, whatever is written to the left of it
+    codes = await _three_logins(
+        client, ["8.8.8.1, 5.5.5.5", "8.8.8.2, 5.5.5.5", "8.8.8.3, 5.5.5.5, 10.9.1.1"]
+    )
+    assert codes == [422, 422, 429]
+
+
+async def test_malformed_forwarded_header_never_crashes_or_bypasses(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "127.0.0.1")
+    bad = ["not-an-ip", "999.1.1.1, ,", "::zz, <script>"]
+    # every malformed header falls back to the proxy's own address: one shared budget
+    assert await _three_logins(client, bad) == [422, 422, 429]
+
+
+def test_trusted_proxies_reads_addresses_and_ranges_and_skips_junk():
+    s = Settings(TRUSTED_PROXIES="10.0.0.5, 10.1.0.0/16, ::1, nonsense")
+    assert [str(n) for n in s.trusted_proxy_networks] == ["10.0.0.5/32", "10.1.0.0/16", "::1/128"]
+    assert Settings.model_fields["trusted_proxies"].default == ""
