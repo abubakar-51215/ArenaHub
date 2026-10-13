@@ -120,8 +120,9 @@ export const rejectArena = (id: string, reason: string) => api.post<unknown>(`/a
 export const suspendArena = (id: string, reason: string) => api.post<unknown>(`/admin/arenas/${id}/suspend`, { reason });
 export const reactivateArena = (id: string) => api.post<unknown>(`/admin/arenas/${id}/reactivate`);
 
-export const listAdminUsers = (role?: 'player' | 'owner', search?: string) =>
-  api.get<Page<AdminUser>>(`/admin/users${qs({ role, search: search?.trim(), page_size: 50 })}`);
+export const ADMIN_USERS_PAGE = 50;
+export const listAdminUsers = (role?: 'player' | 'owner', search?: string, page = 1) =>
+  api.get<Page<AdminUser>>(`/admin/users${qs({ role, search: search?.trim(), page, page_size: ADMIN_USERS_PAGE })}`);
 export const getAdminUser = (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`);
 export const suspendUser = (id: string, reason: string) => api.patch<AdminUser>(`/admin/users/${id}/suspend`, { reason });
 export const reactivateUser = (id: string) => api.patch<AdminUser>(`/admin/users/${id}/reactivate`);
