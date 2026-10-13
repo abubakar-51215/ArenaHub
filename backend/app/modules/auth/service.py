@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 _INVALID_CREDENTIALS = "Invalid email/phone or password."
 _ACCOUNT_LOCKED = "Your account has been locked. Please try again after 15 minutes."
+_ACCOUNT_SUSPENDED = "Your account has been suspended."
 
 
 def _now() -> datetime:
@@ -200,7 +201,7 @@ async def _user_for_login(db: AsyncSession, who: str) -> User | None:
 
 async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLoginChallenge:
     user = await _user_for_login(db, data.who)
-    if user is None or user.deleted_at is not None or not user.is_active:
+    if user is None or user.deleted_at is not None:
         raise UnauthorizedError(_INVALID_CREDENTIALS)
     if user.locked_until is not None and user.locked_until > _now():
         raise UnauthorizedError(_ACCOUNT_LOCKED)
@@ -208,6 +209,9 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
     if not verify_password(data.password, user.password_hash):
         await _register_failed_login(db, user)
         raise UnauthorizedError(_INVALID_CREDENTIALS)
+    if not user.is_active:
+        # said only after the right password, so a stranger cannot learn which accounts exist
+        raise UnauthorizedError(_ACCOUNT_SUSPENDED)
     if not user.is_verified:
         raise UnauthorizedError("Please verify your account before logging in.")
 
