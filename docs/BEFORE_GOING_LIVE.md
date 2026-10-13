@@ -21,3 +21,18 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
 2. **Final Terms and Privacy text**, and where it lives (in the app or on a web page). The Profile row "Terms and privacy" is left out until then.
 3. **Real support email and support hours.** The "Contact us" block of Help and support is left out until then.
 4. **The production web address** (`WEB_PUBLIC_URL`, and the matching `NEXT_PUBLIC_SITE_URL`).
+
+## Also check before launch (added in the admin round)
+
+* **Admin sign-in code email.** Admins sign in on the phone with a 6-digit emailed code (10 minutes, one new code a minute). In
+  development the code is written to the server log (`otp_dev_delivery`); that must be off in production, and mail must work.
+* **Suspended accounts** are told "Your account has been suspended." only after the right password. No support contact is shown
+  there; add it with the support email once decided (see the list above).
+* **Log lines.** The server now replaces characters a console cannot print (the rupee sign), so a notice never crashes a request on a
+  non-UTF-8 console. Production logs are JSON on UTF-8; nothing to change.
+* **Slot listing for past days.** `GET /courts/{id}/slots` still lists yesterday's slots as available; booking one is refused with
+  "One of the selected slots is no longer available." (the app never shows past days). Decide if the list should hide them.
+* **Low-contrast tokens.** The muted grey and the status-pill colours of the design tokens are below 4.5 : 1 for small text
+  (3.3 to 4.0 for muted and red pills, 2.3 and 2.7 for the amber and lime pills). They come from the frames and are used on every
+  screen. Decide if the tokens should be darkened.
+* **Dark theme.** The phone app is light only (`hooks/use-color-scheme.ts`). The owner and admin web apps have light and dark.

@@ -42,7 +42,7 @@ d) **Email and password field icons** (on purpose, as the prototype draws it). E
 
 e) **Eye button on every password field** (user decision). Show/hide with a 44px tap area, labels "Show password" / "Hide password"; while the password is visible the eye is crossed out, swapped smoothly with no layout jump.
 
-f) **Text and tap sizes on mobile** (user decision, same as web): 14px text (exemptions: labels, badges, chart text) and 44px tap targets; small links get a 44px tap area through `hitSlop`.
+f) **Text and tap sizes on mobile** (user decision, same as web): 14px text (exemptions: labels, badges, chart text) and 44px tap targets; small links, icon buttons and switches get a real 44px tap box with `components/ui/tap-box.tsx` (`TapBox`: the drawn part stays small, the box is 44, the layout does not move). `hitSlop` alone is not enough: react-native-web ignores it, so it cannot be measured.
 
 g) **A sign-in step without a frame:** the frames now exist (`arena-hub-player-app-auth-2.html`). Any other screen without a frame waits for a frame. SMS codes are out of scope. The old Verify wording about the backend console does not come back. Sign-up variant: unconfirmed, built the only frame.
 

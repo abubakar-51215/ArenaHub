@@ -148,3 +148,81 @@ Do these in order on the phone. "OK" says what a correct result looks like.
 
 - Tested from the computer: the backend starts with `--host 0.0.0.0` and `http://192.168.10.11:8002/docs`, the health route and a player sign-in all answer through the computer's Wi-Fi address; Expo's server (port 8081) answers at the same address; the test accounts and the scratch player sign in; the Windows network profile and firewall state were read (not changed).
 - **Not tested:** anything from a real phone (no phone here): the QR scan, Expo Go on SDK 54, the firewall rule, haptics, the share sheet, the photo picker, native blur, push notifications. A connection made from the computer to its own address does not go through the firewall, so step 6 is untested.
+
+## 11. Phone-only checks (the final real-phone test)
+
+Everything below was tested on the web build and on the scratch backend. These are the things a browser cannot prove. Set up as in
+sections 1 to 8 (scratch or test database only, never the dev database with real data), then tick each line and write down what you
+saw if it differs. Push messages need a **development build** (not Expo Go) on a real device. Two phones are best: a player on one,
+an owner or admin on the other. Scratch accounts (password `Player@1234`): player `ayesha.siddiqui@example.com`, owner
+`o7@scratch.pk`, admin `admin@scratch.pk` (the admin code is in the server log in development).
+
+### 11.1 Sign in
+| Try | Expected |
+|---|---|
+| Log in with a wrong password | "Invalid email/phone or password." The same words for an unknown address. |
+| Log in with the right details | Home opens. Closing and reopening the app keeps you signed in. |
+| Log in as a suspended account (an admin suspends one first) | "Your account has been suspended." |
+| Tap the eye on the password box | The password shows and hides. The tap is easy to hit with a thumb. |
+| Turn the phone's text size up one step | Nothing is cut off on Log in. |
+
+### 11.2 Booking and receipt upload
+| Try | Expected |
+|---|---|
+| Search, open an arena, pick a time, Review booking, Pay by Bank transfer | The bank details show. The booking is held for a few minutes. |
+| Choose a receipt photo from the gallery (the photo picker) | It shows "Receipt ready". A 6 MB photo says "That photo is too big." |
+| Send receipt on a slow connection | A progress bar with a percent. Cancel opens the red "Stop uploading?" sheet with "Keep uploading". |
+| Switch the phone to Airplane mode mid-upload | "Upload failed. Check your connection." with Try again and Choose another. |
+| The owner approves it | The player's booking moves to Upcoming and a notice arrives. |
+| Reschedule once, then cancel | The cancel sheet shows the real refund. The owner sees a pending refund. |
+
+### 11.3 Offline banner
+| Try | Expected |
+|---|---|
+| Turn Wi-Fi and data off on Home | A dark bar "You are offline. Showing what we saved earlier." Content stays. Nothing jumps. |
+| Open a screen that was never opened | "No connection." with Try again, and the bar says only "You are offline." |
+| Tap Pay, Cancel, Post or Join while offline | The button says "... needs a connection"; a tap gives a soft buzz and "No connection. Your change was not saved." |
+| Turn the connection back on | A lime bar "Back online. Updating..." for about two seconds; open screens load again. |
+| Settings, Accessibility, Reduce motion on | The bar appears and goes without sliding. |
+
+### 11.4 Notifications and push (development build only)
+| Try | Expected |
+|---|---|
+| Allow notifications when asked | Profile, Settings shows the push switches on. |
+| Have the other phone book, cancel, join a match, send a complaint reply | A push arrives with the same words as the Notifications screen, with "₨" amounts and dates like "Tue 13 Oct". |
+| Tap the push with the app closed | The app opens on the right screen (booking, match, complaint). |
+| Admin phone: an owner submits an arena, a player sends a complaint | The admin gets "New arena waiting" and "New complaint" once each; the bell shows a number. |
+
+### 11.5 Photo picker, share sheet, haptics
+| Try | Expected |
+|---|---|
+| Profile, Personal information, change the photo | The gallery opens; the crop is square; a 6 MB photo is refused with a toast. |
+| Booking confirmed, Add to calendar | The share sheet opens with a calendar file. |
+| Tap buttons, tabs, switches, send a reply, mark a refund paid | A soft tap on press, a stronger buzz on success, a short buzz on an error. Phone on silent still buzzes. |
+
+### 11.6 Near me
+| Try | Expected |
+|---|---|
+| Home shows "Find arenas near you" once a day | "Use my location" asks for permission; "Not now" hides it until tomorrow (Karachi day). |
+| Allow, then open Results | "Near me" sorting, distances in km. If the phone's location is off, a banner says so and Home uses the saved city. |
+
+### 11.7 Keyboard on every form
+Open each form, tap the box, type, and check the box and the button stay visible above the keyboard, and "Next" or "Done" does the
+right thing: Log in, Create account, Verify code, Forgot and Reset password, Personal information, Change email, Change phone,
+Change password, Promo code, Bank receipt, Write review, Report review, New complaint, Post a match, and on the admin phone the
+Reject, Suspend arena and Suspend user sheets and the complaint Reply box. Also rotate the phone and try the small 360 px size if you
+have one.
+
+### 11.8 Admin on the phone
+| Try | Expected |
+|---|---|
+| Log in as the admin | "Enter your code" screen; the 6-digit code arrives by email (in development: the server log). A wrong code shakes. After the right code you land on Overview with only four tabs: Overview, Approvals, Complaints, More. |
+| Approvals: open an arena, Approve | Sheet "Approve ...?", then a toast; the tab number goes down; the owner gets a notice. |
+| Reject with no text | The red button stays off until you type; the counter reads "n / 500". |
+| Two admins act on the same arena | The second one sees the amber "Someone already handled this arena." |
+| Complaints: reply | "n / 2000"; leaving with text asks "Leave without sending?"; after sending the reply shows with "Edit reply"; the player gets one notice. |
+| More, Arenas: suspend a live arena | The sheet shows the real number of upcoming bookings that will be cancelled with a full refund. |
+| More, Users: suspend and reactivate | The player is signed out at once; Log in says "Your account has been suspended." |
+| More, Payments and refunds, Refunds: Mark as paid | The sheet shows player, booking and amount; the toast says the player has been told; a second tap does nothing. |
+| More, Log out | Red sheet with "Stay"; after logging out you cannot go back into admin screens. |
+| Sign in as a player and type an admin address (web build) | No admin screen shows. |
