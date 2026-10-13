@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PhotoGallery } from '@/components/arena/photo-gallery';
@@ -25,6 +25,7 @@ import { formatRs } from '@/lib/money';
 import { openTillLabel } from '@/lib/slots';
 import { listArenaReviews } from '@/services/reviews';
 import type { Court } from '@/types';
+import { TapBox } from '@/components/ui/tap-box';
 
 // Arena details, from arena-hub-player-app-arena-slots.html: the photo area,
 // the name and rating, the sports and "Open till" tags, the description (with
@@ -53,9 +54,9 @@ function InlineError({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={styles.inlineError}>
       <Text style={styles.muted}>Could not load.</Text>
-      <Pressable onPress={onRetry} hitSlop={14} accessibilityRole="button" accessibilityLabel="Try again">
+      <TapBox onPress={onRetry} slop={14} accessibilityRole="button" accessibilityLabel="Try again">
         <Text style={styles.inlineLink}>Try again</Text>
-      </Pressable>
+      </TapBox>
     </View>
   );
 }
@@ -107,9 +108,9 @@ export default function ArenaDetailsScreen() {
     return (
       <View style={styles.page}>
         <View style={[styles.plainHead, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} hitSlop={7} accessibilityRole="button" accessibilityLabel="Back" style={styles.back}>
+          <TapBox onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} slop={7} inner={styles.back} accessibilityRole="button" accessibilityLabel="Back">
             <Icon name="back" size={15} color={Colors.light.text} />
-          </Pressable>
+          </TapBox>
         </View>
         <View style={styles.centerBox}>
           <View style={[styles.stateIcon, { backgroundColor: Colors.light.lineSoft }]}>
@@ -131,9 +132,9 @@ export default function ArenaDetailsScreen() {
     return (
       <View style={styles.page}>
         <View style={[styles.plainHead, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} hitSlop={7} accessibilityRole="button" accessibilityLabel="Back" style={styles.back}>
+          <TapBox onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} slop={7} inner={styles.back} accessibilityRole="button" accessibilityLabel="Back">
             <Icon name="back" size={15} color={Colors.light.text} />
-          </Pressable>
+          </TapBox>
         </View>
         <View style={styles.centerBox}>
           <View style={{ marginBottom: 10 }}>
@@ -287,9 +288,9 @@ export default function ArenaDetailsScreen() {
           <View style={styles.reviewsHead}>
             <SectionLabel>Recent reviews</SectionLabel>
             {summary && summary.review_count > 0 ? (
-              <Pressable onPress={() => router.push({ pathname: '/arena/[id]/reviews', params: { id: a.id } })} hitSlop={14} accessibilityRole="link" accessibilityLabel={`See all ${summary.review_count} reviews`}>
+              <TapBox onPress={() => router.push({ pathname: '/arena/[id]/reviews', params: { id: a.id } })} slop={14} accessibilityRole="link" accessibilityLabel={`See all ${summary.review_count} reviews`}>
                 <Text style={styles.seeAll}>See all {summary.review_count}</Text>
-              </Pressable>
+              </TapBox>
             ) : null}
           </View>
           {reviews.isLoading ? (

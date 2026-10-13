@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import { useResults } from '@/hooks/useResults';
 import { useLocationStore } from '@/store/location';
 import { PRICE_MAX, PRICE_MIN, RADIUS_CHOICES, useSearchFilters, type SortChoice } from '@/store/search-filters';
 import { ARENA_CITIES } from '@/types';
+import { TapBox } from '@/components/ui/tap-box';
 
 // Filters (the prototype's "Search & filters" frame), pushed from the Filters
 // button. Kept: the field, Where (city), Sport and the two-thumb price slider.
@@ -54,9 +55,9 @@ export default function FiltersScreen() {
         <ScreenHead
           title="Filters"
           right={
-            <Pressable onPress={f.clearAll} hitSlop={14} accessibilityRole="button" accessibilityLabel="Clear all filters">
+            <TapBox onPress={f.clearAll} slop={14} accessibilityRole="button" accessibilityLabel="Clear all filters">
               <Text style={styles.clear}>Clear all</Text>
-            </Pressable>
+            </TapBox>
           }
         />
         <KeyboardScroll contentContainerStyle={styles.pad}>

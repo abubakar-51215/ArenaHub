@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { tapHaptic } from '@/lib/haptics';
+import { TapBox } from '@/components/ui/tap-box';
 
 /** The small blocks of the account frames (arena-hub-player-app-account.html), shared by Profile, Settings and the rest. */
 
@@ -84,20 +85,20 @@ export function Switch({ value, onChange, label, disabled }: { value: boolean; o
   const knob = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * (W - KNOB - 6) }] }));
   const track = useAnimatedStyle(() => ({ opacity: 0.35 + 0.65 * x.value }));
   return (
-    <Pressable
+    <TapBox
       onPress={() => {
         if (disabled) return;
         tapHaptic();
         onChange(!value);
       }}
-      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      slop={6}
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: value, disabled }}
-      style={[styles.switchBox, disabled && { opacity: 0.5 }]}>
+      inner={[styles.switchBox, disabled && { opacity: 0.5 }]}>
       <Animated.View style={[styles.switchTrack, { backgroundColor: value ? Colors.light.limeDeep : Colors.light.line }, track]} />
       <Animated.View style={[styles.knob, knob]} />
-    </Pressable>
+    </TapBox>
   );
 }
 

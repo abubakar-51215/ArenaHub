@@ -80,7 +80,7 @@ export default function PersonalInformationScreen() {
   return (
     <FormScreen title="Personal information" footer={<Button title="Save changes" loading={save.isPending} disabled={!changed} onPress={submit} />}>
       <View style={styles.avatarWrap}>
-        <Pressable onPress={pick} accessibilityRole="button" accessibilityLabel="Change profile photo" hitSlop={8}>
+        <Pressable onPress={pick} accessibilityRole="button" accessibilityLabel="Change profile photo">
           <ArenaImage
             photo={pickedUri ?? user?.profile_picture}
             style={styles.avatar}

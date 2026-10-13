@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui/icon';
@@ -14,6 +14,7 @@ import { useLikedIds, useToggleLike } from '@/hooks/useLiked';
 import { tapHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import type { Arena } from '@/types';
+import { TapBox } from '@/components/ui/tap-box';
 
 // The cards and rows of arena-hub-player-app-home-search.html (vCard / vRow).
 // Rating, review count and price show only when the server sent them: an arena
@@ -72,8 +73,8 @@ export function HeartButton({ arenaId, hero }: { arenaId: string; hero?: boolean
   }, [liked, reduceMotion, scale]);
 
   return (
-    <Pressable
-      hitSlop={hero ? 4 : 10}
+    <TapBox
+      slop={hero ? 4 : 10}
       accessibilityRole="button"
       accessibilityLabel={liked ? 'Remove from liked arenas' : 'Add to liked arenas'}
       accessibilityState={{ selected: liked }}
@@ -81,11 +82,12 @@ export function HeartButton({ arenaId, hero }: { arenaId: string; hero?: boolean
         tapHaptic();
         toggle.mutate({ arenaId, liked });
       }}
-      style={hero ? styles.heroPin : styles.pin}>
+      style={hero ? styles.heroPlace : styles.pinPlace}
+      inner={hero ? styles.heroPin : styles.pin}>
       <Animated.View style={pop}>
         <Icon name="heart" size={hero ? 16 : 13} color={liked ? Colors.light.lime : '#FFFFFF'} fill={liked ? Colors.light.lime : undefined} />
       </Animated.View>
-    </Pressable>
+    </TapBox>
   );
 }
 
@@ -189,10 +191,9 @@ const styles = StyleSheet.create({
   newTag: { backgroundColor: Colors.light.limeWash, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
   newTagText: { fontSize: 11, fontWeight: '600', color: Colors.light.limeDeep },
   price: { fontFamily: Font.display, fontSize: 15, color: Colors.light.text },
+  pinPlace: { position: 'absolute', top: 8, right: 8 },
+  heroPlace: { position: 'absolute', top: 10, right: 14 },
   pin: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
   // the card box, and inside it the row: picture left, name and tag in the middle, price right
   rowBox: { backgroundColor: Colors.light.card, borderColor: Colors.light.line, borderWidth: 1, borderRadius: 15 },
   // the heart over the Arena screen's photo: a 36px glass square at the top right
-  heroPin: { position: 'absolute', top: 10, right: 14, width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  heroPin: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   rowCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 9 },
   rowPic: { width: 60, height: 52, borderRadius: 10, overflow: 'hidden', backgroundColor: Colors.light.ink },
   rowPrice: { alignItems: 'flex-end' },

@@ -17,7 +17,7 @@ export function ReadMore({ text, lines = 3, threshold = 150 }: { text: string; l
         {text}
       </Text>
       {long ? (
-        <Pressable onPress={() => setOpen((o) => !o)} hitSlop={{ top: 8, bottom: 8 }} accessibilityRole="button" accessibilityLabel={open ? 'Show less' : 'Read more'} accessibilityState={{ expanded: open }} style={styles.link}>
+        <Pressable onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityLabel={open ? 'Show less' : 'Read more'} accessibilityState={{ expanded: open }} style={styles.link}>
           <Text style={styles.linkText}>{open ? 'Show less' : 'Read more'}</Text>
         </Pressable>
       ) : null}

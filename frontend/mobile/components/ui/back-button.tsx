@@ -1,18 +1,15 @@
-import { Pressable, StyleSheet, type PressableProps } from 'react-native';
+import { type PressableProps, StyleSheet } from 'react-native';
 
-import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/ui/icon';
+import { TapBox } from '@/components/ui/tap-box';
+import { Colors } from '@/constants/theme';
 
-// Values from .m-back / .m-back svg.
-export function BackButton(props: Omit<PressableProps, 'style'>) {
+// Values from .m-back / .m-back svg. Drawn 30 px, a real 44 px tap box (TapBox), the same space on the screen.
+export function BackButton({ hitSlop: _unused, ...props }: Omit<PressableProps, 'style'>) {
   return (
-    <Pressable
-      {...props}
-      accessibilityRole="button"
-      accessibilityLabel={props.accessibilityLabel ?? 'Back'}
-      style={styles.base}>
+    <TapBox {...props} slop={7} inner={styles.base} accessibilityRole="button" accessibilityLabel={props.accessibilityLabel ?? 'Back'}>
       <Icon name="back" size={15} color={Colors.light.text} />
-    </Pressable>
+    </TapBox>
   );
 }
 

@@ -173,7 +173,6 @@ export default function NotificationsScreen() {
           <Pressable
             onPress={() => !markAll.isPending && markAll.mutate()}
             disabled={!unread || markAll.isPending}
-            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Mark all read"
             accessibilityState={{ disabled: !unread }}

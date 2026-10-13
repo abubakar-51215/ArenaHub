@@ -12,7 +12,7 @@ import { Colors } from '@/constants/theme';
 // The frame every auth screen shares (arena-hub-player-app-auth.html): paper
 // page, 18px sides, back button, .m-title-xl title (Archivo 25 / 700, 1.08,
 // -0.03em) and the 12.5px muted line under it. The back button is drawn 30px;
-// hitSlop makes its touch area 44.
+// its tap box is a real 44 (TapBox).
 interface AuthScreenProps {
   /** Left out when the screen draws its own headline (the success screen). */
   title?: string;
@@ -42,7 +42,6 @@ export function AuthScreen({ title, subtitle, subtitleGap = 18, onBack, hideBack
         ) : (
           <View style={styles.head}>
             <BackButton
-              hitSlop={7}
               onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login')))}
             />
             {showMark ? (
