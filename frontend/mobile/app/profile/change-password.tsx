@@ -85,7 +85,7 @@ export default function ChangePasswordScreen() {
             <Text style={{ fontSize: 14, lineHeight: 20, color: Colors.light.noteText }}>Use a password you have not used before.</Text>
           </View>
           {errors.form ? (
-            <Text style={{ fontSize: 14, lineHeight: 20, color: Colors.light.destructive }} accessibilityRole="alert">
+            <Text style={{ fontSize: 14, lineHeight: 20, color: Colors.light.redText }} accessibilityRole="alert">
               {errors.form}
             </Text>
           ) : null}

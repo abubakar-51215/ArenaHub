@@ -7,9 +7,9 @@ import { Text } from '@/components/ui/text';
 export type BadgeStatus = 'ok' | 'wait' | 'off' | 'idle';
 
 const STATUS: Record<BadgeStatus, { bg: string; color: string }> = {
-  ok: { bg: Colors.light.limeWash, color: Colors.light.limeDeep },
-  wait: { bg: Colors.light.amberWash, color: Colors.light.amber },
-  off: { bg: Colors.light.redWash, color: Colors.light.destructive },
+  ok: { bg: Colors.light.limeWash, color: Colors.light.limeText },
+  wait: { bg: Colors.light.amberWash, color: Colors.light.amberText },
+  off: { bg: Colors.light.redWash, color: Colors.light.redText },
   idle: { bg: Colors.light.lineSoft, color: Colors.light.muted },
 };
 

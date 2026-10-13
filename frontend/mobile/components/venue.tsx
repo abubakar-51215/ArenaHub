@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   tag: { backgroundColor: Colors.light.lineSoft, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
   tagText: { fontSize: 11, fontWeight: '600', color: Colors.light.text2 },
   newTag: { backgroundColor: Colors.light.limeWash, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
-  newTagText: { fontSize: 11, fontWeight: '600', color: Colors.light.limeDeep },
+  newTagText: { fontSize: 11, fontWeight: '600', color: Colors.light.limeText },
   price: { fontFamily: Font.display, fontSize: 15, color: Colors.light.text },
   pinPlace: { position: 'absolute', top: 8, right: 8 },
   heroPlace: { position: 'absolute', top: 10, right: 14 },

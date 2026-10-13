@@ -250,5 +250,5 @@ const styles = StyleSheet.create({
   sum: { padding: 12, marginTop: 16 },
   sum0: { padding: 12 },
   refundNote: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 10 },
-  err: { fontSize: 14, lineHeight: 20, color: Colors.light.red, marginTop: 8 },
+  err: { fontSize: 14, lineHeight: 20, color: Colors.light.redText, marginTop: 8 },
 });

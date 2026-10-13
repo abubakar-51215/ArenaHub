@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 4 },
   // uppercase labels are exempt from the 14px rule
   eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
-  clear: { fontSize: 14, fontWeight: '600', color: Colors.light.limeDeep },
+  clear: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   row: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 44, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: Colors.light.lineSoft },
   ico: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.light.lineSoft, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 14, color: Colors.light.text },

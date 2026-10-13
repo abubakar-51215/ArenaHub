@@ -130,7 +130,7 @@ export default function FiltersScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   pad: { paddingHorizontal: 18, paddingBottom: 24 },
-  clear: { fontSize: 14, fontWeight: '600', color: Colors.light.limeDeep },
+  clear: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   // uppercase labels are exempt from the 14px rule
   eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

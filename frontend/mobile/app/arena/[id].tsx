@@ -238,7 +238,7 @@ export default function ArenaDetailsScreen() {
             ))}
             {open ? (
               <View style={[styles.tag, styles.tagOpen]}>
-                <Text style={[styles.tagText, { color: Colors.light.limeDeep }]}>{open}</Text>
+                <Text style={[styles.tagText, { color: Colors.light.limeText }]}>{open}</Text>
               </View>
             ) : null}
           </View>
@@ -364,12 +364,12 @@ const styles = StyleSheet.create({
   courtIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.light.limeWash, alignItems: 'center', justifyContent: 'center' },
   courtName: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   openLine: { fontSize: 14, fontWeight: '600', marginTop: 3 },
-  openYes: { color: Colors.light.limeDeep },
+  openYes: { color: Colors.light.limeText },
   right: { alignItems: 'flex-end' },
   price: { fontFamily: Font.display, fontSize: 15, color: Colors.light.text },
   unit: { fontSize: 12, color: Colors.light.muted },
   reviewsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  seeAll: { fontSize: 14, fontWeight: '600', color: Colors.light.limeDeep, marginTop: 10 },
+  seeAll: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText, marginTop: 10 },
   review: { backgroundColor: Colors.light.card, borderColor: Colors.light.line, borderWidth: 1, borderRadius: 15, padding: 11 },
   avatar: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.light.lineSoft, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 11, fontWeight: '700', color: Colors.light.text2 },

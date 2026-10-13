@@ -51,5 +51,5 @@ const styles = StyleSheet.create({
   dotMet: { backgroundColor: Colors.light.limeWash },
   bullet: { fontSize: 9, lineHeight: 11, color: Colors.light.muted },
   label: { fontSize: 14, color: Colors.light.muted },
-  labelMet: { color: Colors.light.limeDeep },
+  labelMet: { color: Colors.light.limeText },
 });

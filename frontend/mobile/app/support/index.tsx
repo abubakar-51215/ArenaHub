@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   empty: { backgroundColor: Colors.light.card, borderWidth: 1, borderColor: Colors.light.line, borderRadius: 15, padding: 18, alignItems: 'center' },
   emptyText: { fontSize: 14, color: Colors.light.muted, textAlign: 'center' },
   retry: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  retryText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeDeep },
+  retryText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
   faq: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 56, paddingVertical: 8 },
   faqLine: { borderBottomWidth: 1, borderBottomColor: Colors.light.lineSoft },
   faqText: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.light.text },
