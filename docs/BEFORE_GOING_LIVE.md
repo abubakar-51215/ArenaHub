@@ -30,9 +30,38 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
   there; add it with the support email once decided (see the list above).
 * **Log lines.** The server now replaces characters a console cannot print (the rupee sign), so a notice never crashes a request on a
   non-UTF-8 console. Production logs are JSON on UTF-8; nothing to change.
-* **Slot listing for past days.** `GET /courts/{id}/slots` still lists yesterday's slots as available; booking one is refused with
-  "One of the selected slots is no longer available." (the app never shows past days). Decide if the list should hide them.
-* **Low-contrast tokens.** The muted grey and the status-pill colours of the design tokens are below 4.5 : 1 for small text
-  (3.3 to 4.0 for muted and red pills, 2.3 and 2.7 for the amber and lime pills). They come from the frames and are used on every
-  screen. Decide if the tokens should be darkened.
+* **Slot listing for past days:** decided, see "Decided" below (hidden from players).
+* **Low-contrast tokens:** decided, see "Decided" below (text colours darkened).
 * **Dark theme.** The phone app is light only (`hooks/use-color-scheme.ts`). The owner and admin web apps have light and dark.
+
+
+## Decided (last build round, 2026-10-13)
+
+1. **Colours: decided.** Only TEXT colours were darkened, so body-size text reaches 4.5 : 1. Backgrounds, borders, icons, the switch
+   track and the layout are unchanged. New phone tokens in `frontend/mobile/constants/theme.ts`: `muted` (the text grey), and new
+   `limeText`, `amberText`, `redText` (the old `limeDeep`, `amber` and `red` stay for fills, borders and icons). Same hue, same look.
+   | Text colour | Old to new | On | Before | After |
+   |---|---|---|---|---|
+   | Muted grey text | #79857E to #656F69 | card #FFFFFF | 3.84 | 5.21 |
+   | Muted grey text | #79857E to #656F69 | paper #F1F2EF | 3.42 | 4.64 |
+   | Muted grey text | #79857E to #656F69 | soft line #EDEFEB | 3.32 | 4.50 |
+   | Muted grey text | #79857E to #656F69 | lime wash #F2FBDA | 3.58 | 4.86 |
+   | Lime text (links, tags, pill) | #7FA30F to #5B750B | card | 2.94 | 5.26 |
+   | Lime text (links, tags, pill) | #7FA30F to #5B750B | paper | 2.61 | 4.68 |
+   | Lime text (links, tags, pill) | #7FA30F to #5B750B | soft line | 2.54 | 4.54 |
+   | Lime text (links, tags, pill) | #7FA30F to #5B750B | lime wash | 2.74 | 4.90 |
+   | Amber text (pill, number) | #D9930B to #956508 | amber wash #FDF3DC | 2.34 | 4.59 |
+   | Amber text (pill, number) | #D9930B to #956508 | card | 2.58 | 5.07 |
+   | Red text (pill, errors) | #CF4141 to #C83333 | red wash #FBE9E9 | 4.00 | 4.51 |
+   | Red text (pill, errors) | #CF4141 to #C83333 | card | 4.68 | 5.28 |
+   | Red text (pill, errors) | #CF4141 to #C83333 | paper | 4.17 | 4.70 |
+
+   * The phone has no text below 4.5 : 1 except disabled buttons (inactive controls are exempt): the grey "off" button text on
+     `#808683` (3.3) and "This match was cancelled" on the soft line (4.1), and large text.
+   * Owner web and admin web (light and dark, measured on six pages): already at 4.5 or more everywhere (the web tokens were
+     darkened in an earlier gate). One pair was low and is fixed: the count on the Refunds tab (amber on amber wash, 2.3 to 4.6).
+2. **Past slots: decided.** `GET /courts/{id}/slots` no longer lists slots that have started (all of yesterday and earlier, and
+   today's past hours, Karachi time = the server clock). The owner's own list (`GET /owner/courts/{id}/slots`, used by the owner web)
+   still shows every slot; nothing else calls the public route. Booking or pricing a started slot answers 409 "One of the selected
+   slots is no longer available." (this check did not exist before; it only worked because past slots were usually not "available").
+3. **Owner notices "Your arena is approved" and "Your arena was not approved": decided, they stay.**
