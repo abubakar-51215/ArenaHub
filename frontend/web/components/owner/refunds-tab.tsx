@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useOwnerRefunds } from "@/hooks/useOwnerRefunds";
-import { formatDateShort, formatRs, formatTime, plural } from "@/lib/format";
+import { formatDateShort, formatRs, formatTime, plural, joinParts } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import { markRefundPaid, type RefundFilter } from "@/services/refunds";
 import type { Arena, OwnerRefund } from "@/types";
@@ -152,7 +152,7 @@ export function RefundsTab({
                         <TableCell>
                           <div>{r.booking_code}</div>
                           <div className="ah-sub">
-                            {r.arena_name} · {r.court_name} · {bookingWhen(r)}
+                            {joinParts([r.arena_name, r.court_name, bookingWhen(r)])}
                           </div>
                         </TableCell>
                         <TableCell>{r.reason}</TableCell>

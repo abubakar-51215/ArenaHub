@@ -18,6 +18,7 @@ import { formatDate } from '@/lib/karachi';
 import { formatRs } from '@/lib/money';
 import { fetchReceiptPdf, listMyPayments } from '@/services/payments';
 import type { PaymentHistoryItem, PaymentMethod } from '@/types';
+import { dotJoin } from '@/lib/text';
 
 // Payment history, from arena-hub-player-app-account.html (frame 14): every payment as a "minus" line and every refund taken
 // from it as a "plus" line, each with its booking code, the date and how it went. A paid payment also has a Receipt link
@@ -55,7 +56,7 @@ function buildRows(items: PaymentHistoryItem[]): Row[] {
 function RowCard({ row, onReceipt, receiptBusy }: { row: Row; onReceipt: (p: PaymentHistoryItem) => void; receiptBusy: boolean }) {
   const { p } = row;
   const refund = row.kind === 'refund';
-  const sub = refund ? 'Refund' : `${formatDate(row.date)} · ${METHOD[p.payment_method]}`;
+  const sub = refund ? 'Refund' : dotJoin([formatDate(row.date), METHOD[p.payment_method]]);
   return (
     <View style={styles.card}>
       <Pressable

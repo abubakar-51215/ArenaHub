@@ -9,6 +9,7 @@ import { Colors } from '@/constants/theme';
 import { dateParts, refundLine, statusPill } from '@/lib/bookings-ui';
 import { timeRange } from '@/lib/checkout';
 import type { BookingGroupItem } from '@/types';
+import { dotJoin } from '@/lib/text';
 
 /** One card of My bookings (frames "Upcoming", "Past", "Cancelled"): date block, arena, time and court, status, and the line at the right. */
 export function BookingGroupCard({ item }: { item: BookingGroupItem }) {
@@ -46,7 +47,7 @@ export function BookingGroupCard({ item }: { item: BookingGroupItem }) {
               {item.arena_name}
             </Text>
             <Text style={styles.mute} numberOfLines={1}>
-              {`${p.weekday} · ${timeRange(item.start_time, item.end_time)} · ${item.court_name}`}
+              {dotJoin([p.weekday, timeRange(item.start_time, item.end_time), item.court_name])}
             </Text>
           </View>
           <Icon name="chev" size={18} color={Colors.light.muted} />
