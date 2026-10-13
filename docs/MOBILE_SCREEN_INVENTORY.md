@@ -108,3 +108,13 @@ end by decision (`docs/BEFORE_GOING_LIVE.md`). The Equipment rental frame (first
 Removed in G6: the old profile screens, `arena-card`, `match-card`, `external-link`, `hello-wave`, `parallax-scroll-view`, `haptic-tab`,
 `collapsible`, `lib/dates`, the template `modal` screen. Kept on purpose: `themed-text` and `themed-view` (used by the development-only
 health screen), `static-map` (not used by any screen yet).
+
+## Changed in the small-fixes round (2026-10-13)
+* Log in says "Your account has been suspended." for a suspended account after the right password (all three clients show the server message).
+* `TapBox` gives a real 44 px tap box to: Back (every screen, drawn 30 px), the Home bell and Detect my location, See all, Try again,
+  Clear all and Clear recent searches links, the sort chips on Results, the Segmented tabs (Play and every admin list), the settings
+  switches, the password eye, the clear-search cross and the Arena hero Back and heart. No screen moved (pixel diff of 18 player
+  screens against the version before: only live-data and font-timing differences).
+* Admin Payments list shows the booking code (AHB-xxxxxx) first, then the player and the method.
+* Lines such as "Arena · Court · Time" skip empty parts (`lib/text.ts` `dotJoin`; web `joinParts`).
+* Web admin reason boxes (reject, suspend arena, suspend user) stop at 500 characters and show "n / 500"; the minimum is 1.
