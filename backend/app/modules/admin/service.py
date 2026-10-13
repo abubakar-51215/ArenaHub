@@ -410,6 +410,7 @@ async def list_payments(
     items = [
         AdminPaymentResponse(
             id=p.id,
+            booking_code=booking_service.booking_code_for(p.booking_group_id),
             player_id=p.player_id,
             player_name=pn,
             arena_name=an,

@@ -464,3 +464,17 @@ async def test_admin_cannot_mark_a_gateway_refund_by_hand_or_a_missing_one(
         headers=auth_header(admin),
     )
     assert missing.status_code == 404
+
+
+async def test_admin_payments_carry_the_booking_code(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    admin = await make_admin(client, db_session, "ph15-admin@example.com")
+    _, _, payment, refund = await _cancelled_bank_group(client, db_session, "ph15")
+    pays = await client.get(f"{API}/admin/payments?page_size=100", headers=auth_header(admin))
+    row = next(p for p in pays.json()["data"]["items"] if p["id"] == payment["id"])
+    assert re.fullmatch(r"AHB-[0-9A-F]{6}", row["booking_code"])
+    assert row["booking_code"] == "AHB-" + payment["booking_group_id"].replace("-", "")[:6].upper()
+    refunds = await client.get(f"{API}/admin/refunds", headers=auth_header(admin))
+    same = next(r for r in refunds.json()["data"]["items"] if r["id"] == str(refund.id))
+    assert same["booking_code"] == row["booking_code"]

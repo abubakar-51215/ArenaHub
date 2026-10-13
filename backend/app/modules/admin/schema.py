@@ -99,6 +99,8 @@ class AdminBookingResponse(BaseModel):
 
 class AdminPaymentResponse(BaseModel):
     id: uuid.UUID
+    # the short reference the player reads out (AHB-xxxxxx)
+    booking_code: str
     player_id: uuid.UUID
     player_name: str
     arena_name: str | None
