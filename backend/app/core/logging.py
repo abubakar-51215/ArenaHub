@@ -5,6 +5,7 @@ Configure once at startup via `configure_logging()`; every module then does
 deviation #16).
 """
 
+import contextlib
 import logging
 import sys
 
@@ -13,8 +14,19 @@ import structlog
 from app.core.config import get_settings
 
 
+def make_stream_safe(stream: object) -> None:
+    """Never let a log line crash a request: a Windows console that is not UTF-8 cannot print the
+    rupee sign in a notice, so characters it cannot write are replaced instead of raising."""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if callable(reconfigure):
+        with contextlib.suppress(ValueError, OSError):
+            reconfigure(errors="replace")
+
+
 def configure_logging() -> None:
     settings = get_settings()
+    make_stream_safe(sys.stdout)
+    make_stream_safe(sys.stderr)
 
     logging.basicConfig(
         format="%(message)s",
