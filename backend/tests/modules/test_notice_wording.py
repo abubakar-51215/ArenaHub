@@ -63,6 +63,13 @@ RAW: dict[str, dict[str, object]] = {
     },
     "refund_needs_manual": {"booking_id": BID, "amount": "2000.00"},
     "arena_waiting": {"arena_name": "Kickoff Arena"},
+    "receipt_to_review": {
+        "player_name": "Ayesha",
+        "amount": "1500.00",
+        "booking_code": "AHB-1A2B3C",
+        "arena_name": "Kickoff Arena",
+        "booking_id": "x",
+    },
     "complaint_new": {"player_name": "Ayesha Siddiqui"},
     "arena_approved": {"arena_name": "Kickoff Arena"},
     "arena_rejected": {"arena_name": "Net Zone", "reason": "Photos are missing."},

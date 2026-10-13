@@ -431,6 +431,19 @@ async def upload_receipt(
     bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
     for booking in bookings:
         booking.status = BookingStatus.pending_approval
+    # the owner has to approve it: one notice per receipt, opening the first hour
+    arena = await arena_repo.get_arena(db, bookings[0].arena_id) if bookings else None
+    if arena is not None:
+        await notify_user(
+            db,
+            arena.owner_id,
+            "receipt_to_review",
+            booking_id=str(bookings[0].id),
+            booking_code=booking_code_for(payment.booking_group_id),
+            amount=str(payment.amount),
+            arena_name=arena.name,
+            player_name=user.full_name,
+        )
     await db.commit()
     return PaymentResponse.model_validate(payment)
 

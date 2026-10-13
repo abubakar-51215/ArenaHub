@@ -28,6 +28,16 @@ async def test_a_two_hour_booking_confirmed_is_one_notice(
     assert events.count("booking_confirmed") == 1
 
 
+async def test_a_receipt_sent_tells_the_owner_once(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, player, gid, payment, _, _ = await _group_with_receipt(client, db_session, "gn0", True)
+    told = [n for n in await _events(client, db_session, owner) if n.event == "receipt_to_review"]
+    assert len(told) == 1
+    assert told[0].title == "Receipt to check"
+    assert "AHB-" in told[0].body and "₨" in told[0].body
+
+
 async def test_a_rejected_receipt_is_one_notice_that_says_so_with_the_reason(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
