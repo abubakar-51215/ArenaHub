@@ -176,6 +176,9 @@ async def list_public_slots(
     arena = await arena_repo.get_arena(db, court.arena_id)
     if arena is None or arena.is_suspended or arena.is_deleted:
         raise NotFoundError("Court not found.")
+    # a day the owner blocked has no slots for players, even ones made before the block
+    if target_date in await _blocked_dates(db, arena.id):
+        return []
     current = now or datetime.now()
     rows = await repo.list_slots(db, court_id, target_date)
     return [
@@ -183,6 +186,10 @@ async def list_public_slots(
         for r in rows
         if datetime.combine(r.date, r.start_time) > current
     ]
+
+
+async def _blocked_dates(db: AsyncSession, arena_id: uuid.UUID) -> set[date]:
+    return {b.blocked_date for b in await arena_repo.list_blocked_dates(db, arena_id)}
 
 
 async def _public_court(db: AsyncSession, court_id: uuid.UUID) -> Court:
@@ -204,9 +211,11 @@ async def court_availability(
         raise ValidationError("'to' must be on or after 'from'.")
     if (end - start).days >= MAX_AVAILABILITY_DAYS:
         raise ValidationError(f"Ask for at most {MAX_AVAILABILITY_DAYS} days at a time.")
-    await _public_court(db, court_id)
+    court = await _public_court(db, court_id)
     now = _now()
     counts = await repo.open_counts_by_date(db, court_id, start, end, now.date(), now.time())
+    for blocked in await _blocked_dates(db, court.arena_id):
+        counts.pop(blocked, None)
     return [
         DayAvailability(
             date=start + timedelta(days=i), open_count=counts.get(start + timedelta(days=i), 0)
@@ -224,6 +233,8 @@ async def arena_slots_today(db: AsyncSession, arena_id: uuid.UUID) -> list[Court
     courts = await court_repo.list_courts(db, arena_id, available_only=True)
     now = _now()
     left = await repo.open_today_by_court(db, [c.id for c in courts], now.date(), now.time())
+    if now.date() in await _blocked_dates(db, arena_id):
+        left = {}
     return [
         CourtToday(
             court_id=c.id,

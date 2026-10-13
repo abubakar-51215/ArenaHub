@@ -122,6 +122,7 @@ async def preview_booking(
     if len({s.date for s in slots}) > 1:
         raise ValidationError("All slots in one booking must be on the same date.")
     _refuse_started(slots)
+    await _refuse_blocked(db, arena.id, slots)
     if any(s.status != SlotStatus.available for s in slots):
         raise ConflictError("One of the selected slots is no longer available.")
 
@@ -196,6 +197,13 @@ async def preview_booking(
     )
 
 
+async def _refuse_blocked(db: AsyncSession, arena_id: uuid.UUID, slots: list[TimeSlot]) -> None:
+    """A day the owner blocked cannot be booked, even on slots made before the block."""
+    blocked = {b.blocked_date for b in await arena_repo.list_blocked_dates(db, arena_id)}
+    if any(s.date in blocked for s in slots):
+        raise ConflictError("The arena is closed on that day.")
+
+
 def _refuse_started(slots: list[TimeSlot]) -> None:
     """A slot that has already started (Karachi time = the server clock) cannot be booked."""
     now = datetime.now()
@@ -230,6 +238,7 @@ async def create_booking(
     if len({s.date for s in slots}) > 1:
         raise ValidationError("All slots in one booking must be on the same date.")
     _refuse_started(slots)
+    await _refuse_blocked(db, arena.id, slots)
 
     acquired: list[tuple[str, str]] = []
     try:
@@ -835,9 +844,9 @@ async def release_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> Bo
     bookings = await repo.list_group_for_update(db, group_id)
     if any(b.status != BookingStatus.pending_payment for b in bookings):
         raise ValidationError("Only a booking that is still waiting for payment can be released.")
-    for booking in bookings:
+    for i, booking in enumerate(bookings):
         await _apply_cancellation(
-            db, booking, reason="Left the payment screen.", refund_percentage=0
+            db, booking, reason="Left the payment screen.", refund_percentage=0, notify=i == 0
         )
     from app.modules.payment import repository as payment_repo
     from app.modules.payment import state_machine
