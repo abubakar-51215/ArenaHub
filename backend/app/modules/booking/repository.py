@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ColumnElement, Integer, and_, func, or_, select
+from sqlalchemy import ColumnElement, Integer, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
@@ -408,3 +408,23 @@ async def busiest_hour_by_court(
         if court_id not in best or count > best[court_id][1]:
             best[court_id] = (int(h), int(count))
     return best
+
+
+async def claim_discount_release(
+    db: AsyncSession, group_id: uuid.UUID, now: datetime
+) -> list[uuid.UUID]:
+    """Marks the group's reserved discount use as given back, in one conditional
+    UPDATE, and returns the code ids to give back. A second call (or a racing one)
+    finds the row already marked and returns nothing, so a use is released once."""
+    result = await db.execute(
+        update(Booking)
+        .where(
+            Booking.booking_group_id == group_id,
+            Booking.discount_code_id.is_not(None),
+            Booking.discount_released_at.is_(None),
+        )
+        .values(discount_released_at=now)
+        .returning(Booking.discount_code_id)
+        .execution_options(synchronize_session="fetch")
+    )
+    return [d for d in result.scalars().all() if d is not None]
