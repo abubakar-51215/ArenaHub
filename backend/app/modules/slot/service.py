@@ -162,8 +162,11 @@ async def list_owner_slots(
 
 
 async def list_public_slots(
-    db: AsyncSession, court_id: uuid.UUID, target_date: date
+    db: AsyncSession, court_id: uuid.UUID, target_date: date, now: datetime | None = None
 ) -> list[SlotResponse]:
+    """The slots a player can still book on a day. Slots that have already started (all of an
+    earlier day, and the past hours of today, in Karachi time = the server clock) are not listed.
+    The owner's own list (``list_owner_slots``) still shows every slot."""
     court = await court_repo.get_court(db, court_id)
     if court is None or not court.is_available:
         raise NotFoundError("Court not found.")
@@ -173,8 +176,13 @@ async def list_public_slots(
     arena = await arena_repo.get_arena(db, court.arena_id)
     if arena is None or arena.is_suspended or arena.is_deleted:
         raise NotFoundError("Court not found.")
+    current = now or datetime.now()
     rows = await repo.list_slots(db, court_id, target_date)
-    return [SlotResponse.model_validate(r) for r in rows]
+    return [
+        SlotResponse.model_validate(r)
+        for r in rows
+        if datetime.combine(r.date, r.start_time) > current
+    ]
 
 
 async def _public_court(db: AsyncSession, court_id: uuid.UUID) -> Court:
