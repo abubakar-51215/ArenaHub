@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { afterLogin } from "@/lib/after-login";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -25,7 +26,7 @@ export default function LoginPage() {
   // Skip the form if already signed in. (No router.prefetch here: it runs before the
   // session cookie exists, so the middleware's redirect gets cached and reused after login.)
   useEffect(() => {
-    if (hydrated && user?.role === "owner") router.replace("/owner");
+    if (hydrated && user?.role === "owner") router.replace(afterLogin("/owner"));
   }, [hydrated, user, router]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -49,7 +50,7 @@ export default function LoginPage() {
         return;
       }
       setSession(tokens, me);
-      router.replace("/owner");
+      router.replace(afterLogin("/owner"));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
