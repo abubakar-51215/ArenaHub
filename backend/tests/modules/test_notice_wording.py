@@ -24,6 +24,9 @@ MATCH = {
 }
 
 # What each caller really sends: raw values (ids as text, amounts as text, ISO dates, sport keys).
+# a booking on Tuesday 13 October 2026 at 7 PM, as the refund notices receive it
+WHEN = {"booking_date": "2026-10-13", "start_time": "19:00"}
+
 RAW: dict[str, dict[str, object]] = {
     "booking_confirmed": {"booking_id": BID},
     "booking_cancelled": {"booking_id": BID},
@@ -37,14 +40,14 @@ RAW: dict[str, dict[str, object]] = {
     "booking_reminder_24h": {"booking_id": BID},
     "booking_reminder_1h": {"booking_id": BID},
     "new_confirmed_booking": {"count": 3},
-    "refund_initiated": {"booking_id": BID, "amount": "2000.00"},
+    "refund_initiated": {"booking_id": BID, "amount": "2000.00", **WHEN},
     "balance_paid": {"booking_id": BID},
     "account_suspended": {"reason": "Reported for abusive behavior."},
     "account_reactivated": {},
     "arena_suspended": {"arena_name": "Goal Line Arena", "reason": "Safety check."},
     "arena_reactivated": {"arena_name": "Goal Line Arena"},
     "arena_deleted": {"arena_name": "Goal Line Arena", "reason": "Closed."},
-    "refund_completed": {"booking_id": BID, "amount": "3000.00"},
+    "refund_completed": {"booking_id": BID, "amount": "3000.00", **WHEN},
     "payment_reminder": {
         "arena_name": "Goal Line Arena",
         "court_name": "Court 1",
@@ -60,8 +63,9 @@ RAW: dict[str, dict[str, object]] = {
         "player_name": "Ayesha",
         "arena_name": "Goal Line Arena",
         "amount": "2500.50",
+        **WHEN,
     },
-    "refund_needs_manual": {"booking_id": BID, "amount": "2000.00"},
+    "refund_needs_manual": {"booking_id": BID, "amount": "2000.00", **WHEN},
     "arena_waiting": {"arena_name": "Kickoff Arena"},
     "receipt_to_review": {
         "player_name": "Ayesha",
@@ -124,19 +128,19 @@ def test_no_notice_shows_a_raw_value(event: str) -> None:
 
 def test_each_changed_notice_reads_as_planned() -> None:
     assert render("refund_initiated", RAW["refund_initiated"])[1] == (
-        "A refund of ₨ 2,000 has been initiated for your booking."
+        "A refund of ₨ 2,000 has been initiated for your booking on Tue 13 Oct at 7:00 PM."
     )
     assert (
         render("refund_completed", RAW["refund_completed"])[1]
-        == "Your refund of ₨ 3,000 has been completed."
+        == "Your refund of ₨ 3,000 for your booking on Tue 13 Oct at 7:00 PM has been completed."
     )
     assert render("refund_to_send", RAW["refund_to_send"])[1] == (
-        "Ayesha cancelled a booking at Goal Line Arena. Send ₨ 2,500.50 back by bank transfer, "
-        "then mark it as paid."
+        "Ayesha cancelled a booking at Goal Line Arena on Tue 13 Oct at 7:00 PM. Send ₨ 2,500.50 "
+        "back by bank transfer, then mark it as paid."
     )
     assert render("refund_needs_manual", RAW["refund_needs_manual"])[1] == (
-        "We could not complete your refund of ₨ 2,000 automatically. Our team will process it "
-        "and contact you."
+        "We could not complete your refund of ₨ 2,000 for your booking on Tue 13 Oct at 7:00 PM "
+        "automatically. Our team will process it and contact you."
     )
     assert render("new_confirmed_booking", {"count": 1})[1] == "You have 1 new confirmed booking."
     assert render("new_confirmed_booking", {"count": 3})[1] == "You have 3 new confirmed bookings."
