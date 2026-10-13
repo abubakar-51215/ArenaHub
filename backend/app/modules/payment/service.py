@@ -269,7 +269,10 @@ async def _confirm_group(db: AsyncSession, payment: Payment) -> None:
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
-        await notify_user(db, booking.player_id, "booking_confirmed", booking_id=str(booking.id))
+    # one booking (a group of hours) is one event: one notice, opening the first hour
+    await notify_user(
+        db, bookings[0].player_id, "booking_confirmed", booking_id=str(bookings[0].id)
+    )
     arena = await arena_repo.get_arena(db, bookings[0].arena_id)
     if arena is not None:
         await notify_user(db, arena.owner_id, "new_confirmed_booking", count=len(bookings))
@@ -297,9 +300,21 @@ async def _fail_group(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
         await equipment_service.release_for_booking(db, booking.id)
+    # one notice for the whole booking; a rejected receipt says so, with the owner's reason
+    first = bookings[0]
+    if rejected:
+        arena = await arena_repo.get_arena(db, first.arena_id)
         await notify_user(
-            db, booking.player_id, "booking_payment_failed", booking_id=str(booking.id)
+            db,
+            first.player_id,
+            "receipt_rejected",
+            booking_id=str(first.id),
+            booking_code=booking_code_for(first.booking_group_id),
+            arena_name=arena.name if arena else "The arena",
+            reason=first.cancellation_reason or "No reason given.",
         )
+    else:
+        await notify_user(db, first.player_id, "booking_payment_failed", booking_id=str(first.id))
 
 
 async def _settle_balance(db: AsyncSession, payment: Payment) -> None:

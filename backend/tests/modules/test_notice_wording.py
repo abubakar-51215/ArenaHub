@@ -28,6 +28,12 @@ RAW: dict[str, dict[str, object]] = {
     "booking_confirmed": {"booking_id": BID},
     "booking_cancelled": {"booking_id": BID},
     "booking_payment_failed": {"booking_id": BID},
+    "receipt_rejected": {
+        "booking_id": BID,
+        "booking_code": "AHB-6766BD",
+        "arena_name": "Kickoff Arena",
+        "reason": "The amount does not match.",
+    },
     "booking_reminder_24h": {"booking_id": BID},
     "booking_reminder_1h": {"booking_id": BID},
     "new_confirmed_booking": {"count": 3},
