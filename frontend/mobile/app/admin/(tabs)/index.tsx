@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { useAdminUnread, useOverview } from '@/hooks/useAdmin';
 import { tapHaptic } from '@/lib/haptics';
+import { needArenas, needComplaints, needRefunds, refundTotalText } from '@/lib/text';
 import { formatDayShort, karachiToday, timeAgo } from '@/lib/karachi';
 import { formatRs } from '@/lib/money';
 
@@ -95,7 +96,7 @@ export default function OverviewScreen() {
                       icon="approvals"
                       tone="wait"
                       last
-                      title={`${d.pending_arenas} ${d.pending_arenas === 1 ? 'arena' : 'arenas'} waiting for approval`}
+                      title={needArenas(d.pending_arenas)}
                       sub={d.oldest_pending_arena_name && d.oldest_pending_arena_at ? `Oldest: ${d.oldest_pending_arena_name}, ${timeAgo(d.oldest_pending_arena_at)}` : undefined}
                       onPress={() => go('/admin/approvals')}
                     />
@@ -107,7 +108,7 @@ export default function OverviewScreen() {
                       icon="complaints"
                       tone="off"
                       last
-                      title={`${d.open_complaints} ${d.open_complaints === 1 ? 'complaint' : 'complaints'} without a reply`}
+                      title={needComplaints(d.open_complaints)}
                       sub={d.oldest_open_complaint_at ? `Oldest: ${timeAgo(d.oldest_open_complaint_at)}` : undefined}
                       onPress={() => go('/admin/complaints')}
                     />
@@ -119,8 +120,8 @@ export default function OverviewScreen() {
                       icon="pay"
                       tone="wait"
                       last
-                      title={`${d.refunds_waiting} ${d.refunds_waiting === 1 ? 'refund' : 'refunds'} waiting to be paid`}
-                      sub={`${formatRs(d.refunds_waiting_amount)} in total`}
+                      title={needRefunds(d.refunds_waiting)}
+                      sub={refundTotalText(d.refunds_waiting, formatRs(d.refunds_waiting_amount))}
                       onPress={() => go('/admin/payments?tab=refunds')}
                     />
                   </Card>
