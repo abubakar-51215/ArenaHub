@@ -28,6 +28,7 @@ from app.modules.review.schema import (
     ReviewUpdate,
 )
 from app.modules.user.model import User, UserRole
+from app.shared.notify import notify_user
 
 
 def _to_response(review: Review, reviewer_name: str) -> ReviewResponse:
@@ -75,8 +76,25 @@ async def submit_review(
         review_text=data.review_text,
     )
     saved = await repo.add_review(db, review)
+    # one "New review" for the owner per review
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is not None:
+        await notify_user(
+            db,
+            arena.owner_id,
+            "review_new",
+            review_id=str(saved.id),
+            arena_id=str(arena_id),
+            arena_name=arena.name,
+            player_name=user.full_name,
+            rating=data.rating,
+        )
     await db.commit()
     return _to_response(saved, user.full_name)
+
+
+async def count_unanswered_for_owner(db: AsyncSession, user: User) -> int:
+    return await repo.count_unanswered_for_owner(db, user.id)
 
 
 async def list_arena_reviews(

@@ -70,6 +70,7 @@ RAW: dict[str, dict[str, object]] = {
         "arena_name": "Kickoff Arena",
         "booking_id": "x",
     },
+    "review_new": {"player_name": "Ayesha Khan", "arena_name": "Kickoff Arena", "rating": 4},
     "complaint_new": {"player_name": "Ayesha Siddiqui"},
     "arena_approved": {"arena_name": "Kickoff Arena"},
     "arena_rejected": {"arena_name": "Net Zone", "reason": "Photos are missing."},

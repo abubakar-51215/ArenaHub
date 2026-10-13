@@ -142,6 +142,18 @@ async def list_owner_arena_reviews(
     return success(data=paginated(rows, total, params), message="Reviews retrieved.")
 
 
+@owner_router.get(
+    "/reviews/unanswered-count",
+    summary="How many reviews on my arenas have no reply yet (the Reviews badge)",
+)
+async def count_unanswered_reviews(
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    count = await service.count_unanswered_for_owner(db, user)
+    return success(data={"count": count}, message="Count retrieved.")
+
+
 @owner_router.post("/reviews/{review_id}/response", summary="Respond to a review on my arena")
 async def respond_to_review(
     review_id: uuid.UUID,

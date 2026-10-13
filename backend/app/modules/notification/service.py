@@ -173,6 +173,11 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "{player_name} wrote to support.",
         "category": "admin",
     },
+    "review_new": {
+        "title": "New review",
+        "body": "{player_name} gave {arena_name} {stars}.",
+        "category": "booking",
+    },
     "arena_approved": {
         "title": "Your arena is approved",
         "body": "{arena_name} is approved. Players can find and book it.",
@@ -204,7 +209,8 @@ def display_context(context: dict[str, object]) -> dict[str, object]:
     """The values of a notice as people read them (the saved ``data`` keeps the raw ones for links).
 
     amount -> "₨ 2,000", sport -> "Futsal", match_date -> "Tue 13 Oct", match_time -> "7:00 PM",
-    count -> "1 new confirmed booking" / "3 new confirmed bookings" (as ``new_bookings``)."""
+    count -> "1 new confirmed booking" / "3 new confirmed bookings" (as ``new_bookings``),
+    rating -> "4 stars" / "1 star" (as ``stars``)."""
     shown = dict(context)
     if "amount" in shown:
         shown["amount"] = rupees(shown["amount"])
@@ -214,6 +220,8 @@ def display_context(context: dict[str, object]) -> dict[str, object]:
         shown["match_date"] = karachi_date(shown["match_date"])  # type: ignore[arg-type]
     if isinstance(shown.get("match_time"), str | time):
         shown["match_time"] = time_12h(shown["match_time"])  # type: ignore[arg-type]
+    if isinstance(shown.get("rating"), int):
+        shown["stars"] = plural(int(shown["rating"]), "star", "stars")  # type: ignore[call-overload]
     if isinstance(shown.get("count"), int):
         n = int(shown["count"])  # type: ignore[call-overload]
         shown["new_bookings"] = plural(n, "new confirmed booking", "new confirmed bookings")

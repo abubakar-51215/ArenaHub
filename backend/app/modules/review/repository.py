@@ -29,6 +29,17 @@ async def add_review(db: AsyncSession, review: Review) -> Review:
     return review
 
 
+async def count_unanswered_for_owner(db: AsyncSession, owner_id: uuid.UUID) -> int:
+    """Reviews on any of the owner's arenas that have no reply yet (the owner's Reviews badge)."""
+    total = await db.scalar(
+        select(func.count())
+        .select_from(Review)
+        .join(Arena, Arena.id == Review.arena_id)
+        .where(Arena.owner_id == owner_id, Review.owner_response.is_(None))
+    )
+    return int(total or 0)
+
+
 async def list_arena_reviews(
     db: AsyncSession, arena_id: uuid.UUID, *, offset: int, limit: int
 ) -> tuple[list[tuple[Review, str]], int]:
