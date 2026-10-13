@@ -4681,7 +4681,7 @@ html[data-theme="dark"] .am-theme .am-d {
    scrolls inside its own box (never the page), the empty / error states and the rows of the confirm dialog. */
 [data-owner] .ah-tab-wait {
   background: var(--amber-wash, #fdf3dc);
-  color: var(--amber, #d9930b);
+  color: var(--wait-text, #956508); /* text colour: 4.5 : 1 on the amber wash */
   border-color: transparent;
 }
 [data-owner] .ah-rf-panel {
