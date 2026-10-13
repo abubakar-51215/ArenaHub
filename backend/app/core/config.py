@@ -6,6 +6,7 @@ container-ready without code changes (see docs/PROJECT_GUIDELINES.md deviation #
 
 from enum import StrEnum
 from functools import lru_cache
+from ipaddress import IPv4Network, IPv6Network, ip_network
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -61,6 +62,25 @@ class Settings(BaseSettings):
     # a local .env can raise them so manual testing is not throttled.
     rate_limit_auth_per_minute: int = Field(default=20, alias="RATE_LIMIT_AUTH_PER_MINUTE")
     rate_limit_api_per_minute: int = Field(default=100, alias="RATE_LIMIT_API_PER_MINUTE")
+    # Proxies / load balancers allowed to tell us the real client address in
+    # X-Forwarded-For: comma-separated addresses or ranges ("10.0.0.5,10.1.0.0/16").
+    # Empty (the default): the header is ignored and the connection address is
+    # used, so nobody can pick their own rate-limit bucket by sending the header.
+    trusted_proxies: str = Field(default="", alias="TRUSTED_PROXIES")
+
+    @property
+    def trusted_proxy_networks(self) -> list[IPv4Network | IPv6Network]:
+        """``trusted_proxies`` parsed; an entry that is not an address or range is skipped."""
+        networks: list[IPv4Network | IPv6Network] = []
+        for raw in self.trusted_proxies.split(","):
+            entry = raw.strip()
+            if not entry:
+                continue
+            try:
+                networks.append(ip_network(entry, strict=False))
+            except ValueError:
+                continue
+        return networks
 
     # Webhook signing secrets — JazzCash/EasyPaisa callbacks must be verified
     # via HMAC-SHA256 over the raw body before being trusted (see
