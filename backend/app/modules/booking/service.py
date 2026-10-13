@@ -121,6 +121,7 @@ async def preview_booking(
     slots.sort(key=lambda s: (s.date, s.start_time))
     if len({s.date for s in slots}) > 1:
         raise ValidationError("All slots in one booking must be on the same date.")
+    _refuse_started(slots)
     if any(s.status != SlotStatus.available for s in slots):
         raise ConflictError("One of the selected slots is no longer available.")
 
@@ -195,6 +196,13 @@ async def preview_booking(
     )
 
 
+def _refuse_started(slots: list[TimeSlot]) -> None:
+    """A slot that has already started (Karachi time = the server clock) cannot be booked."""
+    now = datetime.now()
+    if any(datetime.combine(s.date, s.start_time) <= now for s in slots):
+        raise ConflictError("One of the selected slots is no longer available.")
+
+
 async def create_booking(
     db: AsyncSession, user: User, data: BookingCreateRequest
 ) -> BookingGroupResponse:
@@ -221,6 +229,7 @@ async def create_booking(
     slots.sort(key=lambda s: (s.date, s.start_time))
     if len({s.date for s in slots}) > 1:
         raise ValidationError("All slots in one booking must be on the same date.")
+    _refuse_started(slots)
 
     acquired: list[tuple[str, str]] = []
     try:
