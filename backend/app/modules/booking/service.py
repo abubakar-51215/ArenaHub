@@ -453,6 +453,7 @@ async def _apply_cancellation(
     reason: str | None,
     refund_percentage: int,
     refund: bool = True,
+    notify: bool = True,
 ):
     """The cancellation itself, shared by a user's cancel and the platform's
     (an admin suspending or removing an arena): free the slot, cancel the
@@ -481,7 +482,12 @@ async def _apply_cancellation(
     from app.modules.payment.service import create_refund_for_cancelled_booking
 
     issued = await create_refund_for_cancelled_booking(db, booking) if refund else None
-    await notify_user(db, booking.player_id, "booking_cancelled", booking_id=str(booking.id))
+    if notify:
+        await notify_user(db, booking.player_id, "booking_cancelled", booking_id=str(booking.id))
+    # a match played on this booking cannot go ahead any more
+    from app.modules.match.service import follow_booking_cancelled
+
+    await follow_booking_cancelled(db, booking.booking_group_id)
     return issued
 
 
@@ -502,9 +508,17 @@ async def cancel_future_bookings_for_arena(
         db, arena_id, _CANCELLABLE, now or datetime.now()
     )
     pending = 0
+    told: set[uuid.UUID] = set()  # one "Booking cancelled" per booking group, however many hours
     for booking in bookings:
         percentage = 0 if booking.status == BookingStatus.pending_payment else 100
-        refund = await _apply_cancellation(db, booking, reason=reason, refund_percentage=percentage)
+        refund = await _apply_cancellation(
+            db,
+            booking,
+            reason=reason,
+            refund_percentage=percentage,
+            notify=booking.booking_group_id not in told,
+        )
+        told.add(booking.booking_group_id)
         if refund is not None and refund.status == RefundStatus.pending:
             pending += 1
     return len(bookings), pending
