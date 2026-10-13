@@ -286,3 +286,29 @@ async def test_admin_still_gets_the_code_step_and_not_by_phone(
         "/api/v1/auth/login", json={"email": "adm-who@example.com", "password": PASSWORD}
     )
     assert old.json()["data"]["mfa_required"] is True
+
+
+async def test_suspended_account_is_told_only_after_the_right_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from sqlalchemy import select
+
+    from app.modules.user.model import User
+
+    email = "suspended-login@example.com"
+    await _register_and_verify(client, db_session, email)
+    user = (await db_session.execute(select(User).where(User.email == email))).scalar_one()
+    user.is_active = False
+    await db_session.commit()
+
+    right = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
+    assert right.status_code == 401
+    assert right.json()["message"] == "Your account has been suspended."
+
+    # a wrong password, or an address that does not exist, learns nothing
+    wrong = await client.post("/api/v1/auth/login", json={"email": email, "password": "WrongP@ss9"})
+    nobody = await client.post(
+        "/api/v1/auth/login", json={"email": "nobody-here@example.com", "password": PASSWORD}
+    )
+    assert wrong.status_code == nobody.status_code == 401
+    assert wrong.json()["message"] == nobody.json()["message"] == "Invalid email/phone or password."
