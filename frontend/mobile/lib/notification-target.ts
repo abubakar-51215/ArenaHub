@@ -53,6 +53,7 @@ export function noticeLook(event: string): { tone: NoticeTone; icon: NoticeIcon 
       return { tone: 'wait', icon: 'star' };
     case 'booking_cancelled':
     case 'booking_payment_failed':
+    case 'receipt_rejected':
     case 'match_cancelled':
       return { tone: 'off', icon: 'close' };
     case 'match_joined':

@@ -35,6 +35,11 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "Your booking has been cancelled.",
         "category": "booking",
     },
+    "receipt_rejected": {
+        "title": "Receipt not accepted",
+        "body": "{arena_name} did not accept your receipt for {booking_code}. Reason: {reason}",
+        "category": "booking",
+    },
     "booking_payment_failed": {
         "title": "Payment failed",
         "body": "Payment for your booking could not be completed.",
