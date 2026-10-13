@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { afterLogin } from "@/lib/after-login";
 
 import { AdminBrandMark } from "@/components/admin/brand";
 import { CodeBoxes } from "@/components/auth/code-boxes";
@@ -70,7 +71,7 @@ export default function AdminLoginPage() {
   const [wait, setWait] = useState(0);
 
   useEffect(() => {
-    if (hydrated && user?.role === "admin") router.replace("/admin");
+    if (hydrated && user?.role === "admin") router.replace(afterLogin("/admin"));
   }, [hydrated, user, router]);
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function AdminLoginPage() {
       return;
     }
     setSession(tokens, me);
-    router.replace("/admin");
+    router.replace(afterLogin("/admin"));
   }
 
   function backToPassword(message: string | null = null) {
