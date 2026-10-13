@@ -22,7 +22,7 @@ from app.integrations.payments import get_provider
 from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
-from app.modules.booking.service import booking_code_for
+from app.modules.booking.service import booking_code_for, release_discount_use
 from app.modules.court import repository as court_repo
 from app.modules.equipment import service as equipment_service
 from app.modules.payment import methods, state_machine
@@ -300,6 +300,8 @@ async def _fail_group(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
         await equipment_service.release_for_booking(db, booking.id)
+    # never paid: the discount use the group reserved goes back (once)
+    await release_discount_use(db, payment.booking_group_id)
     # one notice for the whole booking; a rejected receipt says so, with the owner's reason
     first = bookings[0]
     if rejected:

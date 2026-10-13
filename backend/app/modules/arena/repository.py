@@ -379,6 +379,15 @@ async def try_increment_discount_usage(db: AsyncSession, discount_id: uuid.UUID)
     return result.rowcount > 0
 
 
+async def release_discount_usage(db: AsyncSession, discount_id: uuid.UUID) -> None:
+    """Gives one use back (never below zero). The caller makes sure it runs once per booking."""
+    await db.execute(
+        update(DiscountCode)
+        .where(DiscountCode.id == discount_id, DiscountCode.used_count > 0)
+        .values(used_count=DiscountCode.used_count - 1)
+    )
+
+
 async def list_discounts(db: AsyncSession, arena_id: uuid.UUID) -> list[DiscountCode]:
     result = await db.execute(
         select(DiscountCode)

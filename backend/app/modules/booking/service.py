@@ -70,6 +70,7 @@ def _is_discount_usable(discount: DiscountCode, subtotal: Decimal, now: datetime
 
 
 _NOT_VALID_CODE = "That code is not valid or has expired."
+_USED_UP_CODE = "This code has been used up."
 
 
 def _discount_problem(
@@ -83,7 +84,7 @@ def _discount_problem(
     if discount.valid_until and now > discount.valid_until.replace(tzinfo=None):
         return _NOT_VALID_CODE
     if discount.max_uses is not None and discount.used_count >= discount.max_uses:
-        return _NOT_VALID_CODE
+        return _USED_UP_CODE
     if subtotal < discount.min_booking_amount:
         return f"This code needs a booking of at least ₨ {int(discount.min_booking_amount):,}."
     return None
@@ -263,7 +264,9 @@ async def create_booking(
                 db, arena.id, data.discount_code.strip().upper()
             )
             if discount is None or not _is_discount_usable(discount, subtotal, datetime.now()):
-                raise ValidationError("Invalid or inapplicable discount code.")
+                raise ValidationError(
+                    _discount_problem(discount, subtotal, datetime.now()) or _NOT_VALID_CODE
+                )
             discounted_total = apply_discount(subtotal, discount)
 
         group_id = uuid.uuid4()
@@ -315,7 +318,11 @@ async def create_booking(
         if discount is not None and not await arena_repo.try_increment_discount_usage(
             db, discount.id
         ):
-            raise ConflictError("This discount code just reached its usage limit.")
+            # another player took the last use a moment ago
+            raise ConflictError(_USED_UP_CODE)
+        if discount is not None:
+            # this booking group now holds one use of the code (see release_discount_use)
+            bookings[0].discount_code_id = discount.id
 
         equipment_total = Decimal("0")
         if data.equipment:
@@ -455,6 +462,28 @@ async def cancel_booking(
     return BookingResponse.model_validate(booking)
 
 
+async def release_discount_use(db: AsyncSession, group_id: uuid.UUID) -> bool:
+    """Give back the discount use a booking group reserved at Pay, if the group was
+    never paid. Called on every way an unpaid group ends: the player leaves checkout
+    or cancels, the hold expires, the receipt is rejected, the arena is suspended.
+
+    - Paid groups keep their use: once the payment is completed (confirmed) the code
+      counts as used, even if the booking is cancelled later.
+    - Once only: the release is claimed on the booking row first
+      (``discount_released_at``), so a second call gives nothing back.
+    - Never below zero (see ``release_discount_usage``).
+    Returns True when a use was given back. Does not commit."""
+    from app.modules.payment import repository as payment_repo
+
+    payment = await payment_repo.get_payment_by_group(db, group_id)
+    if payment is not None and payment.status not in (PaymentStatus.pending, PaymentStatus.failed):
+        return False
+    released = await repo.claim_discount_release(db, group_id, datetime.now())
+    for discount_id in released:
+        await arena_repo.release_discount_usage(db, discount_id)
+    return bool(released)
+
+
 async def _apply_cancellation(
     db: AsyncSession,
     booking: Booking,
@@ -484,6 +513,8 @@ async def _apply_cancellation(
     # No-op if this booking has no equipment lines (only the group's first
     # row ever does — see create_booking).
     await equipment_service.release_for_booking(db, booking.id)
+    # cancelled before it was paid: the discount use it reserved goes back (once)
+    await release_discount_use(db, booking.booking_group_id)
 
     # Payment module owns refund execution; it only does anything if money
     # was actually captured for this booking (no-op for pending_payment
@@ -642,6 +673,7 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
         booking.status = BookingStatus.cancelled
         booking.cancellation_reason = "Auto-cancelled: payment not completed within 24 hours."
         await equipment_service.release_for_booking(db, booking.id)
+        await release_discount_use(db, booking.booking_group_id)
 
         # Also close out the gateway payment row so a webhook that arrives
         # after this sweep sees status != pending and no-ops instead of

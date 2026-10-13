@@ -145,6 +145,18 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # set when the "Rate your last game" notice was sent (once per booking)
     rate_prompt_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # The discount code this booking group applied at Pay (on the group's first
+    # booking only). Applying it reserves one use of the code; the use becomes
+    # permanent when the group is paid and confirmed, and is given back once
+    # (``discount_released_at`` set) if the group is never paid. NULL on older rows.
+    discount_code_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("discount_codes.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    discount_released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     player: Mapped["User"] = relationship()
     arena: Mapped["Arena"] = relationship()
     court: Mapped["Court"] = relationship()
