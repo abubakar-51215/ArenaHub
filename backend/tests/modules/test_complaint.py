@@ -128,6 +128,16 @@ async def test_player_gets_a_notice_when_the_admin_replies(
     assert notices[0]["data"]["complaint_id"] == complaint_id
     assert notices[0]["title"] == "We replied to your complaint"
 
+    # editing the reply (or only changing the status) sends no second notice
+    await client.put(
+        f"/api/v1/admin/complaints/{complaint_id}",
+        headers=auth_header(admin),
+        json={"admin_response": "We looked into it again: fixed.", "status": "resolved"},
+    )
+    edited = await client.get("/api/v1/notifications", headers=auth_header(player))
+    again = [n for n in edited.json()["data"]["items"] if n["event"] == "complaint_reply"]
+    assert len(again) == 1
+
 
 async def test_a_player_reads_only_their_own_complaint_with_the_reply(
     client: AsyncClient, db_session: AsyncSession
