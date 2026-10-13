@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
         Remembered your password?{" "}
         <Link
           href="/login"
-          className="inline-block font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:py-3"
+          className="inline-block font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:px-1 max-md:py-3"
         >
           Sign in
         </Link>
