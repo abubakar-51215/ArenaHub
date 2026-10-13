@@ -62,7 +62,7 @@ EVENT_META: dict[str, dict[str, str]] = {
     },
     "refund_initiated": {
         "title": "Refund initiated",
-        "body": "A refund of {amount} has been initiated for your booking.",
+        "body": "A refund of {amount} has been initiated for your booking on {when}.",
         "category": "payment",
     },
     "balance_paid": {
@@ -103,7 +103,7 @@ EVENT_META: dict[str, dict[str, str]] = {
     },
     "refund_completed": {
         "title": "Refund completed",
-        "body": "Your refund of {amount} has been completed.",
+        "body": "Your refund of {amount} for your booking on {when} has been completed.",
         "category": "payment",
     },
     "payment_reminder": {
@@ -150,8 +150,8 @@ EVENT_META: dict[str, dict[str, str]] = {
     "refund_to_send": {
         "title": "A refund is waiting for you",
         "body": (
-            "{player_name} cancelled a booking at {arena_name}. Send {amount} back by bank "
-            "transfer, then mark it as paid."
+            "{player_name} cancelled a booking at {arena_name} on {when}. Send {amount} back "
+            "by bank transfer, then mark it as paid."
         ),
         "category": "payment",
     },
@@ -191,8 +191,8 @@ EVENT_META: dict[str, dict[str, str]] = {
     "refund_needs_manual": {
         "title": "Your refund is being handled by our team",
         "body": (
-            "We could not complete your refund of {amount} automatically. Our team will "
-            "process it and contact you."
+            "We could not complete your refund of {amount} for your booking on {when} "
+            "automatically. Our team will process it and contact you."
         ),
         "category": "payment",
     },
@@ -210,7 +210,8 @@ def display_context(context: dict[str, object]) -> dict[str, object]:
 
     amount -> "₨ 2,000", sport -> "Futsal", match_date -> "Tue 13 Oct", match_time -> "7:00 PM",
     count -> "1 new confirmed booking" / "3 new confirmed bookings" (as ``new_bookings``),
-    rating -> "4 stars" / "1 star" (as ``stars``)."""
+    rating -> "4 stars" / "1 star" (as ``stars``),
+    booking_date + start_time -> "Tue 13 Oct at 7:00 PM" (as ``when``)."""
     shown = dict(context)
     if "amount" in shown:
         shown["amount"] = rupees(shown["amount"])
@@ -220,6 +221,10 @@ def display_context(context: dict[str, object]) -> dict[str, object]:
         shown["match_date"] = karachi_date(shown["match_date"])  # type: ignore[arg-type]
     if isinstance(shown.get("match_time"), str | time):
         shown["match_time"] = time_12h(shown["match_time"])  # type: ignore[arg-type]
+    if isinstance(shown.get("booking_date"), str) and isinstance(shown.get("start_time"), str):
+        shown["when"] = (
+            f"{karachi_date(str(shown['booking_date']))} at {time_12h(str(shown['start_time']))}"
+        )
     if isinstance(shown.get("rating"), int):
         shown["stars"] = plural(int(shown["rating"]), "star", "stars")  # type: ignore[call-overload]
     if isinstance(shown.get("count"), int):

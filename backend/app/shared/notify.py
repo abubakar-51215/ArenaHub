@@ -19,6 +19,15 @@ from app.modules.notification import service as notification_service
 log = structlog.get_logger()
 
 
+def booking_when(booking: object) -> dict[str, str]:
+    """The raw date and start time of a booking for a notice; the notice shows them as
+    "Tue 13 Oct at 7:00 PM" (``when``, see notification ``display_context``)."""
+    return {
+        "booking_date": booking.booking_date.isoformat(),  # type: ignore[attr-defined]
+        "start_time": booking.start_time.strftime("%H:%M"),  # type: ignore[attr-defined]
+    }
+
+
 async def notify_user(db: AsyncSession, user_id: uuid.UUID, event: str, **context: object) -> None:
     # structlog's log.info(msg, ...) already binds "event" internally to the
     # message itself, so a caller-supplied "event" kwarg would collide.

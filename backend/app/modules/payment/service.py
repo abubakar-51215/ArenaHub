@@ -52,7 +52,7 @@ from app.modules.payment.schema import (
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
-from app.shared.notify import notify_user
+from app.shared.notify import booking_when, notify_user
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.qr import generate_booking_qr
 from app.websocket.manager import broadcast_slot_status
@@ -92,6 +92,7 @@ async def _record_failed_try(
             "refund_needs_manual",
             booking_id=str(booking.id),
             amount=str(refund.amount),
+            **booking_when(booking),
         )
     else:
         refund.next_attempt_at = _next_refund_attempt(now, refund.gateway_attempts)
@@ -568,7 +569,12 @@ async def _issue_refund(
     await state_machine.record_note(db, payment, f"Refund of Rs. {amount} issued ({kind}).")
     await _mark_refunded_if_fully(db, payment)
     await notify_user(
-        db, booking.player_id, "refund_initiated", booking_id=str(booking.id), amount=str(amount)
+        db,
+        booking.player_id,
+        "refund_initiated",
+        booking_id=str(booking.id),
+        amount=str(amount),
+        **booking_when(booking),
     )
     if (
         payment.payment_method == PaymentMethod.bank_transfer
@@ -590,6 +596,7 @@ async def _notify_owner_refund_to_send(db: AsyncSession, booking: Booking, amoun
         "refund_to_send",
         booking_id=str(booking.id),
         amount=str(amount),
+        **booking_when(booking),
         arena_name=arena.name,
         player_name=player.full_name if player else "A player",
     )
@@ -707,6 +714,7 @@ async def _mark_paid(
         "refund_completed",
         booking_id=str(booking.id),
         amount=str(refund.amount),
+        **booking_when(booking),
     )
     if as_admin:
         from app.modules.admin.service import record_audit
@@ -878,6 +886,7 @@ async def retry_pending_refunds(db: AsyncSession, now: datetime | None = None) -
             "refund_completed",
             booking_id=str(booking.id),
             amount=str(refund.amount),
+            **booking_when(booking),
         )
     await db.commit()
     return len(rows)
