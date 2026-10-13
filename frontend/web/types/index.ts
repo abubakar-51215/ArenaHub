@@ -252,6 +252,8 @@ export interface DashboardAnalytics {
 
 export interface OwnerBookingRow {
   booking_id: string;
+  /** AHB-xxxxxx, the reference the player sees */
+  booking_code?: string;
   booking_date: string;
   start_time: string;
   end_time: string;
@@ -355,6 +357,8 @@ export interface AdminUserDetail extends AdminUser {
 }
 
 export interface AdminBooking {
+  /** AHB-xxxxxx, the reference the player and the owner see */
+  booking_code?: string;
   /** a refund for this booking is still waiting (gateway retry, or manual) */
   refund_pending?: boolean;
   id: string;

@@ -125,6 +125,8 @@ class OwnerBookingRow(BaseModel):
     """One row of the booking-management table (wireframe screen 5)."""
 
     booking_id: uuid.UUID
+    # the reference the player sees and writes on a bank transfer (AHB-xxxxxx)
+    booking_code: str = ""
     booking_date: date
     start_time: time
     end_time: time

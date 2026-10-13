@@ -226,17 +226,24 @@ async def test_owner_bookings_table_lists_and_filters(
     arena_id, court_id, monday = await _make_bookable_court(client, db_session, owner, "dashowner6")
     slots = await _slots(client, court_id, monday)
 
-    await client.post(
+    made = await client.post(
         "/api/v1/bookings",
         headers=auth_header(player),
         json={"court_id": court_id, "slot_ids": [slots[0]["id"]], "payment_type": "full"},
     )
+    group_id = made.json()["data"]["booking_group_id"]
 
     table = await client.get("/api/v1/owner/dashboard/bookings", headers=auth_header(owner))
     assert table.status_code == 200
     items = table.json()["data"]["items"]
     assert len(items) == 1
     row = items[0]
+    # the same reference the player sees on the phone and writes on a bank transfer
+    player_view = await client.get(
+        f"/api/v1/bookings/group/{group_id}", headers=auth_header(player)
+    )
+    assert row["booking_code"] == player_view.json()["data"]["booking_code"]
+    assert row["booking_code"].startswith("AHB-")
     assert row["arena_name"] == "Downtown Futsal Arena"
     assert row["court_name"] == "Court A"
     assert row["player_name"] == "Test User"
