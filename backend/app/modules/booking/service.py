@@ -536,29 +536,49 @@ async def cancel_future_bookings_for_arena(
 ) -> tuple[int, int]:
     """Platform cancellation when an admin suspends or removes an arena: every
     booking whose slot has not started yet is cancelled through the same path
-    as a user's cancel, with a 100% refund of whatever was captured (nothing
-    is captured for pending_payment bookings, so they refund nothing). Past
-    and already-started bookings are left alone. The slots go back to
-    available, but the arena is no longer live, so they are not sold again
-    until it is reactivated. Does not commit. Returns (bookings cancelled,
-    refunds left pending)."""
+    as a user's cancel. Past and already-started bookings are left alone. The
+    slots go back to available, but the arena is no longer live, so they are
+    not sold again until it is reactivated.
+
+    Money, once per booking group (not once per hour):
+    - paid or part paid: one refund of what was paid for the cancelled hours;
+      capped, like every refund, at what is still refundable on the payment, so
+      a group that already has a pending or processed refund is never paid twice;
+    - receipt sent, not checked yet: the money may have arrived, so the full
+      amount becomes one pending refund (as when the player cancels);
+    - unpaid: cancelled, no refund row (its discount use goes back).
+    One "Booking cancelled" per group; the refund sends its own one notice.
+    Does not commit. Returns (bookings cancelled, refunds left pending)."""
+    from app.modules.booking.group_service import _close_pending_payment
+    from app.modules.payment import service as payment_service
     from app.modules.payment.model import RefundStatus
 
     bookings = await repo.list_future_live_bookings_for_update(
         db, arena_id, _CANCELLABLE, now or datetime.now()
     )
-    pending = 0
-    told: set[uuid.UUID] = set()  # one "Booking cancelled" per booking group, however many hours
+    groups: dict[uuid.UUID, list[Booking]] = {}
     for booking in bookings:
-        percentage = 0 if booking.status == BookingStatus.pending_payment else 100
-        refund = await _apply_cancellation(
-            db,
-            booking,
-            reason=reason,
-            refund_percentage=percentage,
-            notify=booking.booking_group_id not in told,
-        )
-        told.add(booking.booking_group_id)
+        groups.setdefault(booking.booking_group_id, []).append(booking)
+    pending = 0
+    for group_id, members in groups.items():
+        receipt_waiting = await payment_service.receipt_waiting_payment(db, members) is not None
+        for i, booking in enumerate(members):
+            percentage = 0 if booking.status == BookingStatus.pending_payment else 100
+            await _apply_cancellation(
+                db,
+                booking,
+                reason=reason,
+                refund_percentage=percentage,
+                refund=False,
+                notify=i == 0,
+            )
+        if receipt_waiting:
+            refund = await payment_service.create_refund_for_waiting_receipt(db, members, reason)
+        else:
+            refund = await payment_service.create_refund_for_cancelled_group(
+                db, members, 100, reason
+            )
+        await _close_pending_payment(db, group_id, "Arena suspended before payment.")
         if refund is not None and refund.status == RefundStatus.pending:
             pending += 1
     return len(bookings), pending
