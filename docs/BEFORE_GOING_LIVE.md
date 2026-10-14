@@ -13,7 +13,7 @@ Nothing here has been changed; this is only the list.
 8. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev. The code line in the server log (`code_dev_delivery`, with the code) is written only when `ENVIRONMENT=dev`; outside dev neither the code nor its hash is ever logged.
 9. **TRUSTED_PROXIES** in `backend/.env` (setting `trusted_proxies` in `backend/app/core/config.py`; addresses or ranges, comma-separated; empty by default). If production runs behind a proxy or load balancer, set trusted_proxies to that proxy. If it is left empty, every user appears to come from the proxy's address and shares one limit, so people will be blocked.
 
-**Rule for the development database: backup first, then migrate, every time** (`pg_dump -Fc` into `backend/backups/`, then `alembic upgrade head`; test and scratch first). Last backup: `backend/backups/arenahub-20261014-135820-before-otp-code-hash.dump` (taken before migration `e6c3a9d2b8f1`, which drops the stored plain codes), restore-checked into a throwaway database (dropped afterwards).
+**Rule for the development database: backup first, then migrate, every time** (`pg_dump -Fc` into `backend/backups/`, then `alembic upgrade head`; test and scratch first). Last backup: `backend/backups/arenahub-20261014-183210-before-google-sign-in.dump` (taken before migration `a7d4c1f9e2b6`: `users.google_sub`, and `users.phone` may be empty until "One more step"), restore-checked into a throwaway database (dropped afterwards).
 
 ## Decide at the very end (do not build yet)
 
@@ -23,6 +23,21 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
 2. **Final Terms and Privacy text**, and where it lives (in the app or on a web page). The Profile row "Terms and privacy" is left out until then.
 3. **Real support email and support hours.** The "Contact us" block of Help and support is left out until then.
 4. **The production web address** (`WEB_PUBLIC_URL`, and the matching `NEXT_PUBLIC_SITE_URL`).
+5. **Continue with Google: the Google Cloud set-up (TODO, after items 1, 2 and 3).** The code is built and tested with
+   test tokens; it stays off until these exist. No real value is written anywhere in the code or docs. Steps:
+   1. Create (or choose) the Google Cloud project for ArenaHub.
+   2. **OAuth consent screen:** app name, the privacy policy link (item 2) and a support email (item 3); add the
+      scopes `openid`, `email`, `profile`. Publish it (out of testing) before launch.
+   3. **Web client id** (type "Web application"): this is the audience the server checks. Put it in
+      `GOOGLE_CLIENT_IDS` (backend) and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (phone build).
+   4. **Android client id** (type "Android"): needs the package name (item 1) and the SHA-1 of the signing key (the EAS
+      build credentials, and the Play App Signing key once on Google Play). Add it to `GOOGLE_CLIENT_IDS` too.
+   5. **iOS client id** (type "iOS"): needs the bundle id (item 1). Add it to `GOOGLE_CLIENT_IDS`, set
+      `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, and give the build its reversed form as `GOOGLE_IOS_URL_SCHEME`
+      (`app.config.js` adds the Google sign-in config plugin only when that is set).
+   6. **A development build with EAS** (`eas build --profile development`): the native Google sign-in does not work in
+      Expo Go, which shows "Google sign-in is not available yet." on purpose.
+   7. Try on a real phone: new Google person (One more step), existing player, an owner email (refused), cancel.
 
 ## Also check before launch (added in the admin round)
 

@@ -1,6 +1,6 @@
 import { showToast } from '@/components/ui/toast';
 import { OFFLINE_TOAST, useNetwork } from '@/lib/network';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type TextStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -34,6 +34,10 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   offlineLabel?: string;
   /** Set to 'success' or 'error' to play that feedback (see useButtonStatus). */
   status?: ButtonStatus;
+  /** Drawn before the label (the Google logo of "Continue with Google"); hidden with the label while loading. */
+  leading?: ReactNode;
+  /** A light tap on press for a ghost button that starts something (ghost buttons are quiet otherwise). */
+  haptic?: boolean;
 }
 
 const VARIANTS: Record<ButtonVariant, { bg: string; border: string; text: string }> = {
@@ -68,7 +72,7 @@ export function useButtonStatus(ms = 1100): [ButtonStatus, (s: Exclude<ButtonSta
   return [status, flash];
 }
 
-export function Button({ title: titleProp, variant: variantProp = 'ink', loading, status, disabled, onPress, onPressIn, onPressOut, offlineLabel, ...props }: ButtonProps) {
+export function Button({ title: titleProp, variant: variantProp = 'ink', loading, status, disabled, onPress, onPressIn, onPressOut, offlineLabel, leading, haptic, ...props }: ButtonProps) {
   // An action that needs the server (Pay, Send, Post, Join, Cancel...) says so while the phone is offline, and a tap explains
   // instead of failing later (arena-hub-player-app-states.html, frame 03).
   const online = useNetwork((s) => s.online);
@@ -115,7 +119,7 @@ export function Button({ title: titleProp, variant: variantProp = 'ink', loading
           onPressIn={(e) => {
             if (!isDisabled && !blocked) {
               dip(0.975);
-              if (variant !== 'ghost' && variant !== 'dangerOutline') tapHaptic();
+              if ((variant !== 'ghost' && variant !== 'dangerOutline') || haptic) tapHaptic();
             }
             onPressIn?.(e);
           }}
@@ -135,6 +139,9 @@ export function Button({ title: titleProp, variant: variantProp = 'ink', loading
           {/* the label always stays in the layout (hidden while loading or on
               success), so the button never changes size; the spinner or tick
               sits on top of it */}
+          {leading ? (
+            <View style={[(loading || status === 'success') && styles.hidden, blocked && styles.faded]}>{leading}</View>
+          ) : null}
           <Text style={[styles.text, { color: v.text }, (loading || status === 'success') && styles.hidden]}>{title}</Text>
           {loading ? (
             <View style={styles.overlay} pointerEvents="none">
@@ -164,6 +171,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   hidden: { opacity: 0 },
+  faded: { opacity: 0.45 },
   overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.5 },
   // .btn.off of the auth frames: a flat grey, no see-through

@@ -217,6 +217,9 @@ async def create_booking(
 ) -> BookingGroupResponse:
     if user.role != UserRole.player:
         raise ForbiddenError("Only players can create bookings.")
+    if user.phone is None:
+        # an account made by Continue with Google books once "One more step" saved the number
+        raise ValidationError("Add your phone number before you book.")
 
     court = await court_repo.get_court(db, data.court_id)
     if court is None or not court.is_available:

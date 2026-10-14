@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ServiceUnavailableError
 from app.database.session import get_db
-from app.modules.auth import service
+from app.modules.auth import google_service, service
 from app.modules.auth.schema import (
     AdminCodeRequest,
     AdminLoginChallenge,
     AdminResendRequest,
     ForgotPasswordRequest,
+    GooglePhoneRequest,
+    GoogleSignInRequest,
     LoginRequest,
     LogoutRequest,
     OtpVerifyRequest,
@@ -116,3 +118,24 @@ async def reset_password(
 ) -> dict[str, Any]:
     await service.reset_password(db, data)
     return success(message="Password has been reset. Please log in again.")
+
+
+@router.post("/google", summary="Continue with Google (players on the phone)")
+async def google_sign_in(
+    data: GoogleSignInRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    result = await google_service.sign_in(db, data.id_token)
+    message = "Signed in with Google."
+    if result.password_removed:
+        message = google_service.PASSWORD_REMOVED
+    return success(data=result, message=message)
+
+
+@router.post("/google/phone", summary="Save the phone of an account made with Google")
+async def google_save_phone(
+    data: GooglePhoneRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Any = Depends(get_current_user),
+) -> dict[str, Any]:
+    saved = await google_service.save_phone(db, user, data.phone)
+    return success(data=saved, message="Phone number saved.")

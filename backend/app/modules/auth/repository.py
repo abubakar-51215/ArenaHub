@@ -29,6 +29,11 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_user_by_google_sub(db: AsyncSession, sub: str) -> User | None:
+    result = await db.execute(select(User).where(User.google_sub == sub).limit(1))
+    return result.scalar_one_or_none()
+
+
 def _phone_matches(phone: str):
     """Rows whose stored phone is this number, whatever its spelling (see
     app.shared.phone). Deleted accounts hold an anonymised value and never match."""
