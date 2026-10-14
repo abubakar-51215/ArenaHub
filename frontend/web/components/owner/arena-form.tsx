@@ -41,7 +41,8 @@ function initialDays(hours?: OperatingHours): Record<string, DayRow> {
   for (const day of WEEKDAY_NAMES) {
     const h = hours?.[day];
     rows[day] = h
-      ? { open: true, from: h.open, to: h.close }
+      ? // "24:00" (midnight) cannot be shown by a time input; 23:59 means the same (open until midnight)
+        { open: true, from: h.open, to: h.close === "24:00" ? "23:59" : h.close }
       : { open: false, from: "08:00", to: "23:00" };
   }
   return rows;

@@ -1,9 +1,9 @@
 import type { OperatingHours, TimeSlot } from '@/types';
 
-import { karachiMinutes, karachiParts } from '@/lib/karachi';
+import { asClock, karachiMinutes, karachiParts } from '@/lib/karachi';
 /** "18:00:00" -> "6 PM", "18:30" -> "6:30 PM". */
 export function hourLabel(time: string): string {
-  const [h, m] = time.split(':').map(Number);
+  const [h, m] = asClock(time).split(':').map(Number);
   const suffix = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return m ? `${h12}:${String(m).padStart(2, '0')} ${suffix}` : `${h12} ${suffix}`;

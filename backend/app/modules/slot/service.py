@@ -60,21 +60,36 @@ async def _owned_court_and_arena(
     return court, arena
 
 
-def _parse_hours(raw: dict, day_name: str) -> tuple[time, time] | None:
-    """Return (open, close) for ``day_name``, or None if the arena is closed."""
+# Closing at "23:59" or "24:00" means open until midnight: the 23:00 hour is sold too. That last
+# slot ends at 23:59:59 on the same date (not 00:00, which would sort before its start); every
+# display shows it as 12:00 AM.
+MIDNIGHT_CLOSES = ("23:59", "24:00")
+LAST_SLOT_END = time(23, 59, 59)
+
+
+def _parse_hours(raw: dict, day_name: str) -> tuple[time, time | None] | None:
+    """Return (open, close) for ``day_name``, or None if the arena is closed. ``close`` is None
+    when the arena is open until midnight."""
     window = raw.get(day_name)
     if not window:
         return None
-    return (
-        datetime.strptime(window["open"], "%H:%M").time(),
-        datetime.strptime(window["close"], "%H:%M").time(),
+    close = (
+        None
+        if window["close"] in MIDNIGHT_CLOSES
+        else datetime.strptime(window["close"], "%H:%M").time()
     )
+    return (datetime.strptime(window["open"], "%H:%M").time(), close)
 
 
-def _hourly_starts(open_time: time, close_time: time) -> list[time]:
+def _hourly_starts(open_time: time, close_time: time | None) -> list[time]:
+    """Whole hours from opening; ``close_time`` None = until midnight."""
     starts = []
     cursor = datetime.combine(date.min, open_time)
-    end = datetime.combine(date.min, close_time)
+    end = (
+        datetime.combine(date.min + timedelta(days=1), time(0))
+        if close_time is None
+        else datetime.combine(date.min, close_time)
+    )
     while cursor + SLOT_LENGTH <= end:
         starts.append(cursor.time())
         cursor += SLOT_LENGTH
@@ -129,6 +144,8 @@ async def generate_slots(
                 skipped_existing += 1
                 continue
             end = (datetime.combine(date.min, start) + SLOT_LENGTH).time()
+            if end == time(0):
+                end = LAST_SLOT_END
             price = resolve_peak_price(court.base_price, pricing_rules, cursor.isoweekday(), start)
             await repo.add_slot(
                 db,

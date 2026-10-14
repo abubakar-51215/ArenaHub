@@ -48,9 +48,14 @@ def karachi_date(value: date | datetime | str) -> str:
 
 
 def time_12h(value: time | str) -> str:
-    """7:00 PM (no leading zero)."""
+    """7:00 PM (no leading zero). 23:59 or later (the end of the last hour of the day) and
+    "24:00" are midnight: 12:00 AM."""
     if isinstance(value, str):
+        if value[:5] >= "23:59":
+            return "12:00 AM"
         value = time.fromisoformat(value)
+    if value >= time(23, 59):
+        return "12:00 AM"
     return value.strftime("%I:%M %p").lstrip("0")
 
 
