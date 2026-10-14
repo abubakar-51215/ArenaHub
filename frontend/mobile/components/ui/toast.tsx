@@ -16,7 +16,7 @@ import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { successHaptic } from '@/lib/haptics';
 
-// Frame 11 of arena-hub-player-app-auth-2.html: a dark pill with a lime tick
+// Frame 11 of arena-hub-player-app-auth-2-fixed.html: a dark pill with a lime tick
 // dot that drops from the top (400 ms ease-out), stays about 3 seconds and
 // slides away (250 ms). One ToastHost sits at the root; any screen calls
 // `showToast("New code sent to a***@arenahub.pk")`. With "reduce motion" it

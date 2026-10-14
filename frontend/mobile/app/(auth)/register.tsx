@@ -107,7 +107,6 @@ export default function RegisterScreen() {
           <Field
             ref={emailRef}
             icon="mail"
-            huge
             placeholder="Email"
             value={email}
             onChangeText={(t) => {
@@ -149,7 +148,6 @@ export default function RegisterScreen() {
           <Field
             ref={passwordRef}
             icon="lock"
-            huge
             revealable
             placeholder="Password"
             value={password}

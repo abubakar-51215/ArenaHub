@@ -3,6 +3,7 @@ import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { CountBadge } from '@/components/ui/count-badge';
+import { FIELD_HEIGHT, FIELD_ICON } from '@/components/ui/field';
 import { Icon } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
@@ -32,8 +33,8 @@ export function SearchBar({
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.row}>
-      <View style={[styles.field, focused && styles.focused]}>
-        <Icon name="search" size={15} color={Colors.light.muted} />
+      <View testID="icon-field" style={[styles.field, focused && styles.focused]}>
+        <Icon name="search" size={FIELD_ICON} color={Colors.light.muted} />
         <TextInput
           ref={inputRef}
           value={value}
@@ -82,8 +83,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   field: {
     flex: 1,
-    // 46 so the text field inside the 1px border is itself 44 tall
-    minHeight: 46,
+    // every icon field is 48 tall with a 20px icon (the shared Field rule)
+    height: FIELD_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -98,8 +99,8 @@ const styles = StyleSheet.create({
   input: { flex: 1, alignSelf: 'stretch', fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
   clear: { fontSize: 14, color: Colors.light.muted },
   filters: {
-    width: 44,
-    height: 44,
+    width: FIELD_HEIGHT,
+    height: FIELD_HEIGHT,
     borderRadius: 13,
     backgroundColor: Colors.light.card,
     borderColor: Colors.light.line,

@@ -16,7 +16,7 @@ import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
 // style). The prototype has no `outline` variant; existing `outline` call
 // sites are repointed to `ghost`, the closest match (secondary, unfilled).
 //
-// Motion (standing rule c, docs/MOBILE_QA_GATE.md; arena-hub-player-app-auth-2.html):
+// Motion (standing rule c, docs/MOBILE_QA_GATE.md; arena-hub-player-app-auth-2-fixed.html):
 //   press     dips to 97.5% in 160 ms, no opacity change
 //   loading   a spinner that keeps the button's full width and height
 //   success   a short tick in place of the label

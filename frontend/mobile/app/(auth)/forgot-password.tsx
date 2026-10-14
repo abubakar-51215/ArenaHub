@@ -14,7 +14,7 @@ import { forgotPassword } from '@/services/auth';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Frame 2 of arena-hub-player-app-auth-2.html. The server answers the same
+// Frame 2 of arena-hub-player-app-auth-2-fixed.html. The server answers the same
 // way whether or not the email has an account, so this screen always goes on
 // to the code step, and says "if an account exists" there.
 export default function ForgotPasswordScreen() {
@@ -55,7 +55,6 @@ export default function ForgotPasswordScreen() {
       <View style={styles.form}>
         <Field
           icon="mail"
-          huge
           placeholder="Email"
           value={email}
           onChangeText={(t) => {

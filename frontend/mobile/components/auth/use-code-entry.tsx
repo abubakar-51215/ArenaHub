@@ -18,7 +18,7 @@ const RESEND_WAIT = 60;
 
 /**
  * Every "enter the 6-digit code we emailed" step on the phone (frames 3, 7 and 8 of
- * arena-hub-player-app-auth-2.html): six boxes (paste and the keyboard's code suggestion fill
+ * arena-hub-player-app-auth-2-fixed.html): six boxes (paste and the keyboard's code suggestion fill
  * them, see CodeBoxes), the code is sent at the sixth digit, a wrong code shakes the boxes once
  * (not with reduce motion) and shows the server's own message, "Send a new code in 0:42" (grey)
  * then "Send a new code", the server's "Wait N seconds ..." restarts the timer at N, and a code

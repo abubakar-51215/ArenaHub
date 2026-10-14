@@ -16,7 +16,7 @@ import { BlurView } from 'expo-blur';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 
-// Frame 10 of arena-hub-player-app-auth-2.html: the back goes dim, the sheet
+// Frame 10 of arena-hub-player-app-auth-2-fixed.html: the back goes dim, the sheet
 // rises in 340 ms (ease-out) and closes in 200 ms. The destructive action is
 // the red button and always sits next to a plain "Stay" / "Cancel". It closes
 // by that button, by a tap outside, by a swipe down, or by the Android back

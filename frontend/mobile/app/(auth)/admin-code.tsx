@@ -11,7 +11,7 @@ import { fetchMe, resendAdminCode, verifyAdminCode } from '@/services/auth';
 import { useAdminChallenge } from '@/store/admin-challenge';
 import { useAuthStore } from '@/store/auth';
 
-// Frames 7 and 8 of arena-hub-player-app-auth-2.html. The challenge token the
+// Frames 7 and 8 of arena-hub-player-app-auth-2-fixed.html. The challenge token the
 // server gave after the right password lives in memory only
 // (store/admin-challenge); it is never written to SecureStore.
 export default function AdminCodeScreen() {

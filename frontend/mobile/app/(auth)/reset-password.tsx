@@ -17,7 +17,7 @@ import { ApiError } from '@/lib/api';
 import { forgotPassword, resetPassword } from '@/services/auth';
 import { maskEmail } from '@/store/admin-challenge';
 
-// Frames 3 to 6 of arena-hub-player-app-auth-2.html on one route:
+// Frames 3 to 6 of arena-hub-player-app-auth-2-fixed.html on one route:
 //   code     six boxes (the shared code entry); the sixth digit opens the next step; "Send a new code in 0:42"
 //   password the new password with the live rule list and the eye
 //   done     the tick, "Log in"
@@ -128,7 +128,6 @@ export default function ResetPasswordScreen() {
         <View style={styles.form}>
           <Field
             icon="lock"
-            huge
             revealable
             placeholder="New password"
             value={password}
