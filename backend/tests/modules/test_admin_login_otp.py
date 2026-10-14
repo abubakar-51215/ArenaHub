@@ -10,6 +10,7 @@ import re
 from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth import repository as repo
@@ -172,3 +173,31 @@ async def test_owner_and_player_sign_in_as_before(client, db_session):
         data = res.json()["data"]
         assert data["access_token"] and data["refresh_token"]
         assert "mfa_required" not in data
+
+
+async def test_admin_sign_in_says_when_the_hourly_maximum_is_reached(client, db_session):
+    _, user, _ = await _admin_with_challenge(client, db_session, "adm-hourly@example.com")
+    # four more codes this hour; all of them two minutes old, so no 60 s wait is in the way
+    for _ in range(4):
+        await repo.create_otp(
+            db_session,
+            user_id=user.id,
+            code_hash="0" * 64,
+            channel="email",
+            purpose=OtpPurpose.admin_login,
+            expires_at=datetime.now(UTC) + timedelta(minutes=10),
+        )
+    await db_session.commit()
+    rows = await db_session.execute(
+        text(
+            "UPDATE otp_verifications SET expires_at = now() + interval '8 minutes' "
+            "WHERE user_id = :u AND purpose = 'admin_login'"
+        ),
+        {"u": user.id},
+    )
+    await db_session.commit()
+    assert rows.rowcount == 5
+
+    res = await _login(client, "adm-hourly@example.com")
+    assert res.status_code == 429
+    assert res.json()["message"] == "Too many codes were asked for. Please try again in 30 minutes."

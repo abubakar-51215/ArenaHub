@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
     ConflictError,
+    TooManyRequestsError,
     UnauthorizedError,
     ValidationError,
     VerifyEmailRequiredError,
@@ -190,11 +191,15 @@ _CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in aga
 
 async def _send_admin_code(db: AsyncSession, user: User, *, asked_again: bool = False) -> bool:
     """Email a fresh admin sign-in code (the shared code rules). ``asked_again`` (the "Send a
-    new code" button) answers "Wait N seconds ..." or "Too many codes ..."; the first code at
-    sign-in stays quiet. Returns False when the email could not be sent."""
-    issued = await codes.issue_code(
-        db, user.id, OtpPurpose.admin_login, user.email, quiet=not asked_again
-    )
+    new code" button) answers "Wait N seconds ..." as well; at sign-in a code sent inside the
+    last minute still works, so only the hourly maximum is said (the password was right, so
+    nothing about the account is given away). Returns False when the email could not be sent."""
+    try:
+        issued = await codes.issue_code(db, user.id, OtpPurpose.admin_login, user.email)
+    except TooManyRequestsError as exc:
+        if asked_again or exc.message == codes.TOO_MANY_CODES_MESSAGE:
+            raise
+        return True  # inside the 60 s wait: the code sent a moment ago still works
     return issued.delivered
 
 
