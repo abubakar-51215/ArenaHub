@@ -425,7 +425,11 @@ async def test_admin_mark_paid_once_only_notifies_the_player_once_and_writes_an_
 
     told = await _notices(db_session, player_id, "refund_completed")
     assert len(told) == 1  # the second call sent nothing
-    assert re.fullmatch(r"Your refund of ₨ [\d,]+ has been completed\.", told[0].body)
+    assert re.fullmatch(
+        r"Your refund of ₨ [\d,]+ for your booking on \w{3} \d{1,2} \w{3} at \d{1,2}:\d{2} [AP]M "
+        r"has been completed\.",
+        told[0].body,
+    )
     audit = (
         await db_session.scalars(
             select(AuditLog).where(
