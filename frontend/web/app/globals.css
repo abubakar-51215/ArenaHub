@@ -9,6 +9,8 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+/* touch screens of any width (tablets too): tap targets at least 44px, see the block at the end */
+@custom-variant coarse (@media (pointer: coarse));
 
 @theme inline {
   --color-background: var(--background);
@@ -4780,5 +4782,32 @@ html[data-theme="dark"] .am-theme .am-d {
 @media (max-width: 1023px) {
   [data-owner] .ah-select {
     min-height: 44px;
+  }
+}
+
+/* Touch screens of any width (tablets in particular, 768px and up, which get the desktop layout):
+   every tap target is at least 44px. Sizes only; the phone-width layout changes stay below 768px.
+   Mirrors the 44px rules of the max-width: 767.98px blocks above. */
+@media (pointer: coarse) {
+  :is([data-admin], [data-owner]) :is(
+      .ah-cmdk-item, .ah-pop-item, .ah-nav-item, .ah-menu-item, .ah-tab, .ah-check, .ah-head-link,
+      .ah-court-switch, .ah-cal-more, .ah-pager button, .ah-card-error .ah-link,
+      .ah-venue-pick, .ah-searchbar, .ah-brand,
+      [data-slot="button"], [data-slot="input"], [data-slot="select"], [data-slot="tabs-trigger"],
+      [data-slot="dialog-close"]
+    ) {
+    /* restated here because the console rules above are unlayered and beat the utilities */
+    min-height: 44px;
+  }
+  :is([data-admin], [data-owner]) :is(
+      .ah-icon-btn, .ah-logout, .ah-pw-toggle, .ah-cal-mdate
+    ) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  :is([data-admin], [data-owner]) :is(
+      [data-slot="button"], .ah-pager button, [data-slot="dialog-close"]
+    ) {
+    min-width: 44px;
   }
 }
