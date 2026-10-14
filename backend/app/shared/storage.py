@@ -64,6 +64,13 @@ def save_image(content: bytes, content_type: str, *, folder: str = "arenas") -> 
     """
     if folder not in ALLOWED_FOLDERS:
         raise ValidationError("Invalid upload folder.")
+    if not content:
+        # nothing chosen, or a 0-byte file: say what to choose, not a technical reason
+        raise ValidationError(
+            "Choose a photo of your receipt (JPG or PNG, up to 5 MB)."
+            if folder == "receipts"
+            else "Choose a photo (JPG or PNG, up to 5 MB)."
+        )
     ext = _validate(content, content_type)
     settings = get_settings()
     name = f"{uuid.uuid4().hex}{ext}"

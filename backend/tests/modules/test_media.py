@@ -77,3 +77,21 @@ async def test_owner_can_upload_to_arena_folder(
     )
     assert resp.status_code == 200
     assert resp.json()["data"]["url"].startswith("/uploads/arenas/")
+
+
+async def test_an_empty_file_says_what_to_choose(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, _ = await make_user(client, db_session, "mediaplayer-empty@example.com")
+    for folder, message in (
+        ("receipts", "Choose a photo of your receipt (JPG or PNG, up to 5 MB)."),
+        ("avatars", "Choose a photo (JPG or PNG, up to 5 MB)."),
+    ):
+        resp = await client.post(
+            "/api/v1/uploads/image",
+            headers=auth_header(player),
+            params={"folder": folder},
+            files={"file": ("empty.png", b"", "image/png")},
+        )
+        assert resp.status_code == 422
+        assert resp.json()["message"] == message
