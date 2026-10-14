@@ -27,7 +27,7 @@ export function SportChecks({
         <label
           key={o.value}
           htmlFor={`${idPrefix}-${o.value}`}
-          className="flex min-h-9 cursor-pointer items-center gap-2 text-sm max-md:min-h-11"
+          className="flex min-h-9 cursor-pointer items-center gap-2 text-sm max-md:min-h-11 coarse:min-h-11"
         >
           <input
             id={`${idPrefix}-${o.value}`}
