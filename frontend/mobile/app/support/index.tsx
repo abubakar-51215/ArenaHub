@@ -19,7 +19,8 @@ import { timeAgo } from '@/lib/karachi';
 import { listMyComplaints, type Complaint } from '@/services/complaints';
 
 // Help and support, from arena-hub-player-app-account.html (frames 27 and 28): "Something went wrong?" with New complaint,
-// my complaints (status and age) and three common questions. The "Contact us" block is left out until the real email and hours
+// my complaints (status and age) and three common questions. Above them, the assistant card
+// (arena-hub-player-app-smart.html, frame 5). The "Contact us" block is left out until the real email and hours
 // are decided (docs/BEFORE_GOING_LIVE.md).
 const go = (path: string) => router.push(path as unknown as Href);
 
@@ -57,7 +58,17 @@ export default function HelpScreen() {
         contentContainerStyle={styles.pad}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.ink} colors={[Colors.light.ink]} />}>
-        <View style={styles.hero}>
+        {/* frame 5 of arena-hub-player-app-smart.html: the assistant first */}
+        <Pressable onPress={() => go('/support/assistant')} accessibilityRole="button" accessibilityLabel="Ask the ArenaHub assistant" style={styles.assistant}>
+          <View style={styles.assistantIcon}>
+            <IconExtra name="lifebuoy" color={Colors.light.lime} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroTitle}>Ask the ArenaHub assistant</Text>
+            <Text style={styles.heroText}>Quick answers about bookings, refunds and payments</Text>
+          </View>
+        </Pressable>
+        <View style={[styles.hero, { marginTop: 14 }]}>
           <IconTile tone="ok">
             <IconExtra name="lifebuoy" color={Colors.light.limeDeep} />
           </IconTile>
@@ -119,6 +130,8 @@ export default function HelpScreen() {
 }
 
 const styles = StyleSheet.create({
+  assistant: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 15, backgroundColor: Colors.light.limeWash, borderColor: '#D9EBA0', borderWidth: 1 },
+  assistantIcon: { width: 48, height: 48, borderRadius: 13, backgroundColor: Colors.light.ink, alignItems: 'center', justifyContent: 'center' },
   page: { flex: 1, backgroundColor: Colors.light.paper },
   pad: { paddingHorizontal: 18, paddingTop: 4, paddingBottom: 28 },
   hero: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.light.card, borderWidth: 1, borderColor: Colors.light.line, borderRadius: 15, padding: 14 },

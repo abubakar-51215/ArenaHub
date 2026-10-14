@@ -24,6 +24,7 @@ from app.modules.admin.api import router as admin_router
 from app.modules.ai.api import router as ai_router
 from app.modules.arena.api import owner_router as arena_owner_router
 from app.modules.arena.api import router as arena_router
+from app.modules.assistant.api import router as assistant_router
 from app.modules.auth.api import router as auth_router
 from app.modules.booking.api import owner_router as booking_owner_router
 from app.modules.booking.api import router as booking_router
@@ -144,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(notification_router, prefix=API_V1_PREFIX)
     app.include_router(report_router, prefix=API_V1_PREFIX)
     app.include_router(report_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(assistant_router, prefix=API_V1_PREFIX)
     app.include_router(report_admin_router, prefix=API_V1_PREFIX)
     app.include_router(ai_router, prefix=API_V1_PREFIX)
     app.include_router(match_router, prefix=API_V1_PREFIX)

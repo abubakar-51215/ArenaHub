@@ -78,7 +78,7 @@ export default function ResultsScreen() {
               {r.chips.map((c) => (
                 <View key={c.kind} style={styles.chip}>
                   <Text style={styles.chipText}>{c.label}</Text>
-                  <TapBox onPress={() => remove(c.kind)} slop={{ x: 10, y: 10 }} accessibilityRole="button" accessibilityLabel={`Remove ${c.label}`}>
+                  <TapBox onPress={() => remove(c.kind)} slop={12} inner={styles.chipXBox} accessibilityRole="button" accessibilityLabel={`Remove ${c.label}`}>
                     <Text style={styles.chipX}>×</Text>
                   </TapBox>
                 </View>
@@ -200,7 +200,9 @@ function NothingMatches({ kinds, onRemove }: { kinds: ChipKind[]; onRemove: (k: 
 
 const styles = StyleSheet.create({
   plainNote: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 12 },
-  chipX: { fontSize: 15, fontWeight: '700', color: Colors.light.limeText, paddingLeft: 2 },
+  chipX: { fontSize: 15, fontWeight: '700', color: Colors.light.limeText },
+  // a 20px drawn x in a real 44px tap box (TapBox adds 12 on every side), ending at the chip's own edge
+  chipXBox: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   hiddenRow: { display: 'none' },
   nothing: { alignItems: 'center', paddingTop: 36, gap: 6 },
   nothingTitle: { fontSize: 19, lineHeight: 24, fontWeight: '700', color: Colors.light.text, textAlign: 'center' },
@@ -215,7 +217,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8 },
   understood: { fontSize: 14, color: Colors.light.muted, marginTop: 14 },
   // .chip of the smart frames: a lime-wash pill with its x
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.light.limeWash, borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 999, minHeight: 36, paddingLeft: 12, paddingRight: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.light.limeWash, borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 999, minHeight: 36, paddingLeft: 12, paddingRight: 12 },
   chipText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   countRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8, minHeight: 34 },
   count: { fontSize: 14, fontWeight: '700', color: Colors.light.text },

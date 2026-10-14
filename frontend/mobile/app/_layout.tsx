@@ -243,6 +243,7 @@ function RootNavigator() {
         <Stack.Screen name="support/index" options={{ headerShown: false }} />
         <Stack.Screen name="support/new" options={{ headerShown: false }} />
         <Stack.Screen name="support/faq" options={{ headerShown: false }} />
+        <Stack.Screen name="support/assistant" options={{ headerShown: false }} />
         <Stack.Screen name="support/[id]" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
