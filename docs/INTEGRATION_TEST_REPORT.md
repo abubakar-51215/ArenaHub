@@ -2,6 +2,35 @@
 
 Date: 13 October 2026; follow-ups on 14 October 2026 (Karachi time). Branch: `prototype-screens`.
 
+## Round 4, 14 October 2026 night: emailed codes, Google, smart search, assistant
+
+Scratch database, real browsers, test tokens; no real email, Google or inbox was used.
+
+| Check | Result |
+|---|---|
+| Backend suite | 618 tests pass |
+| Icon fields (phone): 48px field, 20px icon, empty or filled, focused or not, at 360, 375, 390, 430 | 256 of 256 measurements pass (`scripts/field-check.mjs`) |
+| New screens and states (Google buttons, wrong-email recovery, One more step, smart search chips, assistant), `round2.mjs` | 34 of 34 checks; 44 width measurements: 0 sideways, 0 small text, 0 small taps |
+| Code flows with sign-up and admin sign-in (phone and web), `codes.mjs` | 38 of 38 |
+| Change email by code (phone and owner web), `codes_change.mjs` | 14 of 14 |
+| Phone sweep, every route at 360/375/390/430 (168 screens) | 0 load errors, 0 sideways, 0 small text, 0 small taps, 0 console errors, 0 failed requests |
+| Signed-out web pages, owner pages and admin pages at 360/768/1024/1440, light and dark (16 + 104 + 88 screens) | 0 load errors, 0 sideways, 0 small text, 0 small taps, 0 console errors, 0 failed requests |
+| S1 Arena life | 31 of 31 |
+| S2 Booking and bank transfer | 24 of 24 |
+| S8 Accounts | 14 of 14 (script changed: change email now sends the current password; the code table column is `used_at`) |
+| S10 Notifications | 15 of 15 |
+| S11 Real time and refresh | 16 of 16 (script changed: after 22:00 Karachi no slot is left today, so it opens tomorrow's day; the admin reload check looks for a name on page 1) |
+| S12 Sessions and security | 25 of 25 |
+| S13 Failures | 15 of 15 |
+| Web `next build`, tsc, eslint; phone tsc, eslint; ruff; all 11 check scripts | pass |
+
+Found and fixed in this round by the browser checks (each has a test): a wrong code stayed in the boxes and re-sent itself until the
+code locked; the admin sign-in did not say when the hourly code maximum was reached; code boxes were under 44px at 768px wide.
+
+Not checked (needs a real phone, a development build or a real inbox): a real email arriving in Gmail (the test-email script still
+refuses: `EMAIL_PASSWORD` is not set), the real Google sign-in window (needs a development build and the Google Cloud set-up), the
+keyboard's code suggestion and the haptics on a real phone.
+
 ## Third pass, 14 October 2026 afternoon: the last open items, final numbers
 
 ### The five open items, fixed (each with a test or a check script)

@@ -44,7 +44,8 @@ for (const w of WIDTHS) {
     }, step === 'signed-in' ? TOKEN : null);
     const page = await ctx.newPage();
     page.setDefaultTimeout(STEP);
-    await page.goto(BASE + route, { waitUntil: 'load', timeout: STEP });
+    // a page load of the dev bundle is not a step: it gets 60 s; every step after it gets 8 s
+    await page.goto(BASE + route, { waitUntil: 'load', timeout: 60000 });
     if (step === 'password') {
       // the reset screen opens on the code; six digits move on to the new password
       await page.getByLabel('Verification code, 6 digits').pressSequentially('123456');
