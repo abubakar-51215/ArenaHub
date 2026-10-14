@@ -89,7 +89,22 @@ All passwords below are for test accounts in the development databases.
 
 The scratch database has no owner or admin account that I know the password of. Use the dev database for those.
 
-**Admin code in dev:** an admin sign-in sends a 6-digit code by email. In dev there is no mail server, so the code is printed in the backend terminal (the window where `uvicorn` runs) as a line like `otp_dev_delivery code=123456 destination=admin@arenahub.pk purpose=admin_login`. Type those six digits. The code works for 10 minutes. (The admin screen on the phone is temporary; admin work is on the web at http://localhost:3000/admin/login.)
+**Codes in dev:** every 6-digit code (sign-up, admin sign-in, forgot password, change of email or password) is printed in the backend terminal (the window where `uvicorn` runs) as a line like `code_dev_delivery destination=admin@arenahub.pk purpose=admin_login code=123456`. Type those six digits. A code works for 10 minutes and once; after 5 wrong tries ask for a new one; a new code can be asked for 60 seconds after the last. (The admin screen on the phone is temporary; admin work is on the web at http://localhost:3000/admin/login.)
+
+**Real email (to see a code arrive in Gmail):**
+
+1. In `backend\.env` fill `EMAIL_HOST` (`smtp.gmail.com`), `EMAIL_PORT` (`587`), `EMAIL_USERNAME` and `EMAIL_FROM` (your Gmail address) and `EMAIL_PASSWORD` (a Gmail App Password: turn on 2-Step Verification, then create one at myaccount.google.com/apppasswords; 16 letters, no spaces; the normal Gmail password does not work). Set `EMAIL_SEND_IN_DEV=1`. Do not share this file.
+2. Check it without the app, in `backend`: `uv run python scripts/send_test_email.py <your address>`. It answers `Sent.` or names the problem (login refused, cannot connect, TLS, sender refused) with a one-line fix. It never prints the password.
+3. Restart the backend. Its first lines include `email_mode mode=smtp host=smtp.gmail.com port=587`. If it says `mode=console`, the reason is on the same line.
+4. On the phone and on the web, check:
+   * **Sign up** with an inbox you can open: the code screen says "We sent a 6-digit code to a\*\*\*@gmail.com", and the email "Your ArenaHub code: 123456" arrives (check Spam the first time).
+   * **Wrong code:** the boxes shake once and "That code is not right, or it has expired." shows under them; the boxes empty for the next try.
+   * **Right code:** you are signed in.
+   * **Send a new code:** grey "Send a new code in 0:42" counts down, then "Send a new code"; tap it, "New code sent to a\*\*\*@gmail.com" shows, only the newest code works.
+   * **Admin sign-in** (web `/admin/login`, or the phone): after the password, the code email arrives; enter it.
+   * **Forgot password:** the code email arrives; enter it, then the new password; every device is signed out.
+   * **Change email** (phone Profile > Personal information > Change email, or web owner Profile): enter the new address and your password; the code goes to the new address; the old address gets "Your ArenaHub email was changed" after it is confirmed.
+5. If the email does not come: the backend terminal shows `code_not_sent` with the reason and a hint, and the screen says "We could not send the code. Tap Resend."
 
 ## 8. Which backend to use for the phone test
 

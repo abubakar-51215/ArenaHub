@@ -8,11 +8,12 @@ Nothing here has been changed; this is only the list.
 3. **NEXT_PUBLIC_API_URL** (web) and **EXPO_PUBLIC_API_URL** (mobile). Read in `frontend/web/config/index.ts` and `frontend/mobile/lib/config.ts`. The mobile one must be an https address in a release build.
 4. **ENVIRONMENT** in `backend/.env` is `dev`; set it to `prod`.
 5. **STRIPE_SECRET_KEY** / **STRIPE_WEBHOOK_SECRET** in `backend/.env` are placeholders (`sk_test_xxx`, `whsec_xxx`). Card payments answer "Card payments are not available yet" until a real key is set. JazzCash and EasyPaisa are "coming soon" until their gateway work is done.
-6. **EMAIL_*** settings in `backend/.env` (host, username, password, from). The admin sign-in code is sent by email, so mail must work before launch.
-7. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev, and the dev OTP logging must not be used.
-8. **TRUSTED_PROXIES** in `backend/.env` (setting `trusted_proxies` in `backend/app/core/config.py`; addresses or ranges, comma-separated; empty by default). If production runs behind a proxy or load balancer, set trusted_proxies to that proxy. If it is left empty, every user appears to come from the proxy's address and shares one limit, so people will be blocked.
+6. **Must do: send email through a proper transactional email service on the real sending domain.** Every 6-digit code (sign-up, admin sign-in, password reset, change of email or password) is emailed, so sign-up and sign-in stop working when mail does. A personal Gmail account is fine for testing only (low daily limits, mail can land in spam). The service and the sending domain are chosen at the very end, together with the domain and the name (see "Decide at the very end"); then set the **EMAIL_*** settings in `backend/.env` (host, port, username, password, from) to that service and check them with `uv run python scripts/send_test_email.py <address>`. At start-up the server prints one line, `email_mode mode=smtp host=... port=...` or `mode=console reason=...`; production must say `mode=smtp`.
+7. **Must do: set CODE_HASH_SECRET** in `backend/.env` (setting `code_hash_secret` in `backend/app/core/config.py`) to a random value of 32+ characters, kept secret like the JWT secrets. Codes are stored only as an HMAC keyed by it. Outside dev the server refuses to start without it. Changing it later makes every code that is waiting unusable (people ask for a new one); nothing else.
+8. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev. The code line in the server log (`code_dev_delivery`, with the code) is written only when `ENVIRONMENT=dev`; outside dev neither the code nor its hash is ever logged.
+9. **TRUSTED_PROXIES** in `backend/.env` (setting `trusted_proxies` in `backend/app/core/config.py`; addresses or ranges, comma-separated; empty by default). If production runs behind a proxy or load balancer, set trusted_proxies to that proxy. If it is left empty, every user appears to come from the proxy's address and shares one limit, so people will be blocked.
 
-**Rule for the development database: backup first, then migrate, every time** (`pg_dump -Fc` into `backend/backups/`, then `alembic upgrade head`; test and scratch first). Last backup: `backend/backups/arenahub-20261012-112458-after-g6.dump`, restore-checked into a throwaway database (dropped afterwards).
+**Rule for the development database: backup first, then migrate, every time** (`pg_dump -Fc` into `backend/backups/`, then `alembic upgrade head`; test and scratch first). Last backup: `backend/backups/arenahub-20261014-135820-before-otp-code-hash.dump` (taken before migration `e6c3a9d2b8f1`, which drops the stored plain codes), restore-checked into a throwaway database (dropped afterwards).
 
 ## Decide at the very end (do not build yet)
 
@@ -25,8 +26,9 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
 
 ## Also check before launch (added in the admin round)
 
-* **Admin sign-in code email.** Admins sign in on the phone with a 6-digit emailed code (10 minutes, one new code a minute). In
-  development the code is written to the server log (`otp_dev_delivery`); that must be off in production, and mail must work.
+* **Emailed codes.** Every code works for 10 minutes and once; 5 wrong tries end it; a new code waits 60 seconds after the last one,
+  and at most 5 go to one address an hour. In development the code is written to the server log (`code_dev_delivery`); outside
+  development it never is (see items 6 to 8 above).
 * **Suspended accounts** are told "Your account has been suspended." only after the right password. No support contact is shown
   there; add it with the support email once decided (see the list above).
 * **Log lines.** The server now replaces characters a console cannot print (the rupee sign), so a notice never crashes a request on a
