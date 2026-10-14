@@ -63,20 +63,12 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    """Reset with the emailed one-time code (``email`` + ``otp``), or with the
-    older reset ``token``. The token path stays for links already sent and is
-    due for removal."""
+    """Reset with the emailed 6-digit code. (The old emailed-link token was never sent by this
+    version and is gone.)"""
 
-    email: EmailStr | None = None
-    otp: str | None = Field(default=None, min_length=6, max_length=6)
-    token: str | None = None
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=72)
-
-    @model_validator(mode="after")
-    def _needs_otp_or_token(self) -> "ResetPasswordRequest":
-        if not self.token and not (self.email and self.otp):
-            raise ValueError("Provide email and otp, or a reset token.")
-        return self
 
 
 class AdminLoginChallenge(BaseModel):
@@ -86,6 +78,8 @@ class AdminLoginChallenge(BaseModel):
     mfa_required: bool = True
     challenge_token: str
     expires_in: int
+    sent_to: str = ""  # the masked address the code went to ("a***@gmail.com")
+    code_sent: bool = True  # False: the email could not be sent; "Send a new code" works at once
 
 
 class AdminCodeRequest(BaseModel):
@@ -107,3 +101,6 @@ class RegisterResponse(BaseModel):
     user: UserPublic
     # OTP delivery channel used, so the client can prompt correctly.
     otp_sent_to: str
+    # False when the email could not be sent: the screen then says
+    # "We could not send the code. Tap Resend."
+    code_sent: bool = True

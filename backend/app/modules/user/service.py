@@ -5,12 +5,16 @@ Reuses the auth module's password-history, reuse-check, OTP, and Redis session
 helpers so the security rules have a single implementation.
 """
 
+import contextlib
 from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ValidationError
 from app.core.security import hash_password, validate_password_strength, verify_password
+from app.integrations.email import send_email
+from app.integrations.email.smtp import EmailSendError
+from app.integrations.email.templates import email_changed_email
 from app.modules.auth import repository as auth_repo
 from app.modules.auth import tokens
 from app.modules.auth.service import enforce_password_reuse
@@ -25,13 +29,8 @@ from app.modules.user.schema import (
     UpdateProfileRequest,
     UserPublic,
 )
-from app.shared.otp import (
-    MAX_OTP_ATTEMPTS,
-    OTP_TTL,
-    OtpPurpose,
-    deliver_otp,
-    generate_otp_code,
-)
+from app.shared import codes
+from app.shared.otp import OtpPurpose
 
 
 def _now() -> datetime:
@@ -51,26 +50,19 @@ async def update_profile(db: AsyncSession, user: User, data: UpdateProfileReques
 
 async def request_password_change(
     db: AsyncSession, user: User, data: ChangePasswordRequest
-) -> None:
-    """Validate the new password and stage it; the change only applies once the
-    OTP sent to the user's current email is confirmed via ``verify_password_change``."""
+) -> bool:
+    """Check the current password, stage the new one, and email a code to the account's
+    address; the change applies once the code is confirmed. Returns False when the email
+    could not be sent."""
     if not verify_password(data.current_password, user.password_hash):
         raise ValidationError("Current password is incorrect.")
     validate_password_strength(data.new_password)
     await enforce_password_reuse(db, user, data.new_password)
 
     user.pending_password_hash = hash_password(data.new_password)
-    code = generate_otp_code()
-    await auth_repo.create_otp(
-        db,
-        user_id=user.id,
-        code=code,
-        channel="email",
-        purpose=OtpPurpose.password_change,
-        expires_at=_now() + OTP_TTL,
-    )
     await db.commit()
-    deliver_otp(user.email, code, purpose=OtpPurpose.password_change, user_id=user.id)
+    issued = await codes.issue_code(db, user.id, OtpPurpose.password_change, user.email)
+    return issued.delivered
 
 
 async def verify_password_change(
@@ -78,18 +70,7 @@ async def verify_password_change(
 ) -> None:
     if user.pending_password_hash is None:
         raise ValidationError("No password change is pending.")
-
-    otp = await auth_repo.get_latest_otp(db, user.id, OtpPurpose.password_change)
-    if otp is None or otp.expires_at < _now():
-        raise ValidationError("Invalid or expired verification code.")
-    if otp.attempts >= MAX_OTP_ATTEMPTS:
-        raise ValidationError("Too many incorrect attempts. Request a new code.")
-    if otp.code != data.code:
-        otp.attempts += 1
-        await db.commit()
-        raise ValidationError("Invalid or expired verification code.")
-
-    otp.is_used = True
+    await codes.check_code(db, user.id, OtpPurpose.password_change, data.code, user.email)
     user.password_hash = user.pending_password_hash
     user.pending_password_hash = None
     await auth_repo.add_password_history(db, user.id, user.password_hash)
@@ -114,24 +95,16 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     await tokens.bump_session_epoch(str(user.id))
 
 
-async def request_phone_change(db: AsyncSession, user: User, data: PhoneChangeRequest) -> None:
+async def request_phone_change(db: AsyncSession, user: User, data: PhoneChangeRequest) -> bool:
     if data.new_phone == user.phone:
         raise ValidationError("That is already your phone number.")
     if await auth_repo.get_user_by_phone(db, data.new_phone):
         raise ConflictError("Phone number is already registered.")
 
     user.pending_phone = data.new_phone
-    code = generate_otp_code()
-    await auth_repo.create_otp(
-        db,
-        user_id=user.id,
-        code=code,
-        channel="sms",
-        purpose=OtpPurpose.phone_change,
-        expires_at=_now() + OTP_TTL,
-    )
     await db.commit()
-    deliver_otp(data.new_phone, code, purpose=OtpPurpose.phone_change, user_id=user.id)
+    issued = await codes.issue_code(db, user.id, OtpPurpose.phone_change, data.new_phone)
+    return issued.delivered
 
 
 async def verify_phone_change(
@@ -139,62 +112,42 @@ async def verify_phone_change(
 ) -> UserPublic:
     if user.pending_phone is None:
         raise ValidationError("No phone change is pending.")
-
-    otp = await auth_repo.get_latest_otp(db, user.id, OtpPurpose.phone_change)
-    if otp is None or otp.expires_at < _now():
-        raise ValidationError("Invalid or expired verification code.")
-    if otp.attempts >= MAX_OTP_ATTEMPTS:
-        raise ValidationError("Too many incorrect attempts. Request a new code.")
-    if otp.code != data.code:
-        otp.attempts += 1
-        await db.commit()
-        raise ValidationError("Invalid or expired verification code.")
-
-    otp.is_used = True
+    await codes.check_code(db, user.id, OtpPurpose.phone_change, data.code, user.pending_phone)
     user.phone = user.pending_phone
     user.pending_phone = None
     await db.commit()
     return UserPublic.model_validate(user)
 
 
-async def request_email_change(db: AsyncSession, user: User, data: EmailChangeRequest) -> None:
+async def request_email_change(db: AsyncSession, user: User, data: EmailChangeRequest) -> bool:
+    """Check the password again, then send a code to the NEW address. The old address stays
+    until that code is accepted. Returns False when the email could not be sent."""
+    if not verify_password(data.current_password, user.password_hash):
+        raise ValidationError("Current password is incorrect.")
     if data.new_email == user.email:
         raise ValidationError("That is already your email address.")
     if await auth_repo.get_user_by_email(db, data.new_email):
         raise ConflictError("Email address is already registered.")
 
     user.pending_email = data.new_email
-    code = generate_otp_code()
-    await auth_repo.create_otp(
-        db,
-        user_id=user.id,
-        code=code,
-        channel="email",
-        purpose=OtpPurpose.email_change,
-        expires_at=_now() + OTP_TTL,
-    )
     await db.commit()
-    deliver_otp(data.new_email, code, purpose=OtpPurpose.email_change, user_id=user.id)
+    issued = await codes.issue_code(db, user.id, OtpPurpose.email_change, data.new_email)
+    return issued.delivered
 
 
 async def verify_email_change(
     db: AsyncSession, user: User, data: EmailChangeVerifyRequest
 ) -> UserPublic:
+    """The code sent to the new address (it works only for that address). Then the old
+    address is told about the change."""
     if user.pending_email is None:
         raise ValidationError("No email change is pending.")
-
-    otp = await auth_repo.get_latest_otp(db, user.id, OtpPurpose.email_change)
-    if otp is None or otp.expires_at < _now():
-        raise ValidationError("Invalid or expired verification code.")
-    if otp.attempts >= MAX_OTP_ATTEMPTS:
-        raise ValidationError("Too many incorrect attempts. Request a new code.")
-    if otp.code != data.code:
-        otp.attempts += 1
-        await db.commit()
-        raise ValidationError("Invalid or expired verification code.")
-
-    otp.is_used = True
+    await codes.check_code(db, user.id, OtpPurpose.email_change, data.code, user.pending_email)
+    old_email = user.email
     user.email = user.pending_email
     user.pending_email = None
     await db.commit()
+    subject, text, html = email_changed_email(codes.mask_address(user.email))
+    with contextlib.suppress(EmailSendError):  # logged with its reason; the change stands
+        await send_email(old_email, subject, text, html=html, kind="email_changed")
     return UserPublic.model_validate(user)

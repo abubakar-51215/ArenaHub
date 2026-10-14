@@ -7,6 +7,7 @@ email + otp + new_password. The older token path still works.
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +16,9 @@ from app.core.config import get_settings
 from app.core.security import verify_password
 from app.modules.auth import repository as repo
 from app.modules.auth import tokens as token_store
+from app.shared import codes
 from app.shared.otp import OtpPurpose
-from tests.helpers import PASSWORD, auth_header, make_user
+from tests.helpers import PASSWORD, auth_header, last_code, make_user
 
 NEW_PASSWORD = "Another#Pass9"
 
@@ -35,7 +37,7 @@ async def _reset(client: AsyncClient, email: str, otp: str, password: str = NEW_
 async def _latest_code(db_session: AsyncSession, user) -> str:
     otp = await repo.get_latest_otp(db_session, user.id, OtpPurpose.password_reset)
     assert otp is not None, "no outstanding code"
-    return otp.code
+    return last_code(user.id, OtpPurpose.password_reset)
 
 
 async def test_forgot_password_issues_a_six_digit_code(client, db_session):
@@ -57,7 +59,7 @@ async def test_forgot_password_for_unknown_email_looks_identical(client, db_sess
     assert known.json()["message"] == real.json()["message"]
 
 
-async def test_second_request_inside_the_cooldown_is_silent_and_sends_no_new_code(
+async def test_second_request_inside_the_cooldown_says_how_long_and_sends_no_new_code(
     client, db_session
 ):
     _, user = await make_user(client, db_session, "rst-cool@example.com")
@@ -66,7 +68,9 @@ async def test_second_request_inside_the_cooldown_is_silent_and_sends_no_new_cod
 
     again = await _forgot(client, "rst-cool@example.com")
 
-    assert again.status_code == 200
+    # the same answer an unknown address gets (the wait is counted per address)
+    assert again.status_code == 429
+    assert again.json()["message"].startswith("Wait ")
     assert await _latest_code(db_session, user) == first
 
 
@@ -110,7 +114,7 @@ async def test_wrong_code_is_rejected_and_five_misses_lock_the_code(client, db_s
 
     locked = await _reset(client, "rst-bad@example.com", code)
     assert locked.status_code == 422
-    assert "Too many incorrect attempts" in locked.json()["message"]
+    assert "Too many wrong tries" in locked.json()["message"]
 
 
 async def test_reusing_the_current_password_is_rejected_and_the_code_survives(client, db_session):
@@ -255,7 +259,9 @@ async def test_a_registration_code_cannot_reset_a_password(client, db_session):
     reg = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
     assert reg is not None
 
-    res = await _reset(client, "rst-reg-as-reset@example.com", reg.code)
+    res = await _reset(
+        client, "rst-reg-as-reset@example.com", last_code(user.id, OtpPurpose.registration)
+    )
 
     assert res.status_code == 422
     await db_session.refresh(user)
@@ -270,11 +276,9 @@ async def test_a_reset_code_cannot_verify_an_account(client, db_session):
     assert (await _forgot(client, "rst-reset-as-reg@example.com")).status_code == 200
     reset_row = await repo.get_latest_otp(db_session, user.id, OtpPurpose.password_reset)
     assert reset_row is not None and reset_row.id != registration_row
-    reset_code = reset_row.code
-    if reset_code == reg.code:  # one-in-a-million collision; keep the test honest
-        row = await db_session.get(type(reg), registration_row)
-        row.code = "000000" if reset_code != "000000" else "111111"
-        await db_session.commit()
+    reset_code = last_code(user.id, OtpPurpose.password_reset)
+    if reset_code == last_code(user.id, OtpPurpose.registration):  # one-in-a-million collision
+        pytest.skip("the two random codes are the same")
 
     res = await client.post(
         "/api/v1/auth/verify-otp",
@@ -296,7 +300,8 @@ async def test_the_right_code_for_each_purpose_still_works_on_an_unverified_acco
     assert reg is not None
 
     verified = await client.post(
-        "/api/v1/auth/verify-otp", json={"email": "rst-both@example.com", "code": reg.code}
+        "/api/v1/auth/verify-otp",
+        json={"email": "rst-both@example.com", "code": last_code(user.id, OtpPurpose.registration)},
     )
     reset = await _reset(client, "rst-both@example.com", reset_code)
 
@@ -315,7 +320,9 @@ async def test_codes_for_the_other_flows_cannot_reset_a_password(client, db_sess
         await repo.create_otp(
             db_session,
             user_id=user.id,
-            code="424242",
+            code_hash=codes.code_hash(
+                "424242", user_id=user.id, purpose=purpose, destination=user.email
+            ),
             channel="email",
             purpose=purpose,
             expires_at=datetime.now(UTC) + timedelta(minutes=10),
@@ -336,28 +343,13 @@ async def test_forgot_password_leaves_the_registration_code_alone(client, db_ses
     assert reg is not None, "requesting a reset must not use up the registration code"
 
 
-async def test_the_older_reset_token_path_still_works(client, db_session):
-    import hashlib
-
-    _, user = await make_user(client, db_session, "rst-token@example.com")
-    raw = "legacy-token-for-test"
-    await repo.create_reset_token(
-        db_session,
-        user_id=user.id,
-        token_hash=hashlib.sha256(raw.encode()).hexdigest(),
-        expires_at=datetime.now(UTC) + timedelta(minutes=30),
-    )
-    await db_session.commit()
-
+async def test_the_old_reset_link_token_is_gone(client, db_session):
+    """Only the 6-digit code resets a password; the old link token is not accepted."""
+    await make_user(client, db_session, "rst-token@example.com")
     res = await client.post(
-        "/api/v1/auth/reset-password", json={"token": raw, "new_password": NEW_PASSWORD}
+        "/api/v1/auth/reset-password", json={"token": "legacy-token", "new_password": NEW_PASSWORD}
     )
-
-    assert res.status_code == 200
-    login = await client.post(
-        "/api/v1/auth/login", json={"email": "rst-token@example.com", "password": NEW_PASSWORD}
-    )
-    assert login.status_code == 200
+    assert res.status_code == 422
 
 
 async def test_two_wrong_checks_of_one_code_count_two_attempts(client, db_session):

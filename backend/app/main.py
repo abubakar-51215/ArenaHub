@@ -18,6 +18,7 @@ from app.core.handlers import register_exception_handlers
 from app.core.logging import configure_logging
 from app.database import metadata as _metadata  # noqa: F401 — registers all ORM mappers
 from app.database.session import engine
+from app.integrations.email.smtp import log_email_mode
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.modules.admin.api import router as admin_router
 from app.modules.ai.api import router as ai_router
@@ -63,6 +64,7 @@ API_V1_PREFIX = "/api/v1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    log_email_mode()  # one line: real SMTP (host, port) or console only, and why
     scheduler = create_scheduler()
     scheduler.start()
     yield

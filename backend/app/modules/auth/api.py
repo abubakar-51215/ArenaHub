@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ServiceUnavailableError
 from app.database.session import get_db
 from app.modules.auth import service
 from app.modules.auth.schema import (
@@ -21,6 +22,7 @@ from app.modules.auth.schema import (
     ResendOtpRequest,
     ResetPasswordRequest,
 )
+from app.shared import codes
 from app.shared.auth import get_current_user
 from app.shared.response import success
 
@@ -31,7 +33,12 @@ _bearer = HTTPBearer()
 @router.post("/register", status_code=status.HTTP_201_CREATED, summary="Register a new account")
 async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     result = await service.register(db, data)
-    return success(data=result, message="Registration successful. Check your email for the OTP.")
+    message = (
+        f"We sent a 6-digit code to {result.otp_sent_to}."
+        if result.code_sent
+        else codes.NOT_SENT_MESSAGE
+    )
+    return success(data=result, message=message)
 
 
 @router.post("/verify-otp", summary="Verify registration OTP")
@@ -42,10 +49,10 @@ async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/resend-otp", summary="Resend the registration OTP")
 async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    # Same message whether or not the account exists/needs verifying, so the
-    # endpoint can't be used to enumerate registered emails.
-    await service.resend_otp(db, data.email)
-    return success(message="If that account needs verification, a new code has been sent.")
+    # the same answers for every address (see service.resend_otp); only a failed send is said
+    if not await service.resend_otp(db, data.email):
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message="If this email is waiting for a code, we sent a new one.")
 
 
 @router.post("/login", summary="Login and receive JWT tokens")
@@ -71,7 +78,8 @@ async def resend_admin_code(
 ) -> dict[str, Any]:
     # only someone holding a valid sign-in challenge (the right password) gets here, so the answer
     # says what happened: sent, "Wait N seconds ..." (429) or "Too many codes ..." (429)
-    await service.resend_admin_code(db, data)
+    if not await service.resend_admin_code(db, data):
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
     return success(message="We sent a new code to your email.")
 
 
@@ -96,7 +104,7 @@ async def forgot_password(
     data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
     await service.forgot_password(db, data)
-    return success(message="If that email is registered, a reset link has been sent.")
+    return success(message="If that email has an account, we sent a 6-digit code to it.")
 
 
 @router.post("/reset-password", summary="Reset password using a reset token")

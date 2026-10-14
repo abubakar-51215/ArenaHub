@@ -27,13 +27,18 @@ class OtpVerification(UUIDPrimaryKeyMixin, Base):
         nullable=False,
         index=True,
     )
-    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    # HMAC-SHA256 of the code (keyed with CODE_HASH_SECRET, bound to the purpose, the user and
+    # the address it went to); the code itself is never stored. See app/shared/codes.py.
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     channel: Mapped[str] = mapped_column(String(10), nullable=False)  # email | sms
     # OtpPurpose value. Lookups always filter on it (see app.shared.otp.OtpPurpose).
     purpose: Mapped[str] = mapped_column(String(20), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # set when the code is accepted, or ended by a newer code: a code works once
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # the email could not be sent: this code does not count toward the wait or the hourly maximum
+    delivery_failed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
 

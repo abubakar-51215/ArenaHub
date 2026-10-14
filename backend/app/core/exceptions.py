@@ -12,8 +12,9 @@ class AppError(Exception):
     status_code: int = 400
     message: str = "An error occurred"
 
-    def __init__(self, message: str | None = None) -> None:
+    def __init__(self, message: str | None = None, data: dict | None = None) -> None:
         self.message = message or self.message
+        self.data = data
         super().__init__(self.message)
 
 
@@ -40,6 +41,14 @@ class ForbiddenError(AppError):
 class ValidationError(AppError):
     status_code = 422
     message = "Validation failed"
+
+
+class VerifyEmailRequiredError(AppError):
+    """The right password for an account whose email is not confirmed yet: a fresh code was
+    sent (cooldown permitting) and ``data`` says where, so the app opens the code screen."""
+
+    status_code = 403
+    message = "Verify your email to continue."
 
 
 class TooManyRequestsError(AppError):

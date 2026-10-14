@@ -20,7 +20,7 @@ INK = "#0F1A15"
 PAPER = "#F1F2EF"
 LIME = "#C4F546"
 LINE = "#E2E6E1"
-MUTED = "#79857E"
+MUTED = "#656F69"  # 4.5:1 or more on white and paper (was #79857E, 3.4:1)
 
 HEADING_FONT = "Archivo,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 BODY_FONT = "'Inter Tight','Segoe UI',Roboto,Helvetica,Arial,sans-serif"
@@ -40,8 +40,16 @@ def _badge() -> str:
     )
 
 
-def _layout(title: str, preheader: str, content_html: str) -> str:
-    content_html = _badge() + content_html
+def _layout(
+    title: str,
+    preheader: str,
+    content_html: str,
+    *,
+    badge: bool = True,
+    footer: str = "If you didn&rsquo;t request this email, you can safely ignore it.",
+) -> str:
+    if badge:
+        content_html = _badge() + content_html
     return f"""\
 <!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -93,7 +101,7 @@ def _layout(title: str, preheader: str, content_html: str) -> str:
                          border-radius:0 0 14px 14px;padding:16px 32px;font-family:{BODY_FONT};
                          color:{MUTED};font-size:12px;line-height:1.5;">
                 {BRAND} &mdash; sports arena booking platform for Pakistan.<br>
-                If you didn&rsquo;t request this email, you can safely ignore it.
+                {footer}
               </td>
             </tr>
           </table>
@@ -120,117 +128,69 @@ def _code_box(code: str) -> str:
   <tr>
     <td align="center" bgcolor="{INK}"
         style="background-color:{INK};border-radius:12px;padding:20px 12px;">
-      <span style="font-family:{MONO_FONT};font-size:34px;font-weight:700;
-                   letter-spacing:12px;color:{LIME};">{html_lib.escape(code)}</span>
+      <span style="font-family:{MONO_FONT};font-size:36px;font-weight:700;
+                   letter-spacing:10px;color:{LIME};-webkit-user-select:all;user-select:all;"
+            >{html_lib.escape(code)}</span>
     </td>
   </tr>
 </table>"""
 
 
-# purpose -> (heading, what the code is for, what the code is called)
-_OTP_COPY = {
-    "registration": ("Verify your account", "verify your account", "verification code"),
-    "password_reset": ("Reset your password", "reset your password", "password reset code"),
-    "password_change": (
-        "Confirm your password change",
-        "confirm your password change",
-        "confirmation code",
-    ),
-    "phone_change": (
-        "Confirm your new phone number",
-        "confirm your new number",
-        "confirmation code",
-    ),
-    "email_change": (
-        "Confirm your new email address",
-        "confirm your new email address",
-        "confirmation code",
-    ),
+# What each emailed code is for, in plain words (the same words in the HTML and the text).
+CODE_PURPOSE_WORDS = {
+    "registration": "Confirm your email",
+    "admin_login": "Sign in as admin",
+    "password_reset": "Reset your password",
+    "password_change": "Confirm your new password",
+    "email_change": "Confirm your new email",
+    "phone_change": "Confirm your new phone number",
 }
+CODE_IGNORE_LINE = "If you did not ask for this, you can ignore this email."
 
 
-def admin_login_email(code: str, ttl_minutes: int, requested_by: str) -> tuple[str, str, str]:
-    """The admin sign-in code. The subject carries no code."""
-    subject = f"Your {BRAND} admin sign-in code"
-    who = (
-        f"Someone signed in to the {BRAND} admin panel as {requested_by} with the right "
-        f"password. This code finishes that sign-in and works for {ttl_minutes} minutes."
-    )
+def code_email(code: str, purpose: str, ttl_minutes: int) -> tuple[str, str, str]:
+    """A 6-digit code email: the subject names the code, the code is large and selectable
+    text (not an image), it says how long it works, and what it is for. No links, no remote
+    images (nothing to track), no support address, no raw keys."""
+    what = CODE_PURPOSE_WORDS.get(purpose, "Your code")
+    works = f"It works for {ttl_minutes} minutes."
+    subject = f"Your {BRAND} code: {code}"
     text = (
-        f"{subject}\n\n"
-        f"Your code is {code}.\n\n{who}\n\n"
-        "If this wasn't you, don't share the code and change your password now."
+        f"{what}\n\n"
+        f"Your {BRAND} code: {code}\n\n"
+        f"{works} It can be used once.\n\n"
+        f"{CODE_IGNORE_LINE}\n\n"
+        f"{BRAND}"
     )
     html = _layout(
         subject,
-        "Finish signing in to the admin panel.",
+        f"{what}. {works}",
         f"""\
-{_heading("Your admin sign-in code")}
-<p class="ah-text" style="margin:0;">{html_lib.escape(who)}</p>
+{_heading(html_lib.escape(what))}
+<p class="ah-text" style="margin:0;">Your {BRAND} code:</p>
 {_code_box(code)}
-<p class="ah-muted" style="margin:0;color:{MUTED};">It can only be used once. If this wasn&rsquo;t
-you, don&rsquo;t share the code and change your password now.</p>""",
+<p class="ah-text" style="margin:0 0 8px;">{html_lib.escape(works)} It can be used once.</p>""",
+        badge=False,
+        footer=html_lib.escape(CODE_IGNORE_LINE),
     )
     return subject, text, html
 
 
-def otp_email(
-    code: str, purpose: str, ttl_minutes: int, requested_by: str | None = None
-) -> tuple[str, str, str]:
-    if purpose == "admin_login":
-        return admin_login_email(code, ttl_minutes, requested_by or "your account")
-    heading, action, noun = _OTP_COPY.get(
-        purpose, ("Your one-time code", f"complete your {purpose}", "code")
-    )
-    subject = f"{code} is your {BRAND} {noun}"
-    text = (
-        f"{heading}\n\n"
-        f"Your {BRAND} {noun} is {code}. Use it to {action}.\n\n"
-        f"It expires in {ttl_minutes} minutes. "
-        "If you didn't request this, you can safely ignore this email."
-    )
+def email_changed_email(new_masked: str) -> tuple[str, str, str]:
+    """Sent to the OLD address after a change of email is confirmed."""
+    subject = f"Your {BRAND} email was changed"
+    line = f"The email for your {BRAND} account is now {new_masked}."
+    advice = "If you did not do this, change your password now."
+    text = f"{subject}\n\n{line}\n\n{advice}\n\n{BRAND}"
     html = _layout(
         subject,
-        f"Your code is {code}. It expires in {ttl_minutes} minutes.",
+        line,
         f"""\
-{_heading(heading)}
-<p class="ah-text" style="margin:0;">Use this code to {action}:</p>
-{_code_box(code)}
-<p class="ah-muted" style="margin:0;color:{MUTED};">This code expires in
-<strong>{ttl_minutes} minutes</strong> and can only be used once. Never share it with
-anyone.</p>""",
-    )
-    return subject, text, html
-
-
-def reset_email(token: str, ttl_minutes: int) -> tuple[str, str, str]:
-    subject = f"Reset your {BRAND} password"
-    text = (
-        f"We received a request to reset your {BRAND} password.\n\n"
-        f"Your reset code is: {token}\n\n"
-        f"Enter it in the app within {ttl_minutes} minutes. "
-        "If you didn't request this, your account is safe — just ignore this email."
-    )
-    safe = html_lib.escape(token)
-    html = _layout(
-        subject,
-        f"Your reset code expires in {ttl_minutes} minutes.",
-        f"""\
-{_heading("Reset your password")}
-<p class="ah-text" style="margin:0;">We received a request to reset your {BRAND} password.
-Enter this code in the app:</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="margin:22px 0;">
-  <tr>
-    <td bgcolor="{INK}" style="background-color:{INK};border-radius:12px;padding:16px 14px;">
-      <span style="font-family:{MONO_FONT};font-size:14px;color:{LIME};
-                   word-break:break-all;">{safe}</span>
-    </td>
-  </tr>
-</table>
-<p class="ah-muted" style="margin:0;color:{MUTED};">The code expires in
-<strong>{ttl_minutes} minutes</strong>. If you didn&rsquo;t request this, your account is safe
-&mdash; no action is needed.</p>""",
+{_heading("Your email was changed")}
+<p class="ah-text" style="margin:0 0 8px;">{html_lib.escape(line)}</p>
+<p class="ah-text" style="margin:0;">{html_lib.escape(advice)}</p>""",
+        badge=False,
+        footer="This message was sent to your previous email address.",
     )
     return subject, text, html
 
