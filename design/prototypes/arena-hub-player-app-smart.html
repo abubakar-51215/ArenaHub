@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArenaHub Player App · Smart search and Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1A15; --paper:#F1F2EF; --line:#E2E6E1; --lime:#C4F546; --lime-deep:#7FA30F;
+  --red:#CF4141; --muted:#7A857F; --white:#fff; --soft:#EEF0EC;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0}
+body{background:#E7E9E4;font-family:"Inter Tight",system-ui,sans-serif;color:var(--ink);padding:32px 20px 80px}
+h1.page{font-family:Archivo,sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em}
+p.lead{color:var(--muted);max-width:760px;margin:8px 0 28px;line-height:1.5;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:36px 24px}
+.frame-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.cap{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#56615B;font-weight:600;text-align:center}
+.cap em{font-style:normal;display:block;text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted);margin-top:2px}
+.phone{width:300px;height:629px;border-radius:44px;background:var(--paper);border:1.5px solid var(--line);position:relative;overflow:hidden;padding:0 20px;box-shadow:0 18px 40px -24px rgba(15,26,21,.45)}
+.status{height:46px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:13px;padding:0 4px 0 2px}
+.status .r{display:flex;gap:6px;align-items:center}
+.bars{display:flex;gap:2px;align-items:flex-end}.bars i{display:block;width:3px;background:var(--ink);border-radius:1px}
+.batt{width:19px;height:10px;border-radius:3px;background:var(--ink)}
+.home{position:absolute;left:50%;bottom:8px;width:96px;height:4px;border-radius:2px;background:#C9CEC9;transform:translateX(-50%)}
+.back{width:38px;height:38px;border-radius:12px;background:var(--white);border:1px solid var(--line);display:grid;place-items:center;margin-top:12px;transition:transform .15s var(--ease)}
+.back:active{transform:scale(.94)}
+.back svg{width:16px;height:16px}
+h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:-.025em;line-height:1.1;margin-top:20px}
+.sub{color:var(--muted);font-size:14px;line-height:1.45;margin-top:6px}
+.sub b{color:var(--ink);font-weight:600}
+
+/* Fields: icons are always their normal size (20px). No big idle state. */
+.field{position:relative;height:48px;border-radius:15px;background:var(--white);border:1.5px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 13px;margin-top:11px;transition:height .3s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)}
+.field input{border:0;outline:0;background:transparent;font:inherit;font-size:14px;width:100%;color:var(--ink)}
+.field input::placeholder{color:#8B958F}
+.field svg.ic{flex:none;width:20px;height:20px;color:#6C7771;transition:width .3s var(--ease),height .3s var(--ease),margin .3s var(--ease)}
+.field:focus-within{border-color:var(--ink);box-shadow:0 0 0 3px rgba(196,245,70,.45)}
+.field.err{border-color:var(--red)}
+.msg{color:var(--red);font-size:14px;margin:5px 4px 0}
+.eye{margin-left:auto;width:18px;height:18px;color:#6C7771;flex:none;cursor:pointer;transition:transform .15s var(--ease),color .15s}.eye:active{transform:scale(.88)}.eye.on{color:var(--ink)}
+
+.rules{list-style:none;padding:0;margin-top:12px;display:grid;gap:6px}
+.rules li{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--muted)}
+.rules .d{width:17px;height:17px;border-radius:50%;background:var(--soft);display:grid;place-items:center;flex:none;transition:background .2s}
+.rules .d i{width:4px;height:4px;border-radius:50%;background:#8B958F}
+.rules li.ok{color:var(--lime-deep)}
+.rules li.ok .d{background:#EAF7C2}
+.rules li.ok .d svg{width:10px;height:10px}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;border-radius:17px;background:var(--ink);color:#fff;font:600 14.5px "Inter Tight",sans-serif;border:0;margin-top:16px;position:relative;overflow:hidden;cursor:pointer;transition:transform .16s var(--ease),background .2s}
+.btn::after{content:"";position:absolute;inset:0;background:var(--lime);transform:translateY(101%);transition:transform .25s var(--ease)}
+.btn span{position:relative;z-index:1;transition:color .2s}
+.btn:hover::after{transform:translateY(0)}.btn:hover span{color:var(--ink)}
+.btn:active{transform:scale(.975)}
+.btn.off{background:#808683;pointer-events:none}.btn.off::after{display:none}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.ghost::after{background:var(--ink)}.btn.ghost:hover span{color:#fff}
+.btn.danger{background:var(--red)}
+.btn.loading span{opacity:0}
+.btn.loading::before{content:"";position:absolute;width:18px;height:18px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;z-index:2}
+@keyframes spin{to{transform:rotate(360deg)}}
+.foot{text-align:center;color:var(--muted);font-size:14px;margin-top:18px}
+.foot b{color:var(--ink);font-weight:700}
+.link{display:block;text-align:center;font-size:14px;color:var(--muted);margin-top:16px}
+.link b{color:var(--ink);font-weight:700}
+
+.codes{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:20px}
+.codes input{height:50px;min-width:0;text-align:center;font:700 20px Archivo,sans-serif;border-radius:13px;border:1.5px solid var(--line);background:var(--white);outline:0;color:var(--ink);transition:border-color .15s,background .15s,transform .15s var(--ease)}
+.codes input:not(:placeholder-shown){background:var(--soft)}
+.codes input:focus{border-color:var(--ink);background:var(--white);transform:translateY(-1px)}
+.codes.bad input{border-color:var(--red)}
+.codes.shake{animation:shake .42s var(--ease)}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+
+.tick{width:84px;height:84px;margin:44px auto 0;display:block}
+.tick circle{stroke:var(--lime-deep);fill:#EAF7C2;stroke-width:3;stroke-dasharray:226;stroke-dashoffset:226;animation:draw .6s var(--ease) forwards}
+.tick path{stroke:var(--ink);stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:draw .4s .45s var(--ease) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.center{text-align:center}
+.replay{font-size:11px;color:var(--lime-deep);cursor:pointer;background:none;border:0;font-family:inherit;margin-top:2px}
+
+.note{display:flex;gap:10px;background:#FBEAEA;border:1px solid #F1C9C9;color:#8E2A2A;border-radius:13px;padding:10px 12px;font-size:14px;line-height:1.4;margin-top:16px}
+.note.info{background:#EEF6D6;border-color:#D9EBA0;color:#4D6410}
+
+/* Admin placeholder */
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:var(--lime);border-radius:99px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:5px 10px;margin-top:20px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:14px}
+.card small{display:block;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.card b{font-family:Archivo,sans-serif;font-size:20px;display:block;margin-top:4px}
+
+/* Pop-up pattern */
+.dim{position:absolute;inset:0;background:rgba(15,26,21,.45);backdrop-filter:blur(2px);animation:fade .2s var(--ease)}
+.sheet{position:absolute;left:14px;right:14px;bottom:26px;background:var(--white);border-radius:26px;padding:20px 18px 18px;animation:rise .34s var(--ease)}
+.sheet h3{font-family:Archivo,sans-serif;font-size:19px;letter-spacing:-.02em}
+.sheet p{color:var(--muted);font-size:14px;line-height:1.45;margin-top:6px}
+.sheet .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.sheet .btn{margin-top:0;height:44px;font-size:14px}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:-8px auto 14px}
+.toast{position:absolute;left:20px;right:20px;top:54px;background:var(--ink);color:#fff;border-radius:15px;padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:center;animation:drop .4s var(--ease)}
+.toast i{width:20px;height:20px;border-radius:50%;background:var(--lime);display:grid;place-items:center;flex:none}
+@keyframes fade{from{opacity:0}}
+@keyframes rise{from{transform:translateY(40px);opacity:0}}
+@keyframes drop{from{transform:translateY(-24px);opacity:0}}
+
+.rules-box{margin-top:40px;background:var(--white);border:1px solid var(--line);border-radius:20px;padding:22px 24px;max-width:860px}
+.rules-box h2{font-family:Archivo,sans-serif;font-size:18px;margin-bottom:10px}
+.rules-box li{margin:6px 0 6px 18px;font-size:13.5px;line-height:1.5;color:#3C4742}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:46px;border-radius:17px;background:var(--white);border:1.5px solid var(--line);color:var(--ink);font:600 14.5px "Inter Tight",sans-serif;margin-top:12px;position:relative}
+.gbtn .glogo{width:20px;height:20px;border-radius:50%;border:1.5px dashed #9AA39E;display:grid;place-items:center;font-size:9px;color:#7A857F;flex:none;font-style:normal}
+.gbtn.off{color:#8B958F;background:#F4F5F2}
+.gbtn.loading .t,.gbtn.loading .glogo{opacity:0}
+.gbtn.loading::before{content:"";position:absolute;width:18px;height:18px;border:2.5px solid rgba(15,26,21,.2);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite}
+.or{display:flex;align-items:center;gap:10px;color:#6C7771;font-size:14px;margin-top:16px}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.acct{display:flex;gap:12px;align-items:center;background:var(--white);border:1px solid var(--line);border-radius:15px;padding:12px;margin-top:16px}
+.acct .av{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--lime);display:grid;place-items:center;font-weight:700;flex:none}
+.acct b{display:block;font-size:14.5px}.acct span{font-size:14px;color:var(--muted)}
+.banner{background:var(--ink);color:#fff;font-size:14px;padding:10px 20px;margin:0 -20px;display:flex;gap:8px}
+
+.tabs{position:absolute;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--line);padding:7px 6px 18px}
+.tabs b{flex:1;text-align:center;font-size:11px;color:var(--muted);font-weight:600}
+.tabs b.on{color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:18px;background:#fff;border:1px solid var(--line);font-size:14px;margin:0 6px 8px 0}
+.chip.on{background:#EEF6D6;border-color:#D9EBA0}
+.chip i{font-style:normal;color:#6C7771}
+.card2{background:#fff;border:1px solid var(--line);border-radius:15px;padding:10px;display:flex;gap:10px;align-items:center;margin-top:10px}
+.card2 .pic{width:54px;height:54px;border-radius:12px;background:var(--ink);flex:none}
+.card2 b{display:block;font-size:14.5px}.card2 span{font-size:14px;color:var(--muted)}
+.sbar{display:flex;align-items:center;gap:8px;height:44px;border-radius:15px;background:#fff;border:1.5px solid var(--line);padding:0 12px;margin-top:10px;font-size:14px}
+.bub{max-width:86%;padding:10px 12px;border-radius:16px;font-size:14px;line-height:1.45;margin-top:10px}
+.bub.bot{background:#fff;border:1px solid var(--line);border-top-left-radius:5px}
+.bub.me{background:var(--ink);color:#fff;margin-left:auto;border-top-right-radius:5px}
+.dots{display:inline-flex;gap:4px;padding:14px 14px}.dots i{width:7px;height:7px;border-radius:50%;background:#9AA39E;display:block}
+.composer{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);padding:10px 16px 20px;display:flex;gap:8px}
+.composer .in{flex:1;height:44px;border-radius:15px;background:#fff;border:1.5px solid var(--line);padding:0 12px;display:flex;align-items:center;font-size:14px;color:#8B958F}
+.composer .send{width:44px;height:44px;border-radius:15px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}
+.composer .send.off{background:#808683}
+.act{display:inline-flex;height:40px;align-items:center;padding:0 14px;border-radius:14px;border:1.5px solid var(--ink);font-weight:600;font-size:14px;margin:8px 8px 0 0;background:#fff}
+</style>
+</head>
+<body><svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 8l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10V8a4 4 0 018 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.1 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.1-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg><h1 class="page">Player app · Smart search and Assistant</h1><p class="lead">New frames. Smart search keeps the same search screen: plain words are understood and shown as chips. The assistant answers from fixed, checked answers and from the player's own data. It never guesses and never promises times.</p><div class="grid"><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><h1 style="margin-top:14px;font-size:22px">Search</h1><div class="sbar" style=""><span style="color:#6C7771">⌕</span><span>futsal in gulberg tonight under 3000</span></div><p class="sub" style="margin:12px 0 8px">We understood:</p><span class="chip on">Futsal<i>×</i></span><span class="chip on">Gulberg<i>×</i></span><span class="chip on">Tonight<i>×</i></span><span class="chip on">Under ₨ 3,000<i>×</i></span><div class="card2"><span class="pic"></span><div><b>Goal Line Arena</b><span>Gulberg III · Futsal · 3 slots tonight</span><br><span><b style="display:inline">₨ 2,400</b> / hour</span></div></div><div class="card2"><span class="pic"></span><div><b>Kickoff Arena</b><span>Gulberg III · Futsal · 1 slot tonight</span><br><span><b style="display:inline">₨ 2,800</b> / hour</span></div></div><div class="tabs"><b class="">Home</b><b class="on">Search</b><b class="">Bookings</b><b class="">Play</b><b class="">Profile</b></div><div class="home"></div></div><div class="cap">1 · Search, we understood<em>Plain words turn into chips you can remove. "Best" and "cheap" change the order</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><h1 style="margin-top:14px;font-size:22px">Search</h1><div class="sbar" style=""><span style="color:#6C7771">⌕</span><span>futsal in gulberg tonight under 3000</span></div><p class="sub" style="margin:12px 0 8px">We understood:</p><span class="chip on">Futsal<i>×</i></span><span class="chip on">Gulberg<i>×</i></span><span class="chip on">Under ₨ 3,000<i>×</i></span><div class="card2"><span class="pic"></span><div><b>Goal Line Arena</b><span>Gulberg III · Futsal</span><br><span><b style="display:inline">₨ 2,400</b> / hour</span></div></div><div class="card2"><span class="pic"></span><div><b>Kickoff Arena</b><span>Gulberg III · Futsal</span><br><span><b style="display:inline">₨ 2,800</b> / hour</span></div></div><div class="card2"><span class="pic"></span><div><b>Pitch Point Arena</b><span>Gulberg II · Futsal</span><br><span><b style="display:inline">₨ 2,500</b> / hour</span></div></div><div class="tabs"><b class="">Home</b><b class="on">Search</b><b class="">Bookings</b><b class="">Play</b><b class="">Profile</b></div><div class="home"></div></div><div class="cap">2 · Search, chip removed<em>Tap x on a chip: results refresh at once</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><h1 style="margin-top:14px;font-size:22px">Search</h1><div class="sbar" style=""><span style="color:#6C7771">⌕</span><span>padel in gulberg tonight under 1000</span></div><p class="sub" style="margin:12px 0 8px">We understood:</p><span class="chip on">Padel<i>×</i></span><span class="chip on">Gulberg<i>×</i></span><span class="chip on">Tonight<i>×</i></span><span class="chip on">Under ₨ 1,000<i>×</i></span><div style="text-align:center;padding:30px 6px 0"><h2 style="font-family:Archivo;font-size:19px">No arena matches all of that.</h2><p class="sub">Try removing the price or the time.</p></div><div style="margin-top:14px"><button class="btn ghost"><span>Remove price</span></button><button class="btn ghost"><span>Remove time</span></button></div><div class="tabs"><b class="">Home</b><b class="on">Search</b><b class="">Bookings</b><b class="">Play</b><b class="">Profile</b></div><div class="home"></div></div><div class="cap">3 · Search, nothing matches<em>Say what was understood, offer a way out, never a blank page</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><h1 style="margin-top:14px;font-size:22px">Search</h1><div class="sbar" style=""><span style="color:#6C7771">⌕</span><span>goal line</span></div><p class="sub" style="margin:12px 0 8px">Showing arenas that match "goal line".</p><div class="card2"><span class="pic"></span><div><b>Goal Line Arena</b><span>Gulberg III · Futsal</span><br><span><b style="display:inline">₨ 2,400</b> / hour</span></div></div><div class="tabs"><b class="">Home</b><b class="on">Search</b><b class="">Bookings</b><b class="">Play</b><b class="">Profile</b></div><div class="home"></div></div><div class="cap">4 · Search, not understood<em>Plain text search, with a gentle note</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">Help and support</h1><div class="card2" style="margin-top:14px;background:#EEF6D6;border-color:#D9EBA0"><span class="pic" style="background:var(--ink)"></span><div><b>Ask the ArenaHub assistant</b><span>Quick answers about bookings, refunds and payments</span></div></div><p class="sub" style="margin-top:18px"><b>Your complaints</b></p><div class="card2"><div><b>Payment issue</b><span>Reply received</span></div></div><button class="btn"><span>New complaint</span></button><div class="home"></div></div><div class="cap">5 · Help and support, assistant card<em>New card at the top of Help and support</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub bot">Hi Ayesha. I can help with bookings, refunds, payments and matches. What do you need?</div><div style="margin-top:12px"><span class="chip">When is my next booking?</span><span class="chip">How do I cancel?</span><span class="chip">Where is my refund?</span><span class="chip">How do I pay by bank transfer?</span></div><div class="composer"><div class="in">Type your question</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">6 · Assistant, start<em>Greeting and question chips. No typing needed</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub me">When is my next booking?</div><div class="bub bot">Your next game is Tue 13 Oct at 7:00 PM, Goal Line Arena, Court 1. Booking code AHB-BCC8A5.<br><span class="act">Open booking</span></div><div style="margin-top:12px"><span class="chip">How do I cancel it?</span><span class="chip">Can I move it?</span></div><div class="composer"><div class="in">Type your question</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">7 · Assistant, answer with action<em>Real data from the account, plus a button to open it</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub me">Where is my refund?</div><div class="bub bot" style="padding:0"><span class="dots"><i></i><i></i><i></i></span></div><div class="composer"><div class="in">Type your question</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">8 · Assistant, typing<em>Three dots while it answers (max 10 seconds)</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub me">Can you change my arena owner?</div><div class="bub bot">I am not sure about that one. You can ask me about bookings, refunds, payments or matches, or write to support.<br><span class="act">New complaint</span></div><div style="margin-top:12px"><span class="chip">When is my next booking?</span><span class="chip">Where is my refund?</span></div><div class="composer"><div class="in">Type your question</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">9 · Assistant, not sure<em>Honest fallback. Sends the person to a complaint, never guesses</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="banner" style="background:var(--ink);color:#fff;font-size:14px;padding:10px 20px;margin:0 -20px">You are offline.</div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub bot">Hi Ayesha. I can help with bookings, refunds, payments and matches.</div><div class="composer"><div class="in">Needs a connection</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">10 · Assistant, offline<em>Composer disabled, banner at the top</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub me">Where is my refund?</div><div class="bub bot" style="border-color:var(--red)">We could not get an answer.<br><span class="act">Try again</span></div><div class="composer"><div class="in">Type your question</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">11 · Assistant, could not answer<em>Server problem: retry on the same message</em></div></div><div class="frame-wrap"><div class="phone"><div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span><span class="batt"></span></span></div><div class="back"><svg><use href="#i-back"/></svg></div><h1 style="font-size:22px">ArenaHub assistant</h1><div class="bub me">Where is my refund?</div><div class="bub bot">Your refund of ₨ 3,000 for AHB-BCC8A5 is waiting. The arena sends it back by bank transfer and you will get a message when it is done.<br><span class="act">Open payment history</span></div><div class="composer"><div class="in">Type your question</div><div class="send off">➤</div></div><div class="home"></div></div><div class="cap">12 · Assistant, refund answer<em>Says only what the system knows. No promised days</em></div></div></div></body></html>
