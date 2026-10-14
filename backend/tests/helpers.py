@@ -9,7 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth import repository as repo
 from app.modules.user.model import User, UserRole
+from app.shared.codes import dev_last_code
 from app.shared.otp import OtpPurpose
+
+
+def last_code(user_id, purpose: OtpPurpose) -> str:
+    """The newest code sent to a user for a purpose (the database keeps only its hash; dev and
+    tests keep the code in memory, see app/shared/codes.py)."""
+    code = dev_last_code(user_id, purpose)
+    assert code is not None, "no code was sent"
+    return code
+
 
 PASSWORD = "StrongP@ss1"
 
@@ -35,7 +45,10 @@ async def make_user(
     assert user is not None
     otp = await repo.get_latest_otp(db, user.id, OtpPurpose.registration)
     assert otp is not None
-    resp = await client.post("/api/v1/auth/verify-otp", json={"email": email, "code": otp.code})
+    resp = await client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "code": last_code(user.id, OtpPurpose.registration)},
+    )
     return resp.json()["data"], user
 
 

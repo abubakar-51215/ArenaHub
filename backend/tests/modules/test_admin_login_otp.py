@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth import repository as repo
 from app.shared.otp import OtpPurpose
-from tests.helpers import PASSWORD, make_admin, make_user
+from tests.helpers import PASSWORD, last_code, make_admin, make_user
 
 
 async def _login(client: AsyncClient, email: str, password: str = PASSWORD):
@@ -35,6 +35,7 @@ async def _admin_with_challenge(client: AsyncClient, db: AsyncSession, email: st
     assert user is not None
     otp = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login)
     assert otp is not None
+    otp.plain_code = last_code(user.id, OtpPurpose.admin_login)  # the database holds only the hash
     return res.json()["data"], user, otp
 
 
@@ -47,17 +48,18 @@ async def test_admin_with_the_right_password_gets_no_tokens_and_a_code(client, d
 
     assert data["mfa_required"] is True
     assert data["challenge_token"] and data["expires_in"] == 600
+    assert data["sent_to"] == "a***@example.com" and data["code_sent"] is True
     assert "access_token" not in data and "refresh_token" not in data
-    assert len(otp.code) == 6 and otp.code.isdigit()
+    assert len(otp.plain_code) == 6 and otp.plain_code.isdigit()
 
 
 async def test_wrong_code_is_rejected(client, db_session):
     data, _, otp = await _admin_with_challenge(client, db_session, "adm-wrong@example.com")
 
-    res = await _verify(client, data["challenge_token"], _wrong(otp.code))
+    res = await _verify(client, data["challenge_token"], _wrong(otp.plain_code))
 
     assert res.status_code == 422
-    assert "Invalid or expired" in res.json()["message"]
+    assert "That code is not right" in res.json()["message"]
 
 
 async def test_expired_code_is_rejected(client, db_session):
@@ -65,7 +67,7 @@ async def test_expired_code_is_rejected(client, db_session):
     otp.expires_at = datetime.now(UTC) - timedelta(seconds=1)
     await db_session.commit()
 
-    res = await _verify(client, data["challenge_token"], otp.code)
+    res = await _verify(client, data["challenge_token"], otp.plain_code)
 
     assert res.status_code == 422
 
@@ -73,7 +75,7 @@ async def test_expired_code_is_rejected(client, db_session):
 async def test_right_code_returns_the_normal_tokens(client, db_session):
     data, _, otp = await _admin_with_challenge(client, db_session, "adm-ok@example.com")
 
-    res = await _verify(client, data["challenge_token"], otp.code)
+    res = await _verify(client, data["challenge_token"], otp.plain_code)
 
     assert res.status_code == 200
     tokens = res.json()["data"]
@@ -82,18 +84,18 @@ async def test_right_code_returns_the_normal_tokens(client, db_session):
     )
     assert me.status_code == 200 and me.json()["data"]["role"] == "admin"
     # the code is used up
-    assert (await _verify(client, data["challenge_token"], otp.code)).status_code == 422
+    assert (await _verify(client, data["challenge_token"], otp.plain_code)).status_code == 422
 
 
 async def test_five_wrong_codes_need_a_new_code(client, db_session):
     data, _, otp = await _admin_with_challenge(client, db_session, "adm-five@example.com")
     for _ in range(5):
-        await _verify(client, data["challenge_token"], _wrong(otp.code))
+        await _verify(client, data["challenge_token"], _wrong(otp.plain_code))
 
-    res = await _verify(client, data["challenge_token"], otp.code)
+    res = await _verify(client, data["challenge_token"], otp.plain_code)
 
     assert res.status_code == 422
-    assert "Too many incorrect attempts" in res.json()["message"]
+    assert "Too many wrong tries" in res.json()["message"]
 
 
 async def test_a_challenge_does_not_work_for_another_user_or_as_a_token(client, db_session):
@@ -101,9 +103,9 @@ async def test_a_challenge_does_not_work_for_another_user_or_as_a_token(client, 
     _, _, otp_b = await _admin_with_challenge(client, db_session, "adm-b@example.com")
 
     # A's challenge with B's code: checked against A's code, so refused
-    assert (await _verify(client, a["challenge_token"], otp_b.code)).status_code == 422
+    assert (await _verify(client, a["challenge_token"], otp_b.plain_code)).status_code == 422
     # a made-up value and a challenge used as an access token: plain 401s
-    bad = await _verify(client, "not-a-token", otp_b.code)
+    bad = await _verify(client, "not-a-token", otp_b.plain_code)
     assert bad.status_code == 401 and "Sign in again" in bad.json()["message"]
     me = await client.get(
         "/api/v1/users/me", headers={"Authorization": f"Bearer {a['challenge_token']}"}

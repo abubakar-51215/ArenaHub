@@ -56,6 +56,8 @@ class PhoneChangeVerifyRequest(BaseModel):
 
 class EmailChangeRequest(BaseModel):
     new_email: EmailStr
+    # asked again before a code is sent to the new address
+    current_password: str = Field(min_length=1, max_length=128)
 
 
 class EmailChangeVerifyRequest(BaseModel):

@@ -8,6 +8,7 @@ deliver it over push + email according to the user's channel preferences
 scheduler jobs in ``app/tasks/scheduler.py``).
 """
 
+import contextlib
 import uuid
 from datetime import UTC, date, datetime, time
 
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
 from app.integrations.email import send_email
+from app.integrations.email.smtp import EmailSendError
 from app.integrations.email.templates import notification_email
 from app.integrations.push import send_push
 from app.modules.notification import repository as repo
@@ -276,7 +278,9 @@ async def notify(
 
     if _channel_enabled(user, "email", category):
         subject, text, html = notification_email(title, body)
-        await send_email(user.email, subject, text, html=html)
+        # a failed send is already logged with its reason; the in-app notice stands
+        with contextlib.suppress(EmailSendError):
+            await send_email(user.email, subject, text, html=html, kind=f"notice:{event}")
 
     return notification
 

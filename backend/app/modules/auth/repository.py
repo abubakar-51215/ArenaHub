@@ -8,7 +8,7 @@ populated on the returned instance.
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.model import OtpVerification, PasswordHistory, PasswordResetToken
@@ -81,14 +81,14 @@ async def create_otp(
     db: AsyncSession,
     *,
     user_id: uuid.UUID,
-    code: str,
+    code_hash: str,
     channel: str,
     purpose: OtpPurpose,
     expires_at: datetime,
 ) -> OtpVerification:
     otp = OtpVerification(
         user_id=user_id,
-        code=code,
+        code_hash=code_hash,
         channel=channel,
         purpose=purpose.value,
         expires_at=expires_at,
@@ -101,7 +101,8 @@ async def create_otp(
 async def count_recent_otps(
     db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, within: timedelta
 ) -> int:
-    """How many codes of one purpose were issued to a user in the last ``within``."""
+    """How many codes of one purpose went out to a user in the last ``within`` (a code whose
+    email could not be sent does not count)."""
     total = await db.scalar(
         select(func.count())
         .select_from(OtpVerification)
@@ -109,9 +110,25 @@ async def count_recent_otps(
             OtpVerification.user_id == user_id,
             OtpVerification.purpose == purpose.value,
             OtpVerification.created_at >= func.now() - within,
+            OtpVerification.delivery_failed.is_(False),
         )
     )
     return int(total or 0)
+
+
+async def end_active_otps(
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, now: datetime
+) -> None:
+    """A new code ends every older code of the same purpose (one active code at a time)."""
+    await db.execute(
+        update(OtpVerification)
+        .where(
+            OtpVerification.user_id == user_id,
+            OtpVerification.purpose == purpose.value,
+            OtpVerification.used_at.is_(None),
+        )
+        .values(used_at=now)
+    )
 
 
 async def get_latest_otp(
@@ -125,9 +142,9 @@ async def get_latest_otp(
         .where(
             OtpVerification.user_id == user_id,
             OtpVerification.purpose == purpose.value,
-            OtpVerification.is_used.is_(False),
+            OtpVerification.used_at.is_(None),
         )
-        .order_by(OtpVerification.created_at.desc())
+        .order_by(OtpVerification.expires_at.desc())
         .limit(1)
     )
     if for_update:

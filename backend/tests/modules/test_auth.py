@@ -1,6 +1,8 @@
 """Auth flow tests (DB-backed): register→verify→login→refresh, account
 lockout, and refresh-token replay detection (deviation #17)."""
 
+import re
+from datetime import timedelta
 from typing import Any
 
 from httpx import AsyncClient
@@ -8,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth import repository as repo
 from app.shared.otp import OtpPurpose
+from tests.helpers import last_code
 
 PASSWORD = "StrongP@ss1"
 
@@ -37,7 +40,7 @@ async def _otp_code(db: AsyncSession, email: str) -> str:
     assert user is not None
     otp = await repo.get_latest_otp(db, user.id, OtpPurpose.registration)
     assert otp is not None
-    return otp.code
+    return last_code(user.id, OtpPurpose.registration)
 
 
 async def _register_and_verify(client: AsyncClient, db: AsyncSession, email: str) -> dict:
@@ -55,9 +58,11 @@ async def test_register_verify_login_refresh(client: AsyncClient, db_session: As
     assert reg.status_code == 201, reg.text
     assert reg.json()["data"]["user"]["is_verified"] is False
 
-    # Unverified login is refused until the OTP is confirmed.
+    # Unverified login: the right password opens the code screen (a fresh code if allowed).
     early = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
-    assert early.status_code == 401
+    assert early.status_code == 403
+    assert early.json()["message"] == "Verify your email to continue."
+    assert early.json()["data"]["email"] == email
 
     # Verify OTP — activates account and returns a token pair.
     code = await _otp_code(db_session, email)
@@ -130,40 +135,40 @@ async def test_register_weak_password_rejected(
 
 
 async def test_resend_otp_issues_fresh_code_and_retires_old(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, fake_redis
 ) -> None:
     await _register(client, email="resend1@example.com", phone="03007777771")
     user = await repo.get_user_by_email(db_session, "resend1@example.com")
     assert user is not None
-    original = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
-    assert original is not None
+    first = last_code(user.id, OtpPurpose.registration)
 
-    # Cooldown: an immediate resend right after registration is rejected.
+    # right after sign-up: the answer any address gets, no new code; asked again: the wait
+    quiet = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
+    assert quiet.status_code == 200 and last_code(user.id, OtpPurpose.registration) == first
     too_soon = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
-    assert too_soon.status_code == 422
-    assert "wait" in too_soon.json()["message"].lower()
+    assert too_soon.status_code == 429
+    assert re.fullmatch(
+        r"Wait \d+ seconds before asking for another code\.", too_soon.json()["message"]
+    )
 
-    # Age the outstanding OTP past the cooldown, then resend for real.
-    from app.modules.auth.service import OTP_RESEND_COOLDOWN
-
-    original.expires_at = original.expires_at - OTP_RESEND_COOLDOWN * 2
+    # the wait is over (the per-address wait lives in Redis, the per-account one on the code)
+    for key in await fake_redis.keys("codes:registration:*:cool"):
+        await fake_redis.delete(key)
+    original = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
+    original.expires_at -= timedelta(seconds=120)
     await db_session.commit()
-
     resent = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
     assert resent.status_code == 200
+    second = last_code(user.id, OtpPurpose.registration)
 
-    fresh = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
-    assert fresh is not None
-    assert fresh.id != original.id
-
-    # The old (now retired) code no longer verifies; the fresh one does.
-    old_attempt = await client.post(
-        "/api/v1/auth/verify-otp", json={"email": "resend1@example.com", "code": original.code}
-    )
-    if fresh.code != original.code:  # 1-in-a-million collision guard
-        assert old_attempt.status_code == 422
+    # the old code no longer works; the new one does
+    if first != second:  # 1-in-a-million collision guard
+        old = await client.post(
+            "/api/v1/auth/verify-otp", json={"email": "resend1@example.com", "code": first}
+        )
+        assert old.status_code == 422
     verified = await client.post(
-        "/api/v1/auth/verify-otp", json={"email": "resend1@example.com", "code": fresh.code}
+        "/api/v1/auth/verify-otp", json={"email": "resend1@example.com", "code": second}
     )
     assert verified.status_code == 200
 
@@ -171,7 +176,7 @@ async def test_resend_otp_issues_fresh_code_and_retires_old(
 async def test_resend_otp_does_not_leak_account_existence(client: AsyncClient) -> None:
     resp = await client.post("/api/v1/auth/resend-otp", json={"email": "ghost@example.com"})
     assert resp.status_code == 200
-    assert "new code has been sent" in resp.json()["message"]
+    assert resp.json()["message"] == "If this email is waiting for a code, we sent a new one."
 
 
 async def test_login_ignores_email_case(client: AsyncClient, db_session: AsyncSession) -> None:
@@ -217,8 +222,10 @@ async def test_login_by_phone_compares_all_digits_for_other_countries(
     reg = await _register(client, email="uk@example.com", phone="+44 7911 123456")
     assert reg.status_code == 201, reg.text
     user = await repo.get_user_by_email(db_session, "uk@example.com")
-    otp = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
-    await client.post("/api/v1/auth/verify-otp", json={"email": "uk@example.com", "code": otp.code})
+    await client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": "uk@example.com", "code": last_code(user.id, OtpPurpose.registration)},
+    )
     assert (await _phone_login(client, "00447911123456")).status_code == 200
     assert (await _phone_login(client, "447911 123456")).status_code == 200
 

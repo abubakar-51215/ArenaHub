@@ -6,9 +6,7 @@ runs queries, ``tokens`` holds the Redis session state, and ``security`` mints
 the JWTs. Lockout, token lifetimes, and password policy follow FR-P-01/02.
 """
 
-import hashlib
 import logging
-import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -16,9 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
     ConflictError,
-    TooManyRequestsError,
     UnauthorizedError,
     ValidationError,
+    VerifyEmailRequiredError,
 )
 from app.core.security import (
     ADMIN_LOGIN_TOKEN_TTL,
@@ -33,7 +31,6 @@ from app.core.security import (
 )
 from app.modules.auth import repository as repo
 from app.modules.auth import tokens
-from app.modules.auth.model import OtpVerification
 from app.modules.auth.schema import (
     AdminCodeRequest,
     AdminLoginChallenge,
@@ -48,13 +45,8 @@ from app.modules.auth.schema import (
 )
 from app.modules.user.model import User, UserRole
 from app.modules.user.schema import UserPublic
-from app.shared.otp import (
-    MAX_OTP_ATTEMPTS,
-    OTP_TTL,
-    OtpPurpose,
-    deliver_otp,
-    generate_otp_code,
-)
+from app.shared import codes
+from app.shared.otp import OtpPurpose
 
 LOGIN_MAX_ATTEMPTS = 5
 LOCKOUT_DURATION = timedelta(minutes=15)
@@ -71,31 +63,12 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _mask_email(email: str) -> str:
-    local, _, domain = email.partition("@")
-    shown = local[0] if local else ""
-    return f"{shown}***@{domain}"
-
-
 def _issue_tokens(user: User) -> TokenResponse:
     """Mint a fresh access + refresh pair (new refresh-token family)."""
     return TokenResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=create_refresh_token(user.id),
     )
-
-
-async def _send_registration_otp(db: AsyncSession, user: User) -> None:
-    code = generate_otp_code()
-    await repo.create_otp(
-        db,
-        user_id=user.id,
-        code=code,
-        channel="email",
-        purpose=OtpPurpose.registration,
-        expires_at=_now() + OTP_TTL,
-    )
-    deliver_otp(user.email, code, purpose=OtpPurpose.registration, user_id=user.id)
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
@@ -115,72 +88,42 @@ async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
         role=UserRole(data.role),
     )
     await repo.add_password_history(db, user.id, password_hash)
-    await _send_registration_otp(db, user)
     await db.commit()
+    # the account exists even if the email cannot go out: the screen then offers Resend.
+    # (No per-address wait starts here: a resend right after sign-up must look the same as
+    # one for an address nobody used; the account's own 60 s rule keeps it quiet.)
+    issued = await codes.issue_code(db, user.id, OtpPurpose.registration, user.email)
     return RegisterResponse(
-        user=UserPublic.model_validate(user), otp_sent_to=_mask_email(user.email)
+        user=UserPublic.model_validate(user), otp_sent_to=issued.masked, code_sent=issued.delivered
     )
-
-
-async def _check_otp(
-    db: AsyncSession, user: User, code: str, purpose: OtpPurpose
-) -> OtpVerification:
-    """The user's latest unused OTP *for this purpose* if ``code`` matches it. A
-    wrong code counts toward the attempt limit; the message is the same for a
-    wrong, expired or missing code, so it reveals nothing. The row is locked
-    while it is checked, so two requests at once cannot both slip under the
-    attempt limit."""
-    otp = await repo.get_latest_otp(db, user.id, purpose, for_update=True)
-    if otp is None or otp.expires_at < _now():
-        raise ValidationError("Invalid or expired verification code.")
-    if otp.attempts >= MAX_OTP_ATTEMPTS:
-        raise ValidationError("Too many incorrect attempts. Request a new code.")
-    if otp.code != code:
-        otp.attempts += 1
-        await db.commit()
-        raise ValidationError("Invalid or expired verification code.")
-    return otp
 
 
 async def verify_otp(db: AsyncSession, data: OtpVerifyRequest) -> TokenResponse:
     user = await repo.get_user_by_email(db, data.email)
     if user is None:
-        raise ValidationError("Invalid or expired verification code.")
+        raise ValidationError(codes.WRONG_CODE_MESSAGE)
     if user.is_verified:
         raise ConflictError("Account is already verified.")
 
-    otp = await _check_otp(db, user, data.code, OtpPurpose.registration)
-    otp.is_used = True
+    await codes.check_code(db, user.id, OtpPurpose.registration, data.code, user.email)
     user.is_verified = True
     await db.commit()
     return _issue_tokens(user)
 
 
-OTP_RESEND_COOLDOWN = timedelta(seconds=60)
-
-
-async def resend_otp(db: AsyncSession, email: str) -> str | None:
-    """Re-issue the registration OTP (expired code, lost email). Returns the
-    masked destination, or None when there is nothing to send — the endpoint
-    answers identically either way so this can't be used to probe which
-    emails are registered. A 60s cooldown (measured off the latest OTP's
-    creation time) stops a hammered resend button from queueing a pile of
-    codes; the auth rate limiter still applies on top."""
+async def resend_otp(db: AsyncSession, email: str) -> bool:
+    """A new sign-up code. Every address gets the same answers (the wait and the hourly
+    maximum are counted per address first); the account is looked up only after that, and an
+    unknown or already confirmed address simply gets nothing. Returns False only when a code
+    was made but its email could not be sent (that try then does not count)."""
+    await codes.throttle_public(OtpPurpose.registration, email)
     user = await repo.get_user_by_email(db, email)
-    if user is None or user.is_verified:
-        return None
-
-    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.registration)
-    if latest is not None:
-        issued_at = latest.expires_at - OTP_TTL  # same tz handling as expires_at
-        if _now() - issued_at < OTP_RESEND_COOLDOWN:
-            raise ValidationError("Please wait a minute before requesting another code.")
-        # Retire the outstanding code so exactly one code is valid at a time.
-        latest.is_used = True
-
-    await _send_registration_otp(db, user)
-    await db.commit()
-    return _mask_email(user.email)
+    if user is None or user.is_verified or user.deleted_at is not None:
+        return True
+    issued = await codes.issue_code(db, user.id, OtpPurpose.registration, user.email, quiet=True)
+    if not issued.delivered:
+        await codes.forget_failed_public(OtpPurpose.registration, email)
+    return issued.delivered
 
 
 async def _register_failed_login(db: AsyncSession, user: User) -> None:
@@ -219,17 +162,25 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
         # said only after the right password, so a stranger cannot learn which accounts exist
         raise UnauthorizedError(_ACCOUNT_SUSPENDED)
     if not user.is_verified:
-        raise UnauthorizedError("Please verify your account before logging in.")
+        # the right password: send a fresh code (the 60 s wait permitting) and open the code screen
+        issued = await codes.issue_code(
+            db, user.id, OtpPurpose.registration, user.email, quiet=True
+        )
+        raise VerifyEmailRequiredError(
+            data={"email": user.email, "sent_to": issued.masked, "code_sent": issued.delivered}
+        )
 
     user.failed_login_attempts = 0
     user.locked_until = None
     await db.commit()
     if user.role == UserRole.admin:
         # admins finish signing in with an emailed code: no tokens yet
-        await _send_admin_code(db, user)
+        delivered = await _send_admin_code(db, user)
         return AdminLoginChallenge(
             challenge_token=create_admin_login_token(user.id),
             expires_in=int(ADMIN_LOGIN_TOKEN_TTL.total_seconds()),
+            sent_to=codes.mask_address(user.email),
+            code_sent=delivered,
         )
     return _issue_tokens(user)
 
@@ -237,47 +188,14 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
 _CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in again."
 
 
-# "Send a new code" on the admin code screen: at most this many codes an hour.
-ADMIN_CODES_PER_HOUR = 5
-WAIT_MESSAGE = "Wait {seconds} seconds before asking for another code."
-TOO_MANY_CODES_MESSAGE = "Too many codes were asked for. Please try again in 30 minutes."
-
-
-async def _send_admin_code(db: AsyncSession, user: User, *, asked_again: bool = False) -> None:
-    """Email a fresh admin sign-in code, keeping the OTP rules: nothing new
-    within 60 s of the last one, and the older code retired so one is live.
-
-    ``asked_again`` (the "Send a new code" button) says why nothing was sent:
-    "Wait N seconds ..." inside the 60 s, or "Too many codes ..." after
-    ADMIN_CODES_PER_HOUR codes in an hour. The first code at sign-in stays quiet."""
-    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login, for_update=True)
-    if latest is not None:
-        since = _now() - (latest.expires_at - OTP_TTL)
-        if since < OTP_RESEND_COOLDOWN:
-            await db.commit()  # release the row lock
-            if asked_again:
-                seconds = max(1, math.ceil((OTP_RESEND_COOLDOWN - since).total_seconds()))
-                raise TooManyRequestsError(WAIT_MESSAGE.format(seconds=seconds))
-            return
-    if asked_again and (
-        await repo.count_recent_otps(db, user.id, OtpPurpose.admin_login, timedelta(hours=1))
-        >= ADMIN_CODES_PER_HOUR
-    ):
-        await db.commit()
-        raise TooManyRequestsError(TOO_MANY_CODES_MESSAGE)
-    if latest is not None:
-        latest.is_used = True
-    code = generate_otp_code()
-    await repo.create_otp(
-        db,
-        user_id=user.id,
-        code=code,
-        channel="email",
-        purpose=OtpPurpose.admin_login,
-        expires_at=_now() + OTP_TTL,
+async def _send_admin_code(db: AsyncSession, user: User, *, asked_again: bool = False) -> bool:
+    """Email a fresh admin sign-in code (the shared code rules). ``asked_again`` (the "Send a
+    new code" button) answers "Wait N seconds ..." or "Too many codes ..."; the first code at
+    sign-in stays quiet. Returns False when the email could not be sent."""
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.admin_login, user.email, quiet=not asked_again
     )
-    await db.commit()
-    deliver_otp(user.email, code, purpose=OtpPurpose.admin_login, user_id=user.id)
+    return issued.delivered
 
 
 async def _challenge_user(db: AsyncSession, challenge_token: str) -> User:
@@ -302,15 +220,14 @@ async def verify_admin_code(db: AsyncSession, data: AdminCodeRequest) -> TokenRe
     """Second step of an admin sign-in: the emailed code (OTP try limit and
     row lock), then the normal tokens."""
     user = await _challenge_user(db, data.challenge_token)
-    otp = await _check_otp(db, user, data.code, OtpPurpose.admin_login)
-    otp.is_used = True
+    await codes.check_code(db, user.id, OtpPurpose.admin_login, data.code, user.email)
     await db.commit()
     return _issue_tokens(user)
 
 
-async def resend_admin_code(db: AsyncSession, data: AdminResendRequest) -> None:
+async def resend_admin_code(db: AsyncSession, data: AdminResendRequest) -> bool:
     user = await _challenge_user(db, data.challenge_token)
-    await _send_admin_code(db, user, asked_again=True)
+    return await _send_admin_code(db, user, asked_again=True)
 
 
 async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:
@@ -355,66 +272,34 @@ async def logout(access_token: str, refresh_token: str) -> None:
 
 
 async def forgot_password(db: AsyncSession, data: ForgotPasswordRequest) -> None:
-    """Always succeeds from the caller's view — never reveals if an email
-    exists (anti-enumeration)."""
+    """A 6-digit reset code. Never says whether the email exists: every address gets the same
+    answers (the wait and the hourly maximum are counted per address first), and a send that
+    fails is only logged."""
+    await codes.throttle_public(OtpPurpose.password_reset, data.email)
     user = await repo.get_user_by_email(db, data.email)
     if user is None or user.deleted_at is not None:
         return
-
-    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.password_reset)
-    if latest is not None:
-        issued_at = latest.expires_at - OTP_TTL
-        if _now() - issued_at < OTP_RESEND_COOLDOWN:
-            # Within the cooldown: send nothing, and say nothing. An error here
-            # would show that the account exists.
-            return
-        # Retire the outstanding code so exactly one code is valid at a time.
-        latest.is_used = True
-
-    code = generate_otp_code()
-    await repo.create_otp(
-        db,
-        user_id=user.id,
-        code=code,
-        channel="email",
-        purpose=OtpPurpose.password_reset,
-        expires_at=_now() + OTP_TTL,
-    )
-    await db.commit()
-    deliver_otp(user.email, code, purpose=OtpPurpose.password_reset, user_id=user.id)
+    issued = await codes.issue_code(db, user.id, OtpPurpose.password_reset, user.email, quiet=True)
+    if not issued.delivered:
+        await codes.forget_failed_public(OtpPurpose.password_reset, data.email)
 
 
 async def reset_password(db: AsyncSession, data: ResetPasswordRequest) -> None:
+    """The emailed code and a new password. Ends every session and refresh token."""
     validate_password_strength(data.new_password)
-
-    reset = None
-    otp = None
-    if data.token:
-        token_hash = hashlib.sha256(data.token.encode()).hexdigest()
-        reset = await repo.get_reset_token(db, token_hash)
-        if reset is None or reset.is_used or reset.expires_at < _now():
-            raise ValidationError("Invalid or expired reset token.")
-        user = await repo.get_user_by_id(db, reset.user_id)
-        if user is None:
-            raise ValidationError("Invalid or expired reset token.")
-    else:
-        assert data.email is not None and data.otp is not None  # enforced by the schema
-        user = await repo.get_user_by_email(db, data.email)
-        if user is None or user.deleted_at is not None:
-            raise ValidationError("Invalid or expired verification code.")
-        otp = await _check_otp(db, user, data.otp, OtpPurpose.password_reset)
+    user = await repo.get_user_by_email(db, data.email)
+    if user is None or user.deleted_at is not None:
+        raise ValidationError(codes.WRONG_CODE_MESSAGE)
+    # a refused new password must not spend the code: check it first
     await enforce_password_reuse(db, user, data.new_password)
+    await codes.check_code(db, user.id, OtpPurpose.password_reset, data.otp, user.email)
 
     user.password_hash = hash_password(data.new_password)
     user.failed_login_attempts = 0
     user.locked_until = None
-    if reset is not None:
-        reset.is_used = True
-    if otp is not None:
-        otp.is_used = True
     await repo.add_password_history(db, user.id, user.password_hash)
     await db.commit()
-    # Log out every existing session for this user (FR-P-02: old sessions die).
+    # every session and refresh token ends (FR-P-02)
     await tokens.bump_session_epoch(str(user.id))
 
 

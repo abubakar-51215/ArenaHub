@@ -12,6 +12,7 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_JWT_DEFAULTS = {"change-me", "change-me-refresh"}
+_DEV_CODE_HASH_SECRET = "dev-only-code-hash-secret"
 
 
 class Environment(StrEnum):
@@ -132,6 +133,9 @@ class Settings(BaseSettings):
     # (so pytest runs can't fire real emails). Flip this on to test real
     # inbox delivery from a dev machine; prod ignores it and always sends.
     email_send_in_dev: bool = Field(default=False, alias="EMAIL_SEND_IN_DEV")
+    # Key for the HMAC-SHA256 of every emailed code: the database keeps only the hash.
+    # Must be a long random value outside dev (checked below); changing it voids codes in flight.
+    code_hash_secret: str = Field(default=_DEV_CODE_HASH_SECRET, alias="CODE_HASH_SECRET")
 
     @property
     def is_dev(self) -> bool:
@@ -145,6 +149,13 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "JWT_SECRET / JWT_REFRESH_SECRET must be set to non-default values "
+                f"when ENVIRONMENT={self.environment.value}."
+            )
+        if self.environment != Environment.dev and (
+            self.code_hash_secret == _DEV_CODE_HASH_SECRET or len(self.code_hash_secret) < 32
+        ):
+            raise ValueError(
+                "CODE_HASH_SECRET must be set to a random value of 32+ characters "
                 f"when ENVIRONMENT={self.environment.value}."
             )
         return self
