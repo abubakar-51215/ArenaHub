@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { TextInput } from 'react-native';
 
 import { useCodeStep } from '@/components/g6/code-step';
 import { FormScreen } from '@/components/g6/form-screen';
@@ -13,25 +14,33 @@ import { ApiError } from '@/lib/api';
 import { requestEmailChange, verifyEmailChange } from '@/services/auth';
 import { useAuthStore } from '@/store/auth';
 
-// Change email, from arena-hub-player-app-account.html (frame 08): the new address, then the 6-digit code sent to it.
+// Change email, from arena-hub-player-app-account.html (frame 08): the new address and the current password (the field
+// from frame 09: the server checks it before it sends anything), then the 6-digit code sent to the new address. The old
+// address stays until that code is used; Back from the code keeps what was typed.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const note = { fontSize: 14, lineHeight: 20, color: Colors.light.muted } as const;
 
 export default function ChangeEmailScreen() {
   const setUser = useAuthStore((s) => s.setUser);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const passwordRef = useRef<TextInput>(null);
 
   const send = useMutation({
-    mutationFn: () => requestEmailChange(email.trim()),
+    mutationFn: () => requestEmailChange(email.trim(), password),
     onSuccess: () => setSent(true),
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not send the code. Please try again.'),
+    onError: (err) => {
+      const message = err instanceof ApiError ? err.message : 'Could not send the code. Please try again.';
+      setErrors(/password/i.test(message) ? { password: message } : { email: message });
+    },
   });
   const submit = () => {
     if (send.isPending) return;
-    if (!EMAIL.test(email.trim())) return setError('Enter a valid email address.');
-    setError(null);
+    if (!EMAIL.test(email.trim())) return setErrors({ email: 'Enter a valid email address.' });
+    if (!password) return setErrors({ password: 'Enter your current password.' });
+    setErrors({});
     send.mutate();
   };
 
@@ -42,7 +51,7 @@ export default function ChangeEmailScreen() {
       showToast('Email changed');
       router.back();
     },
-    onResend: () => requestEmailChange(email.trim()).then(() => undefined),
+    onResend: () => requestEmailChange(email.trim(), password),
   });
 
   return (
@@ -53,7 +62,7 @@ export default function ChangeEmailScreen() {
         sent ? (
           <Button title="Confirm" loading={step.loading} disabled={!step.ready} onPress={step.confirm} />
         ) : (
-          <Button title="Send code" loading={send.isPending} disabled={!email.trim()} onPress={submit} />
+          <Button title="Send code" loading={send.isPending} disabled={!email.trim() || !password} onPress={submit} />
         )
       }>
       {sent ? (
@@ -71,11 +80,23 @@ export default function ChangeEmailScreen() {
             value={email}
             onChangeText={(t) => {
               setEmail(t);
-              setError(null);
+              setErrors({});
             }}
-            error={error}
-            onSubmit={submit}
+            error={errors.email}
+            nextRef={passwordRef}
             autoFocus
+          />
+          <TextField
+            ref={passwordRef}
+            label="Current password"
+            kind="password"
+            value={password}
+            onChangeText={(t) => {
+              setPassword(t);
+              setErrors({});
+            }}
+            error={errors.password}
+            onSubmit={submit}
           />
         </>
       )}

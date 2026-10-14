@@ -27,6 +27,8 @@ export interface User {
 export interface RegisterResult {
   user: User;
   otp_sent_to: string;
+  /** false when the code email could not be sent: the code screen says so and Resend is ready at once. */
+  code_sent: boolean;
 }
 
 export interface Tokens {

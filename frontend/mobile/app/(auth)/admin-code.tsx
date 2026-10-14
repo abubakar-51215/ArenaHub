@@ -1,94 +1,48 @@
-import { useMutation } from '@tanstack/react-query';
 import { Redirect, router, type Href } from 'expo-router';
-import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { AuthScreen } from '@/components/auth/auth-screen';
-import { Button, useButtonStatus } from '@/components/ui/button';
-import { CodeBoxes } from '@/components/ui/code-boxes';
+import { useCodeEntry } from '@/components/auth/use-code-entry';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
-import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
-import { useShake } from '@/hooks/use-shake';
 import { ApiError } from '@/lib/api';
 import { fetchMe, resendAdminCode, verifyAdminCode } from '@/services/auth';
-import { useAdminChallenge, maskEmail } from '@/store/admin-challenge';
+import { useAdminChallenge } from '@/store/admin-challenge';
 import { useAuthStore } from '@/store/auth';
 
 // Frames 7 and 8 of arena-hub-player-app-auth-2.html. The challenge token the
 // server gave after the right password lives in memory only
 // (store/admin-challenge); it is never written to SecureStore.
-const RESEND_WAIT = 60; // the first code went out at Log in
-
 export default function AdminCodeScreen() {
   const challengeToken = useAdminChallenge((s) => s.challengeToken);
-  const email = useAdminChallenge((s) => s.email);
-  const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [btnStatus, flash] = useButtonStatus();
-  const wait = useCountdown(RESEND_WAIT);
-  const { style: shakeStyle, shake } = useShake();
+  const sentTo = useAdminChallenge((s) => s.sentTo);
+  const codeSent = useAdminChallenge((s) => s.codeSent);
 
   /** An expired or invalid sign-in step: back to Log in with a short message. */
-  const startAgain = (message: string) => {
+  const startAgain = (err: unknown) => {
+    if (!(err instanceof ApiError && err.status === 401)) return false;
     useAdminChallenge.getState().clear();
-    router.dismissTo({ pathname: '/(auth)/login', params: { notice: message } } as Href);
+    router.dismissTo({ pathname: '/(auth)/login', params: { notice: 'Your sign-in step expired. Please log in again.' } } as Href);
+    return true;
   };
 
-  const verify = useMutation({
-    mutationFn: async () => {
+  const entry = useCodeEntry({
+    sentTo: sentTo ?? undefined,
+    codeSent,
+    onError: startAgain,
+    onVerify: async (code) => {
       const tokens = await verifyAdminCode(challengeToken!, code);
       useAuthStore.getState().setTokens(tokens);
       const me = await fetchMe();
-      return { tokens, me };
-    },
-    onSuccess: ({ tokens, me }) => {
       useAdminChallenge.getState().clear();
       useAuthStore.getState().setSession(tokens, me);
       router.replace('/admin' as Href);
     },
-    onError: (err) => {
-      if (err instanceof ApiError && err.status === 401) {
-        startAgain('Your sign-in step expired. Please log in again.');
-        return;
-      }
-      flash('error');
-      shake();
-      setError(err instanceof ApiError ? err.message : 'Could not reach the server. Check your connection and try again.');
-    },
+    onResend: () => resendAdminCode(challengeToken!),
   });
 
-  const resend = useMutation({
-    mutationFn: () => resendAdminCode(challengeToken!),
-    onSuccess: () => {
-      setError(null);
-      setCode('');
-      showToast(`New code sent to ${maskEmail(email!)}`);
-      wait.restart();
-    },
-    onError: (err) => {
-      if (err instanceof ApiError && err.status === 401) {
-        startAgain('Your sign-in step expired. Please log in again.');
-        return;
-      }
-      // "Wait N seconds before asking for another code." also restarts the countdown at N
-      const waitFor = err instanceof ApiError ? /Wait (\d+) seconds/.exec(err.message) : null;
-      if (waitFor) wait.restart(Number(waitFor[1]));
-      flash('error');
-      setError(err instanceof ApiError ? err.message : 'Could not send a new code. Check your connection.');
-    },
-  });
-
-  if (!challengeToken || !email) return <Redirect href="/(auth)/login" />;
-
-  const full = code.length === 6;
-  const submit = () => {
-    if (!full || verify.isPending) return;
-    setError(null);
-    verify.mutate();
-  };
+  if (!challengeToken || !sentTo) return <Redirect href="/(auth)/login" />;
 
   return (
     <AuthScreen
@@ -100,49 +54,20 @@ export default function AdminCodeScreen() {
       }}
       subtitle={
         <>
-          Enter the 6-digit sign-in code we emailed to <Text style={styles.strong}>{maskEmail(email)}</Text>. It works for 10
-          minutes.
+          Enter the 6-digit sign-in code we emailed to <Text style={styles.strong}>{sentTo}</Text>. It works for 10 minutes.
         </>
       }>
-      <Animated.View style={shakeStyle}>
-        <CodeBoxes
-          value={code}
-          onChange={(c) => {
-            setCode(c);
-            setError(null);
-                }}
-          error={!!error}
-          autoFocus
-          onSubmit={submit}
-        />
-      </Animated.View>
-      {error ? (
-        <Text style={styles.error} accessibilityRole="alert">
-          {error}
-        </Text>
-      ) : null}
+      {entry.boxes}
       <View style={styles.button}>
-        <Button title="Verify and sign in" disabled={!full} loading={verify.isPending} status={btnStatus} onPress={submit} />
+        <Button title="Verify and sign in" disabled={!entry.ready} loading={entry.loading} onPress={entry.confirm} />
       </View>
-      <View style={styles.resendRow}>
-        {wait.running ? (
-          <Text style={styles.resend}>
-            Resend code in <Text style={styles.strong}>{formatCountdown(wait.remaining)}</Text>
-          </Text>
-        ) : (
-          <Text style={styles.resend} onPress={() => resend.mutate()} accessibilityRole="button" accessibilityLabel="Send a new code">
-            {resend.isPending ? 'Sending…' : <Text style={styles.strong}>Send a new code</Text>}
-          </Text>
-        )}
-      </View>
+      <View style={styles.resend}>{entry.resendLink}</View>
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
   strong: { fontWeight: '700', color: Colors.light.text },
-  error: { fontSize: 14, color: Colors.light.redText, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 20 },
-  resendRow: { marginTop: 3, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-  resend: { fontSize: 14, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
+  resend: { marginTop: 3 },
 });

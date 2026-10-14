@@ -34,11 +34,14 @@ export interface HealthData {
 export class ApiError extends Error {
   status: number;
   fieldErrors: FieldError[];
-  constructor(message: string, status: number, fieldErrors: FieldError[] = []) {
+  /** What the server sent with the error, if anything (a sign-in that needs the email confirmed first, say). */
+  data: unknown;
+  constructor(message: string, status: number, fieldErrors: FieldError[] = [], data: unknown = null) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.data = data;
   }
 }
 
@@ -128,7 +131,7 @@ export async function apiRequest<T>(method: Method, path: string, body?: unknown
 
   const env = await parse<T>(res);
   if (!res.ok || !env.success) {
-    throw new ApiError(env.message || 'Request failed', res.status, env.errors ?? []);
+    throw new ApiError(env.message || 'Request failed', res.status, env.errors ?? [], env.data ?? null);
   }
   return env.data as T;
 }
