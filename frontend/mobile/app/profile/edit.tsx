@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import * as ImagePicker from 'expo-image-picker';
+import { pickPhoto } from '@/lib/pick-photo';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -42,11 +42,11 @@ export default function PersonalInformationScreen() {
 
   async function pick() {
     tapHaptic();
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
-    if (res.canceled || !res.assets[0]) return;
-    const problem = photoProblem(res.assets[0]);
+    const picked = await pickPhoto({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    if (!picked) return;
+    const problem = photoProblem(picked);
     if (problem) return showToast(problem.title);
-    setPickedUri(res.assets[0].uri);
+    setPickedUri(picked.uri);
   }
 
   const save = useMutation({
