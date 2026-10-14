@@ -2,21 +2,21 @@
 
 /**
  * Reset password in three steps on one page.
- *  1. The 6-digit code from the email (six boxes; paste, auto-advance and
- *     Backspace going back), with "Resend code" after a 60 second wait.
+ *  1. The 6-digit code from the email (the shared code entry: six boxes,
+ *     paste, the sixth digit opens step 2, "Send a new code in 0:42").
  *  2. A new password and its confirmation, with the live rule list and a
  *     show/hide button. This step sends email + code + password together:
  *     the API has no separate "check code" step, so a wrong, expired or
  *     used-up code is found here and the page goes back to step 1 with the
- *     message, keeping the password that was typed.
+ *     server's own message, keeping the password that was typed.
  *  3. Done, with "Sign in".
  */
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, CheckCircle2, Eye, EyeOff, X } from "lucide-react";
 
-import { CodeBoxes } from "@/components/auth/code-boxes";
+import { useCodeEntry } from "@/components/auth/use-code-entry";
 import { FormMessage, ResetShell, StepLabel, plainError } from "@/components/auth/reset-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,6 @@ import { ApiError } from "@/services/api";
 import { forgotPassword, resetPassword } from "@/services/auth";
 import { cn } from "@/lib/utils";
 
-const RESEND_WAIT_S = 60;
-const EMPTY_CODE = "      ";
 
 /** The same checks the server makes (validate_password_strength). */
 const RULES: { label: string; ok: (p: string) => boolean }[] = [
@@ -37,14 +35,10 @@ const RULES: { label: string; ok: (p: string) => boolean }[] = [
   { label: "No more than 72 bytes", ok: (p) => new TextEncoder().encode(p).length <= 72 },
 ];
 
-/** Server messages about the code, in plain words; they send the page back to step 1. */
+/** The server's messages about the code (backend app/shared/codes.py); they send the page back to step 1. */
 function codeProblem(err: unknown): string | null {
   if (!(err instanceof ApiError)) return null;
-  if (/too many incorrect attempts/i.test(err.message))
-    return "Too many wrong tries for this code. Ask for a new code below.";
-  if (/verification code/i.test(err.message))
-    return "That code is wrong, has expired, or was already used. Check the newest email, or ask for a new code.";
-  return null;
+  return /code is not right|too many wrong tries/i.test(err.message) ? err.message : null;
 }
 
 function ResetPasswordInner() {
@@ -54,38 +48,30 @@ function ResetPasswordInner() {
   const emailFromLink = !!params.get("email");
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [code, setCode] = useState(EMPTY_CODE);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // the server keeps a 60 s wait between codes; arriving from "Send code" starts it
-  const [wait, setWait] = useState(params.get("sent") ? RESEND_WAIT_S : 0);
-  useEffect(() => {
-    if (wait <= 0) return;
-    const t = window.setTimeout(() => setWait((s) => s - 1), 1000);
-    return () => window.clearTimeout(t);
-  }, [wait]);
+  const entry = useCodeEntry({
+    firstWait: params.get("sent") ? 60 : 0,
+    autoFocus: emailFromLink,
+    onVerify: async () => {
+      if (!email.trim()) throw new ApiError("Enter your email address first.", 422);
+      setError(null);
+      setStep(2);
+    },
+    onResend: () => {
+      if (!email.trim()) return Promise.reject(new ApiError("Enter your email address first.", 422));
+      return forgotPassword(email.trim());
+    },
+  });
+  const code = entry.code;
 
-  const codeComplete = /^\d{6}$/.test(code);
   const rulesOk = RULES.every((r) => r.ok(password));
   const matches = password.length > 0 && password === confirm;
-
-  async function resend() {
-    setError(null);
-    setInfo(null);
-    try {
-      await forgotPassword(email.trim());
-      setWait(RESEND_WAIT_S);
-      setCode(EMPTY_CODE);
-      setInfo("If this email is registered, we have sent a new 6-digit code. Only the newest code works.");
-    } catch (err) {
-      setError(plainError(err));
-    }
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,9 +84,9 @@ function ResetPasswordInner() {
       const problem = codeProblem(err);
       if (problem) {
         // back to the code, keeping the password that was typed
-        setCode(EMPTY_CODE);
+        entry.clearCode();
         setStep(1);
-        setError(problem);
+        entry.showError(problem);
       } else {
         setError(plainError(err));
       }
@@ -241,10 +227,7 @@ function ResetPasswordInner() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!codeComplete || !email.trim()) return;
-          setError(null);
-          setInfo(null);
-          setStep(2);
+          entry.confirm();
         }}
         className="mt-7 space-y-4"
       >
@@ -263,40 +246,20 @@ function ResetPasswordInner() {
           </div>
         )}
 
-        <div>
-          <CodeBoxes value={code} onChange={setCode} invalid={!!error} autoFocus={emailFromLink} />
-        </div>
+        {entry.boxes}
 
-        {error && <FormMessage>{error}</FormMessage>}
-        {info && <FormMessage tone="info">{info}</FormMessage>}
-
-        <Button type="submit" size="lg" disabled={!codeComplete || !email.trim()} className="h-11 w-full">
+        <Button type="submit" size="lg" disabled={!entry.ready || !email.trim()} className="h-11 w-full">
           Continue
         </Button>
 
-        <div className="flex items-center justify-center text-sm text-muted-foreground">
-          {wait > 0 ? (
-            <span className="py-3" aria-live="polite">
-              Resend code in {Math.floor(wait / 60)}:{String(wait % 60).padStart(2, "0")}
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={resend}
-              disabled={!email.trim()}
-              className="min-h-11 font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground disabled:opacity-50"
-            >
-              Resend code
-            </button>
-          )}
-        </div>
+        <div className="flex items-center justify-center text-sm text-muted-foreground">{entry.resendLink}</div>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Remembered your password?{" "}
         <Link
           href="/login"
-          className="inline-block font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:py-3 coarse:py-3"
+          className="inline-block min-w-11 py-3 text-center font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
         >
           Sign in
         </Link>

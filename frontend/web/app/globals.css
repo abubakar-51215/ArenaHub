@@ -2567,6 +2567,12 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   width: 100%;
   margin: 0 auto;
 }
+/* a half-width column on a tablet: less side room, so the six 44px code boxes fit */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  [data-admin] .ah-auth-form {
+    padding: 40px 5vw;
+  }
+}
 [data-admin] .ah-auth-brand {
   display: flex;
   align-items: center;
@@ -4239,11 +4245,12 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--muted-foreground);
 }
 [data-admin] .ah-auth-link {
   min-height: 44px;
+  min-width: 44px;
   padding: 0 2px;
   border: 0;
   background: none;
@@ -4809,5 +4816,15 @@ html[data-theme="dark"] .am-theme .am-d {
       [data-slot="button"], .ah-pager button, [data-slot="dialog-close"]
     ) {
     min-width: 44px;
+  }
+}
+
+/* the six code boxes shake once on a wrong code (owner and admin pages alike); not with reduced motion */
+.ah-code-shake {
+  animation: ah-shake 0.4s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-code-shake {
+    animation: none;
   }
 }

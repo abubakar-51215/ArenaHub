@@ -40,7 +40,7 @@ export function CodeBoxes({
   }
 
   return (
-    <div className="flex justify-between gap-2" role="group" aria-label="6-digit code">
+    <div className="flex justify-between gap-1.5" role="group" aria-label="6-digit code">
       {digits.map((d, i) => (
         <input
           key={i}
@@ -56,7 +56,7 @@ export function CodeBoxes({
           aria-label={`Digit ${i + 1} of ${LENGTH}`}
           aria-invalid={invalid || undefined}
           className={cn(
-            "h-13 w-full min-w-0 max-w-14 rounded-xl border bg-card text-center text-xl font-semibold tabular-nums text-foreground outline-none transition-colors",
+            "h-13 w-full min-w-11 max-w-14 rounded-xl border bg-card text-center text-xl font-semibold tabular-nums text-foreground outline-none transition-colors",
             "focus:border-foreground focus:ring-2 focus:ring-foreground/15",
             invalid ? "border-destructive" : "border-border",
           )}
