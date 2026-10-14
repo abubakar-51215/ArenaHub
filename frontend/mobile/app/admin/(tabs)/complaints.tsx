@@ -1,14 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BigTitle, ListCard, LoadError, Nothing, Pill, SkeletonCards } from '@/components/admin/kit';
+import { BigTitle, ListCard, LoadError, Nothing, Pill, ShowMore, SkeletonCards } from '@/components/admin/kit';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { ADMIN_KEY } from '@/hooks/useAdmin';
+import { useAdminPages } from '@/hooks/useAdminPages';
 import { formatDayShort, karachiDate, karachiToday, formatDayTime, dayDiff } from '@/lib/karachi';
 import { listAdminComplaints } from '@/services/admin';
 
@@ -25,18 +25,15 @@ export function complaintWhen(at: string): string {
 
 export default function ComplaintsScreen() {
   const [tab, setTab] = useState<Tab>('open');
-  const q = useQuery({
-    queryKey: [ADMIN_KEY, 'complaints', tab],
-    queryFn: () => listAdminComplaints(tab === 'open' ? 'open' : tab === 'replied' ? 'resolved' : undefined),
-    retry: 1,
-  });
+  const { q, items, total } = useAdminPages([ADMIN_KEY, 'complaints', tab], (page) =>
+    listAdminComplaints(tab === 'open' ? 'open' : tab === 'replied' ? 'resolved' : undefined, page),
+  );
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await q.refetch();
     setRefreshing(false);
   }, [q]);
-  const items = q.data?.items ?? [];
   return (
     <SafeAreaView style={styles.page} edges={[]}>
       <BigTitle title="Complaints" />
@@ -70,6 +67,7 @@ export default function ComplaintsScreen() {
             />
           ))
         )}
+        <ShowMore shown={items.length} total={total} hasMore={!!q.hasNextPage} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
       </ScrollView>
     </SafeAreaView>
   );

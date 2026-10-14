@@ -18,6 +18,11 @@ export function listMyNotifications(): Promise<NotificationPage> {
   return api.get<NotificationPage>("/notifications?page_size=50");
 }
 
+/** One page of 50 (the admin Notifications list loads more with "Show more"). */
+export function listMyNotificationsPage(page: number): Promise<NotificationPage> {
+  return api.get<NotificationPage>(`/notifications?page=${page}&page_size=50`);
+}
+
 /** Just the unread count (the bell dot on Home): one small page. */
 export async function getUnreadCount(opts?: { timeoutMs?: number }): Promise<number> {
   const page = await api.get<NotificationPage>("/notifications?page_size=1", opts);
