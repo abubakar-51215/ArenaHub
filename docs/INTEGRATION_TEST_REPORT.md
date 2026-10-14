@@ -1,6 +1,261 @@
 # Integration test report — all three apps together
 
-Date: 13 October 2026 (Karachi time). Branch: `prototype-screens`.
+Date: 13 October 2026; follow-ups on 14 October 2026 (Karachi time). Branch: `prototype-screens`.
+
+## Third pass, 14 October 2026 afternoon: the last open items, final numbers
+
+### The five open items, fixed (each with a test or a check script)
+
+| Item | Now | Check | Commit |
+|---|---|---|---|
+| An arena that closes at 23:59 had no 23:00 hour | Closing at "23:59" or "24:00" means open until midnight: the 23:00 hour is sold. It ends 23:59:59 on the same date and every screen writes it as 12:00 AM. Closing at 22:00 or 23:00 is unchanged; an arena open all day has 24 hours. Owners can save "24:00" (the web form shows it as 23:59). | backend test: closing at 22:00, 23:00, 23:59, 24:00 and open all day (14, 15, 16, 16 and 24 hours); the 23:00 hour priced by a pricing rule (x1.5), booked, on the owner calendar, its 1-hour reminder at 10 PM, finished only after 23:59:59; phone clock check ("12:00 AM") | `d365e24` |
+| Admin "resend code" answered vaguely | "We sent a new code to your email." / "Wait 37 seconds before asking for another code." (the real seconds; the countdown restarts at that number) / "Too many codes were asked for. Please try again in 30 minutes." (after 5 codes in an hour). Phone and admin web show the server's words. | backend tests for all three | `4cceed5` |
+| Empty upload message | A 0-byte file: "Choose a photo of your receipt (JPG or PNG, up to 5 MB)." on the phone; Send receipt stays off; the server refuses an empty file with the same sentence (outside receipts: "Choose a photo (JPG or PNG, up to 5 MB)."). The owner and admin web have no file upload (arena photos are web addresses), so there is nothing to change there. | backend test; browser check: empty file, text file, 6 MB file, real photo, 0 page errors | `4506471` |
+| Slot link without an arena | No arena, a removed or made-up arena or court, or a court of another arena: "We could not find that arena." with Go to Home, on Pick a slot and Review booking. A network failure still shows Try again. | 6 new cases in the deep-link check script; browser check of 5 bad links, 1 good link and the Home button, 0 page errors | `917682c` |
+| The apps disagreed | (a) CSV and PDF exports use the screens' words, money, dates and times (owner and admin: "Awaiting payment", "Bank transfer · paid", "Rs. 2,000", "Oct 14, 2026", "7:00 PM – 8:00 PM"; the player's export: the phone's tags and ₨). (b) On the owner web, tapping a notice opens what it is about, as on the phone. | backend test (no raw keys, ISO dates, 24-hour times or bare amounts in any export); web check scripts for the CSV and for every owner notice; browser check of three owner notices | `e9f00ed`, `30a50d6` |
+
+Found and fixed during the final sweep: chart labels at 10–11px on the web (now 12px) and a duplicate React key on owner
+Revenue while arena names load (`c13a08a`); on touch screens the sign-in pages' Show password, Forgot password and Sign in
+links were under 44px (`f6319b8`).
+
+### Which notice opens which screen
+
+| Role and app | Notice | Opens |
+|---|---|---|
+| Player, phone | Booking confirmed, Booking cancelled, Receipt not accepted, Payment failed, reminders, payment reminder, refund started, refund done, refund handled by our team, balance paid | that booking |
+| Player, phone | Match joined, left, full or cancelled | that match |
+| Player, phone | Rate your last game | the review screen for that booking |
+| Player, phone | We replied to your complaint | that complaint |
+| Player, phone | Account suspended or reactivated | stays on the list |
+| Admin, phone | New arena waiting | that arena's approval |
+| Admin, phone | New complaint | that complaint |
+| Admin, web | (no notice list: the Alerts button is built from the live queues and opens Approvals and Complaints) | |
+| Owner, web | Receipt to check | Bookings, filtered to "Pending approval" |
+| Owner, web | New booking received | Bookings, filtered to "Confirmed" |
+| Owner, web | A refund is waiting for you | Payments, the Refunds tab |
+| Owner, web | New review | Reviews for that arena |
+| Owner, web | Arena approved, not approved, suspended, reactivated or removed | Arenas |
+| Owner, web | Account notices | stays on the list |
+
+### Final numbers
+
+| Check | Result |
+|---|---|
+| Phone sweep: player, signed-out and admin screens at 360, 375, 390 and 430 | 164 screens: 0 did not load, 0 with sideways scroll, 0 console errors, 0 failed requests, 0 texts under the size rule, 0 cut texts, 0 small taps |
+| Web sweep: owner and admin screens at 360, 768, 1024 and 1440, light and dark, plus the signed-out pages (touch on, so the 44px rule applies) | 208 screens: 0 did not load, 0 with sideways scroll, 0 console errors, 0 failed requests, 0 texts under the size rule, 0 cut texts, 0 small taps |
+| Text that is shortened with "..." by design | the long Urdu arena name on narrow cards, court names inside short blocks on the owner Schedule, payment references on admin Payments; nothing is cut without "..." |
+| Text colour contrast (every documented pair) | every documented pair at least 4.5:1 (muted and lime text on card, paper, soft line and lime wash: 4.50-5.26; amber text on amber wash, paper and card: 4.51-5.07; red text on red wash, paper and card: 4.51-5.28; text and text2 6.89-17.81). Four pairs the designs do not use are under 4.5 (amber text on soft line 4.38 and on red wash 4.33, muted on red wash 4.45, lime text on red wash 4.49). |
+| `next build` (web) | builds: compiled, types and lint checked, 35 static pages generated (the dev server was stopped first and restarted after) |
+| Backend test suite | 429 tests, all pass |
+| ruff | check and format clean |
+| tsc and eslint, phone | clean; eslint 0 errors (3 old warnings in a generated type file and two one-off scripts) |
+| tsc and eslint, web | clean |
+| Phone check scripts | 7 of 7 pass (text, deep link, karachi, keyboard, near-me, worklet, brand motion) |
+| Web check scripts | 4 of 4 pass (after-login, no admin links, CSV words, notice targets) |
+| Flow D | standalone 9 of 9; the old copy inside the C-F script 8 of 8 (36 of 36 for C-F) after adding the player and the completed booking it expects (`ayesha.siddiqui@example.com`) and reading `booking_ids` (the API's current field) |
+
+### Still open
+
+- **Text shortened with "..." by design** (listed above) stays: long names in narrow places.
+- **Payment references on admin Payments** show the gateway reference (for a bank transfer `manual_...`), shortened with "...". It is a reference, not a status word; the booking code is in the next column.
+- **Undocumented colour pairs** under 4.5:1 (see the numbers above): fine as long as the designs keep not using them.
+- **The leftover folder** `E:/summerr/ArenaHub_wt_before`: `git worktree list` no longer shows it (not even as missing),
+  so `git worktree prune` was not needed. The folder itself is still on disk; it was not deleted by hand. Delete it when
+  nothing is using it.
+- **Needs a real phone:** push notifications, the camera and gallery, the Android back button, links from other apps, real network drops, the keyboard, location, the phone's text-size setting, real emails, card and JazzCash payments.
+
+## Follow-up round, 14 October 2026: decisions built, minor items fixed
+
+Everything below was built on `prototype-screens` and checked on the scratch database. Nothing was pushed.
+
+### Decided and built
+
+| Decision | What it does now | Commit |
+|---|---|---|
+| Discount use | Applying a code at Pay reserves one use (`bookings.discount_code_id`). It counts toward the limit while the booking waits; it is permanent once the booking is confirmed; it is given back once (never below zero) if the booking is abandoned, expires, is rejected or is cancelled before payment. **A confirmed booking that is cancelled later keeps the use counted.** | `a8fce12` |
+| Rate limiter | Counts the real connection address. `X-Forwarded-For` is read only from addresses in `TRUSTED_PROXIES` (empty by default; addresses or ranges). A malformed header falls back to the proxy's address. Limit numbers unchanged. | `c19e276` |
+| Suspension refunds | One refund per booking group, only for money actually paid, never more than was paid; one notice each for player and owner. A receipt still waiting becomes one pending refund of the full amount. | `fe5e8ba` |
+| Text size | Phone: information text at least 14px, decorative micro labels at least 12px. Web: nothing below 12px. | `c7e214d` |
+| Currency symbol | Web "Rs.", phone and notices "₨", as designed. Nothing to build. | none |
+
+**Database migration:** `d5a9c2e7f1b3` (two nullable columns on `bookings`). Test and scratch were migrated first; the dev
+database was backed up, the backup restore-checked into a throwaway database (32 users, 26 bookings, same as dev; dropped
+afterwards), then dev was migrated. Old rows stay empty (26 of 26). **Backup:**
+`backend/backups/arenahub-20261013-235404-before-discount-reservation.dump` (380,666 bytes).
+
+**Discount, a real race on the live server.** A code limited to 1 use, two players pressing Pay at the same moment: one booked
+(200), the other got 422 "This code has been used up."; the count read 1 of 1; after the winner left checkout it read 0 of 1.
+
+**Suspension refunds, before and after** (one fresh arena per run, the admin suspends it):
+
+| Booking group | Paid | Before: refund rows / total / player notices / owner notices | After |
+|---|---|---|---|
+| 3 hours, paid in full | ₨ 6,000 | 3 rows / ₨ 6,000 / 3 "Refund initiated" + 1 "Booking cancelled" / 3 | 1 row / ₨ 6,000 / 1 + 1 / 1 |
+| 2 hours, part paid (50% advance) | ₨ 2,000 | 2 rows / ₨ 2,000 / 2 + 1 / 2 | 1 row / ₨ 2,000 / 1 + 1 / 1 |
+| 1 hour, unpaid | ₨ 0 | 0 rows / ₨ 0 / "Booking cancelled" / 0 | 0 rows / ₨ 0 / "Booking cancelled" / 0 |
+| 3 hours paid, one hour already refunded (pending) | ₨ 6,000 | 2 new rows / ₨ 6,000 in all / 2 + 1 / 2 | 1 new row / ₨ 6,000 in all / 1 + 1 / 1 |
+| 2 hours, receipt waiting | ₨ 4,000 sent | **0 rows / ₨ 0** (the money was lost) / "Booking cancelled" / 0 | 1 pending row / ₨ 4,000 / 1 + 1 / 1 |
+
+No group was ever refunded more than it paid, before or after.
+
+### Minor items fixed (each with a test or a check)
+
+| Item | Now | Check | Commit |
+|---|---|---|---|
+| Owners had no Reviews badge or notice | One "New review" notice per review ("Ayesha Khan gave Kickoff Arena 4 stars."); a count badge on Reviews for reviews without a reply, like Refunds | backend test (notice, badge count, an edit sends nothing, a reply clears it) | `ac1ea5e` |
+| Editing a complaint reply sent a second notice | Notice on the first reply only; editing sends nothing (the frames have "Edit reply" but no "reply updated" notice) | backend test | `e74d877` |
+| Refund notices had no date | "... for your booking on Tue 13 Oct at 7:00 PM" in refund started, refund done, refund waiting (owner) and handled by our team | wording test | `5e96d87`, `2b5b60b` |
+| "Try again" after a failed start opened Home | Reopens the screen that was open (player screens for players, admin screens for admins). Every other "Try again" already retried its own request in place; the payment-failed screen goes back to Payment on purpose | browser check: player on Bookings and admin on Users, server stopped and restarted, both back on their screen; deep-link check script | `71c97e9` |
+| Text file as receipt crashed the picker (web build) | "That file is not a photo we can use. Use a JPG or PNG up to 5 MB."; a 6 MB image says "That photo is too big."; a real photo is still sent; 0 page errors | browser check | `a5351c2` |
+| Other phone admin lists stopped at 50 | Approvals, Complaints, Arenas, Payments, Refunds and Notifications show "Showing 50 of N" and Show more | browser check with more than 50 rows each (55, 68, 57, 70, 53, 129): all 6 pass | `eaeab7b` |
+| Small buttons on touch tablets (web) | A `pointer: coarse` rule: every tap target at least 44px on touch screens of any width; the tablet layout is unchanged | owner and admin routes plus the Add court and Suspend dialogs, touch emulated, at 768 and 1024: **before 43 of 48 screens had a small tap, after 0 of 52** | `1df9fa8` |
+| Pricing Rules hit the rate limit | One request for all rules (`GET /owner/pricing-rules`) instead of one per court; rule changes refresh every pricing list | **before 9 requests for arenas, courts and rules (13 in all); after 4 (8 in all)**, the same 2 rules shown, 0 failed | `5206650` |
+
+### Text sizes changed
+
+Phone: 34 styles (24 raised to 14px because they carry information, 10 decorative labels raised to 12px). Web: 56 sizes under
+12px raised to 12px. Layout follow-ups in the same commit: the area line on narrow venue cards may wrap to two lines instead of
+being cut short, the admin tab bar makes room for its 12px labels, text fields fill their boxes (44px tap), the search box is 46px.
+Every change is listed at the end of this section.
+
+**Pixel diff, 26 player screens before and after this commit** (390x844, same data and session, animations off):
+7 screens 0 pixels changed (change email, change phone, FAQ, liked, my reviews, payments, edit profile). Bookings, Play and
+Profile: about 1,665 pixels each, all in rows 793-826, the tab labels (11 to 12px). Change password 60 px (the rule bullets,
+9 to 12px). Arena reviews 428 px (avatar initials). Log in 1,010, Register 693, Forgot password 248 (the fields fill their boxes).
+Search 9,479 (the box is 2px taller, so everything below moves 2px). Home 22%, Slots 19%, Arena 9%, Notifications 8%,
+Filters 7%, Create match 6%, Settings 5%, New complaint 4%, Support 4%, Report 2%: the tags, chips, prices, badges and slot pills
+at 14px and the eyebrows at 12px, and the content below them moves down.
+
+### Scenarios again (before and after this round)
+
+| Scenario | Before | After | Note |
+|---|---|---|---|
+| S2 Booking and bank transfer | 24/24 | 24/24 | |
+| S3 Money everywhere | 18/18 | 18/18 | |
+| S4 Cancel, reschedule, refunds | 20/20 | 21/21 | the phone Refunds check now counts its first page of 50 |
+| S5 Matches | 12/12 | 12/12 | |
+| S6 Reviews | 11/12 | **12/12** | Reviews badge |
+| S7 Complaints | 8/8 | 8/8 | now expects one notice for a reply and its edit |
+| S9 Owner tools | 14/15 | **15/15** | leaving checkout gives the discount use back |
+| S10 Notifications | 15/15 | 15/15 | |
+| S12 Sessions and security | 25/25 | 25/25 | spoofed headers are now ignored by default (separate backend tests) |
+| S13 Failures | 14/15 | **15/15** | the picker |
+| S14 Data edges | 19/19 | 19/19 | |
+| S15 Every screen | see the line below | | |
+
+S15 ran again in the third pass; see "Final numbers" above.
+
+Scripted flows A to H from the earlier round (re-pointed at this data set): A 24, B 3, C 8, D 9, E 5, F 15, G 14, H 18,
+all pass. A copy of flow D inside the combined C-F script needs an old booking from the earlier data set and fails (5 steps);
+the standalone flow D passes.
+
+The test data moved with the calendar during the round (slots added up to 31 October, the blocked day moved from 19 to 28
+October), and two scripts were made independent of the clock (S2 picks a weekday, S4 picks an hour within 6 hours).
+
+### Still open
+
+All five items listed here were fixed in the third pass (see above).
+
+### Final checks this round
+
+See "Final numbers" in the third pass above.
+
+<details><summary>Every text size changed (90)</summary>
+
+| App | File | Style | Before | After | Kind |
+|---|---|---|---|---|---|
+| phone | app/(tabs)/results.tsx | chipText | 11px | 14px | info: filter chips |
+| phone | app/(tabs)/search.tsx | eyebrow | 11px | 12px | eyebrow |
+| phone | app/(tabs)/_layout.tsx | fontSize | 11px | 12px | tab label |
+| phone | app/admin/(tabs)/_layout.tsx | label | 11px | 12px | tab label |
+| phone | app/arena/[id].tsx | tagText | 11px | 14px | info: sport tags |
+| phone | app/arena/[id].tsx | eyebrow | 11px | 12px | eyebrow |
+| phone | app/arena/[id].tsx | amenText | 11px | 14px | info: amenities |
+| phone | app/arena/[id].tsx | unit | 12px | 14px | info: price unit |
+| phone | app/arena/[id].tsx | avatarText | 11px | 12px | decorative: initials |
+| phone | app/court/[id]/slots.tsx | dayName | 9px | 12px | weekday letters |
+| phone | app/court/[id]/slots.tsx | eyebrow | 11px | 12px | eyebrow |
+| phone | app/court/[id]/slots.tsx | pillSub | 12px | 14px | info: price under the time |
+| phone | app/filters.tsx | eyebrow | 11px | 12px | eyebrow |
+| phone | app/notifications.tsx | head | 11px | 12px | eyebrow (Today/Earlier) |
+| phone | app/play/create.tsx | label | 11px | 12px | eyebrow |
+| phone | app/play/[matchId].tsx | label | 11px | 12px | eyebrow |
+| phone | app/support/index.tsx | label | 11px | 12px | eyebrow |
+| phone | app/support/new.tsx | label | 11px | 12px | eyebrow |
+| phone | app/support/[id].tsx | label | 11px | 12px | eyebrow |
+| phone | components/arena/photo-gallery.tsx | counterText | 11px | 14px | info: photo counter |
+| phone | components/auth/password-rules.tsx | bullet | 9px | 12px | decorative: bullet |
+| phone | components/booking/parts.tsx | eyebrow | 11px | 12px | eyebrow |
+| phone | components/g6/profile-ui.tsx | label | 11px | 12px | eyebrow |
+| phone | components/home/sport-chips.tsx | label | 10.5px | 14px | info: sport chips |
+| phone | components/static-map.tsx | fontSize | 9px | 14px | info: map credit |
+| phone | components/ui/badge.tsx | label | 11.5px | 14px | info: status badge |
+| phone | components/ui/chip.tsx | label | 10.5px | 14px | info: chip |
+| phone | components/ui/day-chip.tsx | weekday | 9px | 12px | weekday letters |
+| phone | components/ui/field.tsx | inputIdle | 12px | 14px | info: idle field label |
+| phone | components/ui/slot-pill.tsx | label | 11.5px | 14px | info: slot time |
+| phone | components/ui/slot-pill.tsx | sublabel | 9px | 14px | info: slot price / Held |
+| phone | components/venue.tsx | unit | 12px | 14px | info: price unit |
+| phone | components/venue.tsx | tagText | 11px | 14px | info: sport tag |
+| phone | components/venue.tsx | newTagText | 11px | 14px | info: New tag |
+| web | app/globals.css:549 | @utility eyebrow | 10px | 12px | no text below 12px |
+| web | app/globals.css:661 | [data-admin] .ah-rail | 11.2px | 12px | no text below 12px |
+| web | app/globals.css:701 | [data-admin] .ah-brand-name small | 8.5px | 12px | no text below 12px |
+| web | app/globals.css:718 | [data-admin] .ah-rail .ah-brand-name small | 9px | 12px | no text below 12px |
+| web | app/globals.css:731 | [data-admin] .ah-nav-label | 9px | 12px | no text below 12px |
+| web | app/globals.css:744 | [data-admin] .ah-nav-item | 10.8px | 12px | no text below 12px |
+| web | app/globals.css:775 | [data-admin] .ah-nav-count | 9px | 12px | no text below 12px |
+| web | app/globals.css:813 | [data-admin] .ah-owner-av | 9px | 12px | no text below 12px |
+| web | app/globals.css:817 | [data-admin] .ah-owner-name | 10px | 12px | no text below 12px |
+| web | app/globals.css:824 | [data-admin] .ah-owner-role | 9px | 12px | no text below 12px |
+| web | app/globals.css:944 | [data-admin] .ah-kbd | 10px | 12px | no text below 12px |
+| web | app/globals.css:1040 | [data-admin] .ah-cmdk-group | 10px | 12px | no text below 12px |
+| web | app/globals.css:1078 | [data-admin] .ah-cmdk-item small | 11px | 12px | no text below 12px |
+| web | app/globals.css:1140 | [data-admin] .ah-pop-head | 10px | 12px | no text below 12px |
+| web | app/globals.css:1176 | [data-admin] .ah-pop-text small | 11px | 12px | no text below 12px |
+| web | app/globals.css:1389 | [data-admin] .ah-bar-lbl | 9.5px | 12px | no text below 12px |
+| web | app/globals.css:1606 | [data-admin] .ah-setting-row > div > p:nth-child(2 | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:1877 | [data-admin] [data-slot="table-head"] | 9.5px | 12px | no text below 12px |
+| web | app/globals.css:1915 | [data-admin] .ah-sub | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:1967 | [data-admin] .ah-tag | 11px | 12px | no text below 12px |
+| web | app/globals.css:1980 | [data-admin] .ah-avatar | 11px | 12px | no text below 12px |
+| web | app/globals.css:1990 | [data-admin] .ah-badge | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:2357 | [data-admin] .ah-tab-count | 11px | 12px | no text below 12px |
+| web | app/globals.css:2400 | [data-admin] .ah-eyebrow | 10px | 12px | no text below 12px |
+| web | app/globals.css:2418 | [data-admin] .ah-kpi-foot | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:2635 | [data-admin] .ah-auth-foot | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:2681 | [data-admin] .ah-auth-stats span | 10.5px | 12px | no text below 12px |
+| web | app/globals.css:2749 | [data-admin] .ah-queue-lbl | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:3037 | [data-admin] .ah-pitch-hours span | 9.5px | 12px | no text below 12px |
+| web | app/globals.css:3062 | [data-admin] .ah-pitch-label span | 10.5px | 12px | no text below 12px |
+| web | app/globals.css:3083 | [data-admin] .ah-blk b | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:3091 | [data-admin] .ah-blk span | 10px | 12px | no text below 12px |
+| web | app/globals.css:3152 | [data-admin] .ah-now-line::before | 9.5px | 12px | no text below 12px |
+| web | app/globals.css:3163 | [data-admin] .ah-pitch-legend | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:3264 | [data-owner] .ah-rail .ah-brand-name small | 8.5px | 12px | no text below 12px |
+| web | app/globals.css:3285 | [data-owner] .ah-nav-count | 10.5px | 12px | no text below 12px |
+| web | app/globals.css:3299 | [data-owner] .ah-owner-av | 11px | 12px | no text below 12px |
+| web | app/globals.css:3305 | [data-owner] .ah-owner-role | 10.5px | 12px | no text below 12px |
+| web | app/globals.css:3491 | [data-owner] .ah-cal-legend | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:3552 | [data-owner] .ah-cal-day span | 10px | 12px | no text below 12px |
+| web | app/globals.css:3570 | [data-owner] .ah-cal-court span | 11px | 12px | no text below 12px |
+| web | app/globals.css:3606 | [data-owner] .ah-cal-time | 10px | 12px | no text below 12px |
+| web | app/globals.css:3630 | [data-owner] .ah-ev | 10.5px | 12px | no text below 12px |
+| web | app/globals.css:3694 | [data-owner] .ah-cal-mhead | 10px | 12px | no text below 12px |
+| web | app/globals.css:3754 | [data-owner] .ah-cal-more | 11px | 12px | no text below 12px |
+| web | app/globals.css:3849 | [data-owner] .ah-score-row | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:3887 | [data-owner] .ah-review-meta | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:4197 | [data-owner] .ah-note-text small | 11.5px | 12px | no text below 12px |
+| web | app/globals.css:4462 | [data-owner] .ah-datepop-dow | 10px | 12px | no text below 12px |
+| web | app\admin\(dashboard)\page.tsx:450 | fontSize | 11.5px | 12px | no text below 12px |
+| web | components\auth\auth-photo-panel.tsx:104 | text-[10.5px] | 10.5px | 12px | no text below 12px |
+| web | components\auth\auth-photo-panel.tsx:121 | text-[10.5px] | 10.5px | 12px | no text below 12px |
+| web | components\auth\split-auth-shell.tsx:111 | text-[8.5px] | 8.5px | 12px | no text below 12px |
+| web | components\owner\charts.tsx:94 | fontSize | 11px | 12px | no text below 12px |
+| web | components\owner\charts.tsx:133 | fontSize | 11px | 12px | no text below 12px |
+| web | components\ui\stat-card.tsx:96 | text-[11.5px] | 11.5px | 12px | no text below 12px |
+
+</details>
 
 ## What was tested
 
@@ -65,44 +320,44 @@ There were two discount codes: SAVE10 (10%, 2 uses) and OLD5 (expired). Each are
 
 ### Major
 
-1. **Discount use is not given back** (S9).
+1. **Done 14 Oct (see the follow-up section).** **Discount use is not given back** (S9).
    - *What happens:* when a player leaves checkout, or a hold runs out, the code stays used. Two people who never pay can use up SAVE10.
    - *Cause:* the booking does not record which code it used, so there is nothing to give back.
    - *Proposed fix:* add a `discount_code_id` column on bookings (needs a migration). When a group is released, expired, or rejected before payment, take one off `used_count`.
    - *Not done here because:* it touches money rules and needs a migration.
-2. **Rate limiter trusts `X-Forwarded-For`** (S12; this test used it on purpose to act as separate devices).
+2. **Done 14 Oct.** **Rate limiter trusts `X-Forwarded-For`** (S12; this test used it on purpose to act as separate devices).
    - *What happens:* anyone can send that header and get a fresh limit on every request.
    - *Proposed fix:* read the header only when the request comes from the configured proxy address, and otherwise use the connection address.
    - Belongs on the list in `BEFORE_GOING_LIVE.md`.
-3. **Text under 14px** (S15).
+3. **Done 14 Oct (decided rule).** **Text under 14px** (S15).
    - *Where:* both apps use 9–12px for small labels. Examples: the phone tab bar is 11px, sport chips 10.5px, weekday letters on the slot strip 9px; owner web eyebrow labels and schedule hours are 9.5–10px.
    - *Why not changed here:* this is a design-system choice touching most screens. Your call.
    - *Proposed fix:* set a floor of 12px now (and 14px for anything a person must read to act), starting with the 9–10px cases.
 
 ### Needs your decision (money rule, not changed)
 
-- **Arena suspension refunds per booking, not per booking group** (S5). The totals are right, but a player with a 3-hour booking gets three refund rows.
+- **Done 14 Oct.** **Arena suspension refunds per booking, not per booking group** (S5). The totals are right, but a player with a 3-hour booking gets three refund rows.
 
 ### Minor
 
-- **Owner Reviews** (S6): no badge for reviews waiting for a reply, and no notice when a review arrives. *Proposed fix:* a count on the Reviews link (like Bookings has) and a "New review" notice.
-- **Phone admin lists stop at 50** (S14): Arenas, Complaints and Refunds. Users was fixed. *Proposed fix:* the same "Show more" as Users.
-- **Picking a text file as the receipt** (S13, web build only): Expo's image picker throws an uncaught error and the screen gets stuck. On a real phone the gallery only offers photos. *Proposed fix:* on web, use our own `<input type="file" accept="image/jpeg,image/png,image/webp">`.
-- **After the server comes back** (S13): "Try again" on the Log in screen signs back in but opens Home, not the screen the player was on. *Proposed fix:* keep the last route and reopen it.
-- **Small web controls on touch tablets** (S15): at 768px and wider, buttons, fields and sidebar links are 30–40px tall. That is fine for a mouse. The 44px sizes only apply below 768px. *Proposed fix:* a separate `@media (pointer: coarse)` rule giving buttons, inputs and icon buttons a 44px minimum height.
-- **Pricing Rules page** (S15): sends one request per court. At sweep speed this hit the 100-per-minute limit (429). An owner with many courts moving quickly could see it too. *Proposed fix:* one endpoint that returns all of the owner's rules.
-- **Last hour of the day:** an arena open until 23:59 gets its last slot at 22:00–23:00, so the 23:00 hour is never offered. That is also why a booking crossing midnight could not be tested. *Proposed fix:* treat a 23:59 closing time as midnight when making slots.
-- **Refund notices have no date** for the booking they belong to (S4).
-- **Editing a complaint reply sends a second notice** (S7).
-- **Admin "resend code" within 60 seconds** gives a plain success and no new code (S8). It should say "wait N seconds".
-- **Empty upload message** (S13): an empty file says "File content does not match the declared image type." Better: "The file is empty."
-- **Slot screen deep link**: opening `/court/{id}/slots` without `arenaId` shows "—" for the arena on Review booking.
+- **Done 14 Oct.** **Owner Reviews** (S6): no badge for reviews waiting for a reply, and no notice when a review arrives. *Proposed fix:* a count on the Reviews link (like Bookings has) and a "New review" notice.
+- **Done 14 Oct.** **Phone admin lists stop at 50** (S14): Arenas, Complaints and Refunds. Users was fixed. *Proposed fix:* the same "Show more" as Users.
+- **Done 14 Oct.** **Picking a text file as the receipt** (S13, web build only): Expo's image picker throws an uncaught error and the screen gets stuck. On a real phone the gallery only offers photos. *Proposed fix:* on web, use our own `<input type="file" accept="image/jpeg,image/png,image/webp">`.
+- **Done 14 Oct.** **After the server comes back** (S13): "Try again" on the Log in screen signs back in but opens Home, not the screen the player was on. *Proposed fix:* keep the last route and reopen it.
+- **Done 14 Oct.** **Small web controls on touch tablets** (S15): at 768px and wider, buttons, fields and sidebar links are 30–40px tall. That is fine for a mouse. The 44px sizes only apply below 768px. *Proposed fix:* a separate `@media (pointer: coarse)` rule giving buttons, inputs and icon buttons a 44px minimum height.
+- **Done 14 Oct.** **Pricing Rules page** (S15): sends one request per court. At sweep speed this hit the 100-per-minute limit (429). An owner with many courts moving quickly could see it too. *Proposed fix:* one endpoint that returns all of the owner's rules.
+- **Done 14 Oct (third pass).** **Last hour of the day:** an arena open until 23:59 gets its last slot at 22:00–23:00, so the 23:00 hour is never offered. That is also why a booking crossing midnight could not be tested. *Proposed fix:* treat a 23:59 closing time as midnight when making slots.
+- **Done 14 Oct.** **Refund notices have no date** for the booking they belong to (S4).
+- **Done 14 Oct.** **Editing a complaint reply sends a second notice** (S7).
+- **Done 14 Oct (third pass).** **Admin "resend code" within 60 seconds** gives a plain success and no new code (S8). It should say "wait N seconds".
+- **Done 14 Oct (third pass).** **Empty upload message** (S13): an empty file says "File content does not match the declared image type." Better: "The file is empty."
+- **Done 14 Oct (third pass).** **Slot screen deep link**: opening `/court/{id}/slots` without `arenaId` shows "—" for the arena on Review booking.
 
 ## Where the apps disagree or confuse
 
-1. **Money:** the web writes "Rs. 2,000"; the phone writes "₨ 2,000". Both now keep paisa.
-2. **CSV export:** shows raw status words (`confirmed`, `pending_payment`) where the screens say "Confirmed" and "Awaiting payment".
-3. **Opening a notice:** on the phone it opens the booking or match. In the owner web notification list it only marks it read.
+1. **Money:** the web writes "Rs. 2,000"; the phone writes "₨ 2,000". Both now keep paisa. **Decided 14 Oct: stays as designed.**
+2. **Done 14 Oct (third pass).** **CSV export:** shows raw status words (`confirmed`, `pending_payment`) where the screens say "Confirmed" and "Awaiting payment".
+3. **Done 14 Oct (third pass).** **Opening a notice:** on the phone it opens the booking or match. In the owner web notification list it only marks it read.
 4. **Where receipts are checked:** on owner **Bookings**. **Payments** holds refunds and bank accounts. Owners may look for receipts under Payments.
 5. **Owner Schedule:** labels blocks by court, not by player, so a booking cannot be recognised from the schedule alone.
 6. **When changes show up:**
