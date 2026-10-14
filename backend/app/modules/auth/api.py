@@ -47,12 +47,15 @@ async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db))
     return success(data=tokens, message="Account verified.")
 
 
+RESEND_MESSAGE = "If that email can receive a code, we sent one."
+
+
 @router.post("/resend-otp", summary="Resend the registration OTP")
 async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    # the same answers for every address (see service.resend_otp); only a failed send is said
-    if not await service.resend_otp(db, data.email):
-        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
-    return success(message="If this email is waiting for a code, we sent a new one.")
+    # one answer for every address, sent or not, so it never tells whether an account exists
+    # (a failed send is logged with its reason); "Wait N seconds" is counted per address
+    await service.resend_otp(db, data.email)
+    return success(message=RESEND_MESSAGE)
 
 
 @router.post("/login", summary="Login and receive JWT tokens")

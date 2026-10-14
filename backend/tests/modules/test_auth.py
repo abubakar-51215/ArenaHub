@@ -43,6 +43,12 @@ async def _otp_code(db: AsyncSession, email: str) -> str:
     return last_code(user.id, OtpPurpose.registration)
 
 
+async def _confirm(client: AsyncClient, db: AsyncSession, email: str) -> None:
+    code = await _otp_code(db, email)
+    resp = await client.post("/api/v1/auth/verify-otp", json={"email": email, "code": code})
+    assert resp.status_code == 200, resp.text
+
+
 async def _register_and_verify(client: AsyncClient, db: AsyncSession, email: str) -> dict:
     await _register(client, email=email)
     code = await _otp_code(db, email)
@@ -122,7 +128,9 @@ async def test_refresh_replay_revokes_family(client: AsyncClient, db_session: As
 async def test_register_duplicate_email_conflicts(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    # a confirmed account refuses (a never-confirmed one is replaced: test_signup_replace.py)
     await _register(client, email="dupe@example.com", phone="03009999999")
+    await _confirm(client, db_session, "dupe@example.com")
     again = await _register(client, email="dupe@example.com", phone="03008888888")
     assert again.status_code == 409
 
@@ -176,7 +184,7 @@ async def test_resend_otp_issues_fresh_code_and_retires_old(
 async def test_resend_otp_does_not_leak_account_existence(client: AsyncClient) -> None:
     resp = await client.post("/api/v1/auth/resend-otp", json={"email": "ghost@example.com"})
     assert resp.status_code == 200
-    assert resp.json()["message"] == "If this email is waiting for a code, we sent a new one."
+    assert resp.json()["message"] == "If that email can receive a code, we sent one."
 
 
 async def test_login_ignores_email_case(client: AsyncClient, db_session: AsyncSession) -> None:
@@ -190,6 +198,7 @@ async def test_register_duplicate_email_ignores_case(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     await _register(client, email="Case.Dupe@example.com", phone="03007770001")
+    await _confirm(client, db_session, "Case.Dupe@example.com")
     again = await _register(client, email="case.dupe@EXAMPLE.com", phone="03007770002")
     assert again.status_code == 409
 
@@ -270,6 +279,7 @@ async def test_register_phone_in_another_spelling_is_refused(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     assert (await _register(client, email="p1@example.com", phone="03001234567")).status_code == 201
+    await _confirm(client, db_session, "p1@example.com")
     for spelling in ("+92 300 1234567", "0300-1234567", "923001234567"):
         again = await _register(client, email=f"dup-{len(spelling)}@example.com", phone=spelling)
         assert again.status_code == 409, (spelling, again.text)

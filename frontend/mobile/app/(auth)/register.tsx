@@ -17,8 +17,10 @@ type Errors = Partial<Record<'full_name' | 'email' | 'phone' | 'password', strin
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// "Sign up variant choice unconfirmed": this is the one Sign up frame the
-// prototype has (arena-hub-player-app-auth.html, "Sign up / default").
+// Create account (arena-hub-player-app-google.html, frame 3). After a code was sent, coming back here
+// ("Wrong email? Use a different email" on the code screen, or Back) is frame 14: the details are kept,
+// only the email needs changing, and Continue sends a new code (the server replaces a sign-up that was
+// never confirmed, so the same phone is fine).
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,6 +28,8 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // set once a code went out from this form: the form is then "change your email, then continue"
+  const [codeSent, setCodeSent] = useState(false);
   const [btnStatus, flash] = useButtonStatus();
   const emailRef = useRef<RNTextInput>(null);
   const phoneRef = useRef<RNTextInput>(null);
@@ -38,12 +42,13 @@ export default function RegisterScreen() {
       register({ full_name: fullName.trim(), email: email.trim(), phone: phone.trim(), password }),
     onSuccess: (result) => {
       flash('success');
+      setCodeSent(true);
       // let the tick show for a moment before the code screen opens
       setTimeout(
         () =>
           router.push({
             pathname: '/(auth)/verify-otp',
-            params: { email: result.user.email, sentTo: result.otp_sent_to, codeSent: result.code_sent ? '1' : '0' },
+            params: { email: result.user.email, sentTo: result.otp_sent_to, codeSent: result.code_sent ? '1' : '0', from: 'signup' },
           }),
         500,
       );
@@ -82,7 +87,10 @@ export default function RegisterScreen() {
   };
 
   return (
-    <AuthScreen showMark title="Create your account" subtitle="Join ArenaHub and start booking courts.">
+    <AuthScreen
+      showMark={!codeSent}
+      title="Create account"
+      subtitle={codeSent ? 'Change your email, then continue. We will send a new code.' : 'Book arenas, join matches and track your games.'}>
       <View style={styles.form}>
         <View style={styles.group}>
           <Field
@@ -144,7 +152,7 @@ export default function RegisterScreen() {
           />
           {errors.phone ? <FieldMessage>{errors.phone}</FieldMessage> : null}
         </View>
-        <View style={styles.group}>
+        <View style={[styles.group, codeSent && styles.hidden]}>
           <Field
             ref={passwordRef}
             icon="lock"
@@ -166,25 +174,29 @@ export default function RegisterScreen() {
           />
           {errors.password ? <FieldMessage>{errors.password}</FieldMessage> : null}
         </View>
-        <PasswordRules password={password} />
+        {codeSent ? null : <PasswordRules password={password} />}
         {formError ? <FieldMessage>{formError}</FieldMessage> : null}
         <View style={styles.button}>
-          <Button title="Create account" loading={mutation.isPending} status={btnStatus} onPress={submit} />
+          <Button title={codeSent ? 'Continue' : 'Create account'} loading={mutation.isPending} status={btnStatus} onPress={submit} />
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Already have an account? </Text>
-        <Link href="/(auth)/login" dismissTo style={styles.footerLink} accessibilityRole="link">
-          Log in
-        </Link>
-      </View>
+      {codeSent ? null : (
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <Link href="/(auth)/login" dismissTo style={styles.footerLink} accessibilityRole="link">
+            Log in
+          </Link>
+        </View>
+      )}
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
   form: { gap: 10 },
+  // the password stays as typed while only the email is changed (frame 14 shows the other three fields)
+  hidden: { display: 'none' },
   group: { gap: 6 },
   button: { marginTop: 6 },
   // "Already have an account? Log in": 12px, centred, 18px under the button;

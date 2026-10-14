@@ -112,7 +112,9 @@ export default function RegisterPage() {
         <>
           <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Set up your Arena Hub owner account to list and manage arenas.
+            {sent
+              ? "Change your email, then continue. We will send a new code."
+              : "Set up your Arena Hub owner account to list and manage arenas."}
           </p>
 
           <form onSubmit={onSubmitForm} className="mt-7 space-y-4">
@@ -194,7 +196,7 @@ export default function RegisterPage() {
               disabled={submitting}
               className="h-11 w-full"
             >
-              {submitting ? "Creating account…" : "Create Account"}
+              {submitting ? (sent ? "Sending…" : "Creating account…") : sent ? "Continue" : "Create Account"}
             </Button>
           </form>
         </>
@@ -273,7 +275,7 @@ function CodeStep({
             onClick={onBack}
             className="min-h-11 font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
           >
-            Wrong email? Go back
+            Wrong email? Use a different email
           </button>
         </div>
       </form>

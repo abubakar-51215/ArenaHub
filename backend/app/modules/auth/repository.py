@@ -116,6 +116,20 @@ async def count_recent_otps(
     return int(total or 0)
 
 
+async def end_all_otps(db: AsyncSession, user_id: uuid.UUID, now: datetime) -> None:
+    """Every code of a user that is still waiting, whatever its purpose, stops working."""
+    await db.execute(
+        update(OtpVerification)
+        .where(OtpVerification.user_id == user_id, OtpVerification.used_at.is_(None))
+        .values(used_at=now)
+    )
+
+
+async def clear_password_history(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Forget an account's earlier passwords (a never-confirmed sign-up taken over by a new one)."""
+    await db.execute(delete(PasswordHistory).where(PasswordHistory.user_id == user_id))
+
+
 async def end_active_otps(
     db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, now: datetime
 ) -> None:
