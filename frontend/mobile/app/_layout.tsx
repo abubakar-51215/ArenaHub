@@ -9,7 +9,7 @@ import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
-import { Stack } from "expo-router";
+import { router, Stack, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { Pressable, Text as RNText, View } from "react-native";
@@ -24,7 +24,7 @@ import { startNetworkWatcher } from "@/lib/network";
 import { ToastHost } from "@/components/ui/toast";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { ApiError } from "@/lib/api";
-import { pathFromUrl, rememberLink } from "@/lib/deeplink";
+import { linkFitsRole, pathFromUrl, rememberLink, takePendingLink } from "@/lib/deeplink";
 import { setupForegroundNotifications } from "@/lib/push";
 import { startupLog } from "@/lib/startup-log";
 import { fetchMe } from "@/services/auth";
@@ -101,10 +101,12 @@ function RootNavigator() {
   // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
   useEffect(() => startNetworkWatcher(), []);
 
-  // a link opened while signed out is kept, and opened after Log in (lib/deeplink.ts)
+  // a link opened before the account is loaded (signed out, or a saved sign-in still being checked) is kept: it opens
+  // after Log in, or after "Try again" when the server could not be reached at start (lib/deeplink.ts)
   useEffect(() => {
     const keep = (url: string | null) => {
-      if (!useAuthStore.getState().accessToken) rememberLink(pathFromUrl(url));
+      const { accessToken: token, user: who } = useAuthStore.getState();
+      if (!token || !who) rememberLink(pathFromUrl(url));
     };
     Linking.getInitialURL().then(keep).catch(() => {});
     const sub = Linking.addEventListener("url", (e) => keep(e.url));
@@ -135,10 +137,18 @@ function RootNavigator() {
     if (hydrated && accessToken && !user && !everReady.current) startupLog(`checking the saved sign-in with the server (GET /users/me, ${STARTUP_CALL_TIMEOUT_MS / 1000} s limit)`);
   }, [hydrated, accessToken, user]);
 
+  // the start-up check failed once (no server); when "Try again" then works, the screen that was open comes back
+  const failedOnce = useRef(false);
+  if (currentUserQuery.isError) failedOnce.current = true;
   useEffect(() => {
     if (currentUserQuery.data) {
       startupLog("saved sign-in is valid");
       setUser(currentUserQuery.data);
+      const link = takePendingLink();
+      if (failedOnce.current && link && linkFitsRole(link, currentUserQuery.data.role)) {
+        startupLog(`reopening ${link} after Try again`);
+        setTimeout(() => router.push(link as Href), 350);
+      }
     }
   }, [currentUserQuery.data, setUser]);
 

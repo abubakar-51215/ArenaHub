@@ -3,7 +3,11 @@
  * yet: the path is kept in memory, and after the person signs in the app goes Home and then opens it. Only screens that need
  * a sign-in are kept (a link to Log in itself is not).
  */
-const KEEP = ['booking', 'arena', 'court', 'play', 'profile', 'notifications', 'support', 'filters', 'results', '(tabs)'];
+const KEEP = [
+  'booking', 'arena', 'court', 'play', 'profile', 'notifications', 'support', 'filters', 'results', '(tabs)',
+  // the tab screens and the admin screens, so "Try again" after a failed start can reopen them too
+  'bookings', 'search', 'admin',
+];
 
 /** "arenahub://play/abc?x=1" or "exp://host:8081/--/play/abc" becomes "/play/abc?x=1"; null when it is not a screen to keep. */
 export function pathFromUrl(url: string | null | undefined): string | null {
@@ -33,3 +37,7 @@ export function takePendingLink(): string | null {
   pending = null;
   return p;
 }
+
+/** Whether a kept link suits the person who signed in: admins only reopen admin screens, players never do. */
+export const linkFitsRole = (path: string, role: string | undefined): boolean =>
+  role === 'admin' ? path === '/admin' || path.startsWith('/admin/') : !(path === '/admin' || path.startsWith('/admin/'));

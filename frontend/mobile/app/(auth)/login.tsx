@@ -11,7 +11,7 @@ import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { ApiError, RequestTimeoutError } from '@/lib/api';
-import { takePendingLink } from '@/lib/deeplink';
+import { linkFitsRole, takePendingLink } from '@/lib/deeplink';
 import { startupLog } from '@/lib/startup-log';
 import { fetchMe, isAdminChallenge, login } from '@/services/auth';
 import { useAdminChallenge } from '@/store/admin-challenge';
@@ -64,7 +64,7 @@ export default function LoginScreen() {
       router.replace(r.me.role === 'admin' ? ('/admin' as Href) : '/(tabs)');
       // a link that was opened while signed out: Home first, then the link
       const link = takePendingLink();
-      if (link && r.me.role !== 'admin') setTimeout(() => router.push(link as Href), 350);
+      if (link && r.me.role !== 'admin' && linkFitsRole(link, r.me.role)) setTimeout(() => router.push(link as Href), 350);
     },
     onError: (err) => {
       startupLog(`login: failed (${err instanceof Error ? err.message : 'unknown'})`);
