@@ -20,7 +20,7 @@ import { useWindowedFlag } from '@/hooks/useDelayedFlag';
 import { useAuthStore } from '@/store/auth';
 import { useStartup } from '@/store/startup';
 
-// Frame 1 of arena-hub-player-app-auth-2.html. The first field takes an email
+// Frame 1 of arena-hub-player-app-auth-2-fixed.html. The first field takes an email
 // or a phone number and is sent as `identifier`; the server answers a wrong
 // password and an unknown account in the same words, so this screen shows the
 // server's message as it is.
@@ -128,7 +128,6 @@ export default function LoginScreen() {
       <View style={styles.form}>
         <Field
           icon="mail"
-          huge
           placeholder="Email or phone"
           value={identifier}
           onChangeText={(t) => {
@@ -147,7 +146,6 @@ export default function LoginScreen() {
         <Field
           ref={passwordRef}
           icon="lock"
-          huge
           revealable
           placeholder="Password"
           value={password}

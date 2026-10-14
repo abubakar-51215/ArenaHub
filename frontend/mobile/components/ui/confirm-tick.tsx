@@ -11,7 +11,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Colors } from '@/constants/theme';
 
-// The success mark of arena-hub-player-app-auth-2.html (frame 5, ".tick"):
+// The success mark of arena-hub-player-app-auth-2-fixed.html (frame 5, ".tick"):
 // a lime-deep circle with a pale lime fill draws first (600 ms), then the ink
 // tick draws (400 ms, starting at 450 ms), both ease-out. 84px by default.
 // With "reduce motion" on, it is simply drawn. `play` changes replay it.
