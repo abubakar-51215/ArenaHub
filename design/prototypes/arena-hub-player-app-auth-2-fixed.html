@@ -34,15 +34,10 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
 .sub b{color:var(--ink);font-weight:600}
 
 /* Fields: icon is LARGE while the field is empty and idle, and settles to its normal size on focus or when it has text */
-.field{position:relative;height:42px;border-radius:15px;background:var(--white);border:1.5px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 13px;margin-top:11px;transition:height .3s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)}
+.field{position:relative;height:48px;border-radius:15px;background:var(--white);border:1.5px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 13px;margin-top:11px;transition:height .3s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)}
 .field input{border:0;outline:0;background:transparent;font:inherit;font-size:14px;width:100%;color:var(--ink)}
 .field input::placeholder{color:#8B958F}
-.field svg.ic{flex:none;width:15px;height:15px;color:#6C7771;transition:width .3s var(--ease),height .3s var(--ease),margin .3s var(--ease)}
-.field:not(:focus-within):has(input:placeholder-shown){height:138px}
-.field:not(:focus-within):has(input:placeholder-shown) svg.ic{width:104px;height:104px;margin:0 8px 0 6px;color:#7F8A84}
-.field:not(:focus-within):has(input:placeholder-shown) svg.ic.lock{width:88px;height:88px}
-.field:not(:focus-within):has(input:placeholder-shown) input{font-size:12px}
-.field:not(:focus-within):has(input:placeholder-shown) .eye{opacity:0}
+.field svg.ic{flex:none;width:20px;height:20px;color:#6C7771;transition:width .3s var(--ease),height .3s var(--ease),margin .3s var(--ease)}
 .field:focus-within{border-color:var(--ink);box-shadow:0 0 0 3px rgba(196,245,70,.45)}
 .field.err{border-color:var(--red)}
 .msg{color:var(--red);font-size:14px;margin:5px 4px 0}
@@ -131,7 +126,7 @@ h1{font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:
 </svg>
 
 <h1 class="page">Player app · Auth, part 2 (proposed frames)</h1>
-<p class="lead">These frames are not in <b>arena-hub-player-app.html</b> or the first auth file. They follow the same colours, fonts, corners and buttons. Light theme only. Try them: tap a field (the mail and lock icons are huge while the field is empty and idle, and shrink to normal size when you tap in or type), type in the code boxes, hover or press the buttons.</p>
+<p class="lead">These frames are not in <b>arena-hub-player-app.html</b> or the first auth file. They follow the same colours, fonts, corners and buttons. Light theme only. Try them: type in the code boxes, hover or press the buttons.</p>
 
 <div class="grid">
 
