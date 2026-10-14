@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +33,9 @@ function SkeletonCard() {
 
 export default function PlayScreen() {
   const me = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<Tab>('open');
+  // the assistant's "Open my matches" opens this tab on My matches
+  const { tab: startTab } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab>(startTab === 'mine' ? 'mine' : 'open');
   const [refreshing, setRefreshing] = useState(false);
   const city = me?.preferred_locations?.[0] as ArenaCity | undefined;
 
