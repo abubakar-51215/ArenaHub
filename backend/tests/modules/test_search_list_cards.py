@@ -9,7 +9,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.modules.ai.service import parse_search_query
+from app.modules.ai.parser import parse, places_from_areas
 from app.modules.arena.model import Arena
 from app.modules.review.model import Review
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
@@ -58,6 +58,10 @@ async def test_recommendations_carry_the_list_card_fields(client, db_session):
     item = next(i for i in res.json()["data"]["items"] if i["id"] == arena_id)
     assert item.keys() >= CARD_FIELDS
     assert str(item["min_price"]).startswith("1500")
+
+
+def parse_search_query(text: str):
+    return parse(text, places=places_from_areas([]), now=datetime(2026, 10, 14, 12, 0))
 
 
 def test_smart_search_knows_the_four_new_sports_and_keeps_tennis():

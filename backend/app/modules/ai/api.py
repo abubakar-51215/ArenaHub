@@ -21,13 +21,18 @@ from app.shared.response import success
 router = APIRouter(tags=["ai"])
 
 
-@router.get("/search/nlp", summary="Free-text arena search (keyword-parsed)")
+@router.get("/search/nlp", summary="Smart search: plain words understood, applied and echoed")
 async def nlp_search(
-    q: str = Query(min_length=1),
+    # longer text is cut to 120 characters by the parser, never refused
+    q: str = Query(min_length=1, max_length=1000),
+    drop: list[str] = Query(default=[], description="Chip kinds the player removed"),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lon: float | None = Query(None, ge=-180, le=180),
     params: PaginationParams = Depends(pagination_params),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.nlp_search(db, q, params)
+    near = (lat, lon) if lat is not None and lon is not None else None
+    data = await service.nlp_search(db, q, params, drop=drop, near=near)
     return success(data=data, message="Search results retrieved.")
 
 

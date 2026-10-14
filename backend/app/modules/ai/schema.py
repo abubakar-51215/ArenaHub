@@ -10,10 +10,16 @@ class ParsedQuery(BaseModel):
     returned alongside the results so the UI can show the player what it
     understood (e.g. chips reading "cricket", "Lahore", "cheapest first")."""
 
+    text: str = ""  # what was read (at most 120 characters)
     sport: str | None = None
     city: str | None = None
+    area: str | None = None
+    price_max: int | None = None
     sort: str = "newest"
-    time_reference: str | None = None
+    time_reference: str | None = None  # the time chip's words ("Tonight", "Tomorrow evening")
+    near: bool = False
+    # what was understood, in the order shown: {"kind": sport|place|time|price|sort|near, "label"}
+    chips: list[dict[str, str]] = []
     used_fallback_text_search: bool = False
 
 

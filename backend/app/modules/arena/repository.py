@@ -7,6 +7,7 @@ serialization never triggers a lazy load on the async session.
 
 import math
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
 from typing import NamedTuple, cast
@@ -204,8 +205,13 @@ async def search_public_arenas(
     limit: int,
     near: tuple[float, float] | None = None,
     radius_km: float | None = None,
+    area: str | None = None,
+    only_ids: Collection[uuid.UUID] | None = None,
 ) -> tuple[list[Arena], int]:
     """Approved + active arenas only — the public discovery query.
+
+    ``area`` (smart search's place) matches an arena whose area or address holds that text;
+    ``only_ids`` keeps only those arenas (smart search's free-slot filter).
 
     ``price_min``/``price_max`` filter on each arena's cheapest court (a
     price-range slider filters "arenas with something in this range", not
@@ -226,6 +232,14 @@ async def search_public_arenas(
         base = base.where(func.lower(Arena.name).like(like))
     if city:
         base = base.where(Arena.city == city)
+    if area:
+        # a bound value inside LIKE: the text is never SQL; % and _ in it are taken literally
+        like = "%" + area.lower().replace("\\", "").replace("%", "").replace("_", "") + "%"
+        base = base.where(
+            or_(func.lower(Arena.area).like(like), func.lower(Arena.address).like(like))
+        )
+    if only_ids is not None:
+        base = base.where(Arena.id.in_(list(only_ids)))
     if sport:
         # sports_offered is a JSONB array of strings.
         base = base.where(Arena.sports_offered.contains([sport]))
