@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
-import * as ImagePicker from 'expo-image-picker';
+import { pickPhoto } from '@/lib/pick-photo';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -62,9 +62,8 @@ export default function BankTransferScreen() {
   async function choose() {
     if (sending.current) return;
     tapHaptic();
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
-    if (!res.canceled && res.assets[0]) {
-      const a = res.assets[0];
+    const a = await pickPhoto({ quality: 0.7 });
+    if (a) {
       const problem = photoProblem(a);
       if (problem) {
         errorHaptic();
