@@ -19,7 +19,17 @@ export interface PhotoProblem {
 }
 
 /** A plain-English reason a picked photo cannot be sent (the two lines of the "Photo too big" state), or null when it is fine. */
-export function photoProblem(asset: { fileSize?: number | null; mimeType?: string | null }): PhotoProblem | null {
+export function photoProblem(
+  asset: { fileSize?: number | null; mimeType?: string | null },
+  what: 'receipt' | 'photo' = 'photo',
+): PhotoProblem | null {
+  // an empty file (0 bytes) is treated as "nothing chosen": nothing is sent
+  if (asset.fileSize === 0) {
+    return {
+      title: what === 'receipt' ? 'Choose a photo of your receipt (JPG or PNG, up to 5 MB).' : 'Choose a photo (JPG or PNG, up to 5 MB).',
+      text: 'That file is empty.',
+    };
+  }
   if (asset.mimeType && !/^image\/(jpe?g|png|webp)$/i.test(asset.mimeType)) {
     return { title: 'That file is not a photo we can use.', text: 'Use a JPG or PNG up to 5 MB.' };
   }

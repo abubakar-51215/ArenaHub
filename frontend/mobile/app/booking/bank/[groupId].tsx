@@ -64,7 +64,7 @@ export default function BankTransferScreen() {
     tapHaptic();
     const a = await pickPhoto({ quality: 0.7 });
     if (a) {
-      const problem = photoProblem(a);
+      const problem = photoProblem(a, 'receipt');
       if (problem) {
         errorHaptic();
         setBad(problem);
