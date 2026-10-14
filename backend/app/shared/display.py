@@ -80,3 +80,61 @@ def sport_name(key: str) -> str:
 
 def plural(count: int, one: str, many: str) -> str:
     return f"{count} {one if count == 1 else many}"
+
+
+# ---- exports: the words of the owner and admin web (lib/format.ts, components/admin/ui.tsx) ----
+
+# statusLabel() of the web: these words, else the key with a capital and spaces
+_WEB_STATUS = {
+    "pending_payment": "Awaiting payment",
+    "pending_approval": "Pending approval",
+    "under_review": "Under review",
+    "in_progress": "In progress",
+    "partially_refunded": "Part refunded",
+    "no_show": "No-show",
+}
+PAYMENT_METHOD_NAMES = {
+    "card": "Card",
+    "bank_transfer": "Bank transfer",
+    "jazzcash": "JazzCash",
+    "easypaisa": "EasyPaisa",
+}
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def web_status(value: object) -> str:
+    """A status as the web screens word it: "Awaiting payment", "Confirmed", "Refunded"."""
+    key = str(getattr(value, "value", value))
+    return _WEB_STATUS.get(key) or (key[:1].upper() + key[1:].replace("_", " "))
+
+
+def web_rupees(amount: object) -> str:
+    """Rs. 2,000 (paisa only when there are some), like formatRs() on the web."""
+    return rupees(amount).replace("₨ ", "Rs. ")
+
+
+def web_date(value: date | datetime) -> str:
+    """Oct 14, 2026, like formatDate() on the web."""
+    d = value.date() if isinstance(value, datetime) else value
+    return f"{_MONTHS[d.month - 1]} {d.day}, {d.year}"
+
+
+def time_range_12h(start: time, end: time) -> str:
+    """7:00 PM – 8:00 PM (the end of the last hour of the day is 12:00 AM)."""
+    return f"{time_12h(start)} – {time_12h(end)}"
+
+
+# ---- the words of the phone (lib/bookings-ui.ts), for the player's own export ----
+
+_PHONE_STATUS = {
+    "confirmed": "Confirmed",
+    "pending_payment": "Awaiting payment",
+    "pending_approval": "Awaiting approval",
+    "completed": "Completed",
+    "rejected": "Receipt not accepted",
+}
+
+
+def phone_status(value: object) -> str:
+    key = str(getattr(value, "value", value))
+    return _PHONE_STATUS.get(key, "Cancelled")

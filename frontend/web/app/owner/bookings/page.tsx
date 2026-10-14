@@ -35,12 +35,24 @@ import { useArenaParam } from "@/hooks/useArenaParam";
 import { useApprovePayment, useOwnerBookings, useRejectPayment, useRemindBooking } from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, formatTime, plural, joinParts } from "@/lib/format";
 import { shortDay } from "@/lib/karachi-date";
-import { PAYMENT_METHOD_LABEL } from "@/lib/payment-methods";
+import { bookingRef, bookingsCsv, paymentParts, paymentText } from "@/lib/bookings-csv";
 import { ApiError } from "@/services/api";
 import { listCourts } from "@/services/courts";
 import type { BookingStatus, OwnerBookingRow } from "@/types";
 
 const PAGE_SIZE = 10;
+
+/** The rows on screen as a CSV, in the screen's own words (lib/bookings-csv.ts). */
+function exportCsv(rows: OwnerBookingRow[]) {
+  const blob = new Blob(["\ufeff" + bookingsCsv(rows)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bookings.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 
 const STATUSES: BookingStatus[] = [
   "pending_payment",
@@ -51,57 +63,10 @@ const STATUSES: BookingStatus[] = [
   "rejected",
 ];
 
-function exportCsv(rows: OwnerBookingRow[]) {
-  const header = "Booking ID,Date,Time,Arena,Court,Customer,Amount,Status";
-  const lines = rows.map((r) =>
-    [
-      r.booking_id,
-      r.booking_date,
-      `${r.start_time} - ${r.end_time}`,
-      `"${r.arena_name}"`,
-      `"${r.court_name}"`,
-      `"${r.player_name}"`,
-      r.total_amount,
-      r.status,
-    ].join(","),
-  );
-  const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "bookings.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/** The payment, in words, from the real payment: one of our four methods and
- *  its state ("Card · paid"), "Refunded" for a refunded one. */
-function paymentParts(row: OwnerBookingRow): { method: string; state: string | null } {
-  if (!row.payment_method) return { method: row.status === "pending_payment" ? "Not paid yet" : "—", state: null };
-  const method = PAYMENT_METHOD_LABEL[row.payment_method];
-  if (row.payment_status === "refunded" || row.payment_lifecycle_status === "refunded")
-    return { method, state: "refunded" };
-  if (row.payment_status === "completed") return { method, state: "paid" };
-  if (row.payment_status === "failed") return { method, state: "failed" };
-  if (row.status === "pending_approval") return { method, state: "receipt to review" };
-  return { method, state: "pending" };
-}
-
-/** One line, for the phone cards. */
-function paymentText(row: OwnerBookingRow): string {
-  const { method, state } = paymentParts(row);
-  return state ? `${method} · ${state}` : method;
-}
-
 /** The phone under a name, only when it is a phone number (a deleted user's
  *  anonymised value is not). */
 function cleanPhone(phone: string | null | undefined): string | undefined {
   return phone && /^[+\d]/.test(phone) ? phone : undefined;
-}
-
-/** The booking reference the player sees on the phone and writes on a bank transfer (AHB-xxxxxx). */
-function bookingRef(row: { booking_code?: string; booking_id: string }): string {
-  return row.booking_code || `#BK-${row.booking_id.slice(0, 4).toUpperCase()}`;
 }
 
 function rangeLine(from: string, to: string): string {
