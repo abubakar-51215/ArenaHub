@@ -9,14 +9,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationActions, useNotifications } from "@/hooks/useNotifications";
 import { formatDateShort } from "@/lib/format";
+import { ownerNoticeTarget } from "@/lib/notice-target";
 
 const SHOWN = 5;
 
 export function OwnerAlerts() {
   const [open, setOpen] = useState(false);
   const { data, isLoading, isError } = useNotifications();
+  const { markRead } = useNotificationActions();
   const unread = data?.unread_count ?? 0;
   const items = (data?.items ?? []).slice(0, SHOWN);
 
@@ -45,9 +47,12 @@ export function OwnerAlerts() {
           {items.map((n) => (
             <Link
               key={n.id}
-              href="/owner/notifications"
+              href={ownerNoticeTarget(n) ?? "/owner/notifications"}
               className="ah-pop-item"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                if (!n.read_at) markRead.mutate(n.id);
+                setOpen(false);
+              }}
             >
               <span className={n.read_at ? "ah-pop-dot is-read" : "ah-pop-dot"} aria-hidden="true" />
               <span className="ah-pop-text">

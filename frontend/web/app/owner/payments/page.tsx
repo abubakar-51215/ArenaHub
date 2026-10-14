@@ -10,6 +10,7 @@
  * read-only above, as before; it is edited in the arena's form.
  */
 import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 
@@ -84,7 +85,8 @@ function PaymentsInner() {
   const scope = picked ? [picked] : arenas;
   const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
-  const [tab, setTab] = useState<Tab>("bank");
+  const asked = useSearchParams().get("tab");
+  const [tab, setTab] = useState<Tab>(asked === "refunds" || asked === "discounts" ? asked : "bank");
   const [toast, showToast] = useToast();
   const { data: waitingRefunds } = usePendingRefundCount();
 

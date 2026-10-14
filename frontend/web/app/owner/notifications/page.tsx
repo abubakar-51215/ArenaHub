@@ -8,12 +8,14 @@
  * arena name and reason in their body, shown in full. The list is the
  * latest 50, as before. Empty state: the prototype's icon-and-text block.
  */
+import { useRouter } from "next/navigation";
 import { AlertCircle, Bell, CalendarCheck, CalendarX, Clock, ShieldAlert, ShieldCheck, Trash2, Wallet } from "lucide-react";
 
 import { AdminCard, AdminEmpty, AdminTag } from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
 import { useNotificationActions, useNotifications } from "@/hooks/useNotifications";
+import { ownerNoticeTarget } from "@/lib/notice-target";
 import { cn } from "@/lib/utils";
 import type { AppNotification } from "@/services/notifications";
 
@@ -64,8 +66,12 @@ export default function OwnerNotificationsPage() {
   const unread = data?.unread_count ?? 0;
   const total = data?.total ?? notifications.length;
 
+  const router = useRouter();
+  // a tap marks the notice read and opens what it is about (the booking list, refunds, the review), as on the phone
   function onOpen(n: AppNotification) {
     if (!n.read_at) markRead.mutate(n.id);
+    const target = ownerNoticeTarget(n);
+    if (target) router.push(target);
   }
 
   return (
@@ -109,7 +115,7 @@ export default function OwnerNotificationsPage() {
                       type="button"
                       className={cn("ah-note-row", !n.read_at && "is-unread")}
                       onClick={() => onOpen(n)}
-                      aria-label={n.read_at ? undefined : `${n.title}, unread. Mark as read`}
+                      aria-label={`${n.title}${n.read_at ? "" : ", unread"}${ownerNoticeTarget(n) ? ". Open" : n.read_at ? "" : ". Mark as read"}`}
                     >
                       <span className={cn("ah-note-ico", `ah-note-${tone}`)} aria-hidden="true">
                         <Icon className="size-4" />

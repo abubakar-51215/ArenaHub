@@ -11,6 +11,7 @@
  * KPI strip totals.
  */
 import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { AdminBadge, AdminCard, AdminEmpty, AdminPerson, AdminTableFoot, statusLabel } from "@/components/admin/ui";
@@ -89,7 +90,8 @@ function Bookings() {
   const setCourtId = (v: string) => setScoped({ arena: arenaId, courtId: v, page: 1 });
   const setPage = (p: number) => setScoped({ arena: arenaId, courtId, page: p });
 
-  const [status, setStatus] = useState("");
+  const askedStatus = useSearchParams().get("status") ?? "";
+  const [status, setStatus] = useState(STATUSES.includes(askedStatus as BookingStatus) ? askedStatus : "");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
