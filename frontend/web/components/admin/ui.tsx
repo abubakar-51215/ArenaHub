@@ -4,6 +4,9 @@
  * [data-admin]; these components only supply the prototype's markup.
  */
 import { cn } from "@/lib/utils";
+import { statusLabel } from "@/lib/status-words";
+
+export { statusLabel };
 
 /* ---- status badge ----------------------------------------------------------
    Prototype colours carry meaning: lime-deep = done/ok, amber = waiting,
@@ -39,19 +42,6 @@ const TONE: Record<string, Tone> = {
   suspended: "off",
   inactive: "idle",
 };
-
-const LABEL: Record<string, string> = {
-  pending_payment: "Awaiting payment",
-  pending_approval: "Pending approval",
-  under_review: "Under review",
-  in_progress: "In progress",
-  partially_refunded: "Part refunded",
-  no_show: "No-show",
-};
-
-export function statusLabel(status: string): string {
-  return LABEL[status] ?? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ");
-}
 
 export function AdminBadge({
   status,
