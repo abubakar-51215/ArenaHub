@@ -64,14 +64,14 @@ export function LineChart({
       {last && (
         <>
           <circle cx={last[0]} cy={last[1]} r="5.5" fill="var(--lime)" stroke="var(--ink)" strokeWidth="2" />
-          <text x={last[0] - 8} y={last[1] - 14} textAnchor="end" fontSize="11" fontWeight="700" fill="var(--text)">
+          <text x={last[0] - 8} y={last[1] - 14} textAnchor="end" fontSize="12" fontWeight="700" fill="var(--text)">
             {tip}
           </text>
         </>
       )}
       {labels.map((l, i) =>
         l && a.pts[i] ? (
-          <text key={i} x={a.pts[i][0]} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--muted-foreground)">
+          <text key={i} x={a.pts[i][0]} y={H - 6} textAnchor="middle" fontSize="12" fill="var(--muted-foreground)">
             {l}
           </text>
         ) : null,
@@ -106,10 +106,11 @@ export function Donut({
     <div className="ah-row" style={{ gap: 22, alignItems: "center" }}>
       <svg width="132" height="132" viewBox="0 0 132 132" style={{ flex: "none" }} role="img" aria-label={label}>
         {shares.map((s, i) => {
+          // two shares can carry the same label for a moment (names still loading): key by place too
           const len = (C * s.pct) / 100;
           const seg = (
             <circle
-              key={s.label}
+              key={`${s.label}-${i}`}
               cx="66"
               cy="66"
               r={R}
@@ -127,13 +128,13 @@ export function Donut({
         <text x="66" y="63" textAnchor="middle" fontFamily="var(--font-archivo), sans-serif" fontSize="20" fontWeight="700" fill="var(--text)">
           {centre ?? total.toLocaleString("en-US")}
         </text>
-        <text x="66" y="78" textAnchor="middle" fontSize="9.5" fill="var(--muted-foreground)" letterSpacing="1">
+        <text x="66" y="78" textAnchor="middle" fontSize="12" fill="var(--muted-foreground)" letterSpacing="1">
           {caption}
         </text>
       </svg>
       <ul className="ah-legend-list">
         {shares.map((s, i) => (
-          <li key={s.label}>
+          <li key={`${s.label}-${i}`}>
             <i style={{ background: colours[i % colours.length] }} />
             {s.label}
             <b>{s.pct}%</b>
@@ -150,7 +151,7 @@ export function HourBars({ data, peakIdx }: { data: { label: string; value: numb
   return (
     <div className="ah-bars">
       {data.map((d, i) => (
-        <div key={d.label} className="ah-bar-col" title={d.title}>
+        <div key={`${d.label}-${i}`} className="ah-bar-col" title={d.title}>
           <div className={cn("ah-bar", i === peakIdx && "is-peak")} style={{ height: `${(d.value / max) * 100}%` }} />
           <div className="ah-bar-lbl">{d.label}</div>
         </div>
