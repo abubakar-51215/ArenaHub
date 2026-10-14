@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Eyebrow, IconTile, Line, Note } from '@/components/booking/parts';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
-import { ErrorCopy } from '@/components/ui/state-view';
+import { ArenaNotFound, ErrorCopy } from '@/components/ui/state-view';
 import { Card } from '@/components/ui/card';
 import { CourtArt } from '@/components/ui/court-art';
 import { Icon } from '@/components/ui/icon';
@@ -21,6 +21,7 @@ import { sportLabel } from '@/constants/sports';
 import { useArena, useArenaCourts, useArenaRating } from '@/hooks/useArenas';
 import { ApiError } from '@/lib/api';
 import { hoursLabel, longDate, parseSlots, timeRange } from '@/lib/checkout';
+import { arenaLinkProblem } from '@/lib/deeplink';
 import { formatRs } from '@/lib/money';
 import { previewBooking } from '@/services/bookings';
 import { listArenaEquipment } from '@/services/equipment';
@@ -73,6 +74,17 @@ export default function ReviewBookingScreen() {
       pathname: '/booking/payment',
       params: { courtId, arenaId, slots: slotsParam, equipment: JSON.stringify(picked) },
     });
+
+  // a link with no arena, or to an arena or court that is gone: say so, with a way Home
+  const statusOf = (e: unknown) => (e instanceof ApiError ? e.status : null);
+  if (arenaLinkProblem({ arenaId, courtId, courts: courts.data, errorStatuses: [statusOf(arena.error), statusOf(courts.error)] })) {
+    return (
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Review booking" />
+        <ArenaNotFound />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>

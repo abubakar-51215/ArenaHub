@@ -41,3 +41,20 @@ export function takePendingLink(): string | null {
 /** Whether a kept link suits the person who signed in: admins only reopen admin screens, players never do. */
 export const linkFitsRole = (path: string, role: string | undefined): boolean =>
   role === 'admin' ? path === '/admin' || path.startsWith('/admin/') : !(path === '/admin' || path.startsWith('/admin/'));
+
+/**
+ * Whether a slot or Review booking link points at an arena we can show: "not-found" when the link has no arena, the
+ * arena or the court answers 404 (removed, suspended or never existed), or the court in the link is not one of that
+ * arena's courts. A network failure is not "not found" (the screen offers Try again instead).
+ */
+export function arenaLinkProblem(link: {
+  arenaId?: string | null;
+  courtId?: string | null;
+  courts?: { id: string }[] | null;
+  errorStatuses?: (number | null | undefined)[];
+}): 'not-found' | null {
+  if (!link.arenaId || !link.courtId) return 'not-found';
+  if ((link.errorStatuses ?? []).some((s) => s === 404)) return 'not-found';
+  if (link.courts && !link.courts.some((c) => c.id === link.courtId)) return 'not-found';
+  return null;
+}
