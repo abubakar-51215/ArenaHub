@@ -17,13 +17,15 @@ from app.modules.arena.model import ArenaCity, ArenaStatus, DiscountType
 # ISO weekday keys accepted in operating_hours.
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 _TIME_RE = r"^([01]\d|2[0-3]):[0-5]\d$"
+# a closing time may also be "24:00" (midnight; "23:59" means the same, see slot generation)
+_CLOSE_RE = r"^(([01]\d|2[0-3]):[0-5]\d|24:00)$"
 
 
 class DayHours(BaseModel):
     """Open/close for a single day, "HH:MM" 24-hour. Omit a day = closed."""
 
     open: str = Field(pattern=_TIME_RE)
-    close: str = Field(pattern=_TIME_RE)
+    close: str = Field(pattern=_CLOSE_RE)
 
     @model_validator(mode="after")
     def _close_after_open(self) -> "DayHours":

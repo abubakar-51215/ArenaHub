@@ -14,7 +14,8 @@ export function formatRs(value: string | number): string {
 
 /** "19:00:00" → "7:00 PM". */
 export function formatTime(hms: string): string {
-  const [h, m] = hms.split(":").map(Number);
+  // the last hour of the day ends at 23:59:59 (a closing time may be "23:59" or "24:00"): midnight
+  const [h, m] = (hms.slice(0, 5) >= "23:59" ? "00:00" : hms).split(":").map(Number);
   const period = h >= 12 ? "PM" : "AM";
   const hour12 = h % 12 || 12;
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;

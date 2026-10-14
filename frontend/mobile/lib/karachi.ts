@@ -98,9 +98,12 @@ export function formatDate(at: Date | string, now: Date = new Date()): string {
   return p.year === karachiParts(now).year ? base : `${base} ${p.year}`;
 }
 
+/** The last hour of the day ends at 23:59:59 (or a closing time of "23:59"/"24:00"): shown as midnight, "00:00". */
+export const asClock = (time: string): string => (time.slice(0, 5) >= '23:59' ? '00:00' : time);
+
 /** "6:00 PM" from "18:00" or "18:00:00". */
 export function formatClock(hhmm: string): string {
-  const [h, m] = hhmm.split(':').map(Number);
+  const [h, m] = asClock(hhmm).split(':').map(Number);
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`;
 }

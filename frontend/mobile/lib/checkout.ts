@@ -1,3 +1,5 @@
+import { asClock } from '@/lib/karachi';
+
 /** A slot as Pick a slot passes it on. */
 export interface SelectedSlot {
   id: string;
@@ -52,7 +54,7 @@ export function shortDate(iso: string): string {
 }
 
 function clock(time: string): { text: string; suffix: string } {
-  const [h, m] = time.split(':').map(Number);
+  const [h, m] = asClock(time).split(':').map(Number);
   return { text: `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')}`, suffix: h >= 12 ? 'PM' : 'AM' };
 }
 

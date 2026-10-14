@@ -47,6 +47,9 @@ eq('formatDayLong', K.formatDayLong('2026-05-22'), 'Friday 22 May');
 eq('clock evening', K.formatClock('18:00:00'), '6:00 PM');
 eq('clock just after midnight', K.formatClock('00:05'), '12:05 AM');
 eq('clock noon', K.formatClock('12:00'), '12:00 PM');
+eq('the last hour ends at midnight', K.formatClock('23:59:59'), '12:00 AM');
+eq('a closing time of 24:00 is midnight', K.formatClock('24:00'), '12:00 AM');
+eq('23:00 stays 11 PM', K.formatClock('23:00:00'), '11:00 PM');
 
 // "has started" compares Karachi wall clock, not the phone's
 const now = at('2026-10-11T12:00:00Z'); // 17:00 in Karachi
