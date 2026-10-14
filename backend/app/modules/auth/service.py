@@ -73,23 +73,63 @@ def _issue_tokens(user: User) -> TokenResponse:
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
+    """A new account, or a new start for one that was never confirmed.
+
+    A confirmed account holding the email or the phone refuses ("... is already registered.").
+    An account that was NEVER confirmed (nobody proved the email) is replaced instead: new name,
+    email, password and role, its old codes and earlier passwords forgotten, a new code sent.
+    This is how "Wrong email? Use a different email" works, and why a mistyped sign-up never
+    blocks the real owner of that email or phone. The answer is the same as for a brand-new
+    account, so nothing tells whether an unconfirmed account was there. The hourly code maximum
+    still applies to the replaced account."""
     validate_password_strength(data.password)
-    if await repo.get_user_by_email(db, data.email):
+    by_email = await repo.get_user_by_email(db, data.email)
+    if by_email is not None and by_email.is_verified:
         raise ConflictError("Email is already registered.")
-    if await repo.get_user_by_phone(db, data.phone):
+    by_phone = await repo.get_user_by_phone(db, data.phone)
+    if by_phone is not None and by_phone.is_verified:
         raise ConflictError("Phone number is already registered.")
 
     password_hash = hash_password(data.password)
-    user = await repo.create_user(
-        db,
-        full_name=data.full_name,
-        email=data.email,
-        phone=data.phone,
-        password_hash=password_hash,
-        role=UserRole(data.role),
-    )
+    replaced = by_phone or by_email
+    if replaced is None:
+        user = await repo.create_user(
+            db,
+            full_name=data.full_name,
+            email=data.email,
+            phone=data.phone,
+            password_hash=password_hash,
+            role=UserRole(data.role),
+        )
+    else:
+        recent = await repo.count_recent_otps(
+            db, replaced.id, OtpPurpose.registration, timedelta(hours=1)
+        )
+        if recent >= codes.CODES_PER_HOUR:
+            raise TooManyRequestsError(codes.TOO_MANY_CODES_MESSAGE)
+        if by_email is not None and by_phone is not None and by_email.id != by_phone.id:
+            # two never-confirmed sign-ups (one held this email, the other this phone): the
+            # phone's account carries on and the other one goes (it owns nothing: it could not
+            # sign in)
+            await db.delete(by_email)
+            await db.flush()
+        user = replaced
+        user.full_name = data.full_name
+        user.email = data.email
+        user.phone = data.phone
+        user.password_hash = password_hash
+        user.role = UserRole(data.role)
+        user.pending_email = None
+        user.pending_phone = None
+        user.pending_password_hash = None
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        await repo.end_all_otps(db, user.id, _now())
+        await repo.clear_password_history(db, user.id)
     await repo.add_password_history(db, user.id, password_hash)
     await db.commit()
+    if replaced is not None:
+        await tokens.bump_session_epoch(str(user.id))  # nothing can be open, but never trust it
     # the account exists even if the email cannot go out: the screen then offers Resend.
     # (No per-address wait starts here: a resend right after sign-up must look the same as
     # one for an address nobody used; the account's own 60 s rule keeps it quiet.)
@@ -115,8 +155,9 @@ async def verify_otp(db: AsyncSession, data: OtpVerifyRequest) -> TokenResponse:
 async def resend_otp(db: AsyncSession, email: str) -> bool:
     """A new sign-up code. Every address gets the same answers (the wait and the hourly
     maximum are counted per address first); the account is looked up only after that, and an
-    unknown or already confirmed address simply gets nothing. Returns False only when a code
-    was made but its email could not be sent (that try then does not count)."""
+    unknown or already confirmed address simply gets nothing. Returns False when a code was made
+    but its email could not be sent (logged; that try does not count). The route answers the
+    same either way, so even an email outage does not tell whether an account exists."""
     await codes.throttle_public(OtpPurpose.registration, email)
     user = await repo.get_user_by_email(db, email)
     if user is None or user.is_verified or user.deleted_at is not None:
