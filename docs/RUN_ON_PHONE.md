@@ -241,3 +241,42 @@ have one.
 | More, Payments and refunds, Refunds: Mark as paid | The sheet shows player, booking and amount; the toast says the player has been told; a second tap does nothing. |
 | More, Log out | Red sheet with "Stay"; after logging out you cannot go back into admin screens. |
 | Sign in as a player and type an admin address (web build) | No admin screen shows. |
+
+## 12. This round: Google button, field sizes, wrong email, smart search, assistant
+
+Real email: `scripts/send_test_email.py` still says "Refused: email sending is not set up (EMAIL_PASSWORD is not set)."
+Until you fill `backend\.env` (section 7, "Real email"), the codes are in the backend terminal (`code_dev_delivery`).
+
+| Try | You should see |
+|---|---|
+| Log in, tap **Continue with Google** in Expo Go | The toast "Google sign-in is not available yet." The button stays. (Google needs a development build and the Google Cloud set-up: docs/BEFORE_GOING_LIVE.md, "Decide at the very end", item 5.) |
+| Turn on airplane mode on Log in | The Google button says "Google needs a connection". |
+| Create account | "Sign up with Google" at the top, then "or sign up with email" and the form. |
+| Every text field with an icon (Log in, Create account, Forgot password, the new password step, Search) | 48 tall with a small 20px icon, empty or typed, tapped or not. No huge icons, nothing grows or shrinks. |
+| Sign up with a mistyped email, then on the code screen tap **Wrong email? Use a different email** | Back on Create account: "Change your email, then continue. We will send a new code."; your name, email and phone are still there. Fix the email, tap Continue: a new code goes to the new address and signing in works. |
+| Search: type a sentence and tap search | "We understood:" chips; tap x on a chip and the results change at once. Try these 10: |
+| | 1. `futsal in gulberg tonight under 3000` |
+| | 2. `cheap cricket lahore tomorrow evening` |
+| | 3. `padel near me after 6pm` (turn location on) |
+| | 4. `best badminton dha this weekend` |
+| | 5. `5-a-side under 2,500 at 8` |
+| | 6. `kal raat sasta futsal` |
+| | 7. `table tennis below 2k morning` |
+| | 8. `sab se acha squash karachi` |
+| | 9. `padel in gulberg tonight under 1000` (nothing matches: "Remove price" and "Remove time") |
+| | 10. the name of an arena, for example `goal line` ("Showing arenas that match ...") |
+| Profile, Help and support | "Ask the ArenaHub assistant" card at the top. |
+| The assistant: tap the four starter chips, then type these 12 | |
+| | 1. `When is my next booking?` (your real booking, with Open booking) |
+| | 2. `How do I cancel it?` (your booking's own refund rule) |
+| | 3. `Can I move it?` |
+| | 4. `Where is my refund?` (real amount and code, no days promised) |
+| | 5. `How do I pay by bank transfer?` |
+| | 6. `Why is my booking awaiting payment?` |
+| | 7. `How many bookings do I have?` |
+| | 8. `How do I join a match?` |
+| | 9. `meri agli booking kab hai` (Roman Urdu) |
+| | 10. `paise wapas kab milenge` (Roman Urdu) |
+| | 11. `How do I delete my account?` |
+| | 12. `Can you change my arena owner?` ("I am not sure about that one. ..." with New complaint) |
+| Airplane mode in the assistant | The box says "Needs a connection"; the banner says you are offline. |

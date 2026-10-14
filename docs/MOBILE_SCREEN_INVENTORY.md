@@ -133,3 +133,26 @@ health screen), `static-map` (not used by any screen yet).
 * Start-up "Try again" (Log in, when the server could not be reached): when it works, the screen that was open comes back
   (player screens for a player, admin screens for an admin) instead of Home.
 * Refund notices name the booking: "... for your booking on Tue 13 Oct at 7:00 PM".
+
+## Added and changed in the Google, smart search and assistant round (2026-10-14)
+
+Frames: `design/prototypes/arena-hub-player-app-google.html` (G), `arena-hub-player-app-smart.html` (S) and
+`arena-hub-player-app-auth-2-fixed.html` (A2F, replaces `arena-hub-player-app-auth-2.html`).
+
+| Screen or state | Route / file | Frame |
+|---|---|---|
+| Every icon field 48px with a 20px icon, no idle state (Log in, Create account, Forgot password, new password, Search) | `components/ui/field.tsx`, `components/search/search-bar.tsx`; checked by `scripts/field-check.mjs` | A2F 1 to 4, G 1 |
+| Log in with "or" and **Continue with Google**; Google loading; not available (toast); failed (toast); suspended and must-use-password (red box); offline "Google needs a connection" | `app/(auth)/login.tsx`, `components/auth/google-button.tsx`, `lib/google-sign-in.ts` | G 1, 2, 8 to 12 |
+| Create account with **Sign up with Google** and "or sign up with email" | `app/(auth)/register.tsx` | G 3 |
+| One more step (empty, filled, number used, loading); "Use a different account" signs out | `app/one-more-step.tsx` (root layout guard `needsPhone`) | G 4 to 7 |
+| Code screen with "Wrong email? Use a different email"; button "Confirm" | `app/(auth)/verify-otp.tsx` | G 13 |
+| Create account, back to the form: "Change your email, then continue. We will send a new code.", details kept, Continue | `app/(auth)/register.tsx` | G 14 |
+| Search: "We understood:" chips with x, slot words on rows ("3 slots tonight") | `app/(tabs)/results.tsx`, `hooks/useResults.ts`, `components/venue.tsx` | S 1, 2 |
+| Search, nothing matches: Remove price / Remove time where they apply | `app/(tabs)/results.tsx` (`NothingMatches`) | S 3 |
+| Search, not understood: "Showing arenas that match ..." | `app/(tabs)/results.tsx` | S 4 |
+| Help and support: "Ask the ArenaHub assistant" card at the top | `app/support/index.tsx` | S 5 |
+| Assistant: start, answer with action, typing (10 s), not sure, offline, could not answer (Try again), refund answer | `app/support/assistant.tsx`, `services/assistant.ts` | S 6 to 12 |
+| Play opens on My matches from the assistant (`?tab=mine`) | `app/(tabs)/play.tsx` | (no new frame; the existing tab) |
+
+Not built because no frame shows it: a message telling a person that Google confirmed an earlier unconfirmed sign-up
+and removed its password (the server says it in its answer; the phone shows nothing extra).
