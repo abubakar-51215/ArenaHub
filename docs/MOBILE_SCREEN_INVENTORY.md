@@ -118,3 +118,18 @@ health screen), `static-map` (not used by any screen yet).
 * Admin Payments list shows the booking code (AHB-xxxxxx) first, then the player and the method.
 * Lines such as "Arena · Court · Time" skip empty parts (`lib/text.ts` `dotJoin`; web `joinParts`).
 * Web admin reason boxes (reject, suspend arena, suspend user) stop at 500 characters and show "n / 500"; the minimum is 1.
+
+## Changed in the integration-test follow-up (2026-10-14)
+
+* Text size: information text (tags, chips, prices, badges, slot times and prices, the photo count, the map credit, the idle
+  field label) is 14px; decorative micro labels (uppercase eyebrows, tab labels, weekday letters, the password bullet, avatar
+  initials) are 12px. The area line on narrow venue cards may wrap to two lines; the admin tab bar fits its 12px labels; text
+  fields fill their boxes (44px tap); the search box is 46 tall. Rule: `docs/MOBILE_QA_GATE.md`.
+* `admin/(tabs)/approvals`, `admin/(tabs)/complaints`, `admin/arenas`, `admin/payments` (both tabs) and `admin/notifications`:
+  50 rows at a time with "Showing 50 of N" and **Show more** (`hooks/useAdminPages.ts`, `ShowMore` in `components/admin/kit.tsx`),
+  like `admin/users`.
+* `booking/bank/[groupId]` and `profile/edit`: the photo picker is `lib/pick-photo.ts`. On the web build a non-photo file gets
+  "That file is not a photo we can use. Use a JPG or PNG up to 5 MB." instead of a stuck picker (phones use expo-image-picker).
+* Start-up "Try again" (Log in, when the server could not be reached): when it works, the screen that was open comes back
+  (player screens for a player, admin screens for an admin) instead of Home.
+* Refund notices name the booking: "... for your booking on Tue 13 Oct at 7:00 PM".

@@ -57,7 +57,7 @@ npx expo start --clear
 - If it says **"could not connect"** or the page never loads:
   1. Check the phone is on the same Wi-Fi (step 2).
   2. Open `http://<IP>:8081` in the phone browser. If it does not open, it is the firewall (step 6) or Wi-Fi isolation (try another Wi-Fi or the phone's hotspot with the computer joined to it).
-  3. `npx expo start --tunnel` is a last resort. It needs one extra install the first time (Expo asks to install `@expo/ngrok`; answer yes). **The tunnel only carries the app code (Metro). It does not carry the backend.** The phone still has to reach the backend, so with a tunnel you also need a tunnel for port 8000 (for example `ngrok http 8000`) and `EXPO_PUBLIC_API_URL` set to that https address. The normal same-Wi-Fi way is simpler.
+  3. `npx expo start --tunnel` is a last resort. It needs one extra install the first time (Expo asks to install `@expo/ngrok`; answer yes). **The tunnel only carries the app code (Metro). It does not carry the backend.** The phone still has to reach the backend, so with a tunnel you also need a tunnel for port 8000 (for example `ngrok http 8000`) and `EXPO_PUBLIC_API_URL` set to that https address. The normal same-Wi-Fi way is simpler. With a tunnel for port 8000, every request reaches the backend from the tunnel program on this computer, so start the backend with `TRUSTED_PROXIES=127.0.0.1` (the rate limit is then counted per phone, not shared by all of them). On the same Wi-Fi nothing is needed.
 
 ## 6. Windows Firewall (you do this yourself; I did not change it)
 

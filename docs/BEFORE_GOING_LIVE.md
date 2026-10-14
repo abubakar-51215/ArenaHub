@@ -66,3 +66,29 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
    still shows every slot; nothing else calls the public route. Booking or pricing a started slot answers 409 "One of the selected
    slots is no longer available." (this check did not exist before; it only worked because past slots were usually not "available").
 3. **Owner notices "Your arena is approved" and "Your arena was not approved": decided, they stay.**
+
+## Decided (integration-test follow-up, 2026-10-14)
+
+4. **Discount use: decided.** Applying a code at Pay reserves one use for that booking (`bookings.discount_code_id`, migration
+   `d5a9c2e7f1b3`; older bookings stay NULL). The reservation counts toward the code's limit while the booking waits for payment or
+   for the owner's check, so a limited code is never used more times than its limit (two players at once: one gets it, the other is
+   told "This code has been used up."). When the booking is confirmed the use is permanent. It is given back, once and never below
+   zero (`bookings.discount_released_at`), when the booking is abandoned, expires unpaid, the receipt is rejected, the player cancels
+   before payment is confirmed, or the arena is suspended before payment. **After a confirmed booking is cancelled, the use stays
+   counted (the code was used).** Backup taken before the dev migration:
+   `backend/backups/arenahub-20261013-235404-before-discount-reservation.dump` (restore-checked, then the check database dropped).
+5. **Rate limiter: decided.** The limit is counted on the real connection address. `X-Forwarded-For` is read only when the
+   connection comes from an address in `TRUSTED_PROXIES` (addresses or ranges, empty by default), walking from the right and skipping
+   the trusted hops; a malformed header falls back to the proxy's address. The limit numbers are unchanged. See item 8 in the list at
+   the top.
+6. **Suspension refunds: decided.** Suspending or removing an arena refunds once per booking group, not once per hour: one refund
+   row, one "Refund initiated" and one "Booking cancelled" for the player, one "A refund is waiting for you" for the owner, one line in
+   the owner Refunds tab and in the admin Refunds list. Only paid or part-paid groups get a refund, of what was paid for the cancelled
+   hours and never more (a group that already has a pending or processed refund only gets what is left). A receipt still waiting for
+   the owner becomes one pending refund of the full amount. Unpaid bookings are cancelled with no refund row. A single slot still
+   refunds its own share; the player's own group-cancel policy is unchanged.
+7. **Text size: decided.** Phone: any text that carries information (tags, chips, prices, labels, status words, badges, row details)
+   is at least 14px; purely decorative micro labels (uppercase eyebrow lines, tab-bar labels, weekday letters, the password-rule
+   bullet, avatar initials) may be smaller but never below 12px. Owner and admin web: no text below 12px; dashboard density is
+   unchanged. See `docs/MOBILE_QA_GATE.md`.
+8. **Currency symbol: decided.** The owner and admin web write "Rs." and the phone and every notice write "₨", as in the prototypes.
