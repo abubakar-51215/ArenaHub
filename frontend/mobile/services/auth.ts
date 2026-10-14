@@ -7,6 +7,10 @@ export interface AdminChallenge {
   mfa_required: true;
   challenge_token: string;
   expires_in: number;
+  /** The masked address the code went to. */
+  sent_to: string;
+  /** false when the email could not be sent. */
+  code_sent: boolean;
 }
 
 export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChallenge {
@@ -111,8 +115,9 @@ export function verifyPhoneChange(code: string): Promise<User> {
   return api.post<User>("/users/me/phone/verify", { code });
 }
 
-export function requestEmailChange(newEmail: string): Promise<null> {
-  return api.post<null>("/users/me/email", { new_email: newEmail });
+/** The password is checked again before a code goes to the new address; the old address stays until it is used. */
+export function requestEmailChange(newEmail: string, currentPassword: string): Promise<null> {
+  return api.post<null>("/users/me/email", { new_email: newEmail, current_password: currentPassword });
 }
 
 export function verifyEmailChange(code: string): Promise<User> {

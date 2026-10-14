@@ -4,60 +4,52 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AuthScreen } from '@/components/auth/auth-screen';
+import { useCodeEntry } from '@/components/auth/use-code-entry';
 import { FieldMessage } from '@/components/auth/field-message';
 import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-rules';
 import { Button, useButtonStatus } from '@/components/ui/button';
-import { CodeBoxes } from '@/components/ui/code-boxes';
 import { ConfirmTick } from '@/components/ui/confirm-tick';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
-import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
-import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
+import { formatCountdown } from '@/hooks/use-countdown';
 import { ApiError } from '@/lib/api';
 import { forgotPassword, resetPassword } from '@/services/auth';
 import { maskEmail } from '@/store/admin-challenge';
 
 // Frames 3 to 6 of arena-hub-player-app-auth-2.html on one route:
-//   code     six boxes, Continue turns dark at 6 digits, Resend after 60 s
+//   code     six boxes (the shared code entry); the sixth digit opens the next step; "Send a new code in 0:42"
 //   password the new password with the live rule list and the eye
 //   done     the tick, "Log in"
-//   failed   "That code did not work": Send a new code / Back to log in
+//   failed   "That code did not work" with the server's own words: Send a new code / Back to log in
 // The API has no separate "check the code" step, so email, code and password
 // go together once, at the end of the password step. A code the server
 // refuses is therefore found there and ends on the failed screen; the typed
 // password stays in memory while the user asks for a new code.
 type Step = 'code' | 'password' | 'done' | 'failed';
-const RESEND_WAIT = 60;
 
-/** Server messages about the code itself (as opposed to the password). */
+/** The server's messages about the code itself (as opposed to the password): app/shared/codes.py. */
 function isCodeProblem(err: unknown): boolean {
-  return err instanceof ApiError && /verification code|too many incorrect attempts/i.test(err.message);
+  return err instanceof ApiError && /code is not right|too many wrong tries/i.test(err.message);
 }
 
 export default function ResetPasswordScreen() {
   const { email } = useLocalSearchParams<{ email?: string }>();
   const [step, setStep] = useState<Step>('code');
-  const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [failMessage, setFailMessage] = useState<string | null>(null);
   const [btnStatus, flash] = useButtonStatus();
-  const wait = useCountdown(RESEND_WAIT); // the code was just sent by the screen before this one
+  const masked = email ? maskEmail(email) : '';
 
-  const resend = useMutation({
-    mutationFn: () => forgotPassword(email!),
-    onSuccess: () => {
-      setError(null);
-      setCode('');
-      showToast(`New code sent to ${maskEmail(email!)}`);
-      wait.restart();
-      setStep('code');
-    },
-    onError: (err) => {
-      flash('error');
-      setError(err instanceof ApiError ? err.message : 'Could not send a new code. Check your connection.');
-    },
+  // the code was just sent by the screen before this one, so the 60 s wait starts now
+  const entry = useCodeEntry({
+    sentTo: masked,
+    onVerify: async () => setStep('password'),
+    onResend: () => forgotPassword(email!),
+    onResent: () => setStep('code'),
   });
+  const code = entry.code;
 
   const submit = useMutation({
     mutationFn: () => resetPassword(email!, code, password),
@@ -68,6 +60,7 @@ export default function ResetPasswordScreen() {
     onError: (err) => {
       flash('error');
       if (isCodeProblem(err)) {
+        setFailMessage((err as ApiError).message);
         setStep('failed');
       } else if (err instanceof ApiError) {
         setError(err.message); // e.g. "You cannot reuse one of your last 3 passwords."
@@ -78,7 +71,6 @@ export default function ResetPasswordScreen() {
   });
 
   if (!email) return <Redirect href="/(auth)/forgot-password" />;
-  const masked = maskEmail(email);
 
   if (step === 'done') {
     return (
@@ -102,21 +94,20 @@ export default function ResetPasswordScreen() {
         subtitle="The code may be wrong, expired or already used. Your new password was not saved."
         onBack={() => setStep('code')}>
         <View style={styles.note} accessibilityRole="alert">
-          <Text style={styles.noteText}>For safety we do not say which one it was. Ask for a new code and try again.</Text>
+          <Text style={styles.noteText}>{failMessage ?? 'Ask for a new code and try again.'}</Text>
         </View>
         <View style={styles.stack}>
           {/* the server sends no new code inside 60 s of the last one, so the button waits
               for the same timer (the frame's grey "Send a new code in 0:41") */}
           <Button
-            title={wait.running ? `Send a new code in ${formatCountdown(wait.remaining)}` : 'Send a new code'}
-            disabled={wait.running}
-            loading={resend.isPending}
-            status={btnStatus}
-            onPress={() => resend.mutate()}
+            title={entry.waiting ? `Send a new code in ${formatCountdown(entry.remaining)}` : 'Send a new code'}
+            disabled={entry.waiting}
+            loading={entry.resending}
+            onPress={entry.askAgain}
           />
           <Button title="Back to log in" variant="ghost" onPress={() => router.dismissTo('/(auth)/login')} />
         </View>
-        {error ? <FieldMessage>{error}</FieldMessage> : null}
+        {entry.error ? <FieldMessage>{entry.error}</FieldMessage> : null}
       </AuthScreen>
     );
   }
@@ -163,7 +154,6 @@ export default function ResetPasswordScreen() {
     );
   }
 
-  const full = code.length === 6;
   return (
     <AuthScreen
       title="Enter the code"
@@ -173,42 +163,11 @@ export default function ResetPasswordScreen() {
           If an account exists for <Text style={styles.strong}>{masked}</Text>, a 6-digit code is on its way.
         </>
       }>
-      <CodeBoxes
-        value={code}
-        onChange={(c) => {
-          setCode(c);
-          setError(null);
-            }}
-        autoFocus
-        onSubmit={() => full && setStep('password')}
-      />
-      {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
+      {entry.boxes}
       <View style={styles.button}>
-        <Button title="Continue" disabled={!full} onPress={() => setStep('password')} />
+        <Button title="Continue" disabled={!entry.ready} onPress={entry.confirm} />
       </View>
-      {wait.running ? (
-        <View style={styles.resendRow}>
-          <Text style={styles.resend}>
-            Resend code in <Text style={styles.strong}>{formatCountdown(wait.remaining)}</Text>
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.resendRow}>
-          <Text
-            style={styles.resend}
-            onPress={() => resend.mutate()}
-            accessibilityRole="button"
-            accessibilityLabel="Resend code">
-            {resend.isPending ? (
-              'Sending…'
-            ) : (
-              <>
-                Didn&apos;t get a code? <Text style={styles.strong}>Resend</Text>
-              </>
-            )}
-          </Text>
-        </View>
-      )}
+      <View style={styles.resendRow}>{entry.resendLink}</View>
     </AuthScreen>
   );
 }
@@ -217,10 +176,8 @@ const styles = StyleSheet.create({
   form: { gap: 11 },
   gap: { height: 5 },
   strong: { fontWeight: '700', color: Colors.light.text },
-  error: { fontSize: 14, color: Colors.light.redText, marginTop: 10, paddingHorizontal: 2 },
   button: { marginTop: 20 },
-  resendRow: { marginTop: 3, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
-  resend: { fontSize: 14, color: Colors.light.muted, textAlign: 'center', paddingVertical: 14 },
+  resendRow: { marginTop: 3 },
   tick: { alignItems: 'center', marginTop: 18 },
   doneTitle: { fontSize: 25, lineHeight: 27, fontWeight: '700', letterSpacing: -0.75, color: Colors.light.text, textAlign: 'center', marginTop: 20 },
   doneSub: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, textAlign: 'center', marginTop: 6, marginBottom: 20 },

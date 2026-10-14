@@ -43,7 +43,7 @@ export default function RegisterScreen() {
         () =>
           router.push({
             pathname: '/(auth)/verify-otp',
-            params: { email: result.user.email, sentTo: result.otp_sent_to },
+            params: { email: result.user.email, sentTo: result.otp_sent_to, codeSent: result.code_sent ? '1' : '0' },
           }),
         500,
       );

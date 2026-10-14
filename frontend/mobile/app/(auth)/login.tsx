@@ -14,7 +14,7 @@ import { ApiError, RequestTimeoutError } from '@/lib/api';
 import { linkFitsRole, takePendingLink } from '@/lib/deeplink';
 import { startupLog } from '@/lib/startup-log';
 import { fetchMe, isAdminChallenge, login } from '@/services/auth';
-import { useAdminChallenge } from '@/store/admin-challenge';
+import { maskEmail, useAdminChallenge } from '@/store/admin-challenge';
 import { LOGIN_CALL_TIMEOUT_MS, LOGIN_LOADER_AFTER_MS, LOGIN_LOADER_MAX_MS } from '@/constants/brand';
 import { useWindowedFlag } from '@/hooks/useDelayedFlag';
 import { useAuthStore } from '@/store/auth';
@@ -24,6 +24,9 @@ import { useStartup } from '@/store/startup';
 // or a phone number and is sent as `identifier`; the server answers a wrong
 // password and an unknown account in the same words, so this screen shows the
 // server's message as it is.
+/** The 403 "Verify your email to continue." answer for an account whose email is not confirmed yet. */
+type VerifyEmailData = { email?: string; sent_to?: string; code_sent?: boolean };
+
 export default function LoginScreen() {
   // set when an admin's sign-in step expired (Admin code screen sends them back here)
   const { notice } = useLocalSearchParams<{ notice?: string }>();
@@ -55,7 +58,7 @@ export default function LoginScreen() {
     onSuccess: (r) => {
       if (r.kind === 'admin') {
         // an admin: a code was emailed; the token lives in memory only
-        useAdminChallenge.getState().set(r.challenge.challenge_token, r.who);
+        useAdminChallenge.getState().set(r.challenge.challenge_token, r.challenge.sent_to || maskEmail(r.who), r.challenge.code_sent !== false);
         router.push('/(auth)/admin-code' as Href);
         return;
       }
@@ -70,6 +73,15 @@ export default function LoginScreen() {
       startupLog(`login: failed (${err instanceof Error ? err.message : 'unknown'})`);
       // the account could not be loaded after the password was accepted: do not keep half a sign-in
       if (useAuthStore.getState().accessToken && !useAuthStore.getState().user) useAuthStore.getState().clear();
+      // the email is not confirmed yet: the server sent a fresh code (or says why it could not); the code screen opens
+      const verify = err instanceof ApiError && err.status === 403 ? (err.data as VerifyEmailData | null) : null;
+      if (verify?.email) {
+        router.push({
+          pathname: '/(auth)/verify-otp',
+          params: { email: verify.email, sentTo: verify.sent_to ?? '', codeSent: verify.code_sent ? '1' : '0' },
+        });
+        return;
+      }
       flash('error');
       if (err instanceof ApiError && err.status === 429) {
         setError('Too many attempts. Please wait a minute and try again.');
