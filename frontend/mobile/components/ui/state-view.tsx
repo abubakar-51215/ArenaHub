@@ -1,3 +1,4 @@
+import { router, type Href } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
 
@@ -30,6 +31,24 @@ export function ErrorState({ title, text = 'Check your connection and try again.
       <Text style={styles.text}>{text}</Text>
       <View style={styles.button}>
         <Button title="Try again" onPress={onRetry} />
+      </View>
+    </View>
+  );
+}
+
+/** A link to an arena or court that does not exist (any more): a calm page with a way Home, never a blank screen. */
+export function ArenaNotFound() {
+  return (
+    <View style={styles.state} accessibilityRole="alert">
+      <View style={{ marginBottom: 14 }}>
+        <BrandMark mode="offline" size={74} />
+      </View>
+      <Text variant="archivo" style={styles.title}>
+        We could not find that arena.
+      </Text>
+      <Text style={styles.text}>The link may be old or incomplete.</Text>
+      <View style={styles.button}>
+        <Button title="Go to Home" onPress={() => router.replace('/(tabs)' as Href)} />
       </View>
     </View>
   );

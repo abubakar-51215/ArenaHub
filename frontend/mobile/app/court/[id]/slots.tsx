@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Badge } from '@/components/ui/badge';
 import { BrandMark } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
-import { ErrorCopy } from '@/components/ui/state-view';
+import { ArenaNotFound, ErrorCopy } from '@/components/ui/state-view';
 import { Icon } from '@/components/ui/icon';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ScreenHead } from '@/components/ui/screen-head';
@@ -19,6 +19,8 @@ import { Colors, Font } from '@/constants/theme';
 import { useArenaCourts } from '@/hooks/useArenas';
 import { useCourtSlots } from '@/hooks/useCourtSlots';
 import { useAvailability } from '@/hooks/useSlotsInfo';
+import { ApiError } from '@/lib/api';
+import { arenaLinkProblem } from '@/lib/deeplink';
 import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { groupSlots, hidePast, hourLabel, rangeLabel, slotKind, toggleSlot } from '@/lib/slots';
@@ -150,6 +152,17 @@ export default function SlotSelectionScreen() {
 
   const loading = slotsQuery.isLoading;
   const failed = slotsQuery.isError;
+
+  // a link with no arena, or to an arena or court that is gone: say so, with a way Home
+  const statusOf = (e: unknown) => (e instanceof ApiError ? e.status : null);
+  if (arenaLinkProblem({ arenaId, courtId: courtParam, courts: courts.data, errorStatuses: [statusOf(courts.error), statusOf(slotsQuery.error)] })) {
+    return (
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Date & time" />
+        <ArenaNotFound />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
