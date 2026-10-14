@@ -131,7 +131,8 @@ export function VenueCard({ arena, width }: { arena: Arena; width?: number }) {
 }
 
 /** A list row (Recommended for you, search results). */
-export function VenueRow({ arena }: { arena: Arena }) {
+/** `note` is smart search's free-slot words ("3 slots tonight", arena-hub-player-app-smart.html frame 1). */
+export function VenueRow({ arena, note }: { arena: Arena; note?: string | null }) {
   const sport = firstSport(arena);
   return (
     <PressableScale
@@ -152,9 +153,10 @@ export function VenueRow({ arena }: { arena: Arena }) {
           <Text style={styles.meta}>·</Text>
           <Where arena={arena} />
         </View>
-        {sport ? (
+        {sport || note ? (
           <View style={[styles.line, { marginTop: 4 }]}>
-            <Tag label={sportLabel(sport)} />
+            {sport ? <Tag label={sportLabel(sport)} /> : null}
+            {note ? <Text style={styles.slotNote}>{note}</Text> : null}
           </View>
         ) : null}
       </View>
@@ -170,6 +172,7 @@ export function VenueRow({ arena }: { arena: Arena }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  slotNote: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   card: {
     backgroundColor: Colors.light.card,
     borderColor: Colors.light.line,
