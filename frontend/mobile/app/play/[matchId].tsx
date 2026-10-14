@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   rowLabel: { fontSize: 14, color: Colors.light.muted },
   rowValue: { flexShrink: 1, fontSize: 14, color: Colors.light.text, textAlign: 'right' },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
   player: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 14, paddingVertical: 8 },
   playerLine: { borderBottomWidth: 1, borderBottomColor: Colors.light.lineSoft },
   avatar: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.light.lineSoft, alignItems: 'center', justifyContent: 'center' },

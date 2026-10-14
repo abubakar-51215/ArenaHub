@@ -91,7 +91,7 @@ const TOOLTIP_STYLE_BASE = {
 
 export function RevenueTrendChart({ data }: { data: { label: string; amount: number }[] }) {
   const { ref, colors } = useArenaColors<HTMLDivElement>();
-  const tick = { fontSize: 11, fill: colors.mutedForeground };
+  const tick = { fontSize: 12, fill: colors.mutedForeground };
   const tooltipStyle = { ...TOOLTIP_STYLE_BASE, border: `1px solid ${colors.border}` };
 
   return (
@@ -130,7 +130,7 @@ export function RevenueTrendChart({ data }: { data: { label: string; amount: num
 
 export function BookingsByTimeChart({ data }: { data: { hour: number; count: number }[] }) {
   const { ref, colors } = useArenaColors<HTMLDivElement>();
-  const tick = { fontSize: 11, fill: colors.mutedForeground };
+  const tick = { fontSize: 12, fill: colors.mutedForeground };
   const tooltipStyle = { ...TOOLTIP_STYLE_BASE, border: `1px solid ${colors.border}` };
   const rows = data.map((d) => ({ ...d, label: formatHour(d.hour) }));
 

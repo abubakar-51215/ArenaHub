@@ -101,7 +101,7 @@ export function AuthPhotoPanel({ imageSrc, imageAlt, credit, quote, stats }: Aut
       {/* venue credit — small, honest, keeps the photo from feeling like stock filler */}
       <div className="absolute top-[26px] right-[30px] z-[3] flex items-center gap-[7px] rounded-full border border-[rgba(234,246,216,.14)] bg-[rgba(7,16,11,.55)] px-[11px] py-[6px] backdrop-blur-[6px]">
         <span className="size-[6px] rounded-full bg-accent shadow-[0_0_0_3px_rgba(196,245,70,.2)]" />
-        <span className="text-[10.5px] tracking-[0.02em] text-on-ink">{credit ?? "ArenaHub"}</span>
+        <span className="text-[12px] tracking-[0.02em] text-on-ink">{credit ?? "ArenaHub"}</span>
       </div>
 
       <div className="relative z-[2] max-w-[400px]">
@@ -118,7 +118,7 @@ export function AuthPhotoPanel({ imageSrc, imageAlt, credit, quote, stats }: Aut
         {resolvedStats.map((stat) => (
           <div key={stat.label}>
             <b className="metric-sm block text-white">{stat.value}</b>
-            <span className="text-[10.5px] tracking-[0.04em] text-on-ink-faint">{stat.label}</span>
+            <span className="text-[12px] tracking-[0.04em] text-on-ink-faint">{stat.label}</span>
           </div>
         ))}
       </div>

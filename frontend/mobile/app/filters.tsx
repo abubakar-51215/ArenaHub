@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   pad: { paddingHorizontal: 18, paddingBottom: 24 },
   clear: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
-  // uppercase labels are exempt from the 14px rule
-  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
+  // a decorative uppercase label: 12px (the floor for micro labels; information text is 14px)
+  eyebrow: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   hint: { fontSize: 14, color: Colors.light.muted, marginTop: 8 },
   tag: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 11, borderRadius: 6, backgroundColor: Colors.light.lineSoft },

@@ -108,7 +108,7 @@ export function SplitAuthShell({
           <BrandMark />
           <div className="font-display leading-[1.05] font-bold tracking-[-0.01em] text-foreground [font-variation-settings:'wdth'_100]">
             Arena Hub
-            <small className="mt-0.5 block text-[8.5px] tracking-[0.2em] text-muted-foreground uppercase">
+            <small className="mt-0.5 block text-[12px] tracking-[0.2em] text-muted-foreground uppercase">
               {BRAND_SUBTITLE[resolvedVariant]}
             </small>
           </div>

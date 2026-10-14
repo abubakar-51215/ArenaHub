@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },
   taken: { backgroundColor: Colors.light.slotOpen, borderStyle: 'dashed' },
   deal: { borderColor: Colors.light.limeDeep, backgroundColor: Colors.light.limeWash },
-  label: { fontSize: 11.5, fontWeight: '600', textAlign: 'center' },
-  sublabel: { fontSize: 9, fontWeight: '500', marginTop: 2 },
+  label: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  sublabel: { fontSize: 14, fontWeight: '500', marginTop: 2 },
   takenText: { textDecorationLine: 'line-through' },
 });

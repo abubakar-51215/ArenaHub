@@ -302,8 +302,8 @@ const styles = StyleSheet.create({
   strip: { gap: 6, paddingHorizontal: 18, paddingBottom: 2 },
   day: { width: 44, minHeight: 56, paddingVertical: 8, borderRadius: 11, alignItems: 'center', borderWidth: 1, borderColor: Colors.light.line, backgroundColor: Colors.light.card },
   dayOn: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },
-  // the weekday is an uppercase label (exempt from the 14px rule)
-  dayName: { fontSize: 9, letterSpacing: 0.72, textTransform: 'uppercase', color: Colors.light.muted },
+  // the weekday letters are a decorative micro label: 12px
+  dayName: { fontSize: 12, letterSpacing: 0.96, textTransform: 'uppercase', color: Colors.light.muted },
   dayNameOn: { color: Colors.light.lime },
   dayNum: { fontSize: 16, lineHeight: 19, fontWeight: '700', color: Colors.light.text },
   dayNumOn: { color: Colors.light.paper },
@@ -315,8 +315,8 @@ const styles = StyleSheet.create({
   segTextOn: { color: Colors.light.text },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 },
   dayLong: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
-  // uppercase labels are exempt from the 14px rule
-  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginBottom: 8 },
+  // a decorative uppercase label: 12px (the floor for micro labels; information text is 14px)
+  eyebrow: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   pillCell: { width: '31.6%' },
   pill: { paddingVertical: 9, paddingHorizontal: 4, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.line, backgroundColor: Colors.light.card, alignItems: 'center', minHeight: 53 },
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   strike: { textDecorationLine: 'line-through' },
   pillTimeOn: { color: Colors.light.paper },
   // the price under the time is a small label (12px)
-  pillSub: { fontSize: 12, fontWeight: '500', color: Colors.light.muted, marginTop: 2 },
+  pillSub: { fontSize: 14, fontWeight: '500', color: Colors.light.muted, marginTop: 2 },
   pillSubDeal: { color: Colors.light.limeText },
   pillSubOn: { color: Colors.light.lime },
   hint: { fontSize: 14, lineHeight: 20, color: Colors.light.muted, marginTop: 14 },

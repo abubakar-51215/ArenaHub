@@ -12,7 +12,7 @@ import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { useOverview } from '@/hooks/useAdmin';
 
 // The admin tab bar: Overview, Approvals, Complaints, More (frames of arena-hub-admin-app.html). Same bar as the player's
-// (61 px, 11 px labels), with a number on Approvals (arenas waiting) and Complaints (open complaints), "9+" above nine.
+// (61 px, 12 px labels), with a number on Approvals (arenas waiting) and Complaints (open complaints), "9+" above nine.
 const BAR_HEIGHT = 61;
 
 function makeButton(icon: AdminIconName, label: string, count: () => number) {
@@ -85,6 +85,7 @@ export default function AdminTabs() {
 const styles = StyleSheet.create({
   button: { flex: 1, paddingTop: 7 },
   content: { flex: 1, alignItems: 'center', gap: 3 },
-  iconBox: { width: 44, height: 24, alignItems: 'center', justifyContent: 'center' },
-  label: { fontFamily: Font.bodySemi, fontSize: 11, lineHeight: 15, letterSpacing: BodyLetterSpacing },
+  // 20 (icon) + 3 (gap) + 14 (label line) fit the 37 px left inside the 61 px bar (1 px border, 7 px top, 16 px bottom padding)
+  iconBox: { width: 44, height: 20, alignItems: 'center', justifyContent: 'center' },
+  label: { fontFamily: Font.bodySemi, fontSize: 12, lineHeight: 14, letterSpacing: BodyLetterSpacing },
 });

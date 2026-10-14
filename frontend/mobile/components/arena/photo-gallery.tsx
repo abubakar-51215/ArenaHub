@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
   box: { backgroundColor: Colors.light.ink },
   glass: { width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   counter: { position: 'absolute', bottom: 10, right: 14, backgroundColor: 'rgba(10,16,13,0.6)', paddingVertical: 3, paddingHorizontal: 9, borderRadius: 20 },
-  // a small count badge (exempt from the 14px rule)
-  counterText: { fontSize: 11, color: '#FFFFFF' },
+  // the photo count carries information: 14px
+  counterText: { fontSize: 14, color: '#FFFFFF' },
   dots: { position: 'absolute', bottom: 14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)' },
   dotOn: { width: 16, backgroundColor: Colors.light.lime },

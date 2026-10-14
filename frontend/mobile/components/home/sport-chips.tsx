@@ -7,7 +7,7 @@ import { Colors } from '@/constants/theme';
 import { SPORTS } from '@/constants/sports';
 
 // .m-chips / .m-chip of the Home frames: an icon over a small label. The label
-// is a label (exempt from the 14px rule); the chip is at least 58 wide and 44 high.
+// carries information, so it is 14px; the chip is at least 58 wide and 44 high.
 const ICON: Record<string, IconName> = {
   all: 'grid',
   futsal: 'ball',
@@ -61,6 +61,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   on: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },
-  label: { fontSize: 10.5, fontWeight: '600', color: Colors.light.text2 },
+  label: { fontSize: 14, fontWeight: '600', color: Colors.light.text2 },
   labelOn: { color: Colors.light.paper },
 });

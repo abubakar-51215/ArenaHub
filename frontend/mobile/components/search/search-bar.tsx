@@ -82,7 +82,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   field: {
     flex: 1,
-    minHeight: 44,
+    // 46 so the text field inside the 1px border is itself 44 tall
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

@@ -7,7 +7,7 @@ import { Colors } from '@/constants/theme';
 
 // Small pieces the booking and payment frames share (arena-hub-player-app-booking-payment.html).
 
-/** .eyebrow: a small uppercase label above a block (exempt from the 14px rule). */
+/** .eyebrow: a small uppercase label above a block (a decorative micro label, 12px). */
 export function Eyebrow({ children, top = 16 }: { children: ReactNode; top?: number }) {
   return (
     <Text style={[styles.eyebrow, { marginTop: top }]} accessibilityRole="header">
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   secure: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 2.5, paddingHorizontal: 8, borderRadius: 20, backgroundColor: Colors.light.limeWash },
   secureText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   pillText: { fontSize: 14, fontWeight: '600' },
-  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginBottom: 8 },
+  eyebrow: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginBottom: 8 },
   line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingVertical: 5 },
   lineLabel: { fontSize: 14, color: Colors.light.muted, flexShrink: 1 },
   lineValue: { fontSize: 14, fontWeight: '600', color: Colors.light.text, flexShrink: 1, textAlign: 'right' },

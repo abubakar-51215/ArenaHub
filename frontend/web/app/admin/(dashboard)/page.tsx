@@ -447,7 +447,7 @@ export default function AdminDashboardPage() {
             actions={
               <div
                 className="ah-row"
-                style={{ gap: 14, fontSize: 11.5, color: "var(--muted-foreground)" }}
+                style={{ gap: 14, fontSize: 12, color: "var(--muted-foreground)" }}
               >
                 <span className="ah-row" style={{ gap: 5 }}>
                   <i className="ah-legend-swatch" style={{ background: "var(--ink)" }} />
