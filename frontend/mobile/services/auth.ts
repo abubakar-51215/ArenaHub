@@ -30,6 +30,24 @@ export function resendAdminCode(challengeToken: string): Promise<null> {
   return api.post<null>("/auth/admin/resend-code", { challenge_token: challengeToken });
 }
 
+/** Continue with Google: the server checks Google's ID token and answers with a session. */
+export interface GoogleSignIn extends Tokens {
+  /** The account has no phone yet: "One more step" asks for it before anything else. */
+  phone_needed: boolean;
+  /** A sign-up with this email that was never confirmed: Google confirmed it and its password was removed. */
+  password_removed: boolean;
+  user: User;
+}
+
+export function googleSignIn(idToken: string): Promise<GoogleSignIn> {
+  return api.post<GoogleSignIn>("/auth/google", { id_token: idToken });
+}
+
+/** "One more step": the phone of an account made with Google (the sign-up rules apply). */
+export function saveGooglePhone(phone: string): Promise<User> {
+  return api.post<User>("/auth/google/phone", { phone });
+}
+
 export function fetchMe(opts?: { timeoutMs?: number }): Promise<User> {
   return api.get<User>("/users/me", opts);
 }

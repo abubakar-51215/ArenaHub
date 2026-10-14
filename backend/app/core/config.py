@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     # Empty (the default): the header is ignored and the connection address is
     # used, so nobody can pick their own rate-limit bucket by sending the header.
     trusted_proxies: str = Field(default="", alias="TRUSTED_PROXIES")
+    # Continue with Google (players on the phone): the OAuth client ids a Google ID token may be
+    # issued for, comma-separated. Empty (the default) = Google sign-in is off.
+    google_client_ids_raw: str = Field(default="", alias="GOOGLE_CLIENT_IDS")
+
+    @property
+    def google_client_ids(self) -> list[str]:
+        return [c.strip() for c in self.google_client_ids_raw.split(",") if c.strip()]
 
     @property
     def trusted_proxy_networks(self) -> list[IPv4Network | IPv6Network]:

@@ -4,6 +4,8 @@ import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
 import { ScreenLoader } from '@/components/brand/screen-loader';
+import { GoogleButton, useGoogleSignIn } from '@/components/auth/google-button';
+import { OrRule } from '@/components/auth/or-rule';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FieldMessage } from '@/components/auth/field-message';
 import { Button, useButtonStatus } from '@/components/ui/button';
@@ -98,9 +100,15 @@ export default function LoginScreen() {
   // sign-in that takes longer than half a second shows the full-screen loader, and never for longer than 10 seconds
   const slow = useWindowedFlag(mutation.isPending, LOGIN_LOADER_AFTER_MS, LOGIN_LOADER_MAX_MS);
 
+  // Continue with Google (frames 1, 2 and 8 to 12 of arena-hub-player-app-google.html); a refused account's words
+  // show in the red box above the fields (frames 10 and 11)
+  const [refused, setRefused] = useState<string | null>(null);
+  const google = useGoogleSignIn(setRefused);
+
   const submit = () => {
-    if (mutation.isPending) return;
+    if (mutation.isPending || google.busy) return;
     setError(null);
+    setRefused(null);
     if (!identifier.trim() || !password) {
       setError('Enter your email or phone number and your password.');
       flash('error');
@@ -123,6 +131,11 @@ export default function LoginScreen() {
       {notice ? (
         <View style={styles.note} accessibilityRole="alert">
           <Text style={styles.noteText}>{notice}</Text>
+        </View>
+      ) : null}
+      {refused ? (
+        <View style={styles.refused} accessibilityRole="alert">
+          <Text style={styles.refusedText}>{refused}</Text>
         </View>
       ) : null}
       <View style={styles.form}>
@@ -168,7 +181,18 @@ export default function LoginScreen() {
             Forgot password?
           </Link>
         </View>
-        <Button title="Log in" loading={mutation.isPending} status={btnStatus} onPress={submit} />
+        <Button title="Log in" loading={mutation.isPending} disabled={google.busy} status={btnStatus} onPress={submit} />
+        <OrRule />
+        <GoogleButton
+          title="Continue with Google"
+          busy={google.busy}
+          disabled={mutation.isPending}
+          onPress={() => {
+            setError(null);
+            setRefused(null);
+            void google.start();
+          }}
+        />
       </View>
 
       <View style={styles.footer}>
@@ -196,6 +220,9 @@ const styles = StyleSheet.create({
   retryText: { fontSize: 14, fontWeight: '700', color: '#4D6410' },
   noteText: { fontSize: 14, lineHeight: 20, color: '#4D6410' },
   form: { gap: 11 },
+  // the red .note of the auth frames: a refused Google sign-in (suspended, or an owner or admin account)
+  refused: { backgroundColor: '#FBEAEA', borderColor: '#F1C9C9', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
+  refusedText: { fontSize: 14, lineHeight: 20, color: '#8E2A2A' },
   // right aligned; the link has 14px above and below so its tap area is 44 high
   forgotRow: { alignItems: 'flex-end', marginTop: -14 },
   forgot: { fontSize: 14, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingLeft: 12, paddingRight: 6 },

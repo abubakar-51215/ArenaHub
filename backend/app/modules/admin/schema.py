@@ -62,7 +62,7 @@ class AdminUserResponse(BaseModel):
     id: uuid.UUID
     full_name: str
     email: str
-    phone: str
+    phone: str | None  # empty only for a Google account before "One more step"
     role: UserRole
     is_verified: bool
     is_active: bool

@@ -182,6 +182,7 @@ function RootNavigator() {
   // While the session loads the animated splash covers the screen; behind it there is only the page colour.
   const waiting = (!hydrated || !sessionReady) && !gaveUp && !everReady.current;
   const ready = !waiting;
+  const needsPhone = !!accessToken && !!user && user.role === 'player' && !user.phone;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.light.background }}>
@@ -195,8 +196,12 @@ function RootNavigator() {
       <Stack.Protected guard={!!accessToken && user?.role === 'admin'}>
         <Stack.Screen name="admin" options={{ headerShown: false }} />
       </Stack.Protected>
+      {/* an account made with Google has no phone yet: "One more step" comes first, every time the app opens */}
+      <Stack.Protected guard={needsPhone}>
+        <Stack.Screen name="one-more-step" options={{ headerShown: false, gestureEnabled: false }} />
+      </Stack.Protected>
       {/* the player and owner screens: an admin never sees them */}
-      <Stack.Protected guard={!!accessToken && !!user && user.role !== 'admin'}>
+      <Stack.Protected guard={!!accessToken && !!user && user.role !== 'admin' && !needsPhone}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filters" options={{ headerShown: false }} />
         <Stack.Screen name="arena/[id]" options={{ headerShown: false }} />

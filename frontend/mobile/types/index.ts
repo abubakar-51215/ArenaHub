@@ -11,7 +11,8 @@ export interface User {
   id: string;
   full_name: string;
   email: string;
-  phone: string;
+  /** Empty only for an account made with Google until "One more step" saves it. */
+  phone: string | null;
   role: UserRole;
   is_verified: boolean;
   is_active: boolean;

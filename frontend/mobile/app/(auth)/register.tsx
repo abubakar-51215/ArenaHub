@@ -3,6 +3,8 @@ import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
+import { GoogleButton, useGoogleSignIn } from '@/components/auth/google-button';
+import { OrRule } from '@/components/auth/or-rule';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FieldMessage } from '@/components/auth/field-message';
 import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-rules';
@@ -30,6 +32,9 @@ export default function RegisterScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   // set once a code went out from this form: the form is then "change your email, then continue"
   const [codeSent, setCodeSent] = useState(false);
+  // "Sign up with Google" (frame 3); a refused account's words show in the red box (frames 10 and 11)
+  const [refused, setRefused] = useState<string | null>(null);
+  const google = useGoogleSignIn(setRefused);
   const [btnStatus, flash] = useButtonStatus();
   const emailRef = useRef<RNTextInput>(null);
   const phoneRef = useRef<RNTextInput>(null);
@@ -74,7 +79,7 @@ export default function RegisterScreen() {
   });
 
   const submit = () => {
-    if (mutation.isPending) return;
+    if (mutation.isPending || google.busy) return;
     setFormError(null);
     const next: Errors = {};
     if (!fullName.trim()) next.full_name = 'Enter your full name.';
@@ -91,6 +96,25 @@ export default function RegisterScreen() {
       showMark={!codeSent}
       title="Create account"
       subtitle={codeSent ? 'Change your email, then continue. We will send a new code.' : 'Book arenas, join matches and track your games.'}>
+      {codeSent ? null : (
+        <View style={styles.google}>
+          {refused ? (
+            <View style={styles.refused} accessibilityRole="alert">
+              <Text style={styles.refusedText}>{refused}</Text>
+            </View>
+          ) : null}
+          <GoogleButton
+            title="Sign up with Google"
+            busy={google.busy}
+            disabled={mutation.isPending}
+            onPress={() => {
+              setRefused(null);
+              void google.start();
+            }}
+          />
+          <OrRule label="or sign up with email" />
+        </View>
+      )}
       <View style={styles.form}>
         <View style={styles.group}>
           <Field
@@ -177,7 +201,7 @@ export default function RegisterScreen() {
         {codeSent ? null : <PasswordRules password={password} />}
         {formError ? <FieldMessage>{formError}</FieldMessage> : null}
         <View style={styles.button}>
-          <Button title={codeSent ? 'Continue' : 'Create account'} loading={mutation.isPending} status={btnStatus} onPress={submit} />
+          <Button title={codeSent ? 'Continue' : 'Create account'} loading={mutation.isPending} disabled={google.busy} status={btnStatus} onPress={submit} />
         </View>
       </View>
 
@@ -195,6 +219,9 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: 10 },
+  google: { gap: 12, marginBottom: 12 },
+  refused: { backgroundColor: '#FBEAEA', borderColor: '#F1C9C9', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12 },
+  refusedText: { fontSize: 14, lineHeight: 20, color: '#8E2A2A' },
   // the password stays as typed while only the email is changed (frame 14 shows the other three fields)
   hidden: { display: 'none' },
   group: { gap: 6 },

@@ -91,10 +91,27 @@ class AdminResendRequest(BaseModel):
     challenge_token: str
 
 
+class GoogleSignInRequest(BaseModel):
+    # the ID token Google gave the phone; everything else comes from inside it, checked
+    id_token: str = Field(min_length=20, max_length=4096)
+
+
+class GooglePhoneRequest(BaseModel):
+    phone: str = Field(min_length=10, max_length=20)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class GoogleSignInResponse(TokenResponse):
+    # the account has no phone yet: the phone app asks for it ("One more step") before booking
+    phone_needed: bool
+    # an unconfirmed sign-up with this email was confirmed by Google and its password wiped
+    password_removed: bool = False
+    user: UserPublic
 
 
 class RegisterResponse(BaseModel):
