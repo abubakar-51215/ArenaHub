@@ -6,12 +6,13 @@ import { afterLogin } from "@/lib/after-login";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
+import { saveStep } from "@/components/auth/signup-step";
 import { SplitAuthShell } from "@/components/auth/split-auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
-import { fetchMe, isAdminChallenge, loginWithIdentifier } from "@/services/auth";
+import { fetchMe, isAdminChallenge, loginWithIdentifier, type VerifyEmailData } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
 export default function LoginPage() {
@@ -52,6 +53,13 @@ export default function LoginPage() {
       setSession(tokens, me);
       router.replace(afterLogin("/owner"));
     } catch (err) {
+      // the email is not confirmed yet: the server sent a fresh code (or says why it could not); the code step opens
+      const verify = err instanceof ApiError && err.status === 403 ? (err.data as VerifyEmailData | null) : null;
+      if (verify?.email) {
+        saveStep({ email: verify.email, sentTo: verify.sent_to, codeSent: verify.code_sent, at: Date.now() });
+        router.push("/register");
+        return;
+      }
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);

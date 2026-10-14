@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCodeEntry } from "@/components/auth/use-code-entry";
 import { ApiError } from "@/services/api";
 import {
   requestEmailChange,
@@ -53,70 +54,65 @@ function errMessage(err: unknown): string {
   return err instanceof ApiError ? err.message : "Something went wrong.";
 }
 
-/** Shared OTP-verify dialog for the email/phone change flows below. */
+/** The code dialog for the email, phone and password changes: the shared code entry (six boxes, sent at the sixth
+ *  digit, the server's message under them, "Send a new code in 0:42"). A fresh entry each time it opens. */
 function OtpDialog({
   open,
   onOpenChange,
   title,
   description,
-  pending,
-  error,
-  onConfirm,
+  onVerify,
+  onResend,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   title: string;
   description: string;
-  pending: boolean;
-  error: string | null;
-  onConfirm: (code: string) => void;
+  onVerify: (code: string) => Promise<unknown>;
+  onResend: () => Promise<unknown>;
 }) {
-  const [code, setCode] = useState("");
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) setCode("");
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div>
-          <Label htmlFor="otp-code">Verification code</Label>
-          <Input
-            id="otp-code"
-            inputMode="numeric"
-            maxLength={6}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="123456"
-            autoFocus
-          />
-        </div>
-        <ErrorText message={error} />
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={pending}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={pending || code.length !== 6}
-            onClick={() => onConfirm(code)}
-          >
-            {pending ? "Confirming…" : "Confirm"}
-          </Button>
-        </DialogFooter>
+        {open && <OtpEntry onVerify={onVerify} onResend={onResend} onCancel={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OtpEntry({
+  onVerify,
+  onResend,
+  onCancel,
+}: {
+  onVerify: (code: string) => Promise<unknown>;
+  onResend: () => Promise<unknown>;
+  onCancel: () => void;
+}) {
+  const entry = useCodeEntry({ onVerify: async (code) => void (await onVerify(code)), onResend });
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        entry.confirm();
+      }}
+      className="space-y-3"
+    >
+      {entry.boxes}
+      <div className="flex justify-center text-sm text-muted-foreground">{entry.resendLink}</div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={entry.loading}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={entry.loading || !entry.ready}>
+          {entry.loading ? "Confirming…" : "Confirm"}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 
@@ -134,10 +130,12 @@ export default function OwnerProfilePage() {
 
   // ---- email change ----
   const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
   const [emailOtpOpen, setEmailOtpOpen] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  // the password is checked again before a code goes to the new address; the old address stays until it is used
   const requestEmailMutation = useMutation({
-    mutationFn: () => requestEmailChange(newEmail.trim()),
+    mutationFn: () => requestEmailChange(newEmail.trim(), emailPassword),
     onSuccess: () => {
       setEmailError(null);
       setEmailOtpOpen(true);
@@ -150,8 +148,8 @@ export default function OwnerProfilePage() {
       setUser(updated);
       setEmailOtpOpen(false);
       setNewEmail("");
+      setEmailPassword("");
     },
-    onError: (err) => setEmailError(errMessage(err)),
   });
 
   // ---- phone change ----
@@ -173,7 +171,6 @@ export default function OwnerProfilePage() {
       setPhoneOtpOpen(false);
       setNewPhone("");
     },
-    onError: (err) => setPhoneError(errMessage(err)),
   });
 
   // ---- password change ----
@@ -199,7 +196,6 @@ export default function OwnerProfilePage() {
       clear();
       router.replace("/login");
     },
-    onError: (err) => setPasswordError(errMessage(err)),
   });
 
   if (!user) return null;
@@ -270,9 +266,18 @@ export default function OwnerProfilePage() {
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                       />
+                      <Input
+                        id="email-password"
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder="Current password"
+                        aria-label="Current password"
+                        value={emailPassword}
+                        onChange={(e) => setEmailPassword(e.target.value)}
+                      />
                       <Button
                         variant="outline"
-                        disabled={requestEmailMutation.isPending || !newEmail.trim()}
+                        disabled={requestEmailMutation.isPending || !newEmail.trim() || !emailPassword}
                         onClick={() => requestEmailMutation.mutate()}
                       >
                         {requestEmailMutation.isPending ? "Sending…" : "Change email"}
@@ -367,28 +372,25 @@ export default function OwnerProfilePage() {
         open={emailOtpOpen}
         onOpenChange={setEmailOtpOpen}
         title="Confirm your new email"
-        description={`We sent a 6-digit code to ${newEmail}.`}
-        pending={verifyEmailMutation.isPending}
-        error={emailError}
-        onConfirm={(code) => verifyEmailMutation.mutate(code)}
+        description={`We sent a 6-digit code to ${newEmail}. It works for 10 minutes.`}
+        onVerify={(code) => verifyEmailMutation.mutateAsync(code)}
+        onResend={() => requestEmailChange(newEmail.trim(), emailPassword)}
       />
       <OtpDialog
         open={phoneOtpOpen}
         onOpenChange={setPhoneOtpOpen}
         title="Confirm your new phone number"
-        description={`We sent a 6-digit code to ${newPhone}.`}
-        pending={verifyPhoneMutation.isPending}
-        error={phoneError}
-        onConfirm={(code) => verifyPhoneMutation.mutate(code)}
+        description={`We sent a 6-digit code to ${newPhone}. It works for 10 minutes.`}
+        onVerify={(code) => verifyPhoneMutation.mutateAsync(code)}
+        onResend={() => requestPhoneChange(newPhone.trim())}
       />
       <OtpDialog
         open={passwordOtpOpen}
         onOpenChange={setPasswordOtpOpen}
         title="Confirm password change"
-        description={`We sent a 6-digit code to ${user.email}.`}
-        pending={verifyPasswordMutation.isPending}
-        error={passwordError}
-        onConfirm={(code) => verifyPasswordMutation.mutate(code)}
+        description={`We sent a 6-digit code to ${user.email}. It works for 10 minutes.`}
+        onVerify={(code) => verifyPasswordMutation.mutateAsync(code)}
+        onResend={() => requestPasswordChange(currentPassword, newPassword)}
       />
     </>
   );

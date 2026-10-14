@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { SplitAuthShell } from "@/components/auth/split-auth-shell";
+import { readSavedStep, saveStep } from "@/components/auth/signup-step";
+import { useCodeEntry } from "@/components/auth/use-code-entry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
-import { fetchMe, register, verifyOtp } from "@/services/auth";
+import { fetchMe, register, resendOtp, verifyOtp } from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -30,9 +32,18 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [sent, setSent] = useState<{ sentTo: string; codeSent: boolean; at: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // a refresh on the code step comes back to it
+  useEffect(() => {
+    const saved = readSavedStep();
+    if (!saved) return;
+    setEmail(saved.email);
+    setSent({ sentTo: saved.sentTo, codeSent: saved.codeSent, at: saved.at });
+    setStep("otp");
+  }, []);
 
   async function onSubmitForm(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +58,10 @@ export default function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      await register({ full_name: fullName, email, phone, password });
+      const result = await register({ full_name: fullName, email, phone, password });
+      const step = { email, sentTo: result.otp_sent_to, codeSent: result.code_sent !== false, at: Date.now() };
+      setSent(step);
+      saveStep(step);
       setStep("otp");
     } catch (err) {
       setError(errorMessage(err, "Registration failed. Please try again."));
@@ -56,22 +70,21 @@ export default function RegisterPage() {
     }
   }
 
-  async function onSubmitOtp(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const tokens = await verifyOtp(email, code);
-      // Persist tokens first so fetchMe() sends the Authorization header.
-      setTokens(tokens);
-      const me = await fetchMe();
-      setSession(tokens, me);
-      router.replace("/owner");
-    } catch (err) {
-      setError(errorMessage(err, "Verification failed. Please check the code and try again."));
-    } finally {
-      setSubmitting(false);
+  async function onVerifyCode(code: string) {
+    const tokens = await verifyOtp(email, code);
+    // Persist tokens first so fetchMe() sends the Authorization header.
+    setTokens(tokens);
+    const me = await fetchMe();
+    saveStep(null);
+    if (me.role !== "owner") {
+      // a player confirming from the owner pages: the email is confirmed; the app is where they sign in
+      useAuthStore.getState().clear();
+      setStep("form");
+      setError("Your email is confirmed. This dashboard is for arena owners: sign in on the ArenaHub app.");
+      return;
     }
+    setSession(tokens, me);
+    router.replace("/owner");
   }
 
   return (
@@ -186,57 +199,20 @@ export default function RegisterPage() {
           </form>
         </>
       ) : (
-        <>
-          <h1 className="text-2xl font-bold text-foreground">Verify your email</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
-            Enter it below to finish setting up your account.
-          </p>
-
-          <form onSubmit={onSubmitOtp} className="mt-7 space-y-4">
-            <div>
-              <Label htmlFor="code">Verification Code</Label>
-              <Input
-                id="code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                minLength={6}
-                maxLength={6}
-                required
-                className="tracking-[0.3em]"
-              />
-            </div>
-
-            {error && (
-              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              size="lg"
-              disabled={submitting || code.length !== 6}
-              className="h-11 w-full"
-            >
-              {submitting ? "Verifying…" : "Verify & Continue"}
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStep("form");
-                setError(null);
-              }}
-              className="w-full text-center text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
-            >
-              Wrong email? Go back
-            </button>
-          </form>
-        </>
+        <CodeStep
+          // a new code step (and its timer) for each code sent
+          key={`${email}-${sent?.at ?? 0}`}
+          sentTo={sent?.sentTo ?? ""}
+          codeSent={sent?.codeSent ?? true}
+          firstWait={sent ? 60 - (Date.now() - sent.at) / 1000 : 0}
+          onVerify={onVerifyCode}
+          onResend={() => resendOtp(email)}
+          onBack={() => {
+            saveStep(null);
+            setStep("form");
+            setError(null);
+          }}
+        />
       )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -249,5 +225,58 @@ export default function RegisterPage() {
         </Link>
       </p>
     </SplitAuthShell>
+  );
+}
+
+/** "Verify your email": the shared code entry, with the form's Back kept (what was typed is still there). */
+function CodeStep({
+  sentTo,
+  codeSent,
+  firstWait,
+  onVerify,
+  onResend,
+  onBack,
+}: {
+  sentTo: string;
+  codeSent: boolean;
+  firstWait: number;
+  onVerify: (code: string) => Promise<void>;
+  onResend: () => Promise<unknown>;
+  onBack: () => void;
+}) {
+  const entry = useCodeEntry({ sentTo, codeSent, firstWait, onVerify, onResend });
+  return (
+    <>
+      <h1 className="text-2xl font-bold text-foreground">Verify your email</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        We sent a 6-digit code to <span className="font-medium text-foreground">{sentTo || "your email"}</span>. It
+        works for 10 minutes.
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          entry.confirm();
+        }}
+        className="mt-7 space-y-4"
+      >
+        {entry.boxes}
+
+        <Button type="submit" size="lg" disabled={entry.loading || !entry.ready} className="h-11 w-full">
+          {entry.loading ? "Verifying…" : "Verify & Continue"}
+        </Button>
+
+        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          {entry.resendLink}
+          <button
+            type="button"
+            onClick={onBack}
+            className="min-h-11 font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+          >
+            Wrong email? Go back
+          </button>
+        </div>
+      </form>
+    </>
   );
 }

@@ -9,6 +9,17 @@ export interface AdminChallenge {
   mfa_required: true;
   challenge_token: string;
   expires_in: number;
+  /** The masked address the code went to ("a***@arenahub.pk"). */
+  sent_to: string;
+  /** false when the email could not be sent; "Send a new code" works at once. */
+  code_sent: boolean;
+}
+
+/** The 403 "Verify your email to continue." answer for an account whose email is not confirmed yet. */
+export interface VerifyEmailData {
+  email: string;
+  sent_to: string;
+  code_sent: boolean;
 }
 
 export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChallenge {
@@ -57,6 +68,11 @@ export function verifyOtp(email: string, code: string): Promise<Tokens> {
   return api.post<Tokens>("/auth/verify-otp", { email, code });
 }
 
+/** A new sign-up code (the same answer whether or not the email has an account waiting). */
+export function resendOtp(email: string): Promise<null> {
+  return api.post<null>("/auth/resend-otp", { email });
+}
+
 export function forgotPassword(email: string): Promise<null> {
   return api.post<null>("/auth/forgot-password", { email });
 }
@@ -94,8 +110,9 @@ export function verifyPhoneChange(code: string): Promise<User> {
   return api.post<User>("/users/me/phone/verify", { code });
 }
 
-export function requestEmailChange(newEmail: string): Promise<null> {
-  return api.post<null>("/users/me/email", { new_email: newEmail });
+/** The password is checked again before a code goes to the new address; the old address stays until it is used. */
+export function requestEmailChange(newEmail: string, currentPassword: string): Promise<null> {
+  return api.post<null>("/users/me/email", { new_email: newEmail, current_password: currentPassword });
 }
 
 export function verifyEmailChange(code: string): Promise<User> {

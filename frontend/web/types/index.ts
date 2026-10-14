@@ -19,8 +19,10 @@ export interface User {
 
 export interface RegisterResult {
   user: User;
-  /** OTP delivery channel used, so the client can prompt correctly. */
+  /** The masked address the code went to ("a***@gmail.com"). */
   otp_sent_to: string;
+  /** false when the code email could not be sent: the code step says so and "Send a new code" works at once. */
+  code_sent: boolean;
 }
 
 export interface Tokens {
