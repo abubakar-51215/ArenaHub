@@ -239,6 +239,17 @@ export function SkeletonCards({ count = 3 }: { count?: number }) {
   );
 }
 
+/** Under a list that has more rows on the server: "Showing 50 of 120" and Show more (see hooks/useAdminPages). */
+export function ShowMore({ shown, total, hasMore, loading, onMore }: { shown: number; total: number; hasMore: boolean; loading: boolean; onMore: () => void }) {
+  if (!hasMore) return null;
+  return (
+    <View style={styles.more}>
+      <Text style={styles.moreNote}>{`Showing ${shown.toLocaleString('en-US')} of ${total.toLocaleString('en-US')}`}</Text>
+      <Button title="Show more" variant="ghost" loading={loading} onPress={onMore} />
+    </View>
+  );
+}
+
 /** "We could not load this." (or "No connection." offline) with Try again. */
 export function LoadError({ onRetry }: { onRetry: () => void }) {
   const online = useNetwork((s) => s.online);
@@ -332,6 +343,8 @@ export function ReasonSheet({
 }
 
 const styles = StyleSheet.create({
+  more: { alignItems: 'center', gap: 6, paddingTop: 12 },
+  moreNote: { fontSize: 14, color: Colors.light.muted },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 20, alignSelf: 'flex-start', flexShrink: 0 },
   pillDot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontSize: 14, fontWeight: '600', lineHeight: 20 },

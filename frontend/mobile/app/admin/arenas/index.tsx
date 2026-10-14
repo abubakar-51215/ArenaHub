@@ -1,14 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoadError, ListCard, Nothing, Pill, SearchBox, SkeletonCards } from '@/components/admin/kit';
+import { LoadError, ListCard, Nothing, Pill, SearchBox, ShowMore, SkeletonCards } from '@/components/admin/kit';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { Segmented } from '@/components/ui/segmented';
 import { Colors } from '@/constants/theme';
 import { ADMIN_KEY } from '@/hooks/useAdmin';
+import { useAdminPages } from '@/hooks/useAdminPages';
 import { listArenaCards, type ArenaScope } from '@/services/admin';
 
 // Arenas (arena-hub-admin-app.html: Arenas list, Arenas suspended, Arenas empty): find an arena to suspend or bring back.
@@ -23,8 +23,7 @@ export default function AdminArenasScreen() {
     const t = setTimeout(() => setSearch(text), 300);
     return () => clearTimeout(t);
   }, [text]);
-  const q = useQuery({ queryKey: [ADMIN_KEY, 'arenas', tab, search], queryFn: () => listArenaCards(tab as ArenaScope, search), retry: 1 });
-  const items = q.data?.items ?? [];
+  const { q, items, total } = useAdminPages([ADMIN_KEY, 'arenas', tab, search], (page) => listArenaCards(tab as ArenaScope, search, page));
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
       <ScreenHead title="Arenas" onBack={back} />
@@ -59,6 +58,7 @@ export default function AdminArenasScreen() {
             />
           ))
         )}
+        <ShowMore shown={items.length} total={total} hasMore={!!q.hasNextPage} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
       </ScrollView>
     </SafeAreaView>
   );

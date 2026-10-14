@@ -112,29 +112,32 @@ const qs = (o: Record<string, string | number | undefined>) => {
 
 export const getPhoneOverview = () => api.get<PhoneOverview>('/admin/phone/overview');
 
-export const listArenaCards = (scope: ArenaScope, search?: string) =>
-  api.get<Page<AdminArenaCard>>(`/admin/arena-cards${qs({ scope, search: search?.trim(), page_size: 50 })}`);
+/** Admin phone lists come 50 at a time; "Show more" asks for the next page (hooks/useAdminPages). */
+export const ADMIN_PAGE = 50;
+export const listArenaCards = (scope: ArenaScope, search?: string, page = 1) =>
+  api.get<Page<AdminArenaCard>>(`/admin/arena-cards${qs({ scope, search: search?.trim(), page, page_size: ADMIN_PAGE })}`);
 export const getArenaSummary = (id: string) => api.get<AdminArenaSummary>(`/admin/arenas/${id}/summary`);
 export const approveArena = (id: string) => api.post<unknown>(`/admin/arenas/${id}/approve`);
 export const rejectArena = (id: string, reason: string) => api.post<unknown>(`/admin/arenas/${id}/reject`, { reason });
 export const suspendArena = (id: string, reason: string) => api.post<unknown>(`/admin/arenas/${id}/suspend`, { reason });
 export const reactivateArena = (id: string) => api.post<unknown>(`/admin/arenas/${id}/reactivate`);
 
-export const ADMIN_USERS_PAGE = 50;
+export const ADMIN_USERS_PAGE = ADMIN_PAGE;
 export const listAdminUsers = (role?: 'player' | 'owner', search?: string, page = 1) =>
   api.get<Page<AdminUser>>(`/admin/users${qs({ role, search: search?.trim(), page, page_size: ADMIN_USERS_PAGE })}`);
 export const getAdminUser = (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`);
 export const suspendUser = (id: string, reason: string) => api.patch<AdminUser>(`/admin/users/${id}/suspend`, { reason });
 export const reactivateUser = (id: string) => api.patch<AdminUser>(`/admin/users/${id}/reactivate`);
 
-export const listAdminComplaints = (status?: 'open' | 'resolved') =>
-  api.get<Page<AdminComplaint>>(`/admin/complaints${qs({ status, page_size: 50 })}`);
+export const listAdminComplaints = (status?: 'open' | 'resolved', page = 1) =>
+  api.get<Page<AdminComplaint>>(`/admin/complaints${qs({ status, page, page_size: ADMIN_PAGE })}`);
 export const getAdminComplaint = (id: string) => api.get<AdminComplaint>(`/admin/complaints/${id}`);
 export const replyToComplaint = (id: string, text: string) =>
   api.put<AdminComplaint>(`/admin/complaints/${id}`, { admin_response: text, status: 'resolved' });
 
-export const listAdminPayments = () => api.get<Page<AdminPayment>>('/admin/payments?page_size=50');
-export const listAdminRefunds = (status: 'pending' | 'processed' | 'all') =>
-  api.get<Page<AdminRefund>>(`/admin/refunds${qs({ status, page_size: 50 })}`);
+export const listAdminPayments = (page = 1) =>
+  api.get<Page<AdminPayment>>(`/admin/payments${qs({ page, page_size: ADMIN_PAGE })}`);
+export const listAdminRefunds = (status: 'pending' | 'processed' | 'all', page = 1) =>
+  api.get<Page<AdminRefund>>(`/admin/refunds${qs({ status, page, page_size: ADMIN_PAGE })}`);
 export const markRefundPaid = (id: string) =>
   api.post<{ refund: AdminRefund; already_processed: boolean }>(`/admin/refunds/${id}/mark-paid`);

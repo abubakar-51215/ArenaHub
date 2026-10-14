@@ -1,10 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, KV, ListCard, LoadError, Nothing, Pill, SkeletonCards, type PillTone } from '@/components/admin/kit';
+import { Card, KV, ListCard, LoadError, Nothing, Pill, ShowMore, SkeletonCards, type PillTone } from '@/components/admin/kit';
 import { Button } from '@/components/ui/button';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { ScreenHead } from '@/components/ui/screen-head';
@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { ADMIN_KEY, actionFailed } from '@/hooks/useAdmin';
+import { useAdminPages } from '@/hooks/useAdminPages';
 import { successHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { listAdminPayments, listAdminRefunds, markRefundPaid, type AdminPayment, type AdminRefund } from '@/services/admin';
@@ -34,9 +35,10 @@ export default function PaymentsScreen() {
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(tabParam === 'refunds' ? 'refunds' : 'payments');
   const qc = useQueryClient();
-  const payments = useQuery({ queryKey: [ADMIN_KEY, 'payments'], queryFn: listAdminPayments, enabled: tab === 'payments', retry: 1 });
-  const refunds = useQuery({ queryKey: [ADMIN_KEY, 'refunds'], queryFn: () => listAdminRefunds('pending'), enabled: tab === 'refunds', retry: 1 });
-  const q = tab === 'payments' ? payments : refunds;
+  const payments = useAdminPages([ADMIN_KEY, 'payments'], (page) => listAdminPayments(page), { enabled: tab === 'payments' });
+  const refunds = useAdminPages([ADMIN_KEY, 'refunds'], (page) => listAdminRefunds('pending', page), { enabled: tab === 'refunds' });
+  const shownList = tab === 'payments' ? payments : refunds;
+  const q = shownList.q;
   const [asking, setAsking] = useState<AdminRefund | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -55,7 +57,7 @@ export default function PaymentsScreen() {
     },
   });
 
-  const list = refunds.data?.items ?? [];
+  const list = refunds.items;
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
       <ScreenHead title="Payments and refunds" onBack={back} />
@@ -87,10 +89,10 @@ export default function PaymentsScreen() {
         ) : q.isError && !q.data ? (
           <LoadError onRetry={() => q.refetch()} />
         ) : tab === 'payments' ? (
-          (payments.data?.items ?? []).length === 0 ? (
+          payments.items.length === 0 ? (
             <Nothing title="No payments yet." text="Payments will show here." />
           ) : (
-            (payments.data?.items ?? []).map((p) => {
+            payments.items.map((p) => {
               const look = paymentLook(p);
               return (
                 <ListCard
@@ -131,6 +133,7 @@ export default function PaymentsScreen() {
             ))}
           </>
         )}
+        <ShowMore shown={shownList.items.length} total={shownList.total} hasMore={!!q.hasNextPage} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
       </ScrollView>
 
       <ConfirmSheet

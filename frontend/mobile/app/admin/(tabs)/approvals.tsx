@@ -1,14 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { arenaSub } from '@/components/admin/arena-text';
-import { BigTitle, ListCard, LoadError, Nothing, Pill, SkeletonCards } from '@/components/admin/kit';
+import { BigTitle, ListCard, LoadError, Nothing, Pill, ShowMore, SkeletonCards } from '@/components/admin/kit';
 import { Segmented } from '@/components/ui/segmented';
 import { Colors } from '@/constants/theme';
 import { ADMIN_KEY } from '@/hooks/useAdmin';
+import { useAdminPages } from '@/hooks/useAdminPages';
 import { waitingFor } from '@/lib/karachi';
 import { listArenaCards, type ArenaScope } from '@/services/admin';
 
@@ -17,14 +17,13 @@ type Tab = 'waiting' | 'approved' | 'rejected';
 
 export default function ApprovalsScreen() {
   const [tab, setTab] = useState<Tab>('waiting');
-  const q = useQuery({ queryKey: [ADMIN_KEY, 'arenas', tab], queryFn: () => listArenaCards(tab as ArenaScope), retry: 1 });
+  const { q, items, total } = useAdminPages([ADMIN_KEY, 'arenas', tab], (page) => listArenaCards(tab as ArenaScope, undefined, page));
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await q.refetch();
     setRefreshing(false);
   }, [q]);
-  const items = q.data?.items ?? [];
   return (
     <SafeAreaView style={styles.page} edges={[]}>
       <BigTitle title="Approvals" />
@@ -60,6 +59,7 @@ export default function ApprovalsScreen() {
             />
           ))
         )}
+        <ShowMore shown={items.length} total={total} hasMore={!!q.hasNextPage} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
       </ScrollView>
     </SafeAreaView>
   );

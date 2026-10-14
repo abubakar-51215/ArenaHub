@@ -1,15 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, Eyebrow, LoadError, MenuRow, Nothing, SkeletonCards, type AdminIconName, type PillTone } from '@/components/admin/kit';
+import { Card, Eyebrow, LoadError, MenuRow, Nothing, ShowMore, SkeletonCards, type AdminIconName, type PillTone } from '@/components/admin/kit';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { ADMIN_KEY } from '@/hooks/useAdmin';
+import { useAdminPages } from '@/hooks/useAdminPages';
 import { Colors } from '@/constants/theme';
 import { dayGroup } from '@/lib/karachi';
-import { listMyNotifications, markAllNotificationsRead, markNotificationRead, type AppNotification } from '@/services/notifications';
+import { listMyNotificationsPage, markAllNotificationsRead, markNotificationRead, type AppNotification } from '@/services/notifications';
 
 // Admin notifications (arena-hub-admin-app.html: Admin notifications): a new arena waiting, a new complaint.
 const back = () => (router.canGoBack() ? router.back() : router.replace('/admin/more' as Href));
@@ -23,17 +24,17 @@ function look(n: AppNotification): { icon: AdminIconName; tone: PillTone; href: 
 
 export default function AdminNotificationsScreen() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: [ADMIN_KEY, 'notifications'], queryFn: listMyNotifications, retry: 1 });
+  const { q, pages, items, total } = useAdminPages([ADMIN_KEY, 'notifications'], (page) => listMyNotificationsPage(page));
   const readAll = useMutation({
     mutationFn: markAllNotificationsRead,
     onSuccess: () => qc.invalidateQueries({ queryKey: [ADMIN_KEY, 'unread'] }),
   });
   // opening the list reads everything (the dot on the Overview bell goes)
+  const unread = pages[0]?.unread_count ?? 0;
   useEffect(() => {
-    if (q.data && q.data.unread_count > 0) readAll.mutate();
-  }, [q.data]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (unread > 0) readAll.mutate();
+  }, [unread]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const items = q.data?.items ?? [];
   const groups = (['Today', 'Yesterday', 'Earlier'] as const).map((g) => ({ g, rows: items.filter((n) => dayGroup(n.created_at) === g) })).filter((x) => x.rows.length > 0);
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
@@ -71,6 +72,7 @@ export default function AdminNotificationsScreen() {
             </View>
           ))
         )}
+        <ShowMore shown={items.length} total={total} hasMore={!!q.hasNextPage} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
       </ScrollView>
     </SafeAreaView>
   );
