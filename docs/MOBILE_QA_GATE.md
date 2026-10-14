@@ -33,7 +33,7 @@ c) **Motion rules** (shared components; no new library unless it is already inst
 What exists today (checked, nothing built for these rules yet): `react-native-reanimated` 4.1.7 and `expo-haptics` 15.0.8 are installed (so nothing new is needed). `Button` dips to 99% with opacity 0.9 (not 97.5% in 160 ms), shows an `ActivityIndicator` at full width, and has no haptic. `ConfirmTick` is a static tick. Haptics are used only by the tab bar button. There is no shared toast, sheet, shake or pop-up component yet.
 
 d) **Email and password field icons** (on purpose, as the prototype draws it). Every field with the mail or lock icon, on every screen (Log in, Register, Forgot password, Reset password, Change password, Change email, and later ones), uses the shared `Field` with `huge`:
-- Idle (empty and not focused): the icon is huge (mail about 104px, lock about 88px at 390 wide; field about 138px tall; small 12px grey label beside it), scaled with the phone width (360 to 430). The eye button is hidden.
+- Idle (empty and not focused): the icon is huge (mail about 104px, lock about 88px at 390 wide; field about 138px tall; small 14px grey label beside it), scaled with the phone width (360 to 430). The eye button is hidden.
 - Active (focused or has text): the normal 52px field, icon 15px, text 14px, with a 300 ms ease-out for height and icon size together. Empty and unfocused again: it grows back.
 - The whole field is the touch target in both states. After the animation, the focused field scrolls into view above the keyboard.
 - "Reduce motion": the change is instant. Screen readers hear "Email" / "Password".
@@ -42,7 +42,7 @@ d) **Email and password field icons** (on purpose, as the prototype draws it). E
 
 e) **Eye button on every password field** (user decision). Show/hide with a 44px tap area, labels "Show password" / "Hide password"; while the password is visible the eye is crossed out, swapped smoothly with no layout jump.
 
-f) **Text and tap sizes on mobile** (user decision, same as web): 14px text (exemptions: labels, badges, chart text) and 44px tap targets; small links, icon buttons and switches get a real 44px tap box with `components/ui/tap-box.tsx` (`TapBox`: the drawn part stays small, the box is 44, the layout does not move). `hitSlop` alone is not enough: react-native-web ignores it, so it cannot be measured.
+f) **Text and tap sizes on mobile** (user decision, 2026-10-14): any text that carries information (tags, chips, prices, labels, status words, badges, row details) is at least 14px. Only purely decorative micro labels may be smaller, and never below 12px: uppercase eyebrow lines, tab-bar labels, weekday letters (plus the password-rule bullet and avatar initials). On the owner and admin web: no text below 12px (dashboard density stays). 44px tap targets; small links, icon buttons and switches get a real 44px tap box with `components/ui/tap-box.tsx` (`TapBox`: the drawn part stays small, the box is 44, the layout does not move). `hitSlop` alone is not enough: react-native-web ignores it, so it cannot be measured.
 
 g) **A sign-in step without a frame:** the frames now exist (`arena-hub-player-app-auth-2.html`). Any other screen without a frame waits for a frame. SMS codes are out of scope. The old Verify wording about the backend console does not come back. Sign-up variant: unconfirmed, built the only frame.
 
@@ -111,7 +111,7 @@ A number, dot or count on top of an icon, tab or button:
 
 Save credit. For every commit run automatic checks and report them as a short table (screen, width, pass/fail, value). No pictures for passing checks. Measure with a script at 360, 375, 390 and 430 wide:
 
-- Every text is at least 14px. List only the exceptions: uppercase labels, badges, the idle field label and chart text.
+- Every text that carries information is at least 14px (badges and the idle field label included). The only exceptions are decorative micro labels at 12px: uppercase eyebrow lines, tab-bar labels, weekday letters, the password-rule bullet and avatar initials. Nothing is below 12px.
 - Every tap target is at least 44px, with `hitSlop` counted. (react-native-web ignores `hitSlop`, so the script adds the declared `hitSlop` to the measured box.)
 - The shared Button is 46px high.
 - Mail and lock fields: about 138px (at 390 wide) when empty and not focused, and 52px when focused or filled.

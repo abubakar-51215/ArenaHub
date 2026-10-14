@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   markAll: { minHeight: 44, justifyContent: 'center' },
   markAllText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
   list: { paddingHorizontal: 18, paddingBottom: 24, flexGrow: 1 },
-  head: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 16, marginBottom: 4 },
+  head: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 16, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12, minHeight: 64 },
   tile: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody: { flex: 1, gap: 2 },

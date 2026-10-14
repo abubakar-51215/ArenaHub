@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: Font.bodySemi,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
     letterSpacing: BodyLetterSpacing,
   },
 });

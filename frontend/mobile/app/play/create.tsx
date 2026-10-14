@@ -165,7 +165,7 @@ export default function PostMatchScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.light.paper },
   intro: { fontSize: 14, lineHeight: 20, color: Colors.light.muted },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
   game: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, backgroundColor: Colors.light.card, borderWidth: 1.5, borderColor: Colors.light.line, borderRadius: 15, padding: 14 },
   gameOn: { backgroundColor: Colors.light.limeWash, borderColor: Colors.light.limeDeep },
   gameTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },

@@ -39,5 +39,5 @@ const styles = StyleSheet.create({
     minWidth: 58,
   },
   active: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },
-  label: { fontSize: 10.5, fontWeight: '600' },
+  label: { fontSize: 14, fontWeight: '600' },
 });

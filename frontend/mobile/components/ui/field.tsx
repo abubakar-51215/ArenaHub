@@ -191,7 +191,8 @@ const styles = StyleSheet.create({
   error: { borderColor: Colors.light.destructive },
   // outlineStyle: the browser's own focus ring would draw a second box inside
   // the field's ink focus border (web only; ignored on iOS/Android)
-  input: { flex: 1, fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
+  // fills the field's height, so the text box itself is the full tap target (not only its text line)
+  input: { flex: 1, alignSelf: 'stretch', fontSize: 14, color: Colors.light.text, padding: 0, outlineStyle: 'none' } as object,
   // the small label beside the huge icon
-  inputIdle: { fontSize: 12 },
+  inputIdle: { fontSize: 14 },
 });

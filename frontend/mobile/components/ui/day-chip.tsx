@@ -43,6 +43,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.card,
   },
   active: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },
-  weekday: { fontSize: 9, letterSpacing: 0.08 * 9, textTransform: 'uppercase' },
+  weekday: { fontSize: 12, letterSpacing: 0.08 * 12, textTransform: 'uppercase' },
   day: { fontSize: 16, fontWeight: '700', lineHeight: 16 * 1.2 },
 });

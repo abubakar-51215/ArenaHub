@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1 },
   rowTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   rowSub: { fontSize: 14, color: Colors.light.muted, marginTop: 1 },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
   switchBox: { width: W, height: H, justifyContent: 'center' },
   switchTrack: { ...StyleSheet.absoluteFillObject, borderRadius: H / 2 },
   knob: { position: 'absolute', left: 3, top: 3, width: KNOB, height: KNOB, borderRadius: KNOB / 2, backgroundColor: '#FFFFFF' },

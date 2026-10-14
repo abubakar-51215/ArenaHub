@@ -93,7 +93,7 @@ export function StatCard({ label, value, delta, history, size = "md", className 
       <p className={cn(METRIC_CLASS[size], "mt-2.25 mb-1.5 text-foreground")}>{value}</p>
 
       {delta && (
-        <div className="flex items-center gap-1.75 text-[11.5px] text-muted-foreground">
+        <div className="flex items-center gap-1.75 text-[12px] text-muted-foreground">
           {delta.direction && delta.percent && (
             <span
               className={cn(

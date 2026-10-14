@@ -546,7 +546,7 @@
 @utility eyebrow {
   font-family: var(--font-display);
   font-variation-settings: "wdth" 125, "wght" 600;
-  font-size: 0.625rem;
+  font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -658,7 +658,7 @@
   padding: 14.4px 11.2px 11.2px;
   background: var(--rail);
   border-right: 1px solid var(--rail-line);
-  font-size: 11.2px;
+  font-size: 12px;
   line-height: 1.5;
   letter-spacing: -0.005em;
 }
@@ -698,7 +698,7 @@
 [data-admin] .ah-brand-name small {
   display: block;
   font-variation-settings: "wdth" 125, "wght" 500;
-  font-size: 8.5px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   color: var(--rail-text);
   text-transform: uppercase;
@@ -715,7 +715,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   color: var(--muted-foreground);
 }
 [data-admin] .ah-rail .ah-brand-name small {
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 1.6px;
 }
 [data-admin] .ah-nav-group {
@@ -728,7 +728,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   font-family: var(--font-archivo), sans-serif;
   font-variation-settings: "wdth" 125, "wght" 600;
   /* 9px x 0.8 = 7.2px, held at the 9px floor */
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--rail-label);
@@ -741,7 +741,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   padding: 6.4px 8px;
   border-radius: 7.2px;
   color: var(--rail-text);
-  font-size: 10.8px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
   letter-spacing: normal;
@@ -772,7 +772,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
 [data-admin] .ah-nav-count {
   margin-left: auto;
   /* 10.5px x 0.8 = 8.4px, held at the 9px floor */
-  font-size: 9px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   background: var(--rail-count);
   color: var(--rail-count-text);
@@ -810,18 +810,18 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   color: var(--lime);
   font-weight: 700;
   /* 11px x 0.8 = 8.8px, held at the 9px floor */
-  font-size: 9px;
+  font-size: 12px;
 }
 [data-admin] .ah-owner-name {
   color: var(--rail-hover-text);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
 }
 [data-admin] .ah-owner-role {
   color: var(--rail-label);
   /* 10.5px x 0.8 = 8.4px, held at the 9px floor */
-  font-size: 9px;
+  font-size: 12px;
 }
 [data-admin] .ah-logout {
   margin-left: auto;
@@ -941,7 +941,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   font-variation-settings:
     "wdth" 100,
     "wght" 600;
-  font-size: 10px;
+  font-size: 12px;
   border: 1px solid var(--line);
   border-radius: 5px;
   padding: 1px 5px;
@@ -1037,7 +1037,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   font-variation-settings:
     "wdth" 125,
     "wght" 600;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -1075,7 +1075,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
 [data-admin] .ah-cmdk-item small {
   margin-left: auto;
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1137,7 +1137,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   font-variation-settings:
     "wdth" 125,
     "wght" 600;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -1173,7 +1173,7 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
 }
 [data-admin] .ah-pop-text small {
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 12px;
 }
 [data-admin] .ah-alert-ico {
   width: 28px;
@@ -1386,7 +1386,7 @@ html[data-theme="dark"] [data-admin] .ah-toast {
   background: var(--ink);
 }
 [data-admin] .ah-bar-lbl {
-  font-size: 9.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1603,7 +1603,7 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
 }
 [data-admin] .ah-setting-row > div > p:nth-child(2) {
   margin: 1px 0 0;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-admin] button[role="switch"] {
@@ -1874,7 +1874,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   font-family: var(--font-archivo), sans-serif;
   font-variation-settings: "wdth" 118, "wght" 600;
   font-weight: 700;
-  font-size: 9.5px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -1912,7 +1912,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 }
 [data-admin] .ah-sub {
   color: var(--muted-foreground);
-  font-size: 11.5px;
+  font-size: 12px;
   margin-top: 1px;
 }
 [data-admin] .ah-mute {
@@ -1964,7 +1964,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   border-radius: 6px;
   background: var(--line-soft);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -1977,7 +1977,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   place-items: center;
   background: var(--line-soft);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1987,7 +1987,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   gap: 5px;
   padding: 2.5px 8px;
   border-radius: 20px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.45;
   white-space: nowrap;
@@ -2354,7 +2354,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   border-radius: 6px;
   background: var(--line-soft);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -2397,7 +2397,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   margin: 0;
   font-family: var(--font-archivo), sans-serif;
   font-variation-settings: "wdth" 125, "wght" 600;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -2415,7 +2415,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-admin] .ah-grid {
@@ -2632,7 +2632,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   font-size: 13px;
 }
 [data-admin] .ah-auth-foot {
-  font-size: 11.5px;
+  font-size: 12px;
   margin: 0;
   margin-top: auto;
   padding-top: 36px;
@@ -2678,7 +2678,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   color: #ffffff;
 }
 [data-admin] .ah-auth-stats span {
-  font-size: 10.5px;
+  font-size: 12px;
   color: #6e8177;
   letter-spacing: 0.04em;
 }
@@ -2746,7 +2746,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 }
 [data-admin] .ah-queue-lbl {
   display: block;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
   margin-top: 5px;
 }
@@ -3034,7 +3034,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   font-variation-settings:
     "wdth" 112,
     "wght" 600;
-  font-size: 9.5px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--muted-foreground);
   text-align: center;
@@ -3059,7 +3059,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   line-height: 1.2;
 }
 [data-admin] .ah-pitch-label span {
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-admin] .ah-slot {
@@ -3080,7 +3080,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 }
 [data-admin] .ah-blk b {
   display: block;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
   line-height: 1.15;
   white-space: nowrap;
@@ -3088,7 +3088,7 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   text-overflow: ellipsis;
 }
 [data-admin] .ah-blk span {
-  font-size: 10px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -3149,7 +3149,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   font-variation-settings:
     "wdth" 112,
     "wght" 700;
-  font-size: 9.5px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   padding: 2px 6px;
   border-radius: 5px;
@@ -3160,7 +3160,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   gap: 16px;
   flex-wrap: wrap;
   padding: 2px 18px 16px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-admin] .ah-pitch-legend i {
@@ -3261,7 +3261,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
     font-size: 15px;
   }
   [data-owner] .ah-rail .ah-brand-name small {
-    font-size: 8.5px;
+    font-size: 12px;
     margin-top: 2px;
   }
   [data-owner] .ah-nav-group {
@@ -3282,7 +3282,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
     height: 17px;
   }
   [data-owner] .ah-nav-count {
-    font-size: 10.5px;
+    font-size: 12px;
     padding: 1px 6px;
   }
   [data-owner] .ah-rail-foot {
@@ -3296,13 +3296,13 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   [data-owner] .ah-owner-av {
     width: 30px;
     height: 30px;
-    font-size: 11px;
+    font-size: 12px;
   }
   [data-owner] .ah-owner-name {
     font-size: 12.5px;
   }
   [data-owner] .ah-owner-role {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 }
 /* owner phone standard: reading text at least 14px below 768px. Labels that
@@ -3488,7 +3488,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   display: flex;
   gap: 14px;
   margin-left: auto;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-owner] .ah-cal-legend span {
@@ -3549,7 +3549,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   line-height: 1;
 }
 [data-owner] .ah-cal-day span {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -3567,7 +3567,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
 }
 [data-owner] .ah-cal-court span {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: normal;
   text-transform: none;
   overflow: hidden;
@@ -3603,7 +3603,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
 }
 [data-owner] .ah-cal-time {
   min-height: 0;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted-foreground);
   text-align: right;
   padding-right: 8px;
@@ -3627,7 +3627,7 @@ html[data-theme="dark"] [data-admin] .ah-blk-wait {
   border-radius: 7px;
   padding: 5px 7px;
   overflow: hidden;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.25;
   text-align: left;
   border-left: 3px solid;
@@ -3691,7 +3691,7 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
 [data-owner] .ah-cal-mhead {
   padding: 10px 8px;
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -3751,7 +3751,7 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   border: 0;
   background: none;
   padding: 2px 4px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-2);
 }
 [data-owner] .ah-cal-more:hover {
@@ -3846,7 +3846,7 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   grid-template-columns: 22px 1fr 38px;
   gap: 9px;
   align-items: center;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-owner] .ah-score-track {
@@ -3884,7 +3884,7 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   font-size: 13.5px;
 }
 [data-owner] .ah-review-meta {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 [data-owner] .ah-review-badge {
@@ -4194,7 +4194,7 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
   line-height: 1.45;
 }
 [data-owner] .ah-note-text small {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted-foreground);
 }
 @media (max-width: 767.98px) {
@@ -4459,7 +4459,7 @@ html[data-theme="dark"] [data-owner] .ah-ev-c {
 [data-owner] .ah-datepop-dow {
   padding: 4px 0;
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted-foreground);

@@ -34,5 +34,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   dot: { width: 5, height: 5, borderRadius: 2.5 },
-  label: { fontSize: 11.5, fontWeight: '600', lineHeight: 11.5 * 1.45 },
+  label: { fontSize: 14, fontWeight: '600', lineHeight: 14 * 1.45 },
 });

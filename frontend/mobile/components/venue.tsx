@@ -46,7 +46,8 @@ export const formatKm = (km: number): string => (km < 10 ? `${km.toFixed(1)} km`
 
 function Where({ arena }: { arena: Arena }) {
   return (
-    <Text style={[styles.meta, styles.flex]} numberOfLines={1}>
+    // two lines at most, so a narrow card wraps the area instead of cutting it short
+    <Text style={[styles.meta, styles.flex]} numberOfLines={2}>
       {arena.area ?? arena.city}
       {arena.distance_km != null ? ` · ${formatKm(arena.distance_km)}` : ''}
     </Text>
@@ -181,15 +182,15 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   between: { justifyContent: 'space-between' },
   meta: { fontSize: 14, color: Colors.light.muted },
-  // "/hr" and "per hour": unit labels (exempt from the 14px rule)
-  unit: { fontSize: 12, fontWeight: '500', color: Colors.light.muted },
+  // "/hr" and "per hour": part of the price, 14px
+  unit: { fontSize: 14, fontWeight: '500', color: Colors.light.muted },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingNum: { fontSize: 14, color: Colors.light.text },
-  // .tag: a badge (11px, exempt from the 14px rule)
+  // .tag: a sport tag, 14px (it carries information)
   tag: { backgroundColor: Colors.light.lineSoft, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
-  tagText: { fontSize: 11, fontWeight: '600', color: Colors.light.text2 },
+  tagText: { fontSize: 14, fontWeight: '600', color: Colors.light.text2 },
   newTag: { backgroundColor: Colors.light.limeWash, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
-  newTagText: { fontSize: 11, fontWeight: '600', color: Colors.light.limeText },
+  newTagText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   price: { fontFamily: Font.display, fontSize: 15, color: Colors.light.text },
   pinPlace: { position: 'absolute', top: 8, right: 8 },
   heroPlace: { position: 'absolute', top: 10, right: 14 },

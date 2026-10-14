@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 16, fontWeight: '700', color: Colors.light.text },
   sub: { fontSize: 14, color: Colors.light.muted, marginTop: 4, marginBottom: 10 },
   body: { fontSize: 14, lineHeight: 21, color: Colors.light.text },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
   reply: { backgroundColor: Colors.light.limeWash, borderWidth: 1, borderColor: '#D9EBA0', borderRadius: 15, padding: 14 },
   replyText: { fontSize: 14, lineHeight: 21, color: Colors.light.text },
   replyMeta: { fontSize: 14, color: Colors.light.muted, marginTop: 8 },

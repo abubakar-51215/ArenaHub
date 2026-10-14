@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dotMet: { backgroundColor: Colors.light.limeWash },
-  bullet: { fontSize: 9, lineHeight: 11, color: Colors.light.muted },
+  bullet: { fontSize: 12, lineHeight: 14, color: Colors.light.muted },
   label: { fontSize: 14, color: Colors.light.muted },
   labelMet: { color: Colors.light.limeText },
 });

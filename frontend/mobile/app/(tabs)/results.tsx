@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10 },
   understood: { fontSize: 14, color: Colors.light.muted },
   chip: { backgroundColor: Colors.light.limeWash, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 9 },
-  chipText: { fontSize: 11, fontWeight: '600', color: Colors.light.limeText },
+  chipText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   countRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8, minHeight: 34 },
   count: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   seg: { flexDirection: 'row', gap: 3, backgroundColor: Colors.light.lineSoft, borderRadius: 11, padding: 3 },

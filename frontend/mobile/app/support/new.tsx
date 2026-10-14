@@ -92,7 +92,7 @@ export default function NewComplaintScreen() {
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 16, borderRadius: 14, backgroundColor: Colors.light.card, borderWidth: 1.5, borderColor: Colors.light.line, alignItems: 'center', justifyContent: 'center' },
   chipOn: { backgroundColor: Colors.light.ink, borderColor: Colors.light.ink },

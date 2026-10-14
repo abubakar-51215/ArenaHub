@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.light.card, borderWidth: 1, borderColor: Colors.light.line, borderRadius: 15, padding: 14 },
   heroTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   heroText: { fontSize: 14, color: Colors.light.muted, marginTop: 1 },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 20, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 20, marginBottom: 8 },
   complaint: { backgroundColor: Colors.light.card, borderWidth: 1, borderColor: Colors.light.line, borderRadius: 15, padding: 14, minHeight: 60 },
   cTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   cTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.light.text },
