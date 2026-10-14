@@ -6,7 +6,7 @@ populated on the returned instance.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +96,22 @@ async def create_otp(
     db.add(otp)
     await db.flush()
     return otp
+
+
+async def count_recent_otps(
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, within: timedelta
+) -> int:
+    """How many codes of one purpose were issued to a user in the last ``within``."""
+    total = await db.scalar(
+        select(func.count())
+        .select_from(OtpVerification)
+        .where(
+            OtpVerification.user_id == user_id,
+            OtpVerification.purpose == purpose.value,
+            OtpVerification.created_at >= func.now() - within,
+        )
+    )
+    return int(total or 0)
 
 
 async def get_latest_otp(

@@ -20,6 +20,8 @@ const EMPTY_CODE = "      ";
 /** Server messages about the code, in plain words. */
 function codeMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    // the code screen's own answers ("Wait N seconds ...", "Too many codes ...") are shown as they are
+    if (err.status === 429 && /^(Wait \d+ seconds|Too many codes)/.test(err.message)) return err.message;
     if (err.status === 429) return "Too many requests from this device. Wait a minute and try again.";
     if (/too many incorrect attempts/i.test(err.message))
       return "Too many wrong tries for this code. Ask for a new code below.";
@@ -128,10 +130,15 @@ export default function AdminLoginPage() {
       await resendAdminCode(challenge);
       setWait(RESEND_WAIT_S);
       setCode(EMPTY_CODE);
-      setInfo("A new code is on its way. Only the newest code works.");
+      setInfo("We sent a new code to your email. Only the newest code works.");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) backToPassword(err.message);
-      else setError(codeMessage(err));
+      else {
+        // "Wait N seconds before asking for another code." also restarts the countdown at N
+        const waitFor = err instanceof ApiError ? /Wait (\d+) seconds/.exec(err.message) : null;
+        if (waitFor) setWait(Number(waitFor[1]));
+        setError(codeMessage(err));
+      }
     }
   }
 

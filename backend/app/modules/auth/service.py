@@ -8,12 +8,18 @@ the JWTs. Lockout, token lifetimes, and password policy follow FR-P-01/02.
 
 import hashlib
 import logging
+import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, UnauthorizedError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    TooManyRequestsError,
+    UnauthorizedError,
+    ValidationError,
+)
 from app.core.security import (
     ADMIN_LOGIN_TOKEN_TTL,
     TokenType,
@@ -231,14 +237,35 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
 _CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in again."
 
 
-async def _send_admin_code(db: AsyncSession, user: User) -> None:
+# "Send a new code" on the admin code screen: at most this many codes an hour.
+ADMIN_CODES_PER_HOUR = 5
+WAIT_MESSAGE = "Wait {seconds} seconds before asking for another code."
+TOO_MANY_CODES_MESSAGE = "Too many codes were asked for. Please try again in 30 minutes."
+
+
+async def _send_admin_code(db: AsyncSession, user: User, *, asked_again: bool = False) -> None:
     """Email a fresh admin sign-in code, keeping the OTP rules: nothing new
-    within 60 s of the last one, and the older code retired so one is live."""
+    within 60 s of the last one, and the older code retired so one is live.
+
+    ``asked_again`` (the "Send a new code" button) says why nothing was sent:
+    "Wait N seconds ..." inside the 60 s, or "Too many codes ..." after
+    ADMIN_CODES_PER_HOUR codes in an hour. The first code at sign-in stays quiet."""
     latest = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login, for_update=True)
     if latest is not None:
-        if _now() - (latest.expires_at - OTP_TTL) < OTP_RESEND_COOLDOWN:
+        since = _now() - (latest.expires_at - OTP_TTL)
+        if since < OTP_RESEND_COOLDOWN:
             await db.commit()  # release the row lock
+            if asked_again:
+                seconds = max(1, math.ceil((OTP_RESEND_COOLDOWN - since).total_seconds()))
+                raise TooManyRequestsError(WAIT_MESSAGE.format(seconds=seconds))
             return
+    if asked_again and (
+        await repo.count_recent_otps(db, user.id, OtpPurpose.admin_login, timedelta(hours=1))
+        >= ADMIN_CODES_PER_HOUR
+    ):
+        await db.commit()
+        raise TooManyRequestsError(TOO_MANY_CODES_MESSAGE)
+    if latest is not None:
         latest.is_used = True
     code = generate_otp_code()
     await repo.create_otp(
@@ -283,7 +310,7 @@ async def verify_admin_code(db: AsyncSession, data: AdminCodeRequest) -> TokenRe
 
 async def resend_admin_code(db: AsyncSession, data: AdminResendRequest) -> None:
     user = await _challenge_user(db, data.challenge_token)
-    await _send_admin_code(db, user)
+    await _send_admin_code(db, user, asked_again=True)
 
 
 async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:

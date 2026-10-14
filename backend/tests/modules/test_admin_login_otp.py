@@ -6,6 +6,7 @@ challenge go to /auth/admin/verify-code for the normal tokens. Owners and
 players sign in exactly as before.
 """
 
+import re
 from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
@@ -110,16 +111,55 @@ async def test_a_challenge_does_not_work_for_another_user_or_as_a_token(client, 
     assert me.status_code == 401
 
 
-async def test_resend_inside_60_seconds_sends_nothing_new(client, db_session):
+async def _resend(client: AsyncClient, challenge: str):
+    return await client.post("/api/v1/auth/admin/resend-code", json={"challenge_token": challenge})
+
+
+async def _age_latest_code(db: AsyncSession, user, seconds: int) -> None:
+    """Pretend the newest admin code was sent ``seconds`` earlier."""
+    latest = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login)
+    latest.expires_at -= timedelta(seconds=seconds)
+    await db.commit()
+
+
+async def test_resend_inside_60_seconds_says_how_long_to_wait(client, db_session):
     data, user, first = await _admin_with_challenge(client, db_session, "adm-resend@example.com")
 
-    res = await client.post(
-        "/api/v1/auth/admin/resend-code", json={"challenge_token": data["challenge_token"]}
-    )
+    res = await _resend(client, data["challenge_token"])
+
+    assert res.status_code == 429
+    message = res.json()["message"]
+    seconds = int(re.fullmatch(r"Wait (\d+) seconds before asking for another code\.", message)[1])
+    assert 1 <= seconds <= 60
+    latest = await repo.get_latest_otp(db_session, user.id, OtpPurpose.admin_login)
+    assert latest is not None and latest.id == first.id  # nothing new was sent
+
+
+async def test_resend_after_the_wait_sends_a_new_code(client, db_session):
+    data, user, first = await _admin_with_challenge(client, db_session, "adm-resend2@example.com")
+    await _age_latest_code(db_session, user, 61)
+
+    res = await _resend(client, data["challenge_token"])
 
     assert res.status_code == 200
+    assert res.json()["message"] == "We sent a new code to your email."
     latest = await repo.get_latest_otp(db_session, user.id, OtpPurpose.admin_login)
-    assert latest is not None and latest.id == first.id
+    assert latest is not None and latest.id != first.id
+
+
+async def test_too_many_codes_in_an_hour_says_try_later(client, db_session):
+    data, user, _ = await _admin_with_challenge(client, db_session, "adm-resend3@example.com")
+    sent = 1  # the code from signing in
+    while sent < 5:
+        await _age_latest_code(db_session, user, 61)
+        assert (await _resend(client, data["challenge_token"])).status_code == 200
+        sent += 1
+    await _age_latest_code(db_session, user, 61)
+
+    res = await _resend(client, data["challenge_token"])
+
+    assert res.status_code == 429
+    assert res.json()["message"] == "Too many codes were asked for. Please try again in 30 minutes."
 
 
 async def test_owner_and_player_sign_in_as_before(client, db_session):

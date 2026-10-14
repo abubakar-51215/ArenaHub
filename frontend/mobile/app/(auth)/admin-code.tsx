@@ -73,6 +73,9 @@ export default function AdminCodeScreen() {
         startAgain('Your sign-in step expired. Please log in again.');
         return;
       }
+      // "Wait N seconds before asking for another code." also restarts the countdown at N
+      const waitFor = err instanceof ApiError ? /Wait (\d+) seconds/.exec(err.message) : null;
+      if (waitFor) wait.restart(Number(waitFor[1]));
       flash('error');
       setError(err instanceof ApiError ? err.message : 'Could not send a new code. Check your connection.');
     },

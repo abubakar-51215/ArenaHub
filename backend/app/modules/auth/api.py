@@ -69,9 +69,10 @@ async def verify_admin_code(
 async def resend_admin_code(
     data: AdminResendRequest, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
-    # same answer inside or outside the 60 s wait: nothing is revealed
+    # only someone holding a valid sign-in challenge (the right password) gets here, so the answer
+    # says what happened: sent, "Wait N seconds ..." (429) or "Too many codes ..." (429)
     await service.resend_admin_code(db, data)
-    return success(message="If a new code can be sent, it is on its way.")
+    return success(message="We sent a new code to your email.")
 
 
 @router.post("/refresh", summary="Rotate the access + refresh tokens")

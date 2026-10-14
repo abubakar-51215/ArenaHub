@@ -42,6 +42,11 @@ class ValidationError(AppError):
     message = "Validation failed"
 
 
+class TooManyRequestsError(AppError):
+    status_code = 429
+    message = "Too many requests. Please slow down."
+
+
 class ServiceUnavailableError(AppError):
     status_code = 503
     message = "This service is not available right now"
