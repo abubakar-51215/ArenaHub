@@ -40,6 +40,8 @@ dev = [
     "black>=24.4",
     "mypy>=1.10",
     "fakeredis>=2.21",
+    "pip-audit>=2.10.1",
+    "bandit>=1.9.4",
 ]
 
 [build-system]

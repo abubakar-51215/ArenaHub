@@ -109,3 +109,19 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
    bullet, avatar initials) may be smaller but never below 12px. Owner and admin web: no text below 12px; dashboard density is
    unchanged. See `docs/MOBILE_QA_GATE.md`.
 8. **Currency symbol: decided.** The owner and admin web write "Rs." and the phone and every notice write "₨", as in the prototypes.
+
+## Deployment tasks (security round, 2026-10-15)
+
+None of these chooses a deferred value; they are the work to do when a server exists.
+
+1. **HTTPS certificate** on the API and the web address, and redirect plain http to https. Set `ENVIRONMENT=prod`, `ALLOWED_HOSTS` (exact names) and `CORS_ALLOWED_ORIGINS` (exact https origins); the server refuses to start otherwise.
+2. **Firewall:** only 80/443 open to the world. The database and Redis must not be reachable from outside.
+3. **Secret management:** `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CODE_HASH_SECRET`, database and Redis passwords come from a secret store or the host's environment, never from the repository. Rotate them if they were ever shared.
+4. **Redis:** set a password, bind to the private network only, never expose it publicly (rate limits, session cutoffs and locks live there).
+5. **TRUSTED_PROXIES** and **CODE_HASH_SECRET**: set the final values when the server layout and keys are decided (not chosen here).
+6. **Database:** a migration user and a separate least-privilege app user (see `docs/SECURITY.md`); encrypted backups; a restore drill before launch and then regularly.
+7. **Monitoring and alerts:** error rate, 5xx, failed-sign-in spikes (audit log), disk, backup success, certificate expiry.
+8. **Recovery procedure:** who can restore the database, how to revoke all sessions (change `JWT_SECRET`, or run "log out everywhere" per account), how to rotate a leaked secret.
+9. Run `scripts/security-check.py` and fix what it reports; keep dependency updates flowing (`.github/dependabot.yml`).
+10. **Arrange an independent security review and penetration test before processing real payments.**
+11. Decisions waiting for the owner: where web sign-in tokens live (httpOnly cookies need the final web address) and private serving of receipt pictures (see `docs/SECURITY.md`).

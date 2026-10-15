@@ -7,7 +7,7 @@ app/shared/audit.py).
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "audit_logs"
+    __table_args__ = (Index("ix_audit_logs_created_at", "created_at"),)
 
     # empty for something done by nobody signed in (a failed sign-in, a code asked for by address)
     actor_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -33,7 +33,8 @@ def _post_sync(messages: list[dict[str, object]]) -> None:
         },
         method="POST",
     )
-    with urlopen(request, timeout=10) as response:
+    # fixed https address (EXPO_PUSH_ENDPOINT), never one given by a user
+    with urlopen(request, timeout=10) as response:  # nosec B310
         response.read()
 
 
