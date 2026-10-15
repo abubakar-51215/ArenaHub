@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
+    AppError,
     ConflictError,
     TooManyRequestsError,
     UnauthorizedError,
@@ -24,7 +25,6 @@ from app.core.security import (
     TokenType,
     create_access_token,
     create_admin_login_token,
-    create_refresh_token,
     decode_token,
     dummy_verify,
     hash_password,
@@ -32,8 +32,8 @@ from app.core.security import (
     validate_password_strength,
     verify_password,
 )
+from app.modules.auth import login_guard, sessions, tokens
 from app.modules.auth import repository as repo
-from app.modules.auth import tokens
 from app.modules.auth.schema import (
     AdminCodeRequest,
     AdminLoginChallenge,
@@ -49,16 +49,14 @@ from app.modules.auth.schema import (
 from app.modules.user.model import User, UserRole
 from app.modules.user.schema import UserPublic
 from app.shared import codes
+from app.shared.audit import audit
 from app.shared.otp import OtpPurpose
 
-LOGIN_MAX_ATTEMPTS = 5
-LOCKOUT_DURATION = timedelta(minutes=15)
 PASSWORD_HISTORY_DEPTH = 3
 
 logger = logging.getLogger(__name__)
 
 _INVALID_CREDENTIALS = "Invalid email/phone or password."
-_ACCOUNT_LOCKED = "Your account has been locked. Please try again after 15 minutes."
 _ACCOUNT_SUSPENDED = "Your account has been suspended."
 
 
@@ -66,11 +64,12 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _issue_tokens(user: User) -> TokenResponse:
-    """Mint a fresh access + refresh pair (new refresh-token family)."""
+async def _issue_tokens(db: AsyncSession, user: User) -> TokenResponse:
+    """Mint a fresh access + refresh pair (a new refresh-token family, kept as a hash)."""
+    refresh = await sessions.issue(db, user.id)
+    await db.commit()
     return TokenResponse(
-        access_token=create_access_token(user.id, user.role.value),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token(user.id, user.role.value), refresh_token=refresh
     )
 
 
@@ -151,7 +150,7 @@ async def verify_otp(db: AsyncSession, data: OtpVerifyRequest) -> TokenResponse:
     await codes.check_code(db, user.id, OtpPurpose.registration, data.code, user.email)
     user.is_verified = True
     await db.commit()
-    return _issue_tokens(user)
+    return await _issue_tokens(db, user)
 
 
 async def resend_otp(db: AsyncSession, email: str) -> bool:
@@ -170,14 +169,6 @@ async def resend_otp(db: AsyncSession, email: str) -> bool:
     return issued.delivered
 
 
-async def _register_failed_login(db: AsyncSession, user: User) -> None:
-    user.failed_login_attempts += 1
-    if user.failed_login_attempts >= LOGIN_MAX_ATTEMPTS:
-        user.locked_until = _now() + LOCKOUT_DURATION
-        user.failed_login_attempts = 0
-    await db.commit()
-
-
 async def _user_for_login(db: AsyncSession, who: str) -> User | None:
     """The account an email or a phone number points to. A text with "@" is an
     email; anything else is a phone. A phone shared by several accounts matches
@@ -193,19 +184,36 @@ async def _user_for_login(db: AsyncSession, who: str) -> User | None:
 
 
 async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLoginChallenge:
-    user = await _user_for_login(db, data.who)
+    who = data.who
+    via = "email" if "@" in who else "phone"
+    seen = codes.mask_address(who) if "@" in who else "phone"
+    # after repeated wrong passwords for this address or number, wait (the same for any identifier)
+    await login_guard.check(who)
+    user = await _user_for_login(db, who)
     if user is None or user.deleted_at is not None:
         # an unknown (or removed) account takes as long as a wrong password: no timing difference
         dummy_verify(data.password)
+        await login_guard.failed(who)
+        await audit(
+            db, "auth.login", result="fail", details={"via": via, "who": seen, "reason": "unknown"},
+            commit=True,
+        )  # fmt: skip
         raise UnauthorizedError(_INVALID_CREDENTIALS)
-    if user.locked_until is not None and user.locked_until > _now():
-        raise UnauthorizedError(_ACCOUNT_LOCKED)
 
     if not verify_password(data.password, user.password_hash):
-        await _register_failed_login(db, user)
+        await login_guard.failed(who)
+        await audit(
+            db, "auth.login", actor=user, target_type="user", target_id=user.id, result="fail",
+            details={"via": via, "reason": "wrong password"}, commit=True,
+        )  # fmt: skip
         raise UnauthorizedError(_INVALID_CREDENTIALS)
+    await login_guard.succeeded(who)
     if not user.is_active:
         # said only after the right password, so a stranger cannot learn which accounts exist
+        await audit(
+            db, "auth.login", actor=user, target_type="user", target_id=user.id, result="fail",
+            details={"via": via, "reason": "suspended"}, commit=True,
+        )  # fmt: skip
         raise UnauthorizedError(_ACCOUNT_SUSPENDED)
     if not user.is_verified:
         # the right password: send a fresh code (the 60 s wait permitting) and open the code screen
@@ -216,11 +224,13 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
             data={"email": user.email, "sent_to": issued.masked, "code_sent": issued.delivered}
         )
 
-    user.failed_login_attempts = 0
-    user.locked_until = None
     if password_needs_rehash(user.password_hash):
         # an older bcrypt hash (or weaker settings) is replaced now that the password is known
         user.password_hash = hash_password(data.password)
+    await audit(
+        db, "auth.login" if user.role != UserRole.admin else "auth.login.password",
+        actor=user, target_type="user", target_id=user.id, details={"via": via},
+    )  # fmt: skip
     await db.commit()
     if user.role == UserRole.admin:
         # admins finish signing in with an emailed code: no tokens yet
@@ -231,7 +241,7 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
             sent_to=codes.mask_address(user.email),
             code_sent=delivered,
         )
-    return _issue_tokens(user)
+    return await _issue_tokens(db, user)
 
 
 _CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in again."
@@ -273,9 +283,20 @@ async def verify_admin_code(db: AsyncSession, data: AdminCodeRequest) -> TokenRe
     """Second step of an admin sign-in: the emailed code (OTP try limit and
     row lock), then the normal tokens."""
     user = await _challenge_user(db, data.challenge_token)
-    await codes.check_code(db, user.id, OtpPurpose.admin_login, data.code, user.email)
+    try:
+        # stricter than the usual 5: an admin code is locked after 3 wrong tries
+        await codes.check_code(
+            db, user.id, OtpPurpose.admin_login, data.code, user.email, max_tries=3
+        )
+    except AppError as exc:
+        await audit(
+            db, "auth.admin_code", actor=user, target_type="user", target_id=user.id,
+            result="fail", details={"reason": exc.message[:80]}, commit=True,
+        )  # fmt: skip
+        raise
+    await audit(db, "auth.admin_login", actor=user, target_type="user", target_id=user.id)
     await db.commit()
-    return _issue_tokens(user)
+    return await _issue_tokens(db, user)
 
 
 async def resend_admin_code(db: AsyncSession, data: AdminResendRequest) -> bool:
@@ -284,44 +305,42 @@ async def resend_admin_code(db: AsyncSession, data: AdminResendRequest) -> bool:
 
 
 async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:
-    payload = decode_token(refresh_token, TokenType.refresh)
-    family, jti, user_id = payload["family"], payload["jti"], payload["sub"]
-
-    if await tokens.is_family_revoked(family):
-        raise UnauthorizedError("Session revoked, please log in again.")
-    # Atomic check-and-set: the first caller to mark this jti wins; any
-    # concurrent or later request presenting the same token sees it already
-    # marked and is treated as a replay. This closes the race a plain
-    # is_refresh_used-then-mark_refresh_used pair leaves open when two
-    # requests race the read before either writes.
-    if not await tokens.try_mark_refresh_used(jti):
-        # Replay of a rotated (or concurrently-raced) token — kill the whole
-        # family (deviation #17).
-        await tokens.revoke_family(family)
-        raise UnauthorizedError("Refresh token reuse detected; session revoked.")
-    if await tokens.is_session_stale(user_id, payload):
-        raise UnauthorizedError("Session expired, please log in again.")
-
-    user = await repo.get_user_by_id(db, uuid.UUID(user_id))
+    """Use a refresh token once for a new pair. A token used before means a copy exists: the whole
+    sign-in is revoked (sessions.rotate)."""
+    user_id, next_token = await sessions.rotate(db, refresh_token)
+    user = await repo.get_user_by_id(db, user_id)
     if user is None or user.deleted_at is not None or not user.is_active:
+        await sessions.revoke_all(db, user_id)
+        await db.commit()
         raise UnauthorizedError("Account is not active.")
-
+    await db.commit()
     return TokenResponse(
-        access_token=create_access_token(user.id, user.role.value),
-        refresh_token=create_refresh_token(user.id, family=family),
+        access_token=create_access_token(user.id, user.role.value), refresh_token=next_token
     )
 
 
-async def logout(access_token: str, refresh_token: str) -> None:
-    """Invalidate the current session: denylist this access token and revoke
-    the refresh-token family so neither can be used again."""
+async def logout(db: AsyncSession, access_token: str, refresh_token: str) -> None:
+    """Invalidate the current session: denylist this access token and revoke the refresh-token
+    family so neither can be used again."""
     access_payload = decode_token(access_token, TokenType.access)
     await tokens.deny_access(access_payload["jti"])
-    try:
-        refresh_payload = decode_token(refresh_token, TokenType.refresh)
-    except UnauthorizedError:
-        return  # Best-effort: a bad refresh token doesn't block logout.
-    await tokens.revoke_family(refresh_payload["family"])
+    await sessions.revoke_token_family(db, refresh_token)  # best effort: an unknown token is fine
+    await audit(
+        db,
+        "auth.logout",
+        actor=access_payload["sub"],
+        target_type="user",
+        target_id=access_payload["sub"],
+    )
+    await db.commit()
+
+
+async def logout_everywhere(db: AsyncSession, user: User) -> None:
+    """End every sign-in of this account (every phone and browser), this one included."""
+    await sessions.revoke_all(db, user.id)
+    await audit(db, "auth.logout_all", actor=user, target_type="user", target_id=user.id)
+    await db.commit()
+    await tokens.bump_session_epoch(str(user.id))
 
 
 async def forgot_password(db: AsyncSession, data: ForgotPasswordRequest) -> None:
@@ -351,6 +370,8 @@ async def reset_password(db: AsyncSession, data: ResetPasswordRequest) -> None:
     user.failed_login_attempts = 0
     user.locked_until = None
     await repo.add_password_history(db, user.id, user.password_hash)
+    await sessions.revoke_all(db, user.id)
+    await audit(db, "password.reset", actor=user, target_type="user", target_id=user.id)
     await db.commit()
     # every session and refresh token ends (FR-P-02)
     await tokens.bump_session_epoch(str(user.id))
@@ -367,10 +388,10 @@ async def enforce_password_reuse(db: AsyncSession, user: User, new_password: str
 async def cleanup_expired(db: AsyncSession, now: datetime | None = None) -> tuple[int, int]:
     """Purge expired OTPs and password-reset tokens. Called by the
     APScheduler job in ``app/tasks/`` (docs/PROJECT_GUIDELINES.md deviation
-    #14). Refresh-token replay entries need no cleanup here — they live in
-    Redis with a TTL matching the refresh lifetime and expire on their own."""
+    #14), and refresh tokens a week past their end."""
     cutoff = now or datetime.now(UTC)
     otps = await repo.delete_expired_otps(db, cutoff)
     tokens_deleted = await repo.delete_expired_reset_tokens(db, cutoff)
+    tokens_deleted += await sessions.delete_expired(db)
     await db.commit()
     return otps, tokens_deleted

@@ -3,6 +3,7 @@ tracking or addresses; notice emails wrap their title and body; HTML is escaped 
 supported."""
 
 import re
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,6 +13,7 @@ from app.integrations.email.templates import (
     code_email,
     email_changed_email,
     notification_email,
+    password_changed_email,
 )
 from app.modules.notification.service import EVENT_META
 from app.shared.otp import OtpPurpose
@@ -59,10 +61,23 @@ def test_html_supports_dark_mode_and_keeps_light_colours_inline() -> None:
 
 
 def test_the_old_address_is_told_about_a_change_of_email() -> None:
-    subject, text, html = email_changed_email("n***@gmail.com")
+    when = datetime(2026, 10, 15, 14, 5, tzinfo=UTC)  # 7:05 PM in Pakistan
+    subject, text, html = email_changed_email("n***@gmail.com", when)
     assert subject == "Your ArenaHub email was changed"
     assert "n***@gmail.com" in text and "n***@gmail.com" in html
-    assert "change your password" in text
+    assert "15 Oct 2026, 7:05 PM (Pakistan time)" in text
+    assert "If this was not you, log in and change your password." in text
+    assert "support" not in text.lower() and "@arenahub" not in text
+
+
+def test_the_password_change_notice_says_what_when_and_what_to_do() -> None:
+    when = datetime(2026, 10, 15, 14, 5, tzinfo=UTC)
+    subject, text, html = password_changed_email(when)
+    assert subject == "Your ArenaHub password was changed"
+    assert "The password for your ArenaHub account was changed on 15 Oct 2026, 7:05 PM" in text
+    assert "If this was not you, log in and change your password." in text
+    assert "If this was not you, log in and change your password." in html
+    assert "<a " not in html and "href" not in html and "<img" not in html
 
 
 def test_notification_email_wraps_title_and_body() -> None:
@@ -91,5 +106,8 @@ def test_notice_emails_carry_the_badge_and_code_emails_do_not() -> None:
     html = notification_email("Booking confirmed", "See you on the court!")[2]
     assert "/brand/email-badge@2x.png" in html and 'width="40" height="40"' in html
     assert html.index("email-badge") < html.index("font-size:22px")  # before the heading
-    for other in (code_email("482913", "registration", 10)[2], email_changed_email("n***@x.pk")[2]):
+    for other in (
+        code_email("482913", "registration", 10)[2],
+        email_changed_email("n***@x.pk", datetime(2026, 10, 15, tzinfo=UTC))[2],
+    ):
         assert "email-badge" not in other

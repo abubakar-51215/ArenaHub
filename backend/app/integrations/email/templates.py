@@ -12,8 +12,10 @@ digits. Each helper returns ``(subject, text_body, html_body)`` ready for
 """
 
 import html as html_lib
+from datetime import datetime
 
 from app.core.config import get_settings
+from app.core.messages import email_changed_notice, password_changed_notice
 
 BRAND = "ArenaHub"
 INK = "#0F1A15"
@@ -176,23 +178,38 @@ def code_email(code: str, purpose: str, ttl_minutes: int) -> tuple[str, str, str
     return subject, text, html
 
 
-def email_changed_email(new_masked: str) -> tuple[str, str, str]:
-    """Sent to the OLD address after a change of email is confirmed."""
-    subject = f"Your {BRAND} email was changed"
-    line = f"The email for your {BRAND} account is now {new_masked}."
-    advice = "If you did not do this, change your password now."
-    text = f"{subject}\n\n{line}\n\n{advice}\n\n{BRAND}"
+def _notice_email(subject: str, body: str, footer: str) -> tuple[str, str, str]:
+    """A plain notice: the subject and the paragraphs of ``body``; no links, no images, no address
+    of anybody. The wording is kept in app/core/messages.py."""
+    sep = chr(10) * 2
+    paragraphs = [p for p in body.split(sep) if p.strip()]
+    text = f"{subject}{sep}" + sep.join(paragraphs) + f"{sep}{BRAND}"
+    inner = "".join(
+        f'<p class="ah-text" style="margin:0 0 8px;">{html_lib.escape(p)}</p>' for p in paragraphs
+    )
+    heading = subject.replace(f"Your {BRAND} ", "Your ")
     html = _layout(
         subject,
-        line,
-        f"""\
-{_heading("Your email was changed")}
-<p class="ah-text" style="margin:0 0 8px;">{html_lib.escape(line)}</p>
-<p class="ah-text" style="margin:0;">{html_lib.escape(advice)}</p>""",
+        paragraphs[0],
+        _heading(html_lib.escape(heading[:1].upper() + heading[1:])) + inner,
         badge=False,
-        footer="This message was sent to your previous email address.",
+        footer=footer,
     )
     return subject, text, html
+
+
+def email_changed_email(new_masked: str, when: datetime) -> tuple[str, str, str]:
+    """Sent to the OLD address after a change of email is confirmed."""
+    subject, body = email_changed_notice(new_masked, when)
+    return _notice_email(subject, body, "This message was sent to your previous email address.")
+
+
+def password_changed_email(when: datetime) -> tuple[str, str, str]:
+    """Sent to the account's address after a password change."""
+    subject, body = password_changed_notice(when)
+    return _notice_email(
+        subject, body, "This message was sent to the email address of your account."
+    )
 
 
 def notification_email(title: str, body: str) -> tuple[str, str, str]:

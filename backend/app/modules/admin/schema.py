@@ -278,10 +278,13 @@ class PlatformSettingsResponse(PlatformSettingsRequest):
 
 class AuditLogResponse(BaseModel):
     id: uuid.UUID
-    actor_id: uuid.UUID
+    actor_id: uuid.UUID | None  # empty when nobody was signed in (a failed sign-in)
     actor_name: str
     action: str
     target_type: str
     target_id: str
     details: dict
+    result: str = "ok"
+    ip: str | None = None
+    request_id: str | None = None
     created_at: datetime

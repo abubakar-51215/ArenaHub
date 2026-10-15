@@ -86,7 +86,9 @@ export default function LoginScreen() {
       }
       flash('error');
       if (err instanceof ApiError && err.status === 429) {
-        setError('Too many attempts. Please wait a minute and try again.');
+        // the server says how long the wait is after repeated wrong passwords ("Try again in N minutes.");
+        // the per-address request limit has no such text, so the screen keeps its own line for that
+        setError(/^Too many attempts\. Try again in/.test(err.message) ? err.message : 'Too many attempts. Please wait a minute and try again.');
       } else if (err instanceof RequestTimeoutError) {
         setError('The server is taking too long. Check your connection and try again.');
       } else if (err instanceof ApiError) {

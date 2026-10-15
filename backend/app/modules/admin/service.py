@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.admin import repository as repo
-from app.modules.admin.model import AuditLog, PlatformSettings
+from app.modules.admin.model import PlatformSettings
 from app.modules.admin.schema import (
     AdminBookingResponse,
     AdminPaymentResponse,
@@ -31,13 +31,14 @@ from app.modules.arena import repository as arena_repo
 from app.modules.arena import service as arena_service
 from app.modules.arena.model import Arena, ArenaStatus
 from app.modules.arena.schema import ArenaResponse
-from app.modules.auth import tokens
+from app.modules.auth import sessions, tokens
 from app.modules.booking import service as booking_service
 from app.modules.booking.model import BookingStatus
 from app.modules.complaint import service as complaint_service
 from app.modules.payment.model import PaymentMethod, Refund, RefundStatus
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import User, UserRole
+from app.shared.audit import audit
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
@@ -50,15 +51,8 @@ async def record_audit(
     target_id: str,
     details: dict | None = None,
 ) -> None:
-    await repo.add_audit_log(
-        db,
-        AuditLog(
-            actor_id=actor.id,
-            action=action,
-            target_type=target_type,
-            target_id=target_id,
-            details=details or {},
-        ),
+    await audit(
+        db, action, actor=actor, target_type=target_type, target_id=target_id, details=details
     )
 
 
@@ -275,6 +269,8 @@ async def suspend_user(
     if user.role == UserRole.admin:
         raise ForbiddenError("Admin accounts cannot be suspended.")
     user.is_active = False
+    # every sign-in of this account ends now, and stays ended after a later reactivation
+    await sessions.revoke_all(db, user_id)
     await record_audit(db, actor, "user.suspend", "user", str(user_id), {"reason": reason})
     # The email is the channel that matters here — a suspended account can't
     # open the app to read the in-app copy until it's reactivated.
@@ -312,6 +308,7 @@ async def delete_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> None
     user.bio = None
 
     await record_audit(db, actor, "user.delete", "user", str(user_id))
+    await sessions.revoke_all(db, user_id)
     await db.commit()
     await tokens.bump_session_epoch(str(user_id))
 
@@ -481,6 +478,9 @@ async def list_audit_logs(
             target_type=log.target_type,
             target_id=log.target_id,
             details=log.details,
+            result=log.result,
+            ip=log.ip,
+            request_id=log.request_id,
             created_at=log.created_at,
         )
         for log in logs

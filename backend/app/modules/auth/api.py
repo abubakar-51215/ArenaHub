@@ -99,9 +99,18 @@ async def logout(
     data: LogoutRequest,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
     _user: Any = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    await service.logout(credentials.credentials, data.refresh_token)
+    await service.logout(db, credentials.credentials, data.refresh_token)
     return success(message="Logged out.")
+
+
+@router.post("/logout-all", summary="Log out everywhere: end every sign-in of this account")
+async def logout_all(
+    user: Any = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    await service.logout_everywhere(db, user)
+    return success(message="Logged out everywhere.")
 
 
 @router.post("/forgot-password", summary="Request a password-reset token")

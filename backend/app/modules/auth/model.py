@@ -72,3 +72,27 @@ class PasswordHistory(UUIDPrimaryKeyMixin, Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+
+class RefreshToken(UUIDPrimaryKeyMixin, Base):
+    """One refresh token of one sign-in. Only the SHA-256 hash is kept (the token itself is a
+    random string the app holds), and the tokens of one sign-in share a ``family_id``. A token works
+    once: using it again (``used_at`` set) means it was copied, so the whole family is revoked. See
+    app/modules/auth/sessions.py."""
+
+    __tablename__ = "refresh_tokens"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    family_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
