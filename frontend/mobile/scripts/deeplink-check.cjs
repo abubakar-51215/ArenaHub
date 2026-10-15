@@ -24,6 +24,8 @@ eq('auth group is not kept', D.pathFromUrl('arenahub://(auth)/register'), null);
 eq('empty', D.pathFromUrl('arenahub://'), null);
 eq('null', D.pathFromUrl(null), null);
 eq('unknown screen', D.pathFromUrl('arenahub://something/else'), null);
+eq('a path that climbs out is refused', D.pathFromUrl('arenahub://play/../admin/users'), null);
+eq('a backslash is refused', D.pathFromUrl('arenahub://play/a\\b'), null);
 eq('tab screen Bookings', D.pathFromUrl('http://localhost:8081/bookings'), '/bookings');
 eq('tab screen Search', D.pathFromUrl('arenahub://search?q=padel'), '/search?q=padel');
 eq('admin screen', D.pathFromUrl('http://localhost:8081/admin/users/u1'), '/admin/users/u1');

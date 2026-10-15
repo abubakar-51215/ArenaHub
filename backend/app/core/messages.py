@@ -57,3 +57,7 @@ IDEMPOTENCY_MISMATCH = "This request key was already used for a different reques
 
 # Phase 5: a text with control characters in it (placeholder, wording not yet approved)
 BAD_CHARACTERS = "Remove the special characters and try again."
+
+# Phase 6: size and time limits (placeholders, wording not yet approved by the owner)
+REQUEST_TOO_LARGE = "That request is too large."
+REQUEST_TOO_SLOW = "That took too long. Please try again."

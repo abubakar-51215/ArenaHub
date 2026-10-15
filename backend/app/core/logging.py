@@ -23,6 +23,24 @@ def make_stream_safe(stream: object) -> None:
             reconfigure(errors="replace")
 
 
+_HIDE_CONTAINING = ("password", "secret", "token", "authorization", "cookie", "account", "iban")
+_HIDE_EXACT = {"code", "otp", "pin", "cvv", "card"}
+HIDDEN = "[hidden]"
+
+
+def redact_secrets(_: object, __: str, event: dict) -> dict:
+    """Last line of defence: whatever a log call is given, a value stored under a name that
+    sounds like a secret never reaches the log. (The emailed code is shown in development
+    only, where nothing is hidden, so a test never waits for an inbox.)"""
+    if get_settings().is_dev:
+        return event
+    for key in list(event):
+        name = key.lower()
+        if name in _HIDE_EXACT or any(word in name for word in _HIDE_CONTAINING):
+            event[key] = HIDDEN
+    return event
+
+
 def configure_logging() -> None:
     settings = get_settings()
     make_stream_safe(sys.stdout)
@@ -36,6 +54,7 @@ def configure_logging() -> None:
 
     shared_processors: list[structlog.typing.Processor] = [
         structlog.contextvars.merge_contextvars,
+        redact_secrets,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.TimeStamper(fmt="iso"),

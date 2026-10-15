@@ -19,6 +19,8 @@ export function pathFromUrl(url: string | null | undefined): string | null {
   rest = rest.replace(/^\/+/, '');
   if (/^https?:/i.test(url) && dev < 0) rest = rest.replace(/^[^/]+\/?/, ''); // a web address: drop the host
   if (!rest) return null;
+  // never a path that climbs out of the screen ("play/../admin"), uses a backslash or has control characters
+  if (/\.\.|\\|[\u0000-\u001f]/.test(rest)) return null;
   const first = rest.split(/[/?#]/)[0];
   if (!KEEP.includes(first)) return null;
   return `/${rest}`;
