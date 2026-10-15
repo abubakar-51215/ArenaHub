@@ -48,7 +48,7 @@ const VARIANTS: Record<ButtonVariant, { bg: string; border: string; text: string
   danger: { bg: Colors.light.red, border: Colors.light.red, text: '#FFFFFF' },
   // a red-outlined plain button (Cancel booking) and the flat grey one that says an action is not available
   dangerOutline: { bg: Colors.light.card, border: Colors.light.red, text: Colors.light.red },
-  off: { bg: Colors.light.line, border: Colors.light.line, text: Colors.light.muted },
+  off: { bg: Colors.light.line, border: Colors.light.line, text: Colors.light.disabledText },
 };
 
 /**
@@ -79,8 +79,15 @@ export function Button({ title: titleProp, variant: variantProp = 'ink', loading
   const blocked = !!offlineLabel && !online;
   const title = blocked ? (offlineLabel as string) : titleProp;
   const variant = blocked ? 'off' : variantProp;
-  const v = VARIANTS[variant];
   const isDisabled = blocked ? false : disabled || loading;
+  // A button that cannot be pressed is a flat grey (never see-through, so its text keeps 4.5 : 1): a dark one is the
+  // mid grey of the auth frames, every other kind the flat light grey. Loading keeps the button's own look.
+  const dim = isDisabled && !loading && variant !== 'off';
+  const v = dim
+    ? variant === 'ink'
+      ? { bg: Colors.light.disabledInk, border: Colors.light.disabledInk, text: Colors.light.paper }
+      : VARIANTS.off
+    : VARIANTS[variant];
   const press = blocked
     ? () => {
         tapHaptic();
@@ -133,8 +140,6 @@ export function Button({ title: titleProp, variant: variantProp = 'ink', loading
           style={[
             styles.base,
             { backgroundColor: v.bg, borderColor: v.border },
-            // Added state, not in the prototype: opacity 0.5, a disabled button.
-            isDisabled && !loading && variant !== 'off' && (variant === 'ink' ? styles.offInk : styles.disabled),
           ]}>
           {/* the label always stays in the layout (hidden while loading or on
               success), so the button never changes size; the spinner or tick
@@ -173,9 +178,6 @@ const styles = StyleSheet.create({
   hidden: { opacity: 0 },
   faded: { opacity: 0.45 },
   overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.5 },
-  // .btn.off of the auth frames: a flat grey, no see-through
-  offInk: { backgroundColor: '#808683', borderColor: '#808683', opacity: 1 },
   // 650 isn't a value RN's TextStyle['fontWeight'] union accepts, but it's
   // what the prototype declares and components/ui/text.tsx's
   // normalizeWeight() reads the raw string directly (Number('650') >= 650 ->

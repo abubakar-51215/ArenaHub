@@ -200,6 +200,6 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.light.muted },
   composer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderTopColor: Colors.light.line, borderTopWidth: 1, backgroundColor: Colors.light.paper },
   input: { flex: 1, height: 44, borderRadius: 14, borderColor: Colors.light.line, borderWidth: 1, backgroundColor: Colors.light.card, paddingHorizontal: 13, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' } as object,
-  send: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#808683' },
+  send: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.light.disabledInk },
   sendOn: { backgroundColor: Colors.light.ink },
 });

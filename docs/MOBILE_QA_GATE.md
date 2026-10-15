@@ -34,6 +34,17 @@ What exists today (checked, nothing built for these rules yet): `react-native-re
 
 d) **Field icons: always normal size** (user decision, 2026-10-14, replaces the old "huge idle icon" rule and its frames; `arena-hub-player-app-auth-2-fixed.html`). Every text field with an icon (the shared `Field`, and the search bar) is always 48px tall with a 20px icon and 14px text, empty or filled, focused or not. No idle state, no height animation. The whole field is the touch target. Checked by `scripts/field-check.mjs` at 360, 375, 390 and 430.
 
+d2) **A disabled button keeps its text at 4.5 : 1 or more** (user decision, 2026-10-15). A button that cannot be pressed is a flat grey, never see-through (no `opacity` on a disabled button: it dropped the faded ghost, lime and red buttons to 3.3 to 3.4 : 1). It is decided in ONE place, `components/ui/button.tsx` with the colours in `constants/theme.ts`, and the assistant's send button uses the same colour. Same shape and size as the active button; loading keeps the button's own look.
+
+| State | Colours | Before | After |
+|---|---|---|---|
+| A dark button that cannot be pressed yet (Confirm, Log in while Google works, One more step Continue) | paper text on `disabledInk` `#677069` | 3.30 : 1 (`#808683`) | 4.56 : 1 |
+| The assistant's send arrow, disabled | paper on `disabledInk` | 3.30 : 1 | 4.56 : 1 |
+| Every other disabled button (ghost, lime, red, red outline) | `disabledText` `#525C56` on the flat light grey `#E2E6E1` | 3.26 to 3.42 : 1 (50% opacity) | 5.50 : 1 |
+| "Google needs a connection", "Pay needs a connection" and the other offline labels | `disabledText` on `#E2E6E1` | 4.13 : 1 | 5.50 : 1 |
+
+A disabled dark button stays clearly different from the active one (`#677069` against `#0F1A15`, 3.48 : 1 apart). Checked by `scripts/disabled-check.cjs` (reads the theme colours, so a changed colour is caught; it also fails if a see-through disabled style comes back) and by the rendered colours in the browser.
+
 e) **Eye button on every password field** (user decision). Show/hide with a 44px tap area, labels "Show password" / "Hide password"; while the password is visible the eye is crossed out, swapped smoothly with no layout jump.
 
 f) **Text and tap sizes on mobile** (user decision, 2026-10-14): any text that carries information (tags, chips, prices, labels, status words, badges, row details) is at least 14px. Only purely decorative micro labels may be smaller, and never below 12px: uppercase eyebrow lines, tab-bar labels, weekday letters (plus the password-rule bullet and avatar initials). On the owner and admin web: no text below 12px (dashboard density stays). 44px tap targets; small links, icon buttons and switches get a real 44px tap box with `components/ui/tap-box.tsx` (`TapBox`: the drawn part stays small, the box is 44, the layout does not move). `hitSlop` alone is not enough: react-native-web ignores it, so it cannot be measured.
