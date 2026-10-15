@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.cache.redis import redis_client
 from app.core.config import get_settings
@@ -19,6 +20,11 @@ from app.core.logging import configure_logging
 from app.database import metadata as _metadata  # noqa: F401 — registers all ORM mappers
 from app.database.session import engine
 from app.integrations.email.smtp import log_email_mode
+from app.middleware.hardening import (
+    BodyLimitMiddleware,
+    SecurityHeadersMiddleware,
+    TimeLimitMiddleware,
+)
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.modules.admin.api import router as admin_router
@@ -81,8 +87,10 @@ def create_app() -> FastAPI:
         title="ArenaHub API",
         version="0.1.0",
         description="Sports arena booking platform for Pakistan.",
-        docs_url="/docs",
-        openapi_url=f"{API_V1_PREFIX}/openapi.json",
+        # the interactive docs and the schema describe every route: development only
+        docs_url="/docs" if settings.is_dev else None,
+        redoc_url="/redoc" if settings.is_dev else None,
+        openapi_url=f"{API_V1_PREFIX}/openapi.json" if settings.is_dev else None,
         lifespan=lifespan,
     )
 
@@ -115,6 +123,12 @@ def create_app() -> FastAPI:
     )
     # added last = outermost: every log line and every answer (even a 429) carries the request id
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(BodyLimitMiddleware)
+    app.add_middleware(TimeLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    if not settings.is_dev:
+        hosts = [h.strip() for h in settings.allowed_hosts.split(",") if h.strip()]
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)  # outermost
 
     register_exception_handlers(app)
 

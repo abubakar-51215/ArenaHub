@@ -265,10 +265,15 @@ async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Are
     return arena
 
 
+MAX_CALENDAR_DAYS = 93  # a quarter: the calendar screens show a week or a month
+
+
 async def get_calendar(
     db: AsyncSession, user: User, arena_id: uuid.UUID, start: date, end: date
 ) -> list[CalendarBookingResponse]:
     await _owned_arena(db, arena_id, user)
+    if end < start or (end - start).days >= MAX_CALENDAR_DAYS:
+        raise ValidationError(f"Ask for at most {MAX_CALENDAR_DAYS} days at a time.")
     rows: list[Booking] = await booking_repo.list_arena_bookings_in_range(db, arena_id, start, end)
     return [CalendarBookingResponse.model_validate(r) for r in rows]
 
