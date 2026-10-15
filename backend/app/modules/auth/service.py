@@ -10,6 +10,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
@@ -34,6 +35,7 @@ from app.core.security import (
 )
 from app.modules.auth import login_guard, sessions, tokens
 from app.modules.auth import repository as repo
+from app.modules.auth.login_alert import send_owner_login_alert
 from app.modules.auth.schema import (
     AdminCodeRequest,
     AdminLoginChallenge,
@@ -183,7 +185,9 @@ async def _user_for_login(db: AsyncSession, who: str) -> User | None:
     return matches[0] if matches else None
 
 
-async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLoginChallenge:
+async def login(
+    db: AsyncSession, data: LoginRequest, background: BackgroundTasks | None = None
+) -> TokenResponse | AdminLoginChallenge:
     who = data.who
     via = "email" if "@" in who else "phone"
     seen = codes.mask_address(who) if "@" in who else "phone"
@@ -241,7 +245,13 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
             sent_to=codes.mask_address(user.email),
             code_sent=delivered,
         )
-    return await _issue_tokens(db, user)
+    issued = await _issue_tokens(db, user)
+    if user.role == UserRole.owner and background is not None:
+        # a new owner sign-in: one alert email, sent after the answer is on its way
+        background.add_task(
+            send_owner_login_alert, user.id, user.full_name, user.email, datetime.now(UTC)
+        )
+    return issued
 
 
 _CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in again."
@@ -375,6 +385,10 @@ async def reset_password(db: AsyncSession, data: ResetPasswordRequest) -> None:
     await db.commit()
     # every session and refresh token ends (FR-P-02)
     await tokens.bump_session_epoch(str(user.id))
+    # the emailed code proved who they are: the wait after wrong passwords is lifted
+    await login_guard.succeeded(user.email)
+    if user.phone:
+        await login_guard.succeeded(user.phone)
 
 
 async def enforce_password_reuse(db: AsyncSession, user: User, new_password: str) -> None:

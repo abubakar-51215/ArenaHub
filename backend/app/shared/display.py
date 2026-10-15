@@ -66,6 +66,22 @@ def karachi_datetime(moment: datetime) -> datetime:
     return moment + KARACHI
 
 
+_WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def karachi_stamp(moment: datetime) -> str:
+    """ "Thu, 15-Oct-2026 at 01:54:12 PM": a moment in Karachi time with the seconds (the words
+    "Pakistan time" are added by the caller). Fixed English names, whatever the server language."""
+    local = karachi_datetime(moment)
+    hour = local.hour % 12 or 12
+    half = "AM" if local.hour < 12 else "PM"
+    return (
+        f"{_WEEKDAYS[local.weekday()]}, {local.day:02d}-{_MONTHS[local.month - 1]}-{local.year} "
+        f"at {hour:02d}:{local.minute:02d}:{local.second:02d} {half}"
+    )
+
+
 def sport_name(key: str) -> str:
     """The word the app shows for a sport key: futsal and an old "football" are Futsal."""
     k = key.strip().lower().replace(" ", "_").replace("-", "_")

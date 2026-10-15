@@ -22,6 +22,7 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
 1. **App identifiers** (`ios.bundleIdentifier`, `android.package`, build number, version code): which domain they will be based on. They cannot be changed after the first upload to a store.
 2. **Final Terms and Privacy text**, and where it lives (in the app or on a web page). The Profile row "Terms and privacy" is left out until then.
 3. **Real support email and support hours.** The "Contact us" block of Help and support is left out until then.
+   **Support email:** temporary support.arenahub@gmail.com. If the domain arenahub.com.pk is bought, change `SUPPORT_EMAIL` to support@arenahub.com.pk after the email service is set up on that domain. (`SUPPORT_EMAIL` is used only in the owner login-alert email.)
 4. **The production web address** (`WEB_PUBLIC_URL`, and the matching `NEXT_PUBLIC_SITE_URL`).
 5. **Continue with Google: the Google Cloud set-up (TODO, after items 1, 2 and 3).** The code is built and tested with
    test tokens; it stays off until these exist. No real value is written anywhere in the code or docs. Steps:
