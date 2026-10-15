@@ -29,19 +29,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
+    AppError,
     ConflictError,
     ForbiddenError,
     ServiceUnavailableError,
     UnauthorizedError,
     ValidationError,
 )
-from app.core.security import create_access_token, create_refresh_token, hash_password
+from app.core.security import create_access_token, hash_password
 from app.integrations import google
 from app.modules.auth import repository as repo
-from app.modules.auth import tokens
+from app.modules.auth import sessions, tokens
 from app.modules.auth.schema import GoogleSignInResponse
 from app.modules.user.model import User, UserRole
 from app.modules.user.schema import UserPublic
+from app.shared.audit import audit
 from app.shared.phone import phone_key
 
 log = structlog.get_logger()
@@ -60,10 +62,18 @@ def _unusable_password() -> str:
     return hash_password(secrets.token_urlsafe(48)[:64])
 
 
-def _answer(user: User, *, password_removed: bool = False) -> GoogleSignInResponse:
+async def _answer(
+    db: AsyncSession, user: User, *, password_removed: bool = False
+) -> GoogleSignInResponse:
+    refresh = await sessions.issue(db, user.id)
+    await audit(
+        db, "auth.google", actor=user, target_type="user", target_id=user.id,
+        details={"new_account": user.phone is None, "password_removed": password_removed},
+    )  # fmt: skip
+    await db.commit()
     return GoogleSignInResponse(
         access_token=create_access_token(user.id, user.role.value),
-        refresh_token=create_refresh_token(user.id),
+        refresh_token=refresh,
         phone_needed=user.phone is None,
         password_removed=password_removed,
         user=UserPublic.model_validate(user),
@@ -80,13 +90,19 @@ async def _identity(id_token: str) -> google.GoogleIdentity:
 
 
 async def sign_in(db: AsyncSession, id_token: str) -> GoogleSignInResponse:
-    who = await _identity(id_token)
     try:
-        return await _sign_in(db, who)
-    except IntegrityError:
-        # the same new person twice at once: the other request made the account; use it
-        await db.rollback()
-        return await _sign_in(db, who)
+        who = await _identity(id_token)
+        try:
+            return await _sign_in(db, who)
+        except IntegrityError:
+            # the same new person twice at once: the other request made the account; use it
+            await db.rollback()
+            return await _sign_in(db, who)
+    except AppError as exc:
+        await audit(
+            db, "auth.google", result="fail", details={"reason": exc.message[:80]}, commit=True
+        )
+        raise
 
 
 async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignInResponse:
@@ -111,7 +127,7 @@ async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignIn
         db.add(user)
         await db.commit()
         log.info("google_account_created", user_id=str(user.id))
-        return _answer(user)
+        return await _answer(db, user)
 
     if user.role != UserRole.player:
         raise ForbiddenError(MUST_USE_PASSWORD)
@@ -130,6 +146,7 @@ async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignIn
         user.failed_login_attempts = 0
         user.locked_until = None
         await repo.end_all_otps(db, user.id, datetime.now(UTC))
+        await sessions.revoke_all(db, user.id)
         await repo.clear_password_history(db, user.id)
         password_removed = True
     user.google_sub = who.sub
@@ -139,7 +156,7 @@ async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignIn
         # sessions issued at or before that moment are refused; the new ones come after it
         await asyncio.sleep(0.005)
         log.info("google_confirmed_unverified_account", user_id=str(user.id))
-    return _answer(user, password_removed=password_removed)
+    return await _answer(db, user, password_removed=password_removed)
 
 
 async def save_phone(db: AsyncSession, user: User, phone: str) -> UserPublic:

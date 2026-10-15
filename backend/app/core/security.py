@@ -52,12 +52,21 @@ PASSWORD_MAX_LEN = 128
 _SPECIAL_CHARS = re.compile(r"[^A-Za-z0-9]")
 
 
+# Every token names who issued it (iss) and who may accept it (aud), and must carry all of these.
+# Refresh tokens are no longer JWTs: they are random strings kept only as a hash on the server
+# (app/modules/auth/sessions.py), so a refresh token can never be accepted as an access token.
+ISSUER = "arenahub"
+REQUIRED_CLAIMS = ["exp", "iat", "iss", "aud", "jti", "type", "sub"]
+
+
 class TokenType(StrEnum):
     access = "access"
-    refresh = "refresh"
     # carries an admin from the password step to the emailed-code step; it is
-    # not an access or refresh token and is accepted nowhere else
+    # not an access token and is accepted nowhere else
     admin_login = "admin_login"
+
+
+_AUDIENCE = {TokenType.access: "arenahub-api", TokenType.admin_login: "arenahub-admin-login"}
 
 
 # --- Passwords ---------------------------------------------------------------
@@ -132,6 +141,8 @@ def _base_claims(subject: uuid.UUID, token_type: TokenType, ttl: timedelta) -> d
     now = datetime.now(UTC)
     return {
         "sub": str(subject),
+        "iss": ISSUER,
+        "aud": _AUDIENCE[token_type],
         "type": token_type.value,
         "jti": uuid.uuid4().hex,
         "iat": int(now.timestamp()),
@@ -150,15 +161,6 @@ def create_access_token(user_id: uuid.UUID, role: str) -> str:
     return jwt.encode(claims, settings.jwt_secret.get_secret_value(), algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: uuid.UUID, family: str | None = None) -> str:
-    """Mint a refresh token. ``family`` ties rotated tokens together so a
-    replayed (already-used) token can revoke the whole lineage."""
-    settings = get_settings()
-    claims = _base_claims(user_id, TokenType.refresh, REFRESH_TOKEN_TTL)
-    claims["family"] = family or uuid.uuid4().hex
-    return jwt.encode(claims, settings.jwt_refresh_secret.get_secret_value(), algorithm=ALGORITHM)
-
-
 def create_admin_login_token(user_id: uuid.UUID) -> str:
     """Mint the admin sign-in challenge: 10 minutes, for this user, for the
     code step only (its own ``type``)."""
@@ -168,16 +170,25 @@ def create_admin_login_token(user_id: uuid.UUID) -> str:
 
 
 def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
-    """Decode + verify a token, asserting its ``type`` claim.
+    """Decode and verify a token: the algorithm is fixed (HS256, so "none" or another algorithm is
+    refused), the signature, expiry, issuer and audience must match, every required claim must be
+    present, and the ``type`` claim must be the expected one.
 
-    Raises UnauthorizedError on any signature/expiry/type mismatch so callers
-    map every failure to a single 401.
+    Raises UnauthorizedError on any failure so callers map every one to a single 401.
     """
     settings = get_settings()
-    is_access = expected_type is TokenType.access
-    secret = (settings.jwt_secret if is_access else settings.jwt_refresh_secret).get_secret_value()
+    secret = (
+        settings.jwt_secret if expected_type is TokenType.access else settings.jwt_refresh_secret
+    ).get_secret_value()
     try:
-        payload: dict[str, Any] = jwt.decode(token, secret, algorithms=[ALGORITHM])
+        payload: dict[str, Any] = jwt.decode(
+            token,
+            secret,
+            algorithms=[ALGORITHM],
+            issuer=ISSUER,
+            audience=_AUDIENCE[expected_type],
+            options={"require": REQUIRED_CLAIMS},
+        )
     except jwt.ExpiredSignatureError as exc:
         raise UnauthorizedError("Token has expired.") from exc
     except jwt.InvalidTokenError as exc:

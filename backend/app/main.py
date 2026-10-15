@@ -20,6 +20,7 @@ from app.database import metadata as _metadata  # noqa: F401 — registers all O
 from app.database.session import engine
 from app.integrations.email.smtp import log_email_mode
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_context import RequestContextMiddleware
 from app.modules.admin.api import router as admin_router
 from app.modules.ai.api import router as ai_router
 from app.modules.arena.api import owner_router as arena_owner_router
@@ -110,8 +111,10 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["Retry-After"],
+        expose_headers=["Retry-After", "X-Request-ID"],
     )
+    # added last = outermost: every log line and every answer (even a 429) carries the request id
+    app.add_middleware(RequestContextMiddleware)
 
     register_exception_handlers(app)
 

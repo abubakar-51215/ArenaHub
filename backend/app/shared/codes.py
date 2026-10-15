@@ -34,6 +34,7 @@ from app.integrations.email.smtp import EmailSendError, send_email
 from app.integrations.email.templates import code_email
 from app.modules.auth import repository as repo
 from app.modules.auth.model import OtpVerification
+from app.shared.audit import audit
 from app.shared.otp import OtpPurpose
 
 log = structlog.get_logger()
@@ -172,6 +173,10 @@ async def issue_code(
 
     await repo.end_active_otps(db, user_id, purpose, _now())
     code = generate_code()
+    await audit(
+        db, "code.request", actor=user_id, target_type="user", target_id=user_id,
+        details={"purpose": purpose.value},
+    )  # fmt: skip
     otp = await repo.create_otp(
         db,
         user_id=user_id,
@@ -220,22 +225,27 @@ async def _deliver(destination: str, code: str, purpose: OtpPurpose, user_id: uu
 
 
 async def check_code(
-    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, code: str, destination: str
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    purpose: OtpPurpose,
+    code: str,
+    destination: str,
+    *,
+    max_tries: int = MAX_WRONG_TRIES,
 ) -> OtpVerification:
     """The user's active code for this purpose, if ``code`` is it. Wrong tries count on the
-    code (locked after 5). The row is locked while it is checked, so two tries at once cannot
-    both slip under the limit. Marks it used (the caller commits with its own change)."""
+    code (locked after ``max_tries``: 5, and 3 for an admin sign-in). The row is locked while it
+    is checked, so two tries at once cannot both slip under the limit. Marks it used (the caller
+    commits with its own change)."""
     otp = await repo.get_latest_otp(db, user_id, purpose, for_update=True)
     if otp is None or otp.expires_at < _now():
         raise ValidationError(WRONG_CODE_MESSAGE)
-    if otp.attempts >= MAX_WRONG_TRIES:
+    if otp.attempts >= max_tries:
         raise ValidationError(LOCKED_MESSAGE)
     expected = code_hash(code.strip(), user_id=user_id, purpose=purpose, destination=destination)
     if not hmac.compare_digest(otp.code_hash, expected):
         otp.attempts += 1
         await db.commit()
-        raise ValidationError(
-            LOCKED_MESSAGE if otp.attempts >= MAX_WRONG_TRIES else WRONG_CODE_MESSAGE
-        )
+        raise ValidationError(LOCKED_MESSAGE if otp.attempts >= max_tries else WRONG_CODE_MESSAGE)
     otp.used_at = _now()
     return otp

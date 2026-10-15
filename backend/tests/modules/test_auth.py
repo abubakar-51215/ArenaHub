@@ -99,10 +99,10 @@ async def test_login_locks_after_5_failures(client: AsyncClient, db_session: Asy
         )
         assert bad.status_code == 401
 
-    # 6th attempt — now locked even though the password is correct.
+    # 6th attempt: the wait has started, even with the right password (test_sessions_security)
     locked = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
-    assert locked.status_code == 401
-    assert "locked" in locked.json()["message"].lower()
+    assert locked.status_code == 429
+    assert locked.json()["message"] == "Too many attempts. Try again in 1 minute."
 
 
 async def test_refresh_replay_revokes_family(client: AsyncClient, db_session: AsyncSession) -> None:
