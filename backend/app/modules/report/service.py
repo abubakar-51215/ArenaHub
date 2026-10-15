@@ -136,7 +136,7 @@ async def owner_report(
         if arena is None:
             raise NotFoundError("Arena not found.")
         if arena.owner_id != user.id:
-            raise ForbiddenError("You do not own this arena.")
+            raise NotFoundError("Arena not found.")
         arena_ids = [arena_id]
     else:
         arena_ids = await arena_repo.list_owner_arena_ids(db, user.id)

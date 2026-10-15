@@ -187,7 +187,7 @@ async def test_owner_cannot_access_other_owners_arena(
     ).json()["data"]["id"]
 
     resp = await client.get(f"/api/v1/owner/arenas/{arena_id}", headers=auth_header(owner_b))
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 async def test_blocked_dates_and_discounts(client: AsyncClient, db_session: AsyncSession) -> None:
@@ -351,7 +351,7 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
     forbidden = await client.get(
         f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=auth_header(other_owner)
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
     # Pending approval → checkout 404s (arena not bookable yet).
     player, _ = await make_user(client, db_session, "bankplayer1@example.com")
@@ -362,10 +362,18 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
     admin = await make_admin(client, db_session, "admin-bankowner1@example.com")
     await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
 
-    # Checkout returns only active accounts, default first.
-    checkout = await client.get(
+    # A player with no unpaid booking at this arena cannot read its bank account (same answer as
+    # for an arena that does not exist); the owner and an admin can.
+    stranger = await client.get(
         f"/api/v1/arenas/{arena_id}/bank-details", headers=auth_header(player)
     )
+    assert stranger.status_code == 404 and stranger.json()["message"] == "Arena not found."
+    assert (
+        await client.get(f"/api/v1/arenas/{arena_id}/bank-details", headers=auth_header(admin))
+    ).status_code == 200
+
+    # Checkout returns only active accounts, default first.
+    checkout = await client.get(f"/api/v1/arenas/{arena_id}/bank-details", headers=h)
     assert checkout.status_code == 200
     checkout_accounts = checkout.json()["data"]
     assert len(checkout_accounts) == 1  # the deactivated first is excluded

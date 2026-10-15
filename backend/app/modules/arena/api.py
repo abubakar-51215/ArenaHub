@@ -132,7 +132,7 @@ async def get_bank_details(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.get_bank_details_for_checkout(db, arena_id)
+    data = await service.get_bank_details_for_checkout(db, user, arena_id)
     return success(data=data, message="Bank details retrieved.")
 
 

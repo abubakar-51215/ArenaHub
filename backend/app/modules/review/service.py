@@ -53,7 +53,7 @@ async def _completed_own_booking(db: AsyncSession, user: User, booking_id: uuid.
     if booking is None:
         raise NotFoundError("Booking not found.")
     if booking.player_id != user.id:
-        raise ForbiddenError("You do not own this booking.")
+        raise NotFoundError("Booking not found.")
     if booking.status != BookingStatus.completed:
         raise ConflictError("Only completed bookings can be reviewed.")
     return booking

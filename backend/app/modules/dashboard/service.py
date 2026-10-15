@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena, ArenaCity
 from app.modules.booking import repository as booking_repo
@@ -215,7 +215,9 @@ async def remind_booking(
     if found is None:
         raise NotFoundError("Booking not found.")
     booking, court_name, arena_name, player_name = found
-    await _owned_arena(db, booking.arena_id, user)
+    arena = await arena_repo.get_arena(db, booking.arena_id)
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Booking not found.")
 
     now = datetime.now(_KARACHI)
     if booking.status != BookingStatus.pending_payment:
@@ -258,7 +260,8 @@ async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Are
     if arena is None:
         raise NotFoundError("Arena not found.")
     if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        # another owner's arena answers exactly like one that does not exist
+        raise NotFoundError("Arena not found.")
     return arena
 
 
