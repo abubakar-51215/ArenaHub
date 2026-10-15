@@ -34,9 +34,11 @@ async def test_blocked_day_hides_and_refuses_existing_slots(
         params={"from": day.isoformat(), "to": day.isoformat()},
     )
     assert strip.json()["data"] == [{"date": day.isoformat(), "open_count": 0}]
-    body = {"court_id": court_id, "slot_ids": [str(rows[10].id)], "payment_type": "full"}
+    body = {"court_id": court_id, "slot_ids": [str(rows[10].id)]}
     preview = await client.post("/api/v1/bookings/preview", headers=auth_header(player), json=body)
     assert preview.status_code == 409
-    booked = await client.post("/api/v1/bookings", headers=auth_header(player), json=body)
+    booked = await client.post(
+        "/api/v1/bookings", headers=auth_header(player), json={**body, "payment_type": "full"}
+    )
     assert booked.status_code == 409
     assert booked.json()["message"] == "The arena is closed on that day."

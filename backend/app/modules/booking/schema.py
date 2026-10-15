@@ -7,16 +7,17 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.booking.model import BookingStatus, PaymentPlan, PaymentStatus
+from app.shared.request_model import RequestModel
 
 MAX_SLOTS_PER_BOOKING = 8
 
 
-class EquipmentAddonRequest(BaseModel):
+class EquipmentAddonRequest(RequestModel):
     equipment_id: uuid.UUID
     quantity: int = Field(ge=1)
 
 
-class BookingCreateRequest(BaseModel):
+class BookingCreateRequest(RequestModel):
     court_id: uuid.UUID
     slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
     payment_type: PaymentPlan
@@ -26,11 +27,11 @@ class BookingCreateRequest(BaseModel):
     equipment: list[EquipmentAddonRequest] = Field(default_factory=list)
 
 
-class RescheduleRequest(BaseModel):
+class RescheduleRequest(RequestModel):
     new_slot_id: uuid.UUID
 
 
-class CancelRequest(BaseModel):
+class CancelRequest(RequestModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
@@ -71,7 +72,7 @@ class BookingGroupResponse(BaseModel):
     total: Decimal
 
 
-class BookingPreviewRequest(BaseModel):
+class BookingPreviewRequest(RequestModel):
     court_id: uuid.UUID
     slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
     discount_code: str | None = Field(default=None, max_length=50)
@@ -142,7 +143,7 @@ class CancelPreview(BaseModel):
     receipt_waiting: bool = False
 
 
-class GroupRescheduleRequest(BaseModel):
+class GroupRescheduleRequest(RequestModel):
     new_slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
 
 

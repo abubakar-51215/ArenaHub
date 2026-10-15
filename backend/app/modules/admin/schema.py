@@ -13,9 +13,10 @@ from app.modules.booking.model import BookingStatus, PaymentPlan
 from app.modules.payment.model import PaymentLifecycleStatus, PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import UserRole
+from app.shared.request_model import RequestModel
 
 
-class RejectArenaRequest(BaseModel):
+class RejectArenaRequest(RequestModel):
     """Why an arena was not approved: 1 to 500 characters, shown to the owner."""
 
     reason: str = Field(min_length=1, max_length=500)
@@ -26,7 +27,7 @@ class RejectArenaRequest(BaseModel):
         return v.strip() if isinstance(v, str) else v
 
 
-class ArenaModerationRequest(BaseModel):
+class ArenaModerationRequest(RequestModel):
     """Suspend, reactivate or remove an arena. The reason is mandatory: it goes
     to the owner (suspend / remove) and into the audit log."""
 
@@ -47,7 +48,7 @@ class ReactivateArenaRequest(BaseModel):
 # ---- user management --------------------------------------------------
 
 
-class SuspendUserRequest(BaseModel):
+class SuspendUserRequest(RequestModel):
     reason: str = Field(min_length=1, max_length=500)
 
     @field_validator("reason", mode="before")
@@ -216,7 +217,7 @@ class DashboardOverview(BaseModel):
 # ---- platform settings --------------------------------------------------
 
 
-class EmailSettings(BaseModel):
+class EmailSettings(RequestModel):
     """Channel-level toggle + display name only — SMTP credentials stay in
     server-side env vars (app/core/config.py), never in this admin-editable
     row (docs/PROJECT_GUIDELINES.md: secrets never travel through the DB)."""
@@ -225,7 +226,7 @@ class EmailSettings(BaseModel):
     from_name: str = Field(default="ArenaHub", max_length=100)
 
 
-class SmsSettings(BaseModel):
+class SmsSettings(RequestModel):
     """No SMS gateway is wired yet (deviation #7: OTP delivery is email-only
     today) — this only records the platform's intent so the toggle isn't
     lost when a provider lands."""
@@ -234,27 +235,27 @@ class SmsSettings(BaseModel):
     provider: str = Field(default="", max_length=50)
 
 
-class PaymentGatewaySettings(BaseModel):
+class PaymentGatewaySettings(RequestModel):
     card_enabled: bool = True
     jazzcash_enabled: bool = True
     easypaisa_enabled: bool = True
     bank_transfer_enabled: bool = True
 
 
-class BookingPolicySettings(BaseModel):
+class BookingPolicySettings(RequestModel):
     default_advance_percentage: int = Field(default=50, ge=0, le=100)
     min_advance_hours: int = Field(default=1, ge=0)
     max_advance_days: int = Field(default=30, ge=1)
     auto_cancel_hours: int = Field(default=24, ge=1)
 
 
-class NotificationSettings(BaseModel):
+class NotificationSettings(RequestModel):
     booking_enabled: bool = True
     payment_enabled: bool = True
     reminder_enabled: bool = True
 
 
-class PlatformSettingsRequest(BaseModel):
+class PlatformSettingsRequest(RequestModel):
     site_name: str = Field(min_length=1, max_length=255)
     site_description: str = Field(default="", max_length=1000)
     site_email: str = Field(max_length=255)

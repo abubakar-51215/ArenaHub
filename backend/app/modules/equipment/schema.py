@@ -5,8 +5,10 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.shared.request_model import RequestModel
 
-class EquipmentCreate(BaseModel):
+
+class EquipmentCreate(RequestModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
     rental_price: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
@@ -14,14 +16,14 @@ class EquipmentCreate(BaseModel):
     is_active: bool = True
 
 
-class EquipmentUpdate(BaseModel):
+class EquipmentUpdate(RequestModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
     rental_price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     is_active: bool | None = None
 
 
-class QuantityAdjust(BaseModel):
+class QuantityAdjust(RequestModel):
     """Change total stock by ``delta`` (e.g. +5 bought more, -2 retired some).
 
     Kept separate from ``EquipmentUpdate`` because it must move

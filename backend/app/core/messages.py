@@ -49,3 +49,8 @@ def email_changed_notice(new_masked: str, when: datetime) -> tuple[str, str]:
         "If this was not you, log in and change your password."
     )
     return subject, body
+
+
+# Phase 4: retried requests (placeholders, wording not yet approved by the owner)
+IDEMPOTENCY_BUSY = "This request is already being processed."
+IDEMPOTENCY_MISMATCH = "This request key was already used for a different request."

@@ -7,9 +7,10 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.modules.match.model import MatchStatus
+from app.shared.request_model import RequestModel
 
 
-class MatchCreate(BaseModel):
+class MatchCreate(RequestModel):
     """A match on one of my own upcoming confirmed bookings."""
 
     booking_group_id: uuid.UUID

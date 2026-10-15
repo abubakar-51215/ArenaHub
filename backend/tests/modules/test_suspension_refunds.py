@@ -42,7 +42,7 @@ async def _send_receipt(client, player, gid) -> str:
     await client.post(
         f"{API}/payments/{pid}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/media/receipts/r.png"},
+        json={"receipt_proof_url": "/uploads/receipts/r.png"},
     )
     return pid
 

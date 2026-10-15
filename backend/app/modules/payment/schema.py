@@ -13,18 +13,19 @@ from app.modules.payment.model import (
     PaymentPurpose,
     RefundStatus,
 )
+from app.shared.request_model import RequestModel
 
 
-class PaymentInitiateRequest(BaseModel):
+class PaymentInitiateRequest(RequestModel):
     booking_group_id: uuid.UUID
     payment_method: PaymentMethod
 
 
-class ReceiptUploadRequest(BaseModel):
+class ReceiptUploadRequest(RequestModel):
     receipt_proof_url: str = Field(min_length=1, max_length=500)
 
 
-class RejectRequest(BaseModel):
+class RejectRequest(RequestModel):
     reason: str = Field(min_length=1, max_length=500)
 
 

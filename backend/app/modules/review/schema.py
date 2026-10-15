@@ -5,23 +5,25 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.shared.request_model import RequestModel
 
-class ReviewCreate(BaseModel):
+
+class ReviewCreate(RequestModel):
     booking_id: uuid.UUID
     rating: int = Field(ge=1, le=5)
     review_text: str | None = Field(default=None, max_length=500)
 
 
-class ReviewUpdate(BaseModel):
+class ReviewUpdate(RequestModel):
     rating: int | None = Field(default=None, ge=1, le=5)
     review_text: str | None = Field(default=None, max_length=500)
 
 
-class ReviewReportRequest(BaseModel):
+class ReviewReportRequest(RequestModel):
     reason: str = Field(min_length=1, max_length=500)
 
 
-class OwnerResponseRequest(BaseModel):
+class OwnerResponseRequest(RequestModel):
     response_text: str = Field(min_length=1, max_length=2000)
 
 

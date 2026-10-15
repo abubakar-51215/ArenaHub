@@ -7,11 +7,12 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.slot.model import SlotStatus
+from app.shared.request_model import RequestModel
 
 MAX_GENERATE_DAYS = 30
 
 
-class SlotGenerateRequest(BaseModel):
+class SlotGenerateRequest(RequestModel):
     start_date: date
     end_date: date
 
@@ -51,7 +52,7 @@ class CourtToday(BaseModel):
     lowest_price: Decimal | None = None
 
 
-class SlotUpdate(BaseModel):
+class SlotUpdate(RequestModel):
     status: SlotStatus | None = None
     price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
 

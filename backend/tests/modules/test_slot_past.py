@@ -120,6 +120,6 @@ async def test_booking_a_past_slot_is_still_refused(
     prev = await client.post(
         "/api/v1/bookings/preview",
         headers=auth_header(player),
-        json={"court_id": court_id, "slot_ids": [str(started.id)], "payment_type": "full"},
+        json={"court_id": court_id, "slot_ids": [str(started.id)]},
     )
     assert prev.status_code == 409

@@ -594,11 +594,16 @@ async def test_owner_cannot_lift_a_suspension(
     h = auth_header(s["owner"])
     await _act(client, s["admin"], s["arena_id"], "suspend")
 
-    # an edit (even one that sends is_active) and the active toggle leave it suspended
-    edited = await client.patch(
+    # a body that tries to set is_active or suspended_at is refused outright (unknown fields),
+    # and a plain edit leaves it suspended
+    sneaky = await client.patch(
         f"{API}/owner/arenas/{s['arena_id']}",
         headers=h,
         json={"name": "Renamed Arena", "is_active": True, "suspended_at": None},
+    )
+    assert sneaky.status_code == 422
+    edited = await client.patch(
+        f"{API}/owner/arenas/{s['arena_id']}", headers=h, json={"name": "Renamed Arena"}
     )
     assert edited.status_code == 200
     await client.delete(f"{API}/owner/arenas/{s['arena_id']}", headers=h)
