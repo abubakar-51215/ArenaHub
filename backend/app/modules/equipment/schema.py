@@ -31,7 +31,7 @@ class QuantityAdjust(RequestModel):
     field edit could silently desync the two.
     """
 
-    delta: int
+    delta: int = Field(ge=-100000, le=100000)
 
     @model_validator(mode="after")
     def _nonzero(self) -> "QuantityAdjust":

@@ -30,7 +30,7 @@ router = APIRouter(tags=["ai"])
 async def nlp_search(
     # longer text is cut to 120 characters by the parser, never refused
     q: str = Query(min_length=1, max_length=1000),
-    drop: list[str] = Query(default=[], description="Chip kinds the player removed"),
+    drop: list[str] = Query(default=[], max_length=10, description="Chip kinds the player removed"),
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
     params: PaginationParams = Depends(pagination_params),
@@ -44,7 +44,7 @@ async def nlp_search(
 @router.get("/recommendations", summary="Personalized arena recommendations")
 async def recommendations(
     city: ArenaCity | None = None,
-    sport: str | None = None,
+    sport: str | None = Query(None, max_length=50),
     limit: int = Query(10, ge=1, le=50),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

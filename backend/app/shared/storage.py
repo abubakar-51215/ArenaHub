@@ -10,10 +10,12 @@ Only a small allow-list of image types is accepted so an owner can't smuggle
 arbitrary files through the upload endpoint.
 """
 
+import io
 import uuid
 from pathlib import Path
 
 import structlog
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import get_settings
 from app.core.exceptions import ValidationError
@@ -57,6 +59,34 @@ def _validate(content: bytes, content_type: str) -> str:
     return ALLOWED_IMAGE_TYPES[content_type]
 
 
+# A picture bigger than this many pixels is refused before it is decoded (decompression bombs).
+MAX_PIXELS = 40_000_000
+_PIL_FORMAT = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP"}
+
+
+def strip_metadata(content: bytes, content_type: str) -> bytes:
+    """The picture again without its hidden data (EXIF: phone location, device, time).
+
+    The photo is decoded and saved fresh, so anything else riding along in the file (extra
+    chunks, trailing bytes, comments) goes too. A turned phone photo is turned the right way
+    first, so it still looks the same.
+    """
+    try:
+        Image.MAX_IMAGE_PIXELS = MAX_PIXELS
+        with Image.open(io.BytesIO(content)) as image:
+            image.load()
+            fixed = ImageOps.exif_transpose(image)
+            out = io.BytesIO()
+            fmt = _PIL_FORMAT[content_type]
+            if fmt == "JPEG" and fixed.mode not in ("RGB", "L"):
+                fixed = fixed.convert("RGB")
+            kwargs = {"quality": 90} if fmt in ("JPEG", "WEBP") else {}
+            fixed.save(out, format=fmt, **kwargs)  # no exif= argument: nothing is carried over
+            return out.getvalue()
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
+        raise ValidationError("File content does not match the declared image type.") from exc
+
+
 def save_image(content: bytes, content_type: str, *, folder: str = "arenas") -> str:
     """Persist an uploaded image and return a servable URL.
 
@@ -72,6 +102,7 @@ def save_image(content: bytes, content_type: str, *, folder: str = "arenas") -> 
             else "Choose a photo (JPG or PNG, up to 5 MB)."
         )
     ext = _validate(content, content_type)
+    content = strip_metadata(content, content_type)
     settings = get_settings()
     name = f"{uuid.uuid4().hex}{ext}"
 

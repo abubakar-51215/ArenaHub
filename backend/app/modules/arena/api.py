@@ -43,12 +43,12 @@ _owner = require_role("owner")
 
 @router.get("", summary="Search approved arenas")
 async def search_arenas(
-    q: str | None = None,
+    q: str | None = Query(None, max_length=100),
     city: ArenaCity | None = None,
-    sport: str | None = None,
+    sport: str | None = Query(None, max_length=50),
     price_min: Decimal | None = None,
     price_max: Decimal | None = None,
-    sort: str = "newest",
+    sort: str = Query("newest", max_length=30),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lon: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),

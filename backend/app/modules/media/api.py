@@ -13,7 +13,7 @@ Every other folder (arena/court images) stays owner/admin-only.
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.core.exceptions import ForbiddenError, ValidationError
 from app.modules.user.model import User, UserRole
@@ -50,7 +50,7 @@ async def _read_bounded(file: UploadFile) -> bytes:
 )
 async def upload_image(
     file: UploadFile = File(...),
-    folder: str = "arenas",
+    folder: str = Query("arenas", max_length=30),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     if user.role not in (UserRole.owner, UserRole.admin) and folder not in _PLAYER_ALLOWED_FOLDERS:

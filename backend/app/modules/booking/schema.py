@@ -24,7 +24,7 @@ class BookingCreateRequest(RequestModel):
     discount_code: str | None = Field(default=None, max_length=50)
     # Attached to the first booking row in the group — see
     # modules/booking/service.py's create_booking docstring for why.
-    equipment: list[EquipmentAddonRequest] = Field(default_factory=list)
+    equipment: list[EquipmentAddonRequest] = Field(default_factory=list, max_length=20)
 
 
 class RescheduleRequest(RequestModel):
@@ -76,7 +76,7 @@ class BookingPreviewRequest(RequestModel):
     court_id: uuid.UUID
     slot_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_SLOTS_PER_BOOKING)
     discount_code: str | None = Field(default=None, max_length=50)
-    equipment: list[EquipmentAddonRequest] = Field(default_factory=list)
+    equipment: list[EquipmentAddonRequest] = Field(default_factory=list, max_length=20)
 
 
 class BookingPreviewResponse(BaseModel):
