@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,8 +61,10 @@ async def resend_otp(data: ResendOtpRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/login", summary="Login and receive JWT tokens")
-async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    result = await service.login(db, data)
+async def login(
+    data: LoginRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    result = await service.login(db, data, background)
     if isinstance(result, AdminLoginChallenge):
         # admins: no tokens yet, a code was emailed
         return success(data=result, message="Enter the 6-digit code we emailed you.")

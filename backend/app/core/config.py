@@ -162,6 +162,9 @@ class Settings(BaseSettings):
     code_hash_secret: SecretStr = Field(
         default=SecretStr(_DEV_CODE_HASH_SECRET), alias="CODE_HASH_SECRET"
     )
+    # The support address named in the owner login-alert email (and nowhere else). Temporary,
+    # chosen by the owner; see docs/BEFORE_GOING_LIVE.md.
+    support_email: str = Field(default="support.arenahub@gmail.com", alias="SUPPORT_EMAIL")
     # Production host names the API answers to, comma-separated ("api.example.com"); never "*".
     allowed_hosts: str = Field(default="", alias="ALLOWED_HOSTS")
 

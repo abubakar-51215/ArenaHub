@@ -432,3 +432,28 @@ async def test_every_answer_carries_a_request_id_and_unsafe_ones_are_replaced(
     limited = await client.get("/api/v1/health")
     assert limited.headers.get("x-request-id")
     _ = pytest
+
+
+async def test_a_password_reset_lifts_the_wait_after_wrong_passwords(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, user = await make_user(client, db_session, "reset-lifts-wait@example.com")
+    for _ in range(6):
+        await client.post(
+            "/api/v1/auth/login", json={"identifier": user.email, "password": "wrong-password-1"}
+        )
+    held = await client.post(
+        "/api/v1/auth/login", json={"identifier": user.email, "password": PASSWORD}
+    )
+    assert held.status_code == 429
+    await client.post("/api/v1/auth/forgot-password", json={"email": user.email})
+    code = last_code(user.id, OtpPurpose.password_reset)
+    reset = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"email": user.email, "otp": code, "new_password": "Brand-New-Pass-77"},
+    )
+    assert reset.status_code == 200
+    again = await client.post(
+        "/api/v1/auth/login", json={"identifier": user.email, "password": "Brand-New-Pass-77"}
+    )
+    assert again.status_code == 200

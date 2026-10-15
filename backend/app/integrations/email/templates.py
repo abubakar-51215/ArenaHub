@@ -14,6 +14,7 @@ digits. Each helper returns ``(subject, text_body, html_body)`` ready for
 import html as html_lib
 from datetime import datetime
 
+from app.core import messages
 from app.core.config import get_settings
 from app.core.messages import email_changed_notice, password_changed_notice
 
@@ -210,6 +211,37 @@ def password_changed_email(when: datetime) -> tuple[str, str, str]:
     return _notice_email(
         subject, body, "This message was sent to the email address of your account."
     )
+
+
+def owner_login_alert_email(name: str, when_text: str, support_email: str) -> tuple[str, str, str]:
+    """Sent to an arena owner after each new sign-in: plain text and a simple page. No images, no
+    tracking; the only link is a mailto to support. The name is escaped."""
+    subject = messages.OWNER_LOGIN_SUBJECT
+    greeting, happened, advice, thanks = messages.owner_login_alert_lines(
+        name, when_text, support_email
+    )
+    sep = chr(10) * 2
+    text = sep.join((greeting, happened, advice, thanks)) + chr(10)
+    safe_support = html_lib.escape(support_email, quote=True)
+    advice_html = html_lib.escape(advice).replace(
+        html_lib.escape(support_email),
+        f'<a href="mailto:{safe_support}" style="color:{INK};font-weight:700;">{safe_support}</a>',
+    )
+    body = (
+        _heading("ArenaHub login alert")
+        + f'<p class="ah-text" style="margin:0 0 12px;">{html_lib.escape(greeting)}</p>'
+        + f'<p class="ah-text" style="margin:0 0 12px;">{html_lib.escape(happened)}</p>'
+        + f'<p class="ah-text" style="margin:0 0 12px;">{advice_html}</p>'
+        + '<p class="ah-text" style="margin:0;">Thank you,<br>ArenaHub</p>'
+    )
+    html = _layout(
+        subject,
+        happened,
+        body,
+        badge=False,
+        footer="This message was sent to the email address of your account.",
+    )
+    return subject, text, html
 
 
 def notification_email(title: str, body: str) -> tuple[str, str, str]:
