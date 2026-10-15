@@ -280,3 +280,32 @@ Until you fill `backend\.env` (section 7, "Real email"), the codes are in the ba
 | | 11. `How do I delete my account?` |
 | | 12. `Can you change my arena owner?` ("I am not sure about that one. ..." with New complaint) |
 | Airplane mode in the assistant | The box says "Needs a connection"; the banner says you are offline. |
+
+## 13. How to reach each state by using the apps (no seeding)
+
+Accounts: the dev accounts of section 7 (player, owner, admin). Create more by signing up (a second player, a second owner). Every
+step below is done in the apps themselves; nothing is put into the database by hand. Web: owner `http://localhost:3000/login`, admin
+`http://localhost:3000/admin/login`. Phone: the player app. The admin phone screens: sign in on the phone with the admin account.
+
+| State | Steps (who, where) |
+|---|---|
+| A pending arena to approve | Owner (web) > Arenas > Add arena > fill the form > Submit. Admin (web) > Approvals shows it; the admin gets "New arena waiting". |
+| An approved, live arena | Admin > Approvals > Approve. Owner gets "Your arena is approved". Add a court, then **Slots > Generate** so there is something to book. |
+| A rejected arena | Admin > Approvals > Reject with a reason. Owner > Arenas shows "Not approved" and the reason; Resubmit puts it back in the queue. |
+| A suspended arena | Admin > Arenas > open the arena > Suspend (with a reason). Players stop seeing it; its upcoming paid bookings are cancelled with a full refund (the sheet shows how many first). Reactivate brings it back. |
+| A suspended user or owner | Admin > Players (or Owners) > Suspend. That person is signed out at once; Log in says "Your account has been suspended." Reactivate undoes it. |
+| A complaint with a reply | Player (phone) > Profile > Help and support > New complaint > send. Admin (web) > Complaints > open > write a reply > Send. The player gets "We replied to your complaint" and the complaint shows "Reply received". |
+| A booking waiting for a receipt | Player > open an arena > pick a court and a time > Pay > Bank transfer. The bank screen (transfer details, no receipt yet) is this state; the booking is "Awaiting payment". |
+| A booking waiting for the owner to check the receipt | On that bank screen, upload a photo of a receipt. The booking is "Awaiting approval". Owner (web) > Bookings shows "Receipt to check". |
+| A receipt rejected | Owner > Bookings > the booking > Reject receipt with a reason. Player gets "Receipt not accepted" and the failed screen shows the reason. |
+| A confirmed booking | Owner > Approve receipt. Player gets "Booking confirmed"; the owner "New booking received". |
+| A refund waiting | Player cancels a paid, confirmed booking (Bookings > the booking > Cancel booking; the sheet shows how much comes back). Owner (web) > Refunds shows "A refund is waiting for you"; the player's Payment history says "waiting". |
+| A refund marked paid | Owner > Refunds > Mark as paid (or admin phone > More > Payments and refunds > Refunds > Mark as paid). Player gets "Refund completed". |
+| An expired hold (payment window ended) | Make a booking and leave it unpaid, then run `uv run python scripts/run_sweeps.py --advance-hours 25` in `backend` (development only). The booking becomes Cancelled and its time is free again. Leaving the bank screen with Back frees the time at once without waiting. |
+| A completed game, "Rate your game", the 24 h and 1 h reminders | Make a confirmed booking, then `scripts/run_sweeps.py --advance-hours N` with N past the game's end (completed, Rate your last game) or inside 24 h or 1 h before it starts (reminders). |
+| A discount code used | Owner > Payments > Discount codes > add a code. Player > Pay > enter the code > Apply (the price drops). After the booking, the owner's list shows the use; a code used up says "This code has been used up." |
+| A match joined and left | Player A (confirmed booking) > Play > Post a match. Player B (second account) > Play > Open matches > Join match; then My matches > Leave. A gets "A player joined your match" and "A player left your match"; a full match gives "Your match is full"; A cancelling gives B "A match was cancelled". |
+| An unpaid booking reminder | Owner (web) > Bookings > a booking waiting for payment > Remind. Player gets "Your booking is waiting for payment". |
+| A review | Player > Bookings > Past > Rate this game. Owner gets "New review" and can answer it. |
+
+**Notice types:** all 30 have a sender (checked in the code). 27 are reached with the steps above. Three need a payment gateway, which is a deferred item, so they cannot be reached in the apps today: "Payment failed" (a card or wallet payment that fails), "Balance paid" (paying the balance through a gateway) and "Your refund is being handled by our team" (a gateway refund that keeps failing). The tests reach them.

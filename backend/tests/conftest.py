@@ -50,7 +50,7 @@ os.environ["DATABASE_URL"] = _test_database_url()
 os.environ.setdefault("JAZZCASH_WEBHOOK_SECRET", "test-jazzcash-webhook-secret")
 os.environ.setdefault("EASYPAISA_WEBHOOK_SECRET", "test-easypaisa-webhook-secret")
 
-from collections.abc import AsyncIterator  # noqa: E402
+from collections.abc import AsyncIterator, Iterator  # noqa: E402
 
 import fakeredis.aioredis  # noqa: E402
 import pytest  # noqa: E402
@@ -124,3 +124,40 @@ async def db_session() -> AsyncIterator[AsyncSession]:
         await trans.rollback()
         await conn.close()
         await engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _record_route_hits() -> Iterator[None]:
+    """Remember which route templates the whole suite called, and which answered below 400.
+
+    Written to the file named by ROUTE_HITS_FILE when that is set (docs/BACKEND_COMPLETENESS.md,
+    scripts/security-check): it shows which routes no test reaches with a successful answer.
+    """
+    from fastapi.routing import APIRoute
+
+    called: set[str] = set()
+    worked: set[str] = set()
+    original = APIRoute.handle
+
+    async def handle(self, scope, receive, send):  # type: ignore[no-untyped-def]
+        status: dict[str, int] = {}
+
+        async def send_wrapper(message):  # type: ignore[no-untyped-def]
+            if message["type"] == "http.response.start":
+                status["code"] = message["status"]
+            await send(message)
+
+        await original(self, scope, receive, send_wrapper)
+        key = f"{scope['method']} {self.path}"
+        called.add(key)
+        if status.get("code", 500) < 400:
+            worked.add(key)
+
+    APIRoute.handle = handle  # type: ignore[method-assign]
+    yield
+    APIRoute.handle = original  # type: ignore[method-assign]
+    target = os.environ.get("ROUTE_HITS_FILE")
+    if target:
+        import json
+
+        Path(target).write_text(json.dumps({"called": sorted(called), "worked": sorted(worked)}))
