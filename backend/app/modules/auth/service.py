@@ -26,7 +26,9 @@ from app.core.security import (
     create_admin_login_token,
     create_refresh_token,
     decode_token,
+    dummy_verify,
     hash_password,
+    password_needs_rehash,
     validate_password_strength,
     verify_password,
 )
@@ -193,6 +195,8 @@ async def _user_for_login(db: AsyncSession, who: str) -> User | None:
 async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLoginChallenge:
     user = await _user_for_login(db, data.who)
     if user is None or user.deleted_at is not None:
+        # an unknown (or removed) account takes as long as a wrong password: no timing difference
+        dummy_verify(data.password)
         raise UnauthorizedError(_INVALID_CREDENTIALS)
     if user.locked_until is not None and user.locked_until > _now():
         raise UnauthorizedError(_ACCOUNT_LOCKED)
@@ -214,6 +218,9 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse | AdminLo
 
     user.failed_login_attempts = 0
     user.locked_until = None
+    if password_needs_rehash(user.password_hash):
+        # an older bcrypt hash (or weaker settings) is replaced now that the password is known
+        user.password_hash = hash_password(data.password)
     await db.commit()
     if user.role == UserRole.admin:
         # admins finish signing in with an emailed code: no tokens yet

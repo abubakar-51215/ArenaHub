@@ -225,7 +225,9 @@ async def test_a_token_from_before_the_millisecond_claim_is_still_revoked(client
     tokens, user = await make_user(client, db_session, "rst-legacy-iat@example.com")
     payload = jwt.decode(tokens["access_token"], options={"verify_signature": False})
     legacy = {k: v for k, v in payload.items() if k != "iat_ms"}
-    legacy_token = jwt.encode(legacy, get_settings().jwt_secret, algorithm="HS256")
+    legacy_token = jwt.encode(
+        legacy, get_settings().jwt_secret.get_secret_value(), algorithm="HS256"
+    )
     await _forgot(client, "rst-legacy-iat@example.com")
     code = await _latest_code(db_session, user)
 

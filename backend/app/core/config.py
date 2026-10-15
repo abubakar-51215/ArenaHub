@@ -8,11 +8,21 @@ from enum import StrEnum
 from functools import lru_cache
 from ipaddress import IPv4Network, IPv6Network, ip_network
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_INSECURE_JWT_DEFAULTS = {"change-me", "change-me-refresh"}
+# Values that must never sign anything outside development.
+_INSECURE_JWT_DEFAULTS = {
+    "change-me",
+    "change-me-refresh",
+    "secret",
+    "changeme",
+    "dev-secret",
+    "jwt-secret",
+    "your-secret-key",
+}
 _DEV_CODE_HASH_SECRET = "dev-only-code-hash-secret"
+MIN_SECRET_BYTES = 32
 
 
 class Environment(StrEnum):
@@ -40,6 +50,8 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        # a failed start-up check must never print the values it read (connection strings, secrets)
+        hide_input_in_errors=True,
     )
 
     # Core
@@ -52,8 +64,13 @@ class Settings(BaseSettings):
 
     # Auth / JWT (used from Sprint 2 onward). No insecure default in
     # non-dev environments — see the validator below.
-    jwt_secret: str = Field(default="change-me", alias="JWT_SECRET")
-    jwt_refresh_secret: str = Field(default="change-me-refresh", alias="JWT_REFRESH_SECRET")
+    # SecretStr: printing or logging the settings shows ********, never the value.
+    jwt_secret: SecretStr = Field(default=SecretStr("change-me"), alias="JWT_SECRET")
+    jwt_refresh_secret: SecretStr = Field(
+        default=SecretStr("change-me-refresh"), alias="JWT_REFRESH_SECRET"
+    )
+    # Must be False outside development (checked at start-up).
+    debug: bool = Field(default=False, alias="DEBUG")
 
     # Comma-separated list of allowed origins for CORS in staging/prod (e.g.
     # "https://app.arenahub.pk,https://admin.arenahub.pk"). Dev ignores this
@@ -142,33 +159,80 @@ class Settings(BaseSettings):
     email_send_in_dev: bool = Field(default=False, alias="EMAIL_SEND_IN_DEV")
     # Key for the HMAC-SHA256 of every emailed code: the database keeps only the hash.
     # Must be a long random value outside dev (checked below); changing it voids codes in flight.
-    code_hash_secret: str = Field(default=_DEV_CODE_HASH_SECRET, alias="CODE_HASH_SECRET")
+    code_hash_secret: SecretStr = Field(
+        default=SecretStr(_DEV_CODE_HASH_SECRET), alias="CODE_HASH_SECRET"
+    )
+    # Production host names the API answers to, comma-separated ("api.example.com"); never "*".
+    allowed_hosts: str = Field(default="", alias="ALLOWED_HOSTS")
 
     @property
     def is_dev(self) -> bool:
         return self.environment == Environment.dev
 
+    def production_problems(self) -> list[str]:
+        """What is wrong with this configuration for a real deployment (empty when nothing).
+
+        Only names are reported, never values. Outside development every problem stops the start.
+        """
+        if self.environment == Environment.dev:
+            return []
+        problems: list[str] = []
+        access = self.jwt_secret.get_secret_value()
+        refresh = self.jwt_refresh_secret.get_secret_value()
+        for name, value in (("JWT_SECRET", access), ("JWT_REFRESH_SECRET", refresh)):
+            if not value or value in _INSECURE_JWT_DEFAULTS:
+                problems.append(f"{name} is missing or a known default")
+            elif len(value.encode()) < MIN_SECRET_BYTES:
+                problems.append(f"{name} is shorter than {MIN_SECRET_BYTES} bytes")
+        if access == refresh:
+            problems.append("JWT_SECRET and JWT_REFRESH_SECRET must differ")
+        code = self.code_hash_secret.get_secret_value()
+        if code == _DEV_CODE_HASH_SECRET or len(code.encode()) < MIN_SECRET_BYTES:
+            problems.append(f"CODE_HASH_SECRET is missing or shorter than {MIN_SECRET_BYTES} bytes")
+        if self.debug:
+            problems.append("DEBUG must be off")
+        if self.payment_mode == PaymentMode.mock:
+            problems.append("PAYMENT_MODE=mock is for development and tests only")
+        for origin in (o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()):
+            if "*" in origin:
+                problems.append("CORS_ALLOWED_ORIGINS must list exact origins, no wildcard")
+                break
+        if self.environment == Environment.prod:
+            hosts = [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
+            if not hosts or any("*" in h for h in hosts):
+                problems.append("ALLOWED_HOSTS must list the exact host names (no wildcard)")
+            insecure = [
+                o
+                for o in (x.strip() for x in self.cors_allowed_origins.split(",") if x.strip())
+                if not o.startswith("https://")
+            ]
+            if insecure:
+                problems.append("CORS_ALLOWED_ORIGINS must all be https:// in production")
+        return problems
+
     @model_validator(mode="after")
-    def _reject_insecure_jwt_secrets_outside_dev(self) -> "Settings":
-        if self.environment != Environment.dev and (
-            self.jwt_secret in _INSECURE_JWT_DEFAULTS
-            or self.jwt_refresh_secret in _INSECURE_JWT_DEFAULTS
-        ):
+    def _refuse_an_unsafe_production_setup(self) -> "Settings":
+        problems = self.production_problems()
+        if problems:
             raise ValueError(
-                "JWT_SECRET / JWT_REFRESH_SECRET must be set to non-default values "
-                f"when ENVIRONMENT={self.environment.value}."
-            )
-        if self.environment != Environment.dev and (
-            self.code_hash_secret == _DEV_CODE_HASH_SECRET or len(self.code_hash_secret) < 32
-        ):
-            raise ValueError(
-                "CODE_HASH_SECRET must be set to a random value of 32+ characters "
-                f"when ENVIRONMENT={self.environment.value}."
+                f"Unsafe configuration for ENVIRONMENT={self.environment.value}: "
+                + "; ".join(problems)
+                + "."
             )
         return self
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Cached settings singleton. Import and call where config is needed."""
-    return Settings()  # values are read from env / .env, not passed in
+    """Cached settings singleton. Import and call where config is needed.
+
+    A configuration that fails its checks stops the start with a short message that names the
+    problem and never shows a value.
+    """
+    try:
+        return Settings()  # values are read from env / .env, not passed in
+    except ValidationError as exc:
+        reasons = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc']) or 'settings'}: {e['msg']}" for e in exc.errors()
+        )
+        raise RuntimeError(f"Invalid configuration: {reasons}") from None
