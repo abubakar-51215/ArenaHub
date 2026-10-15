@@ -17,7 +17,7 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     email: EmailStr
     phone: str = Field(min_length=10, max_length=20)
-    password: str = Field(min_length=8, max_length=72)
+    password: str = Field(min_length=8, max_length=128)
     role: RegisterRole = "player"
 
 
@@ -37,7 +37,7 @@ class LoginRequest(BaseModel):
 
     identifier: str | None = Field(default=None, min_length=1, max_length=255)
     email: EmailStr | None = None
-    password: str
+    password: str = Field(max_length=128)
 
     @model_validator(mode="after")
     def _need_who(self) -> "LoginRequest":
@@ -68,7 +68,7 @@ class ResetPasswordRequest(BaseModel):
 
     email: EmailStr
     otp: str = Field(min_length=6, max_length=6)
-    new_password: str = Field(min_length=8, max_length=72)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class AdminLoginChallenge(BaseModel):

@@ -68,7 +68,7 @@ def mask_address(address: str) -> str:
 
 
 def code_hash(code: str, *, user_id: uuid.UUID, purpose: OtpPurpose, destination: str) -> str:
-    key = get_settings().code_hash_secret.encode()
+    key = get_settings().code_hash_secret.get_secret_value().encode()
     message = f"{purpose.value}|{user_id}|{destination.strip().lower()}|{code}".encode()
     return hmac.new(key, message, hashlib.sha256).hexdigest()
 
