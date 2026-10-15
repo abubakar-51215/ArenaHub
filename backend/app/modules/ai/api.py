@@ -14,6 +14,7 @@ from app.database.session import get_db
 from app.modules.ai import service
 from app.modules.arena.model import ArenaCity
 from app.modules.user.model import User
+from app.shared import abuse
 from app.shared.auth import get_current_user
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -21,7 +22,11 @@ from app.shared.response import success
 router = APIRouter(tags=["ai"])
 
 
-@router.get("/search/nlp", summary="Smart search: plain words understood, applied and echoed")
+@router.get(
+    "/search/nlp",
+    summary="Smart search: plain words understood, applied and echoed",
+    dependencies=[Depends(abuse.per_address("nlp", 120, 600))],
+)
 async def nlp_search(
     # longer text is cut to 120 characters by the parser, never refused
     q: str = Query(min_length=1, max_length=1000),

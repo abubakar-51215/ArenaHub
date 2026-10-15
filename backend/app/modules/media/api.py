@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 
 from app.core.exceptions import ForbiddenError, ValidationError
 from app.modules.user.model import User, UserRole
+from app.shared import abuse
 from app.shared.auth import get_current_user
 from app.shared.response import success
 from app.shared.storage import MAX_IMAGE_BYTES, save_image
@@ -42,7 +43,11 @@ async def _read_bounded(file: UploadFile) -> bytes:
     return b"".join(chunks)
 
 
-@router.post("/image", summary="Upload an image and get its URL")
+@router.post(
+    "/image",
+    summary="Upload an image and get its URL",
+    dependencies=[Depends(abuse.per_user("upload", 40, 3600))],
+)
 async def upload_image(
     file: UploadFile = File(...),
     folder: str = "arenas",

@@ -9,7 +9,7 @@
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -24,6 +24,7 @@ from app.modules.booking.schema import (
     RescheduleRequest,
 )
 from app.modules.user.model import User
+from app.shared import abuse, idempotency
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, paginated, pagination_params
 from app.shared.response import success
@@ -34,14 +35,22 @@ owner_router = APIRouter(prefix="/owner", tags=["bookings-owner"])
 _owner = require_role("owner")
 
 
-@router.post("", summary="Create a booking (single- or multi-slot checkout)")
+@router.post(
+    "",
+    summary="Create a booking (single- or multi-slot checkout)",
+    dependencies=[Depends(abuse.per_user("booking", 30, 3600))],
+)
 async def create_booking(
+    request: Request,
     data: BookingCreateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    result = await service.create_booking(db, user, data)
-    return success(data=result, message="Booking created, awaiting payment.")
+    async def action() -> dict[str, Any]:
+        result = await service.create_booking(db, user, data)
+        return success(data=result, message="Booking created, awaiting payment.")
+
+    return await idempotency.run_once(request, user.id, "booking", data, action)
 
 
 @router.post("/preview", summary="Price a checkout without reserving anything")

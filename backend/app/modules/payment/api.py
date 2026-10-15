@@ -17,6 +17,7 @@ from app.database.session import get_db
 from app.modules.payment import methods, service
 from app.modules.payment.schema import PaymentInitiateRequest, ReceiptUploadRequest, RejectRequest
 from app.modules.user.model import User
+from app.shared import abuse, idempotency
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -57,14 +58,22 @@ async def get_payment_by_group(
     return success(data=payment, message="Payment retrieved.")
 
 
-@router.post("/initiate", summary="Start paying for a booking group")
+@router.post(
+    "/initiate",
+    summary="Start paying for a booking group",
+    dependencies=[Depends(abuse.per_user("payment", 30, 3600))],
+)
 async def initiate_payment(
+    request: Request,
     data: PaymentInitiateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    result = await service.initiate_payment(db, user, data)
-    return success(data=result, message="Payment initiated.")
+    async def action() -> dict[str, Any]:
+        result = await service.initiate_payment(db, user, data)
+        return success(data=result, message="Payment initiated.")
+
+    return await idempotency.run_once(request, user.id, "payment", data, action)
 
 
 @router.post("/initiate-balance", summary="Pay an outstanding balance online")
@@ -77,15 +86,23 @@ async def initiate_balance_payment(
     return success(data=result, message="Balance payment initiated.")
 
 
-@router.post("/{payment_id}/receipt", summary="Upload a bank transfer receipt")
+@router.post(
+    "/{payment_id}/receipt",
+    summary="Upload a bank transfer receipt",
+    dependencies=[Depends(abuse.per_user("payment", 30, 3600))],
+)
 async def upload_receipt(
     payment_id: uuid.UUID,
+    request: Request,
     data: ReceiptUploadRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    payment = await service.upload_receipt(db, user, payment_id, data.receipt_proof_url)
-    return success(data=payment, message="Receipt uploaded, awaiting owner approval.")
+    async def action() -> dict[str, Any]:
+        payment = await service.upload_receipt(db, user, payment_id, data.receipt_proof_url)
+        return success(data=payment, message="Receipt uploaded, awaiting owner approval.")
+
+    return await idempotency.run_once(request, user.id, f"receipt:{payment_id}", data, action)
 
 
 @router.post(

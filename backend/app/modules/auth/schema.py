@@ -9,11 +9,12 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.modules.user.schema import UserPublic
+from app.shared.request_model import RequestModel
 
 RegisterRole = Literal["player", "owner"]
 
 
-class RegisterRequest(BaseModel):
+class RegisterRequest(RequestModel):
     full_name: str = Field(min_length=1, max_length=255)
     email: EmailStr
     phone: str = Field(min_length=10, max_length=20)
@@ -21,16 +22,16 @@ class RegisterRequest(BaseModel):
     role: RegisterRole = "player"
 
 
-class OtpVerifyRequest(BaseModel):
+class OtpVerifyRequest(RequestModel):
     email: EmailStr
     code: str = Field(min_length=6, max_length=6)
 
 
-class ResendOtpRequest(BaseModel):
+class ResendOtpRequest(RequestModel):
     email: EmailStr
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(RequestModel):
     """Sign in with an email or a phone number in ``identifier``. The older
     ``email`` field still works (the mobile app sends it); ``identifier`` wins
     when both are sent."""
@@ -50,19 +51,19 @@ class LoginRequest(BaseModel):
         return (self.identifier or self.email or "").strip()
 
 
-class RefreshRequest(BaseModel):
+class RefreshRequest(RequestModel):
     refresh_token: str
 
 
-class LogoutRequest(BaseModel):
+class LogoutRequest(RequestModel):
     refresh_token: str
 
 
-class ForgotPasswordRequest(BaseModel):
+class ForgotPasswordRequest(RequestModel):
     email: EmailStr
 
 
-class ResetPasswordRequest(BaseModel):
+class ResetPasswordRequest(RequestModel):
     """Reset with the emailed 6-digit code. (The old emailed-link token was never sent by this
     version and is gone.)"""
 
@@ -82,21 +83,21 @@ class AdminLoginChallenge(BaseModel):
     code_sent: bool = True  # False: the email could not be sent; "Send a new code" works at once
 
 
-class AdminCodeRequest(BaseModel):
+class AdminCodeRequest(RequestModel):
     challenge_token: str
     code: str = Field(min_length=6, max_length=6)
 
 
-class AdminResendRequest(BaseModel):
+class AdminResendRequest(RequestModel):
     challenge_token: str
 
 
-class GoogleSignInRequest(BaseModel):
+class GoogleSignInRequest(RequestModel):
     # the ID token Google gave the phone; everything else comes from inside it, checked
     id_token: str = Field(min_length=20, max_length=4096)
 
 
-class GooglePhoneRequest(BaseModel):
+class GooglePhoneRequest(RequestModel):
     phone: str = Field(min_length=10, max_length=20)
 
 

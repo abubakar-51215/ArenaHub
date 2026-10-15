@@ -27,6 +27,7 @@ from app.modules.arena.schema import (
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User
+from app.shared import abuse
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -139,7 +140,12 @@ async def get_bank_details(
 # ---- owner management ----------------------------------------------------
 
 
-@owner_router.post("", status_code=status.HTTP_201_CREATED, summary="Register a new arena")
+@owner_router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new arena",
+    dependencies=[Depends(abuse.per_user("arena", 10, 86400))],
+)
 async def create_arena(
     data: ArenaCreate,
     user: User = Depends(_owner),

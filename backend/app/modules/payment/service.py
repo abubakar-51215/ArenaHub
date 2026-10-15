@@ -417,12 +417,20 @@ async def dev_simulate_confirm(
     return PaymentResponse.model_validate(payment)
 
 
+def _is_our_receipt_url(url: str) -> bool:
+    """Only an address our own upload endpoint handed out (never a link to some other site)."""
+    prefix = f"{get_settings().media_url_prefix}/receipts/"
+    return url.startswith(prefix) and ".." not in url and "?" not in url and "#" not in url
+
+
 async def upload_receipt(
     db: AsyncSession, user: User, payment_id: uuid.UUID, receipt_proof_url: str
 ) -> PaymentResponse:
     payment = await repo.get_payment_for_update(db, payment_id)
     if payment is None or payment.player_id != user.id:
         raise NotFoundError("Payment not found.")
+    if not _is_our_receipt_url(receipt_proof_url):
+        raise ValidationError("Upload the receipt photo first.")
     if payment.payment_method != PaymentMethod.bank_transfer:
         raise ValidationError("Only bank_transfer payments take a receipt upload.")
     if payment.status != PaymentStatus.pending:

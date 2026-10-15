@@ -84,7 +84,7 @@ async def _pay_by_transfer(client, player, gid: str) -> str:
     sent = await client.post(
         f"/api/v1/payments/{pid}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/media/receipts/r.png"},
+        json={"receipt_proof_url": "/uploads/receipts/r.png"},
     )
     assert sent.status_code == 200, sent.text
     return pid

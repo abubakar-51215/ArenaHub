@@ -13,6 +13,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.modules.arena.model import ArenaCity, ArenaStatus, DiscountType
+from app.shared.request_model import RequestModel
 
 # ISO weekday keys accepted in operating_hours.
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
@@ -21,7 +22,7 @@ _TIME_RE = r"^([01]\d|2[0-3]):[0-5]\d$"
 _CLOSE_RE = r"^(([01]\d|2[0-3]):[0-5]\d|24:00)$"
 
 
-class DayHours(BaseModel):
+class DayHours(RequestModel):
     """Open/close for a single day, "HH:MM" 24-hour. Omit a day = closed."""
 
     open: str = Field(pattern=_TIME_RE)
@@ -44,7 +45,7 @@ def _validate_operating_hours(value: dict) -> dict:
     return value
 
 
-class RefundTier(BaseModel):
+class RefundTier(RequestModel):
     """Cancel ≥ ``hours_before`` hours ahead → refund ``refund_percentage``%."""
 
     hours_before: int = Field(ge=0, le=8760)
@@ -55,7 +56,7 @@ Latitude = Annotated[Decimal, Field(ge=-90, le=90)]
 Longitude = Annotated[Decimal, Field(ge=-180, le=180)]
 
 
-class ArenaCreate(BaseModel):
+class ArenaCreate(RequestModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
     address: str = Field(min_length=1)
@@ -79,7 +80,7 @@ class ArenaCreate(BaseModel):
         return _validate_operating_hours(v)
 
 
-class ArenaUpdate(BaseModel):
+class ArenaUpdate(RequestModel):
     """All fields optional — only provided fields are applied (PATCH semantics)."""
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
@@ -160,7 +161,7 @@ class ArenaListItem(ArenaResponse):
     distance_km: float | None = None
 
 
-class BlockedDateCreate(BaseModel):
+class BlockedDateCreate(RequestModel):
     blocked_date: date
     reason: str | None = Field(default=None, max_length=255)
 
@@ -174,7 +175,7 @@ class BlockedDateResponse(BaseModel):
     reason: str | None = None
 
 
-class DiscountCodeCreate(BaseModel):
+class DiscountCodeCreate(RequestModel):
     code: str = Field(min_length=1, max_length=50)
     description: str | None = Field(default=None, max_length=255)
     discount_type: DiscountType
@@ -199,7 +200,7 @@ class DiscountCodeCreate(BaseModel):
         return self
 
 
-class DiscountCodeUpdate(BaseModel):
+class DiscountCodeUpdate(RequestModel):
     description: str | None = Field(default=None, max_length=255)
     discount_value: Decimal | None = Field(default=None, gt=0)
     min_booking_amount: Decimal | None = Field(default=None, ge=0)
@@ -226,7 +227,7 @@ class DiscountCodeResponse(BaseModel):
     is_active: bool
 
 
-class ArenaBankDetailsCreate(BaseModel):
+class ArenaBankDetailsCreate(RequestModel):
     """Owner adds one bank-transfer receiving account to an arena. An arena
     may hold several; ``is_default`` marks the one preferred at checkout
     (setting it unsets any other default)."""
@@ -243,7 +244,7 @@ class ArenaBankDetailsCreate(BaseModel):
     is_active: bool = True
 
 
-class ArenaBankDetailsUpdate(BaseModel):
+class ArenaBankDetailsUpdate(RequestModel):
     """PATCH one account — only provided fields change."""
 
     label: str | None = Field(default=None, max_length=100)

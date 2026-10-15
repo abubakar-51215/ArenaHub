@@ -14,6 +14,7 @@ from app.modules.arena.model import ArenaCity
 from app.modules.match import service
 from app.modules.match.schema import MatchCreate
 from app.modules.user.model import User
+from app.shared import abuse
 from app.shared.auth import get_current_user
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -21,7 +22,12 @@ from app.shared.response import success
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, summary="Create a match")
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a match",
+    dependencies=[Depends(abuse.per_user("match", 20, 3600))],
+)
 async def create_match(
     data: MatchCreate,
     user: User = Depends(get_current_user),
