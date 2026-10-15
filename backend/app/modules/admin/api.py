@@ -10,7 +10,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -76,7 +76,7 @@ async def get_phone_overview(
 @router.get("/arena-cards", summary="Arenas with their owner, by scope (phone lists)")
 async def get_arena_cards(
     scope: phone.ArenaScope = "waiting",
-    search: str | None = None,
+    search: str | None = Query(None, max_length=100),
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
@@ -179,7 +179,7 @@ async def delete_arena(
 async def list_users(
     role: UserRole | None = None,
     is_active: bool | None = None,
-    search: str | None = None,
+    search: str | None = Query(None, max_length=100),
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
@@ -285,7 +285,7 @@ async def list_payments(
 
 @router.get("/audit-logs", summary="Browse the admin action audit log")
 async def list_audit_logs(
-    action: str | None = None,
+    action: str | None = Query(None, max_length=100),
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),

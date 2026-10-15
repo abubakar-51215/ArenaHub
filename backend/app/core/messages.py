@@ -54,3 +54,6 @@ def email_changed_notice(new_masked: str, when: datetime) -> tuple[str, str]:
 # Phase 4: retried requests (placeholders, wording not yet approved by the owner)
 IDEMPOTENCY_BUSY = "This request is already being processed."
 IDEMPOTENCY_MISMATCH = "This request key was already used for a different request."
+
+# Phase 5: a text with control characters in it (placeholder, wording not yet approved)
+BAD_CHARACTERS = "Remove the special characters and try again."

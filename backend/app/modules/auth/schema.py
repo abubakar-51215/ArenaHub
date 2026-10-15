@@ -52,11 +52,11 @@ class LoginRequest(RequestModel):
 
 
 class RefreshRequest(RequestModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=1, max_length=512)
 
 
 class LogoutRequest(RequestModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=1, max_length=512)
 
 
 class ForgotPasswordRequest(RequestModel):
@@ -84,12 +84,12 @@ class AdminLoginChallenge(BaseModel):
 
 
 class AdminCodeRequest(RequestModel):
-    challenge_token: str
+    challenge_token: str = Field(min_length=1, max_length=2048)
     code: str = Field(min_length=6, max_length=6)
 
 
 class AdminResendRequest(RequestModel):
-    challenge_token: str
+    challenge_token: str = Field(min_length=1, max_length=2048)
 
 
 class GoogleSignInRequest(RequestModel):

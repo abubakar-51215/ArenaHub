@@ -6,7 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.modules.user.model import UserRole
-from app.shared.request_model import RequestModel
+from app.shared.request_model import RequestModel, ShortName
 
 
 class UserPublic(BaseModel):
@@ -33,13 +33,15 @@ class UpdateProfileRequest(RequestModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     bio: str | None = Field(default=None, max_length=2000)
     profile_picture: str | None = Field(default=None, max_length=500)
-    preferred_sports: list[str] | None = None
-    preferred_locations: list[str] | None = None
-    notification_preferences: dict | None = None
+    preferred_sports: list[ShortName] | None = Field(default=None, max_length=30)
+    preferred_locations: list[ShortName] | None = Field(default=None, max_length=30)
+    notification_preferences: dict[ShortName, dict[ShortName, bool]] | None = Field(
+        default=None, max_length=30
+    )
 
 
 class ChangePasswordRequest(RequestModel):
-    current_password: str
+    current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
 
 

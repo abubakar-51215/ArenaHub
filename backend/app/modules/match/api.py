@@ -40,7 +40,7 @@ async def create_match(
 @router.get("", summary="List open matches")
 async def list_open_matches(
     city: ArenaCity | None = None,
-    sport: str | None = None,
+    sport: str | None = Query(None, max_length=50),
     match_date: date | None = Query(default=None, alias="date"),
     params: PaginationParams = Depends(pagination_params),
     user: User = Depends(get_current_user),

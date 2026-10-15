@@ -13,7 +13,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.modules.arena.model import ArenaCity, ArenaStatus, DiscountType
-from app.shared.request_model import RequestModel
+from app.shared.request_model import RequestModel, ShortName
 
 # ISO weekday keys accepted in operating_hours.
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
@@ -59,7 +59,7 @@ Longitude = Annotated[Decimal, Field(ge=-180, le=180)]
 class ArenaCreate(RequestModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
-    address: str = Field(min_length=1)
+    address: str = Field(min_length=1, max_length=500)
     city: ArenaCity
     area: str | None = Field(default=None, max_length=100)
     latitude: Latitude
@@ -67,12 +67,12 @@ class ArenaCreate(RequestModel):
     contact_phone: str | None = Field(default=None, max_length=20)
     contact_email: EmailStr | None = None
     operating_hours: OperatingHours
-    sports_offered: list[str] = Field(min_length=1)
+    sports_offered: list[ShortName] = Field(min_length=1, max_length=20)
     images: list[str] = Field(default_factory=list, max_length=20)
-    amenity_ids: list[uuid.UUID] = Field(default_factory=list)
+    amenity_ids: list[uuid.UUID] = Field(default_factory=list, max_length=50)
     advance_percentage: int = Field(default=100, ge=1, le=100)
     require_full_payment: bool = True
-    refund_policy: list[RefundTier] = Field(default_factory=list)
+    refund_policy: list[RefundTier] = Field(default_factory=list, max_length=10)
 
     @field_validator("operating_hours")
     @classmethod
@@ -85,7 +85,7 @@ class ArenaUpdate(RequestModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
-    address: str | None = Field(default=None, min_length=1)
+    address: str | None = Field(default=None, min_length=1, max_length=500)
     city: ArenaCity | None = None
     area: str | None = Field(default=None, max_length=100)
     latitude: Latitude | None = None
@@ -93,12 +93,12 @@ class ArenaUpdate(RequestModel):
     contact_phone: str | None = Field(default=None, max_length=20)
     contact_email: EmailStr | None = None
     operating_hours: OperatingHours | None = None
-    sports_offered: list[str] | None = Field(default=None, min_length=1)
+    sports_offered: list[ShortName] | None = Field(default=None, min_length=1, max_length=20)
     images: list[str] | None = Field(default=None, max_length=20)
-    amenity_ids: list[uuid.UUID] | None = None
+    amenity_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
     advance_percentage: int | None = Field(default=None, ge=1, le=100)
     require_full_payment: bool | None = None
-    refund_policy: list[RefundTier] | None = None
+    refund_policy: list[RefundTier] | None = Field(default=None, max_length=10)
 
     @field_validator("operating_hours")
     @classmethod
