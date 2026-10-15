@@ -386,7 +386,7 @@ async def _visible_booking(db: AsyncSession, user: User, booking_id: uuid.UUID) 
         arena = await arena_repo.get_arena(db, booking.arena_id)
         if arena is not None and arena.owner_id == user.id:
             return booking
-    raise ForbiddenError("You cannot view this booking.")
+    raise NotFoundError("Booking not found.")  # not yours = the same as one that does not exist
 
 
 async def get_booking(db: AsyncSession, user: User, booking_id: uuid.UUID) -> BookingResponse:
@@ -414,7 +414,7 @@ async def list_arena_bookings(
     if arena is None:
         raise NotFoundError("Arena not found.")
     if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        raise NotFoundError("Arena not found.")
     rows, total = await repo.list_arena_bookings(
         db, arena_id, status=status, offset=params.offset, limit=params.page_size
     )
@@ -438,7 +438,7 @@ async def cancel_booking(
 ) -> BookingResponse:
     booking = await _visible_booking(db, user, booking_id)
     if user.role == UserRole.player and booking.player_id != user.id:
-        raise ForbiddenError("You cannot cancel someone else's booking.")
+        raise NotFoundError("Booking not found.")
     # Row-locked re-read right before the status check/mutation — otherwise a
     # concurrent reschedule (or a second cancel) on the same booking could
     # pass its own status check against the same stale state and race this
@@ -592,7 +592,7 @@ async def reschedule_booking(
 ) -> BookingResponse:
     booking = await _visible_booking(db, user, booking_id)
     if user.role == UserRole.player and booking.player_id != user.id:
-        raise ForbiddenError("You cannot reschedule someone else's booking.")
+        raise NotFoundError("Booking not found.")
     # Same row-lock rationale as cancel_booking: block a concurrent cancel
     # (or a second reschedule) on this booking from racing this transition.
     locked = await repo.get_booking_for_update(db, booking_id)

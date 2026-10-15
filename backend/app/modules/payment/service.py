@@ -52,6 +52,7 @@ from app.modules.payment.schema import (
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
+from app.shared.audit import audit
 from app.shared.notify import booking_when, notify_user
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.qr import generate_booking_qr
@@ -119,7 +120,7 @@ async def _group_bookings_for_player(
     if not bookings:
         raise NotFoundError("Booking group not found.")
     if any(b.player_id != user.id for b in bookings):
-        raise ForbiddenError("You do not own this booking.")
+        raise NotFoundError("Booking group not found.")  # not yours = the same as a missing one
     return bookings
 
 
@@ -457,14 +458,14 @@ async def _owned_bank_transfer_payment(
     payment = await repo.get_payment_for_update(db, payment_id)
     if payment is None:
         raise NotFoundError("Payment not found.")
-    if payment.payment_method != PaymentMethod.bank_transfer:
-        raise ValidationError("Only bank_transfer payments require owner approval.")
     bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
     if not bookings:
-        raise NotFoundError("Booking group not found.")
+        raise NotFoundError("Payment not found.")
     arena = await arena_repo.get_arena(db, bookings[0].arena_id)
     if arena is None or arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        raise NotFoundError("Payment not found.")  # checked BEFORE anything about the payment
+    if payment.payment_method != PaymentMethod.bank_transfer:
+        raise ValidationError("Only bank_transfer payments require owner approval.")
     if payment.receipt_proof_url is None:
         raise ValidationError("No receipt has been uploaded yet.")
     if payment.status != PaymentStatus.pending:
@@ -477,6 +478,10 @@ async def approve_bank_transfer(
 ) -> PaymentResponse:
     payment = await _owned_bank_transfer_payment(db, user, payment_id)
     await _confirm_group(db, payment)
+    await audit(
+        db, "payment.approve", actor=user, target_type="payment", target_id=payment.id,
+        details={"amount": str(payment.amount)},
+    )  # fmt: skip
     await db.commit()
     return PaymentResponse.model_validate(payment)
 
@@ -489,6 +494,10 @@ async def reject_bank_transfer(
     for booking in bookings:
         booking.cancellation_reason = reason
     await _fail_group(db, payment, rejected=True, bookings=bookings)
+    await audit(
+        db, "payment.reject", actor=user, target_type="payment", target_id=payment.id,
+        details={"amount": str(payment.amount)},
+    )  # fmt: skip
     await db.commit()
     return PaymentResponse.model_validate(payment)
 
@@ -537,6 +546,10 @@ async def _issue_refund(
         gateway_attempts=0,
     )
     await repo.add_refund(db, refund)
+    await audit(
+        db, "refund.create", target_type="refund", target_id=refund.id,
+        details={"booking_id": str(booking.id), "amount": str(amount), "kind": kind},
+    )  # fmt: skip
 
     provider = get_provider(payment.payment_method.value)
     try:
@@ -716,17 +729,10 @@ async def _mark_paid(
         amount=str(refund.amount),
         **booking_when(booking),
     )
-    if as_admin:
-        from app.modules.admin.service import record_audit
-
-        await record_audit(
-            db,
-            actor,
-            "refund.mark_paid",
-            "refund",
-            str(refund.id),
-            {"booking_id": str(booking.id), "amount": str(refund.amount)},
-        )
+    await audit(
+        db, "refund.mark_paid", actor=actor, target_type="refund", target_id=refund.id,
+        details={"booking_id": str(booking.id), "amount": str(refund.amount), "as_admin": as_admin},
+    )  # fmt: skip
     await db.commit()
     item = _owner_refund_item(refund, payment, booking, arena.name, player_name, court_name)
     return OwnerRefundMarkPaidResponse(refund=item, already_processed=False)
@@ -963,7 +969,7 @@ async def _payment_visible_to(db: AsyncSession, user: User, payment: Payment) ->
         arena = await arena_repo.get_arena(db, bookings[0].arena_id)
         allowed = arena is not None and arena.owner_id == user.id
     if not allowed:
-        raise ForbiddenError("You cannot view this payment.")
+        raise NotFoundError("Payment not found.")
     return bookings
 
 

@@ -215,4 +215,4 @@ async def test_owner_pricing_rules_in_one_list(
     locked = await client.get(
         "/api/v1/owner/pricing-rules", headers=auth_header(other), params={"arena_id": arenas[0]}
     )
-    assert locked.status_code == 403
+    assert locked.status_code == 404

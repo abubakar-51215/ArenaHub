@@ -161,7 +161,7 @@ async def test_calendar_view_scoped_to_owned_arena(
         headers=auth_header(other_owner),
         params={"from": week_start.isoformat(), "to": week_end.isoformat()},
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
 
 async def test_analytics_reflects_confirmed_booking(
@@ -384,7 +384,7 @@ async def test_another_owner_cannot_remind_someone_elses_booking(
         f"/api/v1/owner/dashboard/bookings/{booking_id}/remind", headers=auth_header(stranger)
     )
 
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 async def test_remind_only_while_awaiting_payment_and_the_slot_is_ahead(

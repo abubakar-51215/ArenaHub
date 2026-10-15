@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena
 from app.modules.court import repository as court_repo
@@ -53,10 +53,8 @@ async def _owned_court_and_arena(
     if court is None:
         raise NotFoundError("Court not found.")
     arena = await arena_repo.get_arena(db, court.arena_id)
-    if arena is None:
-        raise NotFoundError("Arena not found.")
-    if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Court not found.")  # someone else's court looks like a missing one
     return court, arena
 
 

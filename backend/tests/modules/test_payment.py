@@ -291,7 +291,7 @@ async def test_owner_cannot_approve_another_arenas_payment(
     forbidden = await client.post(
         f"/api/v1/owner/payments/{payment_id}/approve", headers=auth_header(other_owner)
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
 
 async def test_jazzcash_webhook_confirms_booking(
@@ -553,7 +553,7 @@ async def test_receipt_pdf_downloads_for_completed_payment(
     forbidden = await client.get(
         f"/api/v1/payments/{payment_id}/receipt.pdf", headers=auth_header(other_player)
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
 
 async def test_get_payment_by_group_resolves_id_for_receipt_lookup(
@@ -583,7 +583,7 @@ async def test_get_payment_by_group_resolves_id_for_receipt_lookup(
     forbidden = await client.get(
         f"/api/v1/payments/by-group/{group_id}", headers=auth_header(other_player)
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
 
 async def test_payment_history_lists_own_payments_only(
@@ -664,7 +664,7 @@ async def test_payment_lifecycle_audit_trail_records_transitions(
     forbidden = await client.get(
         f"/api/v1/payments/{payment_id}/events", headers=auth_header(other)
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
 
 async def test_cancel_after_reschedule_refund_is_capped_and_audited(

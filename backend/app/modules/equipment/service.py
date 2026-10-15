@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena
 from app.modules.equipment import repository as repo
@@ -27,7 +27,8 @@ async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Are
     if arena is None:
         raise NotFoundError("Arena not found.")
     if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        # another owner's arena answers exactly like one that does not exist
+        raise NotFoundError("Arena not found.")
     return arena
 
 
@@ -35,7 +36,9 @@ async def _owned_equipment(db: AsyncSession, equipment_id: uuid.UUID, user: User
     equipment = await repo.get_equipment(db, equipment_id)
     if equipment is None:
         raise NotFoundError("Equipment not found.")
-    await _owned_arena(db, equipment.arena_id, user)
+    arena = await arena_repo.get_arena(db, equipment.arena_id)
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Equipment not found.")
     return equipment
 
 

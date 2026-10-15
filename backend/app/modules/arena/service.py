@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.arena import repository as repo
 from app.modules.arena.model import (
     Arena,
@@ -37,7 +37,7 @@ from app.modules.arena.schema import (
     DiscountCodeResponse,
     DiscountCodeUpdate,
 )
-from app.modules.user.model import User
+from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_admins
 from app.shared.pagination import PaginationParams, paginated
 
@@ -57,12 +57,14 @@ _SCALAR_UPDATE_FIELDS = (
 
 
 async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Arena:
-    """Load an arena and assert the caller owns it (404 first, then 403)."""
+    """Load an arena and assert the caller owns it. Not yours = "not found" (the same answer as an
+    arena that does not exist, so ownership is never revealed)."""
     arena = await repo.get_arena(db, arena_id)
     if arena is None:
         raise NotFoundError("Arena not found.")
     if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        # another owner's arena answers exactly like one that does not exist
+        raise NotFoundError("Arena not found.")
     return arena
 
 
@@ -498,14 +500,29 @@ async def delete_bank_details(
 
 
 async def get_bank_details_for_checkout(
-    db: AsyncSession, arena_id: uuid.UUID
+    db: AsyncSession, user: User, arena_id: uuid.UUID
 ) -> list[ArenaBankDetailsResponse]:
-    """Player-facing read at checkout — any authenticated user, restricted to
-    arenas actually bookable (matches ``get_public_arena``'s visibility rule).
-    Returns every active account (default first) so the player can pick which
-    to transfer to."""
+    """Who may see an arena's bank account: the arena's own owner, an admin, or a player who is
+    paying for a booking at that arena right now (unpaid, or waiting for the owner to check the
+    receipt). Anyone else gets the same "not found" as an arena that does not exist, so the
+    accounts of arenas cannot be read by walking through arena ids. Active accounts, default
+    first, so the player can pick which to transfer to."""
+    from app.modules.booking import repository as booking_repo
+
     arena = await repo.get_arena(db, arena_id)
-    if arena is None or not arena.is_live:
+    allowed = (
+        arena is not None
+        and arena.is_live
+        and (
+            user.role == UserRole.admin
+            or arena.owner_id == user.id
+            or (
+                user.role == UserRole.player
+                and await booking_repo.player_has_unpaid_booking_at_arena(db, user.id, arena_id)
+            )
+        )
+    )
+    if not allowed:
         raise NotFoundError("Arena not found.")
     rows = await repo.list_active_bank_details(db, arena_id)
     if not rows:
