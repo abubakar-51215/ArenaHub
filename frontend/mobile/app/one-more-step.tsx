@@ -85,7 +85,6 @@ export default function OneMoreStepScreen() {
         </View>
         <Button
           title="Continue"
-          variant={valid ? 'ink' : 'off'}
           disabled={!valid}
           loading={save.isPending}
           status={btnStatus}

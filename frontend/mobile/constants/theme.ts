@@ -28,6 +28,13 @@ export const Palette = {
   redWash: '#FBE9E9',
   slotOpen: '#F6F7F4',
 
+  // A disabled button, in one place (components/ui/button.tsx and the assistant's send button; rule d2 in
+  // docs/MOBILE_QA_GATE.md). A flat grey with no see-through, so the text keeps 4.5 : 1 or more:
+  //   disabledInk (a dark button that cannot be pressed yet): paper text on it is 4.56 : 1 (was #808683, 3.30)
+  //   disabledText on the flat light grey (line): 5.50 : 1 (was muted, 4.13)
+  disabledInk: '#677069',
+  disabledText: '#525C56',
+
   // Literals in the frames that are not :root tokens (spec section 1).
   white: '#FFFFFF',
   onInk: '#EAF0EC',
