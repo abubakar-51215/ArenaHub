@@ -1,6 +1,6 @@
 /**
  * Wording for paying by card or mobile wallet, kept in one place for the owner to approve
- * (placeholders until approved). Bank transfer keeps its approved wording in its own screens.
+ * (approved by the owner on 2026-10-16). Bank transfer keeps its approved wording in its own screens.
  */
 export type WalletName = 'JazzCash' | 'EasyPaisa';
 
