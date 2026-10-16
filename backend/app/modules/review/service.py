@@ -1,5 +1,5 @@
 """Review business logic: submit (completed bookings only, one per booking),
-edit (30-day window)/delete, owner response, report/flag, and the live
+edit (any time)/delete, owner response, report/flag, and the live
 rating-recompute aggregate (MASTER_DEVELOPMENT_PLAN.md Track B scope).
 
 Booking completion is owned entirely by ``booking.service.
@@ -10,26 +10,25 @@ status; it does not mutate bookings.
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus
 from app.modules.review import repository as repo
 from app.modules.review.model import Review
 from app.modules.review.schema import (
     ModerationReviewResponse,
+    MyReviewResponse,
     ReviewCreate,
     ReviewResponse,
     ReviewUpdate,
 )
 from app.modules.user.model import User, UserRole
-
-EDIT_WINDOW = timedelta(days=30)
+from app.shared.notify import notify_user
 
 
 def _to_response(review: Review, reviewer_name: str) -> ReviewResponse:
@@ -54,7 +53,7 @@ async def _completed_own_booking(db: AsyncSession, user: User, booking_id: uuid.
     if booking is None:
         raise NotFoundError("Booking not found.")
     if booking.player_id != user.id:
-        raise ForbiddenError("You do not own this booking.")
+        raise NotFoundError("Booking not found.")
     if booking.status != BookingStatus.completed:
         raise ConflictError("Only completed bookings can be reviewed.")
     return booking
@@ -77,22 +76,66 @@ async def submit_review(
         review_text=data.review_text,
     )
     saved = await repo.add_review(db, review)
+    # one "New review" for the owner per review
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is not None:
+        await notify_user(
+            db,
+            arena.owner_id,
+            "review_new",
+            review_id=str(saved.id),
+            arena_id=str(arena_id),
+            arena_name=arena.name,
+            player_name=user.full_name,
+            rating=data.rating,
+        )
     await db.commit()
     return _to_response(saved, user.full_name)
+
+
+async def count_unanswered_for_owner(db: AsyncSession, user: User) -> int:
+    return await repo.count_unanswered_for_owner(db, user.id)
 
 
 async def list_arena_reviews(
     db: AsyncSession, arena_id: uuid.UUID, *, offset: int, limit: int
 ) -> tuple[list[ReviewResponse], int]:
     arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     rows, total = await repo.list_arena_reviews(db, arena_id, offset=offset, limit=limit)
     return [_to_response(review, name) for review, name in rows], total
 
 
+async def list_owner_arena_reviews(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, *, offset: int, limit: int
+) -> tuple[list[ReviewResponse], int]:
+    """Reviews for one of the owner's own arenas. Unlike the public list, this
+    also serves deactivated and unapproved arenas, so the owner can still read
+    them. Other owners get the same 404 as an unknown arena."""
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Arena not found.")
+    rows, total = await repo.list_arena_reviews(db, arena_id, offset=offset, limit=limit)
+    return [_to_response(review, name) for review, name in rows], total
+
+
+async def list_my_reviews(
+    db: AsyncSession, user: User, *, offset: int, limit: int
+) -> tuple[list[MyReviewResponse], int]:
+    rows, total = await repo.list_my_reviews(db, user.id, offset=offset, limit=limit)
+    return [
+        MyReviewResponse(**_to_response(review, user.full_name).model_dump(), arena_name=name)
+        for review, name in rows
+    ], total
+
+
 async def get_rating_summary(db: AsyncSession, arena_id: uuid.UUID) -> tuple[float | None, int]:
     return await repo.get_rating_summary(db, arena_id)
+
+
+async def get_rating_breakdown(db: AsyncSession, arena_id: uuid.UUID) -> list[int]:
+    return await repo.get_rating_breakdown(db, arena_id)
 
 
 async def update_review(
@@ -103,9 +146,6 @@ async def update_review(
         raise NotFoundError("Review not found.")
     if review.player_id != user.id:
         raise ForbiddenError("You may only edit your own review.")
-    if datetime.now() - review.created_at > EDIT_WINDOW:
-        raise ConflictError("The 30-day edit window for this review has passed.")
-
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(review, field, value)
     await db.commit()

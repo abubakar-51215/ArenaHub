@@ -11,7 +11,8 @@ export interface User {
   id: string;
   full_name: string;
   email: string;
-  phone: string;
+  /** Empty only for an account made with Google until "One more step" saves it. */
+  phone: string | null;
   role: UserRole;
   is_verified: boolean;
   is_active: boolean;
@@ -19,13 +20,16 @@ export interface User {
   preferred_sports: string[];
   preferred_locations: string[];
   profile_picture: string | null;
-  notification_preferences: Record<string, boolean>;
+  /** { push: { booking, reminder, payment, match }, email: { … } } (a missing key means on). */
+  notification_preferences: Record<string, unknown>;
   created_at: string;
 }
 
 export interface RegisterResult {
   user: User;
   otp_sent_to: string;
+  /** false when the code email could not be sent: the code screen says so and Resend is ready at once. */
+  code_sent: boolean;
 }
 
 export interface Tokens {
@@ -77,6 +81,12 @@ export interface Arena {
   is_active: boolean;
   amenities: Amenity[];
   created_at: string;
+  /** Only the list endpoints send these three (the card hides what is missing). */
+  /** km from the position sent with the search (only when one was sent). */
+  distance_km?: number | null;
+  avg_rating?: number | null;
+  review_count?: number;
+  min_price?: string | null;
 }
 
 export interface Court {
@@ -181,9 +191,21 @@ export interface Payment {
   created_at: string;
 }
 
+export interface PaymentRefundItem {
+  id: string;
+  amount: string;
+  status: 'pending' | 'processed' | 'failed';
+  reason: string;
+  created_at: string;
+  processed_at: string | null;
+}
+
 export interface PaymentHistoryItem extends Payment {
+  lifecycle_status: string;
   arena_name: string | null;
   booking_date: string | null;
+  booking_code: string | null;
+  refunds: PaymentRefundItem[];
 }
 
 export interface PaymentInitiateResult {
@@ -221,6 +243,13 @@ export interface Review {
 export interface RatingSummary {
   average_rating: number | null;
   review_count: number;
+  /** How many reviews gave 1, 2, 3, 4 and 5 stars. */
+  breakdown?: number[];
+}
+
+/** One of my own reviews (GET /reviews/my): a review plus the arena it is about. */
+export interface MyReview extends Review {
+  arena_name: string;
 }
 
 export interface BankDetails {
@@ -263,8 +292,114 @@ export interface Match {
   players_joined: number;
   status: MatchStatus;
   created_at: string;
+  /** The creator's booking this match is played on. */
+  booking_group_id: string | null;
+  note: string | null;
+  /** What that booking costs in all (the phone shows "about X each": text only, nothing is paid in the app). */
+  booking_total: string | null;
+  joined_by_me: boolean;
 }
 
 export interface MatchDetail extends Match {
   participants: MatchParticipant[];
+}
+
+/** POST /bookings/preview: the price of a checkout, nothing reserved. */
+export interface BookingPreview {
+  slots_subtotal: string;
+  equipment_total: string;
+  discount_amount: string;
+  total: string;
+  payment_type: PaymentPlan;
+  pay_now: string;
+  due_at_arena: string;
+  discount_status: 'none' | 'applied' | 'refused';
+  discount_message: string | null;
+  cancellation_note: string;
+}
+
+/** GET /bookings/group/{id}: one booking group with names, money and rules. */
+export interface BookingGroupDetails {
+  booking_group_id: string;
+  arena_id: string;
+  arena_name: string;
+  arena_address: string;
+  court_id: string;
+  court_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  slot_count: number;
+  status: BookingStatus;
+  payment_status: PaymentStatus;
+  payment_type: PaymentPlan;
+  total: string;
+  pay_now: string;
+  due_at_arena: string;
+  payment_id: string | null;
+  payment_method: PaymentMethod | null;
+  payment_lifecycle: string | null;
+  booking_code: string;
+  cancellation_note: string;
+  booking_ids: string[];
+  slot_ids: string[];
+  cancellation_reason: string | null;
+  refund_amount: string;
+  refund_status: 'pending' | 'processed' | 'failed' | null;
+  can_cancel: boolean;
+  can_reschedule: boolean;
+}
+
+/** GET /payments/methods: exactly four, in this order. */
+export interface PayMethodInfo {
+  key: 'stripe' | 'manual' | 'jazzcash' | 'easypaisa';
+  method: PaymentMethod;
+  label: string;
+  state: 'available' | 'unavailable' | 'coming_soon';
+  message: string | null;
+}
+
+/** One card of My bookings: a whole booking (GET /bookings/groups). */
+export interface BookingGroupItem {
+  booking_group_id: string;
+  booking_code: string;
+  arena_id: string;
+  arena_name: string;
+  arena_photo: string | null;
+  court_id: string;
+  court_name: string;
+  sport: string | null;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  slot_count: number;
+  status: BookingStatus;
+  payment_status: PaymentStatus;
+  total: string;
+  pay_now: string;
+  due_at_arena: string;
+  refund_amount: string;
+  refund_status: 'pending' | 'processed' | 'failed' | null;
+  tab: 'upcoming' | 'past' | 'cancelled';
+  booking_id: string;
+  my_rating: number | null;
+}
+
+/** GET /bookings/group/{id}/cancel-preview */
+export interface CancelPreview {
+  can_cancel: boolean;
+  paid: string;
+  refund_percentage: number;
+  refund_amount: string;
+  policy_text: string;
+  receipt_waiting: boolean;
+}
+
+/** POST /bookings/group/{id}/reschedule-preview */
+export interface ReschedulePreview {
+  old_total: string;
+  new_total: string;
+  paid: string;
+  balance: string;
+  refund: string;
 }

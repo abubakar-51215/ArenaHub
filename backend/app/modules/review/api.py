@@ -54,12 +54,26 @@ async def get_rating_summary(
     arena_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
     average, count = await service.get_rating_summary(db, arena_id)
+    breakdown = await service.get_rating_breakdown(db, arena_id)
     return success(
-        data={"average_rating": average, "review_count": count}, message="Rating summary retrieved."
+        data={"average_rating": average, "review_count": count, "breakdown": breakdown},
+        message="Rating summary retrieved.",
     )
 
 
 # ---- player self-service ---------------------------------------------------
+
+
+@router.get("/reviews/my", summary="My own reviews")
+async def list_my_reviews(
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows, total = await service.list_my_reviews(
+        db, user, offset=params.offset, limit=params.page_size
+    )
+    return success(data=paginated(rows, total, params), message="Reviews retrieved.")
 
 
 @router.post(
@@ -110,6 +124,34 @@ async def report_review(
 
 
 # ---- owner ------------------------------------------------------------------
+
+
+@owner_router.get(
+    "/arenas/{arena_id}/reviews",
+    summary="List reviews for one of my arenas (includes deactivated arenas)",
+)
+async def list_owner_arena_reviews(
+    arena_id: uuid.UUID,
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows, total = await service.list_owner_arena_reviews(
+        db, user, arena_id, offset=params.offset, limit=params.page_size
+    )
+    return success(data=paginated(rows, total, params), message="Reviews retrieved.")
+
+
+@owner_router.get(
+    "/reviews/unanswered-count",
+    summary="How many reviews on my arenas have no reply yet (the Reviews badge)",
+)
+async def count_unanswered_reviews(
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    count = await service.count_unanswered_for_owner(db, user)
+    return success(data={"count": count}, message="Count retrieved.")
 
 
 @owner_router.post("/reviews/{review_id}/response", summary="Respond to a review on my arena")

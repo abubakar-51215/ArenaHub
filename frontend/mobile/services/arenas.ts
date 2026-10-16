@@ -8,7 +8,11 @@ export interface ArenaSearchParams {
   sport?: string;
   price_min?: number;
   price_max?: number;
-  sort?: "newest" | "name" | "price_asc" | "price_desc" | "rating_desc";
+  sort?: "newest" | "name" | "price_asc" | "price_desc" | "rating_desc" | "best" | "near";
+  /** The player's position: only a search parameter, never stored by the server. */
+  lat?: number;
+  lon?: number;
+  radius_km?: number;
   page?: number;
   page_size?: number;
 }
@@ -26,8 +30,9 @@ function toQuery(params: object): string {
 
 export function searchArenas(
   params: ArenaSearchParams = {},
+  opts?: { timeoutMs?: number },
 ): Promise<Page<Arena>> {
-  return api.get<Page<Arena>>(`/arenas${toQuery(params)}`);
+  return api.get<Page<Arena>>(`/arenas${toQuery(params)}`, opts);
 }
 
 export function getArena(arenaId: string): Promise<Arena> {
@@ -44,9 +49,11 @@ export function getTrendingArenas(opts: {
   days?: number;
   city?: ArenaCity;
   limit?: number;
+  timeoutMs?: number;
 }): Promise<{ items: Arena[] }> {
   return api.get<{ items: Arena[] }>(
     `/arenas/trending${toQuery({ days: opts.days ?? 7, city: opts.city, limit: opts.limit ?? 10 })}`,
+    { timeoutMs: opts.timeoutMs },
   );
 }
 

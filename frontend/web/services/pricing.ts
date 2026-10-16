@@ -11,6 +11,11 @@ export interface PricingRuleInput {
   is_active?: boolean;
 }
 
+/** Every rule on the owner's courts (or one arena's) in one request — the Pricing Rules page. */
+export function listMyPricingRules(arenaId?: string): Promise<PricingRule[]> {
+  return api.get<PricingRule[]>(`/owner/pricing-rules${arenaId ? `?arena_id=${arenaId}` : ""}`);
+}
+
 export function listPricingRules(courtId: string): Promise<PricingRule[]> {
   return api.get<PricingRule[]>(`/owner/courts/${courtId}/pricing-rules`);
 }

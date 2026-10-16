@@ -1,91 +1,186 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from 'react-native';
+import { showToast } from '@/components/ui/toast';
+import { OFFLINE_TOAST, useNetwork } from '@/lib/network';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type TextStyle } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { Brand, Colors, Shadow } from '@/constants/theme';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { Colors } from '@/constants/theme';
+import { useShake } from '@/hooks/use-shake';
+import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
+
+// Values from design/prototypes/arena-hub-player-app.html .m-btn / .ghost /
+// .lime (the CSS rules themselves, not the instance-measured table — those
+// rows capture one call site's override, not the class's own declared
+// style). The prototype has no `outline` variant; existing `outline` call
+// sites are repointed to `ghost`, the closest match (secondary, unfilled).
+//
+// Motion (standing rule c, docs/MOBILE_QA_GATE.md; arena-hub-player-app-auth-2-fixed.html):
+//   press     dips to 97.5% in 160 ms, no opacity change
+//   loading   a spinner that keeps the button's full width and height
+//   success   a short tick in place of the label
+//   error     one shake
+//   haptics   light on a primary press, success and error buzz on those states
+//   reduce motion: the dip is instant and nothing shakes.
+export type ButtonVariant = 'ink' | 'ghost' | 'lime' | 'danger' | 'dangerOutline' | 'off';
+export type ButtonStatus = 'success' | 'error' | undefined;
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
-  variant?: 'primary' | 'outline' | 'ghost';
+  variant?: ButtonVariant;
   loading?: boolean;
+  /** While the phone is offline the button shows this text (for example "Pay needs a connection") and a tap explains. */
+  offlineLabel?: string;
+  /** Set to 'success' or 'error' to play that feedback (see useButtonStatus). */
+  status?: ButtonStatus;
+  /** Drawn before the label (the Google logo of "Continue with Google"); hidden with the label while loading. */
+  leading?: ReactNode;
+  /** A light tap on press for a ghost button that starts something (ghost buttons are quiet otherwise). */
+  haptic?: boolean;
 }
 
-export function Button({ title, variant = 'primary', loading, disabled, ...props }: ButtonProps) {
-  const isDisabled = disabled || loading;
+const VARIANTS: Record<ButtonVariant, { bg: string; border: string; text: string }> = {
+  ink: { bg: Colors.light.ink, border: Colors.light.ink, text: Colors.light.paper },
+  ghost: { bg: Colors.light.card, border: Colors.light.line, text: Colors.light.text },
+  lime: { bg: Colors.light.lime, border: Colors.light.lime, text: '#0F1A15' },
+  // destructive: red, always shown next to a plain Stay / Cancel
+  danger: { bg: Colors.light.red, border: Colors.light.red, text: '#FFFFFF' },
+  // a red-outlined plain button (Cancel booking) and the flat grey one that says an action is not available
+  dangerOutline: { bg: Colors.light.card, border: Colors.light.red, text: Colors.light.red },
+  off: { bg: Colors.light.line, border: Colors.light.line, text: Colors.light.disabledText },
+};
 
-  const label = loading ? (
-    <ActivityIndicator color={variant === 'primary' ? '#fff' : Colors.light.tint} />
-  ) : (
-    <Text
-      style={[
-        styles.text,
-        variant === 'primary' && styles.textPrimary,
-        variant !== 'primary' && styles.textOther,
-      ]}>
-      {title}
-    </Text>
+/**
+ * A status that clears itself: `flash('error')` shows the error feedback and
+ * goes back to normal after `ms`.
+ */
+export function useButtonStatus(ms = 1100): [ButtonStatus, (s: Exclude<ButtonStatus, undefined>) => void] {
+  const [status, setStatus] = useState<ButtonStatus>(undefined);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const flash = useCallback(
+    (s: Exclude<ButtonStatus, undefined>) => {
+      clearTimeout(timer.current);
+      // a quick off/on so the same status twice in a row plays again
+      setStatus(undefined);
+      requestAnimationFrame(() => setStatus(s));
+      timer.current = setTimeout(() => setStatus(undefined), ms);
+    },
+    [ms],
   );
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return [status, flash];
+}
 
-  // Primary uses a real brand gradient with soft elevation; other variants stay flat.
-  if (variant === 'primary') {
-    return (
-      <Pressable
-        {...props}
-        disabled={isDisabled}
-        style={({ pressed }) => [
-          styles.base,
-          Shadow.brand,
-          isDisabled && styles.disabled,
-          pressed && !isDisabled && styles.pressed,
-        ]}>
-        <LinearGradient
-          colors={Brand.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fill}>
-          {label}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
+export function Button({ title: titleProp, variant: variantProp = 'ink', loading, status, disabled, onPress, onPressIn, onPressOut, offlineLabel, leading, haptic, ...props }: ButtonProps) {
+  // An action that needs the server (Pay, Send, Post, Join, Cancel...) says so while the phone is offline, and a tap explains
+  // instead of failing later (arena-hub-player-app-states.html, frame 03).
+  const online = useNetwork((s) => s.online);
+  const blocked = !!offlineLabel && !online;
+  const title = blocked ? (offlineLabel as string) : titleProp;
+  const variant = blocked ? 'off' : variantProp;
+  const isDisabled = blocked ? false : disabled || loading;
+  // A button that cannot be pressed is a flat grey (never see-through, so its text keeps 4.5 : 1): a dark one is the
+  // mid grey of the auth frames, every other kind the flat light grey. Loading keeps the button's own look.
+  const dim = isDisabled && !loading && variant !== 'off';
+  const v = dim
+    ? variant === 'ink'
+      ? { bg: Colors.light.disabledInk, border: Colors.light.disabledInk, text: Colors.light.paper }
+      : VARIANTS.off
+    : VARIANTS[variant];
+  const press = blocked
+    ? () => {
+        tapHaptic();
+        showToast(OFFLINE_TOAST);
+      }
+    : onPress;
+  const reduceMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+  const { style: shakeStyle, shake } = useShake();
+  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  useEffect(() => {
+    if (status === 'error') {
+      shake();
+      errorHaptic();
+    } else if (status === 'success') {
+      successHaptic();
+    }
+  }, [status, shake]);
+
+  const dip = (to: number) => {
+    scale.value = reduceMotion ? to : withTiming(to, { duration: 160, easing: Easing.out(Easing.cubic) });
+  };
 
   return (
-    <Pressable
-      {...props}
-      disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        styles.padded,
-        variant === 'outline' && styles.outline,
-        variant === 'ghost' && styles.ghost,
-        isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
-      ]}>
-      {label}
-    </Pressable>
+    <Animated.View style={[styles.wrap, shakeStyle]}>
+      <Animated.View style={pressStyle}>
+        <Pressable
+          {...props}
+          disabled={isDisabled}
+          // The prototype's own press feedback is the dip above — a Material
+          // ripple would add a visual the prototype doesn't draw, so unlike
+          // the tab bar (PlatformPressable, G0b-2) this deliberately stays a
+          // plain Pressable with no android_ripple.
+          onPress={isDisabled ? undefined : press}
+          onPressIn={(e) => {
+            if (!isDisabled && !blocked) {
+              dip(0.975);
+              if ((variant !== 'ghost' && variant !== 'dangerOutline') || haptic) tapHaptic();
+            }
+            onPressIn?.(e);
+          }}
+          onPressOut={(e) => {
+            dip(1);
+            onPressOut?.(e);
+          }}
+          accessibilityRole={props.accessibilityRole ?? 'button'}
+          accessibilityState={{ ...props.accessibilityState, disabled: isDisabled || blocked, busy: !!loading }}
+          accessibilityLabel={props.accessibilityLabel ?? title}
+          style={[
+            styles.base,
+            { backgroundColor: v.bg, borderColor: v.border },
+          ]}>
+          {/* the label always stays in the layout (hidden while loading or on
+              success), so the button never changes size; the spinner or tick
+              sits on top of it */}
+          {leading ? (
+            <View style={[(loading || status === 'success') && styles.hidden, blocked && styles.faded]}>{leading}</View>
+          ) : null}
+          <Text style={[styles.text, { color: v.text }, (loading || status === 'success') && styles.hidden]}>{title}</Text>
+          {loading ? (
+            <View style={styles.overlay} pointerEvents="none">
+              <ActivityIndicator color={v.text} size={20} />
+            </View>
+          ) : status === 'success' ? (
+            <View style={styles.overlay} pointerEvents="none">
+              <Icon name="tick" size={18} color={v.text} strokeWidth={2.8} />
+            </View>
+          ) : null}
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: { width: '100%' },
   base: {
-    height: 50,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    gap: 7,
+    width: '100%',
+    height: 46,
+    borderRadius: 17,
+    borderWidth: 1,
   },
-  padded: { paddingHorizontal: 16 },
-  fill: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  outline: { borderWidth: 1.5, borderColor: Colors.light.tint, backgroundColor: 'transparent' },
-  ghost: { backgroundColor: 'transparent' },
-  disabled: { opacity: 0.5 },
-  pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
-  text: { fontSize: 16, fontWeight: '600' },
-  textPrimary: { color: '#fff' },
-  textOther: { color: Colors.light.tint },
+  hidden: { opacity: 0 },
+  faded: { opacity: 0.45 },
+  overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  // 650 isn't a value RN's TextStyle['fontWeight'] union accepts, but it's
+  // what the prototype declares and components/ui/text.tsx's
+  // normalizeWeight() reads the raw string directly (Number('650') >= 650 ->
+  // Bold) rather than relying on RN to understand it.
+  text: { fontSize: 14.5, fontWeight: '650' } as unknown as TextStyle,
 });

@@ -2,6 +2,7 @@
 queue, calendar view, and revenue widgets."""
 
 from datetime import date, timedelta
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,7 +76,7 @@ async def test_dashboard_summary_counts_arenas_and_pending_approvals(
     await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
 
     summary = await client.get("/api/v1/owner/dashboard/summary", headers=auth_header(owner))
@@ -108,7 +109,7 @@ async def test_pending_approvals_panel_lists_across_all_owner_arenas(
     await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
 
     panel = await client.get(
@@ -119,7 +120,10 @@ async def test_pending_approvals_panel_lists_across_all_owner_arenas(
     assert len(items) == 1
     assert items[0]["arena_id"] == arena_id
     assert items[0]["payment_method"] == "bank_transfer"
-    assert items[0]["receipt_proof_url"] == "/uploads/receipts/fake.jpg"
+    # the stored receipt comes out only as a short-lived signed link
+    link = items[0]["receipt_proof_url"]
+    assert link.startswith("/api/v1/media/receipts/c898309f41b1f46378fc698549e1c592.jpg?expires=")
+    assert "&sig=" in link
 
     # Approving clears it from the queue.
     await client.post(f"/api/v1/owner/payments/{payment_id}/approve", headers=auth_header(owner))
@@ -161,7 +165,7 @@ async def test_calendar_view_scoped_to_owned_arena(
         headers=auth_header(other_owner),
         params={"from": week_start.isoformat(), "to": week_end.isoformat()},
     )
-    assert forbidden.status_code == 403
+    assert forbidden.status_code == 404
 
 
 async def test_analytics_reflects_confirmed_booking(
@@ -226,22 +230,33 @@ async def test_owner_bookings_table_lists_and_filters(
     arena_id, court_id, monday = await _make_bookable_court(client, db_session, owner, "dashowner6")
     slots = await _slots(client, court_id, monday)
 
-    await client.post(
+    made = await client.post(
         "/api/v1/bookings",
         headers=auth_header(player),
         json={"court_id": court_id, "slot_ids": [slots[0]["id"]], "payment_type": "full"},
     )
+    group_id = made.json()["data"]["booking_group_id"]
 
     table = await client.get("/api/v1/owner/dashboard/bookings", headers=auth_header(owner))
     assert table.status_code == 200
     items = table.json()["data"]["items"]
     assert len(items) == 1
     row = items[0]
+    # the same reference the player sees on the phone and writes on a bank transfer
+    player_view = await client.get(
+        f"/api/v1/bookings/group/{group_id}", headers=auth_header(player)
+    )
+    assert row["booking_code"] == player_view.json()["data"]["booking_code"]
+    assert row["booking_code"].startswith("AHB-")
     assert row["arena_name"] == "Downtown Futsal Arena"
     assert row["court_name"] == "Court A"
     assert row["player_name"] == "Test User"
     assert row["status"] == "pending_payment"
     assert row["total_amount"] == "2000.00"
+    # the player's phone arrives masked (the test user's number is 0300...), and
+    # no payment exists yet for a booking that has not been paid
+    assert row["player_phone"].startswith("+92 300") and row["player_phone"].endswith("••••")
+    assert row["payment_method"] is None and row["payment_status"] is None
 
     # Status filter excludes it; matching filter keeps it.
     none = await client.get(
@@ -296,3 +311,114 @@ async def test_revenue_widgets_sum_completed_payments(
         params={"arena_id": arena_id},
     )
     assert scoped.json()["data"]["total_revenue"] == "2000.00"
+
+
+def test_phone_mask_hides_all_but_the_prototype_prefix() -> None:
+    from app.modules.dashboard.service import mask_phone
+
+    assert mask_phone("03001112233") == "+92 300 11••••"
+    assert mask_phone("+923215550101") == "+92 321 55••••"
+    assert mask_phone("12345678") == "1234••••"
+    assert mask_phone("del-9f3a1c") is None  # a deleted user's anonymised value
+    assert mask_phone(None) is None and mask_phone("") is None
+
+
+async def _awaiting_booking(client: AsyncClient, db_session: AsyncSession, tag: str) -> Any:
+    """An owner, a player and one booking awaiting payment (a future Monday)."""
+    owner, _ = await make_user(client, db_session, f"remind-owner-{tag}@example.com", "owner")
+    player, player_row = await make_user(
+        client, db_session, f"remind-pl-{tag}@example.com", "player"
+    )
+    _, court_id, monday = await _make_bookable_court(client, db_session, owner, f"remind-{tag}")
+    slots = await _slots(client, court_id, monday)
+    booked = await client.post(
+        "/api/v1/bookings",
+        headers=auth_header(player),
+        json={"court_id": court_id, "slot_ids": [slots[0]["id"]], "payment_type": "full"},
+    )
+    assert booked.status_code == 200
+    table = await client.get("/api/v1/owner/dashboard/bookings", headers=auth_header(owner))
+    return owner, player, player_row, table.json()["data"]["items"][0]["booking_id"]
+
+
+async def _row(client: AsyncClient, owner: dict, booking_id: str) -> dict:
+    table = await client.get("/api/v1/owner/dashboard/bookings", headers=auth_header(owner))
+    return next(r for r in table.json()["data"]["items"] if r["booking_id"] == booking_id)
+
+
+async def test_owner_reminds_an_awaiting_booking_once_an_hour(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, player, _, booking_id = await _awaiting_booking(client, db_session, "a")
+    assert (await _row(client, owner, booking_id))["can_remind"] is True
+
+    sent = await client.post(
+        f"/api/v1/owner/dashboard/bookings/{booking_id}/remind", headers=auth_header(owner)
+    )
+    assert sent.status_code == 200
+    assert sent.json()["data"]["next_reminder_in_minutes"] == 60
+
+    # the player has the notice: the booking, the arena, that payment waits, the four methods
+    notices = await client.get("/api/v1/notifications", headers=auth_header(player))
+    reminder = next(n for n in notices.json()["data"]["items"] if n["event"] == "payment_reminder")
+    body = reminder["body"]
+    assert "Downtown Futsal Arena" in body and "Court A" in body
+    assert "Payment is still waiting" in body
+    assert "Card, Bank transfer, JazzCash or EasyPaisa" in body
+    assert "cash on arrival" not in body.lower() and "PKR" not in body and "Rs." not in body
+
+    # the list now says to wait, and a second try inside the hour is a 409 with the minutes left
+    row = await _row(client, owner, booking_id)
+    assert row["remind_wait_minutes"] in (59, 60)
+    again = await client.post(
+        f"/api/v1/owner/dashboard/bookings/{booking_id}/remind", headers=auth_header(owner)
+    )
+    assert again.status_code == 409
+    assert "You can send another in" in again.json()["message"]
+    assert "minute" in again.json()["message"]
+
+
+async def test_another_owner_cannot_remind_someone_elses_booking(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, _, booking_id = await _awaiting_booking(client, db_session, "b")
+    stranger, _ = await make_user(client, db_session, "remind-stranger@example.com", "owner")
+
+    resp = await client.post(
+        f"/api/v1/owner/dashboard/bookings/{booking_id}/remind", headers=auth_header(stranger)
+    )
+
+    assert resp.status_code == 404
+
+
+async def test_remind_only_while_awaiting_payment_and_the_slot_is_ahead(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from sqlalchemy import update
+
+    from app.modules.booking.model import Booking, BookingStatus
+
+    owner, player, _, booking_id = await _awaiting_booking(client, db_session, "c")
+    url = f"/api/v1/owner/dashboard/bookings/{booking_id}/remind"
+
+    # a slot that has already started: no button, and a plain 422 if asked anyway
+    await db_session.execute(
+        update(Booking)
+        .where(Booking.id == booking_id)
+        .values(booking_date=date.today() - timedelta(days=1))
+    )
+    await db_session.commit()
+    assert (await _row(client, owner, booking_id))["can_remind"] is False
+    past = await client.post(url, headers=auth_header(owner))
+    assert past.status_code == 422 and "already started" in past.json()["message"]
+
+    # a booking that is not awaiting payment (cancelled by the player)
+    await db_session.execute(
+        update(Booking)
+        .where(Booking.id == booking_id)
+        .values(booking_date=date.today() + timedelta(days=3), status=BookingStatus.cancelled)
+    )
+    await db_session.commit()
+    assert (await _row(client, owner, booking_id))["can_remind"] is False
+    gone = await client.post(url, headers=auth_header(owner))
+    assert gone.status_code == 422 and "not awaiting payment" in gone.json()["message"]

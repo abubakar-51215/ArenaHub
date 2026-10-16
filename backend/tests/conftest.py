@@ -23,6 +23,7 @@ it once with:
 
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import dotenv_values
 
@@ -50,7 +51,7 @@ os.environ["DATABASE_URL"] = _test_database_url()
 os.environ.setdefault("JAZZCASH_WEBHOOK_SECRET", "test-jazzcash-webhook-secret")
 os.environ.setdefault("EASYPAISA_WEBHOOK_SECRET", "test-easypaisa-webhook-secret")
 
-from collections.abc import AsyncIterator  # noqa: E402
+from collections.abc import AsyncIterator, Iterator  # noqa: E402
 
 import fakeredis.aioredis  # noqa: E402
 import pytest  # noqa: E402
@@ -70,6 +71,22 @@ async def client() -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def payment_gateways_open(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The card and wallet providers have no real credentials here, so the
+    payment-flow tests run them as the simulators. A test that checks the real
+    "not available yet" rules opts out with ``@pytest.mark.real_gateway_rules``."""
+    if request.node.get_closest_marker("real_gateway_rules"):
+        return
+    from app.integrations import payments as providers
+    from app.integrations.payments.mock import MockProvider
+    from app.modules.payment import methods, service
+
+    monkeypatch.setitem(providers._LIVE_PROVIDERS, "card", MockProvider("card"))
+    monkeypatch.setattr(methods, "ensure_usable", lambda method: None)
+    monkeypatch.setattr(service.methods, "ensure_usable", lambda method: None)
 
 
 @pytest.fixture(autouse=True)
@@ -108,3 +125,40 @@ async def db_session() -> AsyncIterator[AsyncSession]:
         await trans.rollback()
         await conn.close()
         await engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _record_route_hits() -> Iterator[None]:
+    """Remember which route templates the whole suite called, and which answered below 400.
+
+    Written to the file named by ROUTE_HITS_FILE when that is set (docs/BACKEND_COMPLETENESS.md,
+    scripts/security-check): it shows which routes no test reaches with a successful answer.
+    """
+    from fastapi.routing import APIRoute
+
+    called: set[str] = set()
+    worked: set[str] = set()
+    original = APIRoute.handle
+
+    async def handle(self: Any, scope: Any, receive: Any, send: Any) -> None:
+        status: dict[str, int] = {}
+
+        async def send_wrapper(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                status["code"] = message["status"]
+            await send(message)
+
+        await original(self, scope, receive, send_wrapper)
+        key = f"{scope['method']} {self.path}"
+        called.add(key)
+        if status.get("code", 500) < 400:
+            worked.add(key)
+
+    APIRoute.handle = handle  # type: ignore[method-assign]
+    yield
+    APIRoute.handle = original  # type: ignore[method-assign]
+    target = os.environ.get("ROUTE_HITS_FILE")
+    if target:
+        import json
+
+        Path(target).write_text(json.dumps({"called": sorted(called), "worked": sorted(worked)}))

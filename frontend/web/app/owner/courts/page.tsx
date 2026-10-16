@@ -1,146 +1,257 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+/**
+ * Owner Courts, laid out as the owner prototype's Courts screen: a grid of
+ * court cards, each with the court's photo (or the prototype's court drawing
+ * when it has none), a Live / Off badge, sport tags, the hourly price, the
+ * bookable switch and the actions (Edit, Slots, Delete, Schedule). The
+ * arena comes from the top bar's picker; "All arenas" lists every arena's
+ * courts. Left out, as courts have no data for them: the surface tag and
+ * the "% full" figure (occupancy is only kept per arena).
+ */
+import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
+import { CourtArt } from "@/components/admin/court-art";
+import { AdminBadge, AdminEmpty, AdminTag } from "@/components/admin/ui";
 import { CourtForm } from "@/components/owner/court-form";
 import { PageHeader } from "@/components/owner/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
+import { SlotsDialog } from "@/components/owner/slots-dialog";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useMyArenas } from "@/hooks/useArenas";
-import { useCourts, useDeleteCourt, useSetCourtAvailability } from "@/hooks/useCourts";
+import { useFormDialog } from "@/hooks/useFormDialog";
+import { useArenaParam } from "@/hooks/useArenaParam";
+import { formatRs, plural } from "@/lib/format";
+import { deleteCourt, listCourts, setCourtAvailability } from "@/services/courts";
+import { ApiError } from "@/services/api";
 import type { Court } from "@/types";
 
+function titleCase(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function CourtsInner() {
-  const searchParams = useSearchParams();
-  const { data: arenaPage } = useMyArenas();
+  const qc = useQueryClient();
+  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
+  const [pickedId] = useArenaParam();
+  const picked = arenas.find((a) => a.id === pickedId);
+  const scope = picked ? [picked] : arenas;
+  const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
-  const [arenaId, setArenaId] = useState<string>("");
-  useEffect(() => {
-    // Prefer ?arena= from the arenas table link, else the first arena.
-    const fromUrl = searchParams.get("arena");
-    if (fromUrl && arenas.some((a) => a.id === fromUrl)) setArenaId(fromUrl);
-    else if (!arenaId && arenas.length) setArenaId(arenas[0].id);
-  }, [arenas, searchParams, arenaId]);
+  const courtQueries = useQueries({
+    queries: scope.map((a) => ({ queryKey: ["courts", a.id], queryFn: () => listCourts(a.id) })),
+  });
+  const loading = arenasLoading || courtQueries.some((q) => q.isLoading);
+  const failed = courtQueries.some((q) => q.isError);
+  const courts = courtQueries.flatMap((q) => q.data ?? []);
 
-  const { data: courts, isLoading } = useCourts(arenaId || null);
-  const setAvailability = useSetCourtAvailability(arenaId);
-  const removeCourt = useDeleteCourt(arenaId);
+  const [sport, setSport] = useState("");
+  const sports = [...new Set(courts.flatMap((c) => c.sport_types))].sort();
+  const shown = sport ? courts.filter((c) => c.sport_types.includes(sport)) : courts;
+  const live = courts.filter((c) => c.is_available).length;
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [slotsFor, setSlotsFor] = useState<Court | null>(null);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<Court | undefined>(undefined);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // the switch and delete act on the court's own arena, so they work under
+  // "All arenas" too
+  async function run(court: Court, action: () => Promise<unknown>) {
+    setBusy(court.id);
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not update ${court.name}.`);
+    } finally {
+      await qc.invalidateQueries({ queryKey: ["courts", court.arena_id] });
+      setBusy(null);
+    }
+  }
+
+  // a new court needs one arena: the picked one
+  const formArenaId = editing?.arena_id ?? picked?.id;
 
   return (
     <>
-      <PageHeader title="Manage Courts">
+      <PageHeader
+        title="Courts"
+        subtitle={
+          !loading
+            ? `${plural(courts.length, "court")} · ${live} taking bookings${picked ? "" : " · choose an arena above to add a court"}`
+            : undefined
+        }
+      >
+        {sports.length > 1 && (
+          <Select value={sport} onChange={(e) => setSport(e.target.value)} aria-label="Sport">
+            <option value="">All sports</option>
+            {sports.map((s) => (
+              <option key={s} value={s}>
+                {titleCase(s)}
+              </option>
+            ))}
+          </Select>
+        )}
         <Button
+          className="ah-lime"
+          disabled={!picked}
+          title={picked ? undefined : "Choose an arena above first"}
           onClick={() => {
             setEditing(undefined);
             setFormOpen(true);
           }}
-          disabled={!arenaId}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
         >
-          <Plus className="size-4" /> Add Court
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Add court
         </Button>
       </PageHeader>
 
-      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-foreground">Arena</label>
-          <Select value={arenaId} onChange={(e) => setArenaId(e.target.value)} className="w-64">
-            {arenas.length === 0 && <option value="">No arenas yet</option>}
-            {arenas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {!arenaId && (
-          <p className="text-sm text-muted-foreground">
-            Register an arena first, then add its courts here.
-          </p>
+      <div className="ah-ocanvas animate-fade-in ah-stack">
+        {error && (
+          <div className="ah-card-error" role="alert">
+            <span>{error}</span>
+          </div>
         )}
-
-        {arenaId && isLoading && <p className="text-sm text-muted-foreground">Loading courts…</p>}
-
-        {arenaId && !isLoading && (courts?.length ?? 0) === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No courts yet for this arena. Click “Add Court” to create one.
-          </p>
+        {loading && <div className="ah-skeleton" style={{ height: 260 }} aria-label="Loading" />}
+        {!loading && failed && (
+          <div className="ah-card">
+            <div className="ah-card-body">
+              <div className="ah-card-error" role="alert">
+                <span>Could not load the courts.</span>
+                <button
+                  type="button"
+                  className="ah-link"
+                  onClick={() => courtQueries.forEach((q) => void q.refetch())}
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
         )}
-
-        <div className="stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {courts?.map((court) => (
-            <div
-              key={court.id}
-              className="card-elevated overflow-hidden rounded-xl border border-border bg-card"
-            >
-              <div
-                className="h-36 w-full bg-linear-to-br from-emerald-800 to-slate-900 bg-cover bg-center"
-                style={court.images[0] ? { backgroundImage: `url(${court.images[0]})` } : undefined}
-              />
-              <div className="space-y-2 p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-foreground">{court.name}</p>
-                    <p className="text-xs text-muted-foreground">{court.sport_types.join(" · ")}</p>
-                  </div>
-                  <StatusBadge status={court.is_available ? "active" : "inactive"} />
-                </div>
-                <p className="text-sm font-medium text-foreground">Rs. {court.base_price} / hr</p>
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Switch
-                      checked={court.is_available}
-                      onCheckedChange={(v) =>
-                        setAvailability.mutate({ courtId: court.id, isAvailable: v })
-                      }
+        {!loading && !failed && shown.length === 0 && (
+          <div className="ah-card">
+            <AdminEmpty>
+              {arenas.length === 0
+                ? "Register an arena first, then add its courts here."
+                : picked
+                  ? "No courts yet for this arena. Click “Add court” to create one."
+                  : "No courts yet."}
+            </AdminEmpty>
+          </div>
+        )}
+        {!loading && shown.length > 0 && (
+          <div className="ah-grid ah-g-3 ah-courts">
+            {shown.map((court) => (
+              <article key={court.id} className="ah-card ah-court-card">
+                <div className="ah-court-vis">
+                  {court.images[0] ? (
+                    <div
+                      className="ah-court-photo"
+                      style={{ backgroundImage: `url(${court.images[0]})` }}
                     />
-                    Available
-                  </label>
-                  <div className="flex items-center gap-1">
+                  ) : (
+                    <CourtArt sport={court.sport_types[0]} />
+                  )}
+                  <span className="ah-court-badge">
+                    <AdminBadge tone={court.is_available ? "ok" : "idle"}>
+                      {court.is_available ? "Live" : "Off"}
+                    </AdminBadge>
+                  </span>
+                </div>
+                <div className="ah-court-body">
+                  <div>
+                    <b className="ah-court-name">{court.name}</b>
+                    <div className="ah-sub">{arenaName.get(court.arena_id) ?? ""}</div>
+                  </div>
+                  {(court.sport_types.length > 0 || court.capacity) && (
+                    <div className="ah-court-meta">
+                      {court.sport_types.map((s) => (
+                        <AdminTag key={s}>{titleCase(s)}</AdminTag>
+                      ))}
+                      {court.capacity ? <AdminTag>Up to {court.capacity} players</AdminTag> : null}
+                    </div>
+                  )}
+                  <div className="ah-court-price">
+                    <span>
+                      <span className="ah-metric">{formatRs(court.base_price)}</span>
+                      <span className="ah-mute"> / hr</span>
+                    </span>
+                    <label className="ah-court-switch">
+                      <Switch
+                        checked={court.is_available}
+                        disabled={busy === court.id}
+                        onCheckedChange={(v) => run(court, () => setCourtAvailability(court.id, v))}
+                      />
+                      Bookable
+                    </label>
+                  </div>
+                  <div className="ah-court-foot">
                     <Button
                       variant="ghost"
-                      size="icon-sm"
-                      title="Edit"
+                      size="sm"
                       onClick={() => {
                         setEditing(court);
                         setFormOpen(true);
                       }}
                     >
-                      <Pencil className="size-4" />
+                      Edit
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setSlotsFor(court)}>
+                      Slots
                     </Button>
                     <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Delete"
+                      variant="destructive"
+                      size="sm"
+                      disabled={busy === court.id}
                       onClick={() => {
-                        if (confirm(`Delete court “${court.name}”?`)) removeCourt.mutate(court.id);
+                        if (confirm(`Delete court “${court.name}”?`))
+                          void run(court, () => deleteCourt(court.id));
                       }}
                     >
-                      <Trash2 className="size-4 text-destructive" />
+                      Delete
+                    </Button>
+                    <Button size="sm" asChild>
+                      <Link href={`/owner/calendar?arena=${court.arena_id}`}>Schedule</Link>
                     </Button>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
-      {formOpen && arenaId && (
+      {slotsFor && (
+        <SlotsDialog
+          key={slotsFor.id}
+          court={slotsFor}
+          open
+          onOpenChange={(open) => !open && setSlotsFor(null)}
+        />
+      )}
+
+      {formOpen && formArenaId && (
         <CourtForm
           key={editing?.id ?? "new"}
           open={formOpen}
           onOpenChange={setFormOpen}
-          arenaId={arenaId}
+          arenaId={formArenaId}
           court={editing}
         />
       )}
@@ -150,7 +261,7 @@ function CourtsInner() {
 
 export default function CourtsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense fallback={null}>
       <CourtsInner />
     </Suspense>
   );

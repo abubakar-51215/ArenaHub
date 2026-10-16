@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ColumnElement, Integer, func, select
+from sqlalchemy import ColumnElement, Integer, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
@@ -18,6 +18,27 @@ from app.modules.user.model import User
 
 async def get_booking(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None:
     return await db.get(Booking, booking_id)
+
+
+async def list_future_live_bookings_for_update(
+    db: AsyncSession, arena_id: uuid.UUID, statuses: tuple, now: datetime
+) -> list[Booking]:
+    """Row-locked: an arena's bookings in ``statuses`` whose slot starts after
+    ``now`` (past and already-started bookings are not returned)."""
+    today, at = now.date(), now.time()
+    result = await db.execute(
+        select(Booking)
+        .where(
+            Booking.arena_id == arena_id,
+            Booking.status.in_(statuses),
+            (Booking.booking_date > today)
+            | ((Booking.booking_date == today) & (Booking.start_time > at)),
+        )
+        .order_by(Booking.booking_date, Booking.start_time)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return list(result.scalars().all())
 
 
 async def get_booking_for_update(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None:
@@ -108,6 +129,45 @@ async def list_stale_pending_payment_for_update(
         .with_for_update()
     )
     return list(result.scalars().all())
+
+
+async def list_completed_unprompted_since(db: AsyncSession, since: date) -> list[Booking]:
+    """Completed bookings from `since` on that have not had the "Rate your last game" notice yet."""
+    result = await db.execute(
+        select(Booking)
+        .where(
+            Booking.status == BookingStatus.completed,
+            Booking.rate_prompt_sent_at.is_(None),
+            Booking.booking_date >= since,
+        )
+        .order_by(Booking.booking_date, Booking.start_time)
+    )
+    return list(result.scalars().all())
+
+
+async def count_open_bookings_for_player(
+    db: AsyncSession, player_id: uuid.UUID, now: datetime
+) -> int:
+    """Bookings that keep an account from being deleted: anything waiting for payment or
+    approval, and a
+    confirmed booking that has not finished yet."""
+    today = now.date()
+    result = await db.execute(
+        select(func.count(Booking.id)).where(
+            Booking.player_id == player_id,
+            or_(
+                Booking.status.in_([BookingStatus.pending_payment, BookingStatus.pending_approval]),
+                and_(
+                    Booking.status == BookingStatus.confirmed,
+                    or_(
+                        Booking.booking_date > today,
+                        and_(Booking.booking_date == today, Booking.end_time > now.time()),
+                    ),
+                ),
+            ),
+        )
+    )
+    return int(result.scalar_one() or 0)
 
 
 async def list_confirmed_bookings_on_dates(db: AsyncSession, dates: list[date]) -> list[Booking]:
@@ -348,3 +408,40 @@ async def busiest_hour_by_court(
         if court_id not in best or count > best[court_id][1]:
             best[court_id] = (int(h), int(count))
     return best
+
+
+async def claim_discount_release(
+    db: AsyncSession, group_id: uuid.UUID, now: datetime
+) -> list[uuid.UUID]:
+    """Marks the group's reserved discount use as given back, in one conditional
+    UPDATE, and returns the code ids to give back. A second call (or a racing one)
+    finds the row already marked and returns nothing, so a use is released once."""
+    result = await db.execute(
+        update(Booking)
+        .where(
+            Booking.booking_group_id == group_id,
+            Booking.discount_code_id.is_not(None),
+            Booking.discount_released_at.is_(None),
+        )
+        .values(discount_released_at=now)
+        .returning(Booking.discount_code_id)
+        .execution_options(synchronize_session="fetch")
+    )
+    return [d for d in result.scalars().all() if d is not None]
+
+
+async def player_has_unpaid_booking_at_arena(
+    db: AsyncSession, player_id: uuid.UUID, arena_id: uuid.UUID
+) -> bool:
+    """True while this player has a booking at the arena that still waits for payment or for the
+    owner to check the receipt: the only time the arena's bank details are theirs to see."""
+    count = await db.scalar(
+        select(func.count())
+        .select_from(Booking)
+        .where(
+            Booking.player_id == player_id,
+            Booking.arena_id == arena_id,
+            Booking.status.in_([BookingStatus.pending_payment, BookingStatus.pending_approval]),
+        )
+    )
+    return bool(count)

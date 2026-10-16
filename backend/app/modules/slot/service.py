@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena
 from app.modules.court import repository as court_repo
@@ -15,6 +15,8 @@ from app.modules.court.model import Court
 from app.modules.slot import repository as repo
 from app.modules.slot.model import SlotStatus, TimeSlot
 from app.modules.slot.schema import (
+    CourtToday,
+    DayAvailability,
     SlotGenerateRequest,
     SlotGenerateResult,
     SlotResponse,
@@ -25,6 +27,13 @@ from app.shared.pricing import resolve_peak_price
 from app.websocket.manager import broadcast_slot_status
 
 SLOT_LENGTH = timedelta(hours=1)
+MAX_AVAILABILITY_DAYS = 31
+
+
+def _now() -> datetime:
+    """The arena's local time (slots are stored as local dates and times)."""
+    return datetime.now()
+
 
 _WEEKDAY_NAMES = [
     "monday",
@@ -44,28 +53,41 @@ async def _owned_court_and_arena(
     if court is None:
         raise NotFoundError("Court not found.")
     arena = await arena_repo.get_arena(db, court.arena_id)
-    if arena is None:
-        raise NotFoundError("Arena not found.")
-    if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Court not found.")  # someone else's court looks like a missing one
     return court, arena
 
 
-def _parse_hours(raw: dict, day_name: str) -> tuple[time, time] | None:
-    """Return (open, close) for ``day_name``, or None if the arena is closed."""
+# Closing at "23:59" or "24:00" means open until midnight: the 23:00 hour is sold too. That last
+# slot ends at 23:59:59 on the same date (not 00:00, which would sort before its start); every
+# display shows it as 12:00 AM.
+MIDNIGHT_CLOSES = ("23:59", "24:00")
+LAST_SLOT_END = time(23, 59, 59)
+
+
+def _parse_hours(raw: dict, day_name: str) -> tuple[time, time | None] | None:
+    """Return (open, close) for ``day_name``, or None if the arena is closed. ``close`` is None
+    when the arena is open until midnight."""
     window = raw.get(day_name)
     if not window:
         return None
-    return (
-        datetime.strptime(window["open"], "%H:%M").time(),
-        datetime.strptime(window["close"], "%H:%M").time(),
+    close = (
+        None
+        if window["close"] in MIDNIGHT_CLOSES
+        else datetime.strptime(window["close"], "%H:%M").time()
     )
+    return (datetime.strptime(window["open"], "%H:%M").time(), close)
 
 
-def _hourly_starts(open_time: time, close_time: time) -> list[time]:
+def _hourly_starts(open_time: time, close_time: time | None) -> list[time]:
+    """Whole hours from opening; ``close_time`` None = until midnight."""
     starts = []
     cursor = datetime.combine(date.min, open_time)
-    end = datetime.combine(date.min, close_time)
+    end = (
+        datetime.combine(date.min + timedelta(days=1), time(0))
+        if close_time is None
+        else datetime.combine(date.min, close_time)
+    )
     while cursor + SLOT_LENGTH <= end:
         starts.append(cursor.time())
         cursor += SLOT_LENGTH
@@ -76,6 +98,11 @@ async def generate_slots(
     db: AsyncSession, user: User, court_id: uuid.UUID, data: SlotGenerateRequest
 ) -> SlotGenerateResult:
     court, arena = await _owned_court_and_arena(db, court_id, user)
+    # an admin-suspended or removed arena cannot put new slots on sale
+    if arena.is_suspended:
+        raise ValidationError("This arena is suspended by ArenaHub; slots cannot be generated.")
+    if arena.is_deleted:
+        raise ValidationError("This arena was removed by ArenaHub.")
     blocked_dates = {b.blocked_date for b in await arena_repo.list_blocked_dates(db, arena.id)}
     pricing_rules = await court_repo.list_pricing_rules(db, court_id)
 
@@ -115,6 +142,8 @@ async def generate_slots(
                 skipped_existing += 1
                 continue
             end = (datetime.combine(date.min, start) + SLOT_LENGTH).time()
+            if end == time(0):
+                end = LAST_SLOT_END
             price = resolve_peak_price(court.base_price, pricing_rules, cursor.isoweekday(), start)
             await repo.add_slot(
                 db,
@@ -148,13 +177,87 @@ async def list_owner_slots(
 
 
 async def list_public_slots(
-    db: AsyncSession, court_id: uuid.UUID, target_date: date
+    db: AsyncSession, court_id: uuid.UUID, target_date: date, now: datetime | None = None
 ) -> list[SlotResponse]:
+    """The slots a player can still book on a day. Slots that have already started (all of an
+    earlier day, and the past hours of today, in Karachi time = the server clock) are not listed.
+    The owner's own list (``list_owner_slots``) still shows every slot."""
     court = await court_repo.get_court(db, court_id)
     if court is None or not court.is_available:
         raise NotFoundError("Court not found.")
+    # slots of an arena an admin suspended or removed are not offered, so the
+    # slots its cancelled bookings freed are not sold again (booking itself
+    # already requires a live arena)
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or arena.is_suspended or arena.is_deleted:
+        raise NotFoundError("Court not found.")
+    # a day the owner blocked has no slots for players, even ones made before the block
+    if target_date in await _blocked_dates(db, arena.id):
+        return []
+    current = now or datetime.now()
     rows = await repo.list_slots(db, court_id, target_date)
-    return [SlotResponse.model_validate(r) for r in rows]
+    return [
+        SlotResponse.model_validate(r)
+        for r in rows
+        if datetime.combine(r.date, r.start_time) > current
+    ]
+
+
+async def _blocked_dates(db: AsyncSession, arena_id: uuid.UUID) -> set[date]:
+    return {b.blocked_date for b in await arena_repo.list_blocked_dates(db, arena_id)}
+
+
+async def _public_court(db: AsyncSession, court_id: uuid.UUID) -> Court:
+    court = await court_repo.get_court(db, court_id)
+    if court is None or not court.is_available:
+        raise NotFoundError("Court not found.")
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or arena.is_suspended or arena.is_deleted:
+        raise NotFoundError("Court not found.")
+    return court
+
+
+async def court_availability(
+    db: AsyncSession, court_id: uuid.UUID, start: date, end: date
+) -> list[DayAvailability]:
+    """Open slot count for each date from ``start`` to ``end`` (zero for a day
+    with none), for the 7-day strip. At most 31 days."""
+    if end < start:
+        raise ValidationError("'to' must be on or after 'from'.")
+    if (end - start).days >= MAX_AVAILABILITY_DAYS:
+        raise ValidationError(f"Ask for at most {MAX_AVAILABILITY_DAYS} days at a time.")
+    court = await _public_court(db, court_id)
+    now = _now()
+    counts = await repo.open_counts_by_date(db, court_id, start, end, now.date(), now.time())
+    for blocked in await _blocked_dates(db, court.arena_id):
+        counts.pop(blocked, None)
+    return [
+        DayAvailability(
+            date=start + timedelta(days=i), open_count=counts.get(start + timedelta(days=i), 0)
+        )
+        for i in range((end - start).days + 1)
+    ]
+
+
+async def arena_slots_today(db: AsyncSession, arena_id: uuid.UUID) -> list[CourtToday]:
+    """Per bookable court of a live arena: open slots left today and the lowest
+    price among them (the Arena screen's Courts rows)."""
+    arena = await arena_repo.get_arena(db, arena_id)
+    if arena is None or not arena.is_live:
+        raise NotFoundError("Arena not found.")
+    courts = await court_repo.list_courts(db, arena_id, available_only=True)
+    now = _now()
+    left = await repo.open_today_by_court(db, [c.id for c in courts], now.date(), now.time())
+    if now.date() in await _blocked_dates(db, arena_id):
+        left = {}
+    return [
+        CourtToday(
+            court_id=c.id,
+            open_count=left.get(c.id, (0, None))[0],
+            lowest_price=left[c.id][1] if c.id in left else None,
+        )
+        for c in courts
+    ]
 
 
 async def _owned_slot(

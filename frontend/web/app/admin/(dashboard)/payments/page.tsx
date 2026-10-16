@@ -3,8 +3,14 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
-import { Button } from "@/components/ui/button";
+import {
+  AdminBadge,
+  AdminCard,
+  AdminEmpty,
+  AdminTableFoot,
+  AdminTag,
+  statusLabel,
+} from "@/components/admin/ui";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -16,18 +22,48 @@ import {
 } from "@/components/ui/table";
 import { useAllPayments } from "@/hooks/useAdmin";
 import { formatDate, formatRs } from "@/lib/format";
-import type { PaymentMethod, PaymentStatus } from "@/types";
+import { PAYMENT_METHOD_LABEL, PAYMENT_METHODS } from "@/lib/payment-methods";
+import type { AdminPayment, PaymentMethod, PaymentStatus } from "@/types";
 
 const STATUSES: PaymentStatus[] = ["pending", "completed", "failed", "refunded"];
-const METHODS: PaymentMethod[] = ["card", "jazzcash", "easypaisa", "bank_transfer"];
+
+type Period = "" | "this" | "last";
+
+/** The status shown in the badge: a payment whose lifecycle reached
+ *  "refunded" (refunds equal the amount) reads "Refunded", even though its
+ *  coarse status stays "completed". A partial refund cannot be told apart
+ *  from the API's fields today. */
+function shownStatus(p: AdminPayment): string {
+  return p.lifecycle_status === "refunded" ? "refunded" : p.status;
+}
+
+/** Month bounds as Asia/Karachi wall-clock times (how payment times are stored). */
+function monthRange(period: Period): { date_from?: string; date_to?: string } {
+  if (!period) return {};
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date());
+  const [y, m] = today.split("-").map(Number);
+  const start =
+    period === "this" ? new Date(Date.UTC(y, m - 1, 1)) : new Date(Date.UTC(y, m - 2, 1));
+  const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+  const iso = (d: Date) => d.toISOString().slice(0, 19);
+  return { date_from: iso(start), date_to: iso(new Date(end.getTime() - 1000)) };
+}
+
+const PERIOD_TAG: Record<Period, string> = {
+  "": "in total",
+  this: "this month",
+  last: "last month",
+};
 
 export default function AdminPaymentsPage() {
   const [status, setStatus] = useState<PaymentStatus | "">("");
   const [method, setMethod] = useState<PaymentMethod | "">("");
+  const [period, setPeriod] = useState<Period>("");
   const [page, setPage] = useState(1);
   const { data, isLoading } = useAllPayments({
     status: status || undefined,
     method: method || undefined,
+    ...monthRange(period),
     page,
   });
 
@@ -36,49 +72,70 @@ export default function AdminPaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Payment Monitoring" subtitle="Monitor all arena payments and transactions">
+      <PageHeader title="Payments" subtitle="Transactions and refunds">
+        <Select
+          value={period}
+          aria-label="Period"
+          onChange={(e) => {
+            setPeriod(e.target.value as Period);
+            setPage(1);
+          }}
+        >
+          <option value="">Any time</option>
+          <option value="this">This month</option>
+          <option value="last">Last month</option>
+        </Select>
         <Select
           value={method}
+          aria-label="Method"
           onChange={(e) => {
             setMethod(e.target.value as PaymentMethod | "");
             setPage(1);
           }}
-          className="w-36"
         >
-          <option value="">All Methods</option>
-          {METHODS.map((m) => (
+          <option value="">All methods</option>
+          {PAYMENT_METHODS.map(({ value: m }) => (
             <option key={m} value={m}>
-              {m.replace(/_/g, " ")}
+              {PAYMENT_METHOD_LABEL[m]}
             </option>
           ))}
         </Select>
         <Select
           value={status}
+          aria-label="Status"
           onChange={(e) => {
             setStatus(e.target.value as PaymentStatus | "");
             setPage(1);
           }}
-          className="w-36"
         >
-          <option value="">All Status</option>
+          <option value="">Any status</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {statusLabel(s)}
             </option>
           ))}
         </Select>
       </PageHeader>
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <AdminCard
+          title="Transactions"
+          actions={
+            data ? (
+              <AdminTag>
+                {data.total.toLocaleString("en-US")} {PERIOD_TAG[period]}
+              </AdminTag>
+            ) : undefined
+          }
+        >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Transaction ID</TableHead>
+                <TableHead>Transaction</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead>Arena</TableHead>
-                <TableHead>Amount</TableHead>
                 <TableHead>Method</TableHead>
+                <TableHead className="ah-r">Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
@@ -86,67 +143,56 @@ export default function AdminPaymentsPage() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
+                  <TableCell className="ah-mute" colSpan={7}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && payments.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
-                    No transactions found.
+                  <TableCell colSpan={7} className="p-0">
+                    <AdminEmpty>No transactions found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {payments.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {p.gateway_transaction_id ?? p.id.slice(0, 8)}
+                  <TableCell className="ah-strong tabular-nums">
+                    <span className="ah-txid" title={p.gateway_transaction_id ?? p.id}>
+                      {p.gateway_transaction_id ?? p.id.slice(0, 8)}
+                    </span>
                   </TableCell>
-                  <TableCell className="font-medium text-foreground">{p.player_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.arena_name ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatRs(p.amount)}</TableCell>
-                  <TableCell className="text-muted-foreground capitalize">
-                    {p.payment_method.replace(/_/g, " ")}
-                  </TableCell>
+                  <TableCell>{p.player_name}</TableCell>
+                  <TableCell className="ah-t2">{p.arena_name ?? "—"}</TableCell>
                   <TableCell>
-                    <StatusBadge status={p.status} />
+                    {PAYMENT_METHOD_LABEL[p.payment_method] ?? p.payment_method}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="ah-r ah-money">{formatRs(p.amount)}</TableCell>
+                  <TableCell>
+                    <span className="ah-badges">
+                      <AdminBadge status={shownStatus(p)} />
+                      {p.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
+                    </span>
+                  </TableCell>
+                  <TableCell className="ah-t2 tabular-nums">
                     {formatDate(p.created_at.slice(0, 10))}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </AdminCard>
       </div>
     </>
   );

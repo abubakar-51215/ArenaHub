@@ -20,8 +20,12 @@ dependencies = [
     "python-multipart>=0.0.9",
     "stripe>=15.3.0",
     "qrcode[pil]>=8.2",
+    "pillow>=12.3",
     "apscheduler>=3.11.3",
     "fpdf2>=2.8.7",
+    "google-auth>=2.30",
+    "requests>=2.31",
+    "argon2-cffi>=25.1.0",
 ]
 
 [dependency-groups]
@@ -36,6 +40,8 @@ dev = [
     "black>=24.4",
     "mypy>=1.10",
     "fakeredis>=2.21",
+    "pip-audit>=2.10.1",
+    "bandit>=1.9.4",
 ]
 
 [build-system]
@@ -76,6 +82,7 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-ra -q"
+markers = ["real_gateway_rules: run with the real card/wallet availability rules"]
 # Tests use short dummy JWT secrets; the weak-key warning is noise here.
 filterwarnings = ["ignore::jwt.warnings.InsecureKeyLengthWarning"]
 

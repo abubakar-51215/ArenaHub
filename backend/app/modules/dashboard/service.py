@@ -10,19 +10,25 @@ arena).
 """
 
 import calendar
+import math
+import re
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena, ArenaCity
 from app.modules.booking import repository as booking_repo
+from app.modules.booking import service as booking_service
 from app.modules.booking.model import Booking, BookingStatus
+from app.modules.court.model import Court
 from app.modules.dashboard.schema import (
+    BookingReminderResponse,
     BookingsByHourPoint,
     CalendarBookingResponse,
     DashboardAnalyticsResponse,
@@ -36,10 +42,80 @@ from app.modules.dashboard.schema import (
     RevenueTrendPoint,
     TopArenaItem,
 )
+from app.modules.notification.model import Notification
 from app.modules.payment import repository as payment_repo
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User
+from app.shared.display import karachi_date, time_12h
+from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
+
+
+def mask_phone(phone: str | None) -> str | None:
+    """A Pakistani mobile number as the prototype shows it, "+92 300 11••••":
+    country code, the operator code and two more digits; the rest hidden.
+    Other numbers keep their first four characters; a value that is not a
+    phone number (an anonymised, deleted user) gives nothing."""
+    if not phone:
+        return None
+    if not re.fullmatch(r"\+?[\d\s-]{8,}", phone):
+        return None  # not a phone number (an anonymised, deleted user)
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) == 11 and digits.startswith("0"):
+        digits = "92" + digits[1:]
+    if len(digits) == 12 and digits.startswith("92"):
+        return f"+92 {digits[2:5]} {digits[5:7]}••••"
+    return f"{phone[:4]}••••"
+
+
+REMINDER_EVENT = "payment_reminder"
+REMINDER_COOLDOWN = timedelta(minutes=60)
+_KARACHI = ZoneInfo("Asia/Karachi")
+
+
+def _slot_start(booking: Booking) -> datetime:
+    """When the booked slot starts, as a Karachi wall-clock time."""
+    return datetime.combine(booking.booking_date, booking.start_time.replace(tzinfo=None)).replace(
+        tzinfo=_KARACHI
+    )
+
+
+def can_remind(booking: Booking, now: datetime | None = None) -> bool:
+    """A booking the owner may remind the player about: it is "Awaiting
+    payment" (status pending_payment: booked, nothing paid yet; a bank
+    transfer with a receipt is pending_approval, which waits for the owner,
+    not for the player) and its slot has not started yet."""
+    now = now or datetime.now(_KARACHI)
+    return booking.status == BookingStatus.pending_payment and _slot_start(booking) > now
+
+
+async def _recent_reminders(
+    db: AsyncSession, player_ids: set[uuid.UUID], now: datetime
+) -> dict[str, datetime]:
+    """booking id -> when its latest reminder went out, for reminders sent in
+    the last cooldown. They are kept as the players' notices, so no table of
+    their own is needed."""
+    if not player_ids:
+        return {}
+    since = now.astimezone(UTC) - REMINDER_COOLDOWN
+    result = await db.execute(
+        select(Notification.data, Notification.created_at).where(
+            Notification.event == REMINDER_EVENT,
+            Notification.user_id.in_(player_ids),
+            Notification.created_at > since,
+        )
+    )
+    latest: dict[str, datetime] = {}
+    for data, created_at in result.all():
+        booking_id = str(data.get("booking_id", ""))
+        if booking_id and (booking_id not in latest or created_at > latest[booking_id]):
+            latest[booking_id] = created_at
+    return latest
+
+
+def _minutes_left(sent_at: datetime, now: datetime) -> int:
+    left = REMINDER_COOLDOWN - (now.astimezone(UTC) - sent_at.astimezone(UTC))
+    return max(1, math.ceil(left.total_seconds() / 60))
 
 
 def _month_bounds(today: date) -> tuple[date, date]:
@@ -120,19 +196,84 @@ async def list_pending_approvals(db: AsyncSession, user: User, params: Paginatio
     return paginated(items, total, params)
 
 
+async def remind_booking(
+    db: AsyncSession, user: User, booking_id: uuid.UUID
+) -> BookingReminderResponse:
+    """Send the player a "payment is still waiting" notice (saved in their
+    notices and emailed through the usual notice path). Only for the owner's
+    own booking, only while it is awaiting payment with its slot still
+    ahead, and at most once an hour per booking."""
+    result = await db.execute(
+        select(Booking, Court.name, Arena.name, User.full_name)
+        .join(Court, Court.id == Booking.court_id)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .join(User, User.id == Booking.player_id)
+        .where(Booking.id == booking_id)
+        .with_for_update(of=Booking)
+    )
+    found = result.first()
+    if found is None:
+        raise NotFoundError("Booking not found.")
+    booking, court_name, arena_name, player_name = found
+    arena = await arena_repo.get_arena(db, booking.arena_id)
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Booking not found.")
+
+    now = datetime.now(_KARACHI)
+    if booking.status != BookingStatus.pending_payment:
+        raise ValidationError("This booking is not awaiting payment.")
+    if _slot_start(booking) <= now:
+        raise ValidationError("This slot has already started, so a reminder would not help.")
+    sent_at = (await _recent_reminders(db, {booking.player_id}, now)).get(str(booking.id))
+    if sent_at is not None:
+        left = _minutes_left(sent_at, now)
+        ago = max(
+            0, math.floor((now.astimezone(UTC) - sent_at.astimezone(UTC)).total_seconds() / 60)
+        )
+        raise ConflictError(
+            f"A reminder was sent {ago} minute{'' if ago == 1 else 's'} ago. "
+            f"You can send another in {left} minute{'' if left == 1 else 's'}."
+        )
+
+    slot = (
+        f"{karachi_date(booking.booking_date)}, "
+        f"{time_12h(booking.start_time)} - {time_12h(booking.end_time)}"
+    )
+    await notify_user(
+        db,
+        booking.player_id,
+        REMINDER_EVENT,
+        booking_id=str(booking.id),
+        arena_name=arena_name,
+        court_name=court_name,
+        slot=slot,
+    )
+    await db.commit()
+    return BookingReminderResponse(
+        player_name=player_name,
+        next_reminder_in_minutes=int(REMINDER_COOLDOWN.total_seconds() // 60),
+    )
+
+
 async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Arena:
     arena = await arena_repo.get_arena(db, arena_id)
     if arena is None:
         raise NotFoundError("Arena not found.")
     if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        # another owner's arena answers exactly like one that does not exist
+        raise NotFoundError("Arena not found.")
     return arena
+
+
+MAX_CALENDAR_DAYS = 93  # a quarter: the calendar screens show a week or a month
 
 
 async def get_calendar(
     db: AsyncSession, user: User, arena_id: uuid.UUID, start: date, end: date
 ) -> list[CalendarBookingResponse]:
     await _owned_arena(db, arena_id, user)
+    if end < start or (end - start).days >= MAX_CALENDAR_DAYS:
+        raise ValidationError(f"Ask for at most {MAX_CALENDAR_DAYS} days at a time.")
     rows: list[Booking] = await booking_repo.list_arena_bookings_in_range(db, arena_id, start, end)
     return [CalendarBookingResponse.model_validate(r) for r in rows]
 
@@ -326,12 +467,23 @@ async def list_owner_bookings(
                 db, booking.booking_group_id
             )
 
+    phones: dict[uuid.UUID, str] = {}
+    player_ids = {booking.player_id for booking, _, _, _ in rows}
+    if player_ids:
+        result = await db.execute(select(User.id, User.phone).where(User.id.in_(player_ids)))
+        phones = {row.id: row.phone for row in result.all()}
+
+    now = datetime.now(_KARACHI)
+    reminders = await _recent_reminders(db, player_ids, now)
+
     items = []
     for booking, court_name, arena_name, player_name in rows:
         payment = payments_by_group.get(booking.booking_group_id)
+        sent_at = reminders.get(str(booking.id))
         items.append(
             OwnerBookingRow(
                 booking_id=booking.id,
+                booking_code=booking_service.booking_code_for(booking.booking_group_id),
                 booking_date=booking.booking_date,
                 start_time=booking.start_time,
                 end_time=booking.end_time,
@@ -342,8 +494,14 @@ async def list_owner_bookings(
                 player_name=player_name,
                 total_amount=booking.total_amount,
                 status=booking.status,
+                player_phone=mask_phone(phones.get(booking.player_id)),
                 payment_id=payment.id if payment else None,
+                payment_method=payment.payment_method if payment else None,
+                payment_status=payment.status if payment else None,
+                payment_lifecycle_status=payment.lifecycle_status if payment else None,
                 receipt_proof_url=payment.receipt_proof_url if payment else None,
+                can_remind=can_remind(booking, now),
+                remind_wait_minutes=_minutes_left(sent_at, now) if sent_at else None,
             )
         )
     return paginated(items, total, params)

@@ -9,7 +9,8 @@ import {
   updatePricingRule,
 } from "@/services/pricing";
 
-const key = (courtId: string) => ["pricing", courtId] as const;
+// any change refreshes every pricing list: per court, and the owner-wide one (["pricing", "owner", ...])
+const ALL_PRICING = ["pricing"] as const;
 
 export function usePricingRules(courtId: string | null) {
   return useQuery({
@@ -23,7 +24,7 @@ export function useCreatePricingRule(courtId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: PricingRuleInput) => createPricingRule(courtId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(courtId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ALL_PRICING }),
   });
 }
 
@@ -32,7 +33,7 @@ export function useUpdatePricingRule(courtId: string) {
   return useMutation({
     mutationFn: ({ ruleId, input }: { ruleId: string; input: Partial<PricingRuleInput> }) =>
       updatePricingRule(courtId, ruleId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(courtId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ALL_PRICING }),
   });
 }
 
@@ -40,6 +41,6 @@ export function useDeletePricingRule(courtId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (ruleId: string) => deletePricingRule(courtId, ruleId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(courtId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ALL_PRICING }),
   });
 }

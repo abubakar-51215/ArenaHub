@@ -13,13 +13,23 @@ from app.integrations.payments.base import InitiateResult, RefundResult, Webhook
 
 
 class ManualProvider:
-    async def initiate(self, *, amount: Decimal, currency: str, reference: str) -> InitiateResult:
+    async def initiate(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        reference: str,
+        wallet_number: str | None = None,
+        return_url: str | None = None,
+    ) -> InitiateResult:
         return InitiateResult(gateway_transaction_id=f"manual_{uuid.uuid4().hex}")
 
     def verify_webhook(self, payload: bytes, headers: dict[str, str]) -> WebhookEvent:
         raise ValidationError("bank_transfer has no webhook; approval is manual.")
 
-    async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:
+    async def refund(
+        self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key: str | None = None
+    ) -> RefundResult:
         # No gateway to call back — the owner/admin transfers the refund
         # themselves and marks it processed via the refund-approval endpoint.
         return RefundResult(provider_reference=gateway_transaction_id, status="pending")

@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/services/api";
 import type { ArenaInput } from "@/services/arenas";
 import { useCreateArena, useUpdateArena } from "@/hooks/useArenas";
+import { SportChecks } from "@/components/owner/sport-checks";
 import {
   ARENA_CITIES,
   type Arena,
@@ -40,7 +41,8 @@ function initialDays(hours?: OperatingHours): Record<string, DayRow> {
   for (const day of WEEKDAY_NAMES) {
     const h = hours?.[day];
     rows[day] = h
-      ? { open: true, from: h.open, to: h.close }
+      ? // "24:00" (midnight) cannot be shown by a time input; 23:59 means the same (open until midnight)
+        { open: true, from: h.open, to: h.close === "24:00" ? "23:59" : h.close }
       : { open: false, from: "08:00", to: "23:00" };
   }
   return rows;
@@ -69,7 +71,7 @@ export function ArenaForm({
   const [longitude, setLongitude] = useState(arena?.longitude ?? "");
   const [phone, setPhone] = useState(arena?.contact_phone ?? "");
   const [emailContact, setEmailContact] = useState(arena?.contact_email ?? "");
-  const [sports, setSports] = useState((arena?.sports_offered ?? []).join(", "));
+  const [sports, setSports] = useState<string[]>(arena?.sports_offered ?? []);
   const [images, setImages] = useState((arena?.images ?? []).join("\n"));
   const [advance, setAdvance] = useState(String(arena?.advance_percentage ?? 100));
   const [fullPayment, setFullPayment] = useState(arena?.require_full_payment ?? true);
@@ -96,12 +98,9 @@ export function ArenaForm({
     e.preventDefault();
     setError(null);
 
-    const sportsList = sports
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const sportsList = sports;
     if (sportsList.length === 0) {
-      setError("Add at least one sport.");
+      setError("Choose at least one sport.");
       return;
     }
     if (Object.keys(openHours).length === 0) {
@@ -232,22 +231,20 @@ export function ArenaForm({
             </div>
           </div>
           <div>
-            <Label htmlFor="a-sports">Sports Offered</Label>
-            <Input
-              id="a-sports"
-              value={sports}
-              onChange={(e) => setSports(e.target.value)}
-              placeholder="futsal, cricket, padel"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated.</p>
+            <Label>Sports Offered</Label>
+            <SportChecks idPrefix="a-sport" value={sports} onChange={setSports} />
           </div>
 
           <div>
             <Label>Operating Hours</Label>
             <div className="space-y-1.5">
               {WEEKDAY_NAMES.map((day) => (
-                <div key={day} className="flex items-center gap-3">
-                  <label className="flex w-32 items-center gap-2 text-sm capitalize">
+                // on a phone the day name takes its own line, so the two time boxes share the width below it
+                <div
+                  key={day}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-sm:mb-2"
+                >
+                  <label className="flex w-full items-center gap-2 text-sm capitalize sm:w-32">
                     <Switch
                       checked={days[day].open}
                       onCheckedChange={(v) => setDay(day, { open: v })}
@@ -259,7 +256,7 @@ export function ArenaForm({
                     value={days[day].from}
                     disabled={!days[day].open}
                     onChange={(e) => setDay(day, { from: e.target.value })}
-                    className="w-32"
+                    className="min-w-0 flex-1 sm:w-32 sm:flex-none"
                   />
                   <span className="text-muted-foreground">–</span>
                   <Input
@@ -267,7 +264,7 @@ export function ArenaForm({
                     value={days[day].to}
                     disabled={!days[day].open}
                     onChange={(e) => setDay(day, { to: e.target.value })}
-                    className="w-32"
+                    className="min-w-0 flex-1 sm:w-32 sm:flex-none"
                   />
                 </div>
               ))}
@@ -383,7 +380,7 @@ export function ArenaForm({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="bg-primary text-primary-foreground transition-all hover:opacity-95"
             >
               {pending ? "Saving…" : editing ? "Save Changes" : "Add Arena"}
             </Button>

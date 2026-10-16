@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
+import { AdminEmpty, AdminPerson, AdminTableFoot } from "@/components/admin/ui";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,15 +22,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useReportedReviews, useReviewModeration } from "@/hooks/useAdmin";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { ModerationReview } from "@/types";
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span className="text-amber-500" aria-label={`${rating} out of 5`}>
-      {"★".repeat(rating)}
-      <span className="text-muted-foreground/40">{"★".repeat(5 - rating)}</span>
+    <span className="ah-stars" aria-label={`${rating} out of 5`}>
+      <span aria-hidden="true">
+        {"★".repeat(rating)}
+        <span className="ah-stars-off">{"★".repeat(5 - rating)}</span>
+      </span>
+      <span className="ah-stars-num" aria-hidden="true">
+        {rating}/5
+      </span>
     </span>
   );
 }
@@ -66,14 +73,20 @@ export default function AdminReviewsPage() {
 
   return (
     <>
-      <PageHeader title="Review Moderation" subtitle="Moderate user reviews and ratings" />
+      <PageHeader
+        title="Reviews"
+        subtitle={
+          data ? plural(data.total, "reported review") : "Reported reviews waiting for a decision"
+        }
+      />
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="animate-fade-in ah-stack">
         {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+          <p role="alert" className="ah-auth-error">
+            {error}
+          </p>
         )}
-
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+        <section className="ah-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -82,96 +95,83 @@ export default function AdminReviewsPage() {
                 <TableHead>Rating</TableHead>
                 <TableHead className="w-1/3">Review</TableHead>
                 <TableHead>Report</TableHead>
-                <TableHead>Reported On</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Reported</TableHead>
+                <TableHead className="ah-r">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
+                  <TableCell className="ah-mute" colSpan={7}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && reviews.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
-                    No reported reviews — the queue is clear.
+                  <TableCell colSpan={7} className="p-0">
+                    <AdminEmpty>No reported reviews — the queue is clear.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {reviews.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium text-foreground">{r.reviewer_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.arena_name}</TableCell>
+                  <TableCell>
+                    <AdminPerson name={r.reviewer_name} />
+                  </TableCell>
+                  <TableCell>{r.arena_name}</TableCell>
                   <TableCell>
                     <Stars rating={r.rating} />
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-foreground">{r.review_text ?? "(no text)"}</p>
+                    <div>{r.review_text ?? "(no text)"}</div>
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-foreground">{r.flag_reason}</p>
-                    {r.reporter_name && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">by {r.reporter_name}</p>
-                    )}
+                    <div>{r.flag_reason}</div>
+                    {r.reporter_name && <div className="ah-sub">by {r.reporter_name}</div>}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="ah-t2 tabular-nums">
                     {r.flagged_at ? formatDate(r.flagged_at.slice(0, 10)) : "—"}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
+                  <TableCell className="ah-r">
+                    <div className="ah-row-actions">
+                      <ActionButton
+                        tone="positive"
                         variant="ghost"
                         size="sm"
                         disabled={dismiss.isPending}
+                        busy={dismiss.isPending && dismiss.variables === r.id}
+                        failed={dismiss.isError}
                         onClick={() => onDismiss(r)}
                       >
                         Dismiss
-                      </Button>
-                      <Button
-                        variant="ghost"
+                      </ActionButton>
+                      <ActionButton
+                        tone="negative"
+                        variant="destructive"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
                         onClick={() => setDeleting(r)}
                       >
                         Delete
-                      </Button>
+                      </ActionButton>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
 
       <Dialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
@@ -179,22 +179,25 @@ export default function AdminReviewsPage() {
           <DialogHeader>
             <DialogTitle>Delete this review?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            The review by <span className="font-medium">{deleting?.reviewer_name}</span> on{" "}
-            <span className="font-medium">{deleting?.arena_name}</span> will be permanently removed
+          <p className="ah-mute" style={{ margin: 0, fontSize: 13 }}>
+            The review by <span className="ah-strong">{deleting?.reviewer_name}</span> on{" "}
+            <span className="ah-strong">{deleting?.arena_name}</span> will be permanently removed
             and the arena&apos;s rating recomputed. This cannot be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleting(null)} disabled={remove.isPending}>
               Cancel
             </Button>
-            <Button
-              className="bg-destructive text-white hover:bg-destructive/90"
+            <ActionButton
+              tone="negative"
+              variant="destructive"
+              busy={remove.isPending}
+              failed={remove.isError}
               disabled={remove.isPending}
               onClick={onDelete}
             >
-              {remove.isPending ? "Deleting…" : "Delete Review"}
-            </Button>
+              Delete Review
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

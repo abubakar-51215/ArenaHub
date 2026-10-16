@@ -7,7 +7,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 import { Colors } from '@/constants/theme';
 
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: Colors.light.card,
+    backgroundColor: Colors.light.lineSoft,
   },
   tile: { position: 'absolute', width: TILE_SIZE, height: TILE_SIZE },
   pin: { position: 'absolute' },
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 2,
     right: 6,
-    fontSize: 9,
+    fontSize: 14,
     color: Colors.light.muted,
     backgroundColor: 'rgba(255,255,255,0.7)',
     paddingHorizontal: 3,

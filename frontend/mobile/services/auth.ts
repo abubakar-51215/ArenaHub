@@ -2,12 +2,54 @@
 import { api } from "../lib/api";
 import type { RegisterResult, Tokens, User } from "../types";
 
-export function login(email: string, password: string): Promise<Tokens> {
-  return api.post<Tokens>("/auth/login", { email, password });
+/** What /auth/login gives an admin with the right password: no tokens, a code was emailed. */
+export interface AdminChallenge {
+  mfa_required: true;
+  challenge_token: string;
+  expires_in: number;
+  /** The masked address the code went to. */
+  sent_to: string;
+  /** false when the email could not be sent. */
+  code_sent: boolean;
 }
 
-export function fetchMe(): Promise<User> {
-  return api.get<User>("/users/me");
+export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChallenge {
+  return (r as AdminChallenge).mfa_required === true;
+}
+
+/** `identifier` is an email or a phone number (the older `email` field still works on the server). */
+export function login(identifier: string, password: string, opts?: { timeoutMs?: number }): Promise<Tokens | AdminChallenge> {
+  return api.post<Tokens | AdminChallenge>("/auth/login", { identifier, password }, opts);
+}
+
+export function verifyAdminCode(challengeToken: string, code: string): Promise<Tokens> {
+  return api.post<Tokens>("/auth/admin/verify-code", { challenge_token: challengeToken, code });
+}
+
+export function resendAdminCode(challengeToken: string): Promise<null> {
+  return api.post<null>("/auth/admin/resend-code", { challenge_token: challengeToken });
+}
+
+/** Continue with Google: the server checks Google's ID token and answers with a session. */
+export interface GoogleSignIn extends Tokens {
+  /** The account has no phone yet: "One more step" asks for it before anything else. */
+  phone_needed: boolean;
+  /** A sign-up with this email that was never confirmed: Google confirmed it and its password was removed. */
+  password_removed: boolean;
+  user: User;
+}
+
+export function googleSignIn(idToken: string): Promise<GoogleSignIn> {
+  return api.post<GoogleSignIn>("/auth/google", { id_token: idToken });
+}
+
+/** "One more step": the phone of an account made with Google (the sign-up rules apply). */
+export function saveGooglePhone(phone: string): Promise<User> {
+  return api.post<User>("/auth/google/phone", { phone });
+}
+
+export function fetchMe(opts?: { timeoutMs?: number }): Promise<User> {
+  return api.get<User>("/users/me", opts);
 }
 
 export function logout(refreshToken: string): Promise<null> {
@@ -40,12 +82,16 @@ export function forgotPassword(email: string): Promise<null> {
   return api.post<null>("/auth/forgot-password", { email });
 }
 
+/** Reset with the emailed 6-digit code. The server has no separate "check the
+ *  code" step: email, code and new password go together, once, at the end. */
 export function resetPassword(
-  token: string,
+  email: string,
+  otp: string,
   newPassword: string,
 ): Promise<null> {
   return api.post<null>("/auth/reset-password", {
-    token,
+    email,
+    otp,
     new_password: newPassword,
   });
 }
@@ -56,7 +102,7 @@ export function updateProfile(data: {
   profile_picture?: string | null;
   preferred_sports?: string[];
   preferred_locations?: string[];
-  notification_preferences?: Record<string, boolean>;
+  notification_preferences?: Record<string, unknown>;
 }): Promise<User> {
   return api.put<User>("/users/me", data);
 }
@@ -87,8 +133,9 @@ export function verifyPhoneChange(code: string): Promise<User> {
   return api.post<User>("/users/me/phone/verify", { code });
 }
 
-export function requestEmailChange(newEmail: string): Promise<null> {
-  return api.post<null>("/users/me/email", { new_email: newEmail });
+/** The password is checked again before a code goes to the new address; the old address stays until it is used. */
+export function requestEmailChange(newEmail: string, currentPassword: string): Promise<null> {
+  return api.post<null>("/users/me/email", { new_email: newEmail, current_password: currentPassword });
 }
 
 export function verifyEmailChange(code: string): Promise<User> {

@@ -1,5 +1,5 @@
 /** TanStack Query hooks for the admin panel. */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   approveArena,
@@ -9,11 +9,15 @@ import {
   getUserDetail,
   listAllBookings,
   listAllPayments,
+  getAdminArena,
   listArenaQueue,
   listAuditLogs,
   listUsers,
   reactivateUser,
+  reactivateArena,
   rejectArena,
+  removeArena,
+  suspendArena,
   suspendUser,
   updatePlatformSettings,
 } from "@/services/admin";
@@ -40,6 +44,84 @@ export function useArenaQueue(status: ArenaStatus, page: number) {
   });
 }
 
+/** Every arena, for the Arenas directory. The queue endpoint lists one
+ *  status at a time, so this asks for each (up to 100 per status) and puts
+ *  them together. The keys sit under "admin-arenas", so approving or
+ *  rejecting refreshes them too. */
+export function useArenaDirectory() {
+  const statuses = ["approved", "pending", "rejected"] as const;
+  const results = useQueries({
+    queries: [
+      ...statuses.map((status) => ({
+        queryKey: ["admin-arenas", status, "directory"],
+        queryFn: () => listArenaQueue(status, 1, 100),
+      })),
+      // suspended arenas on their own (suspended=true): the "Suspended"
+      // filter and the sub-line count. Only approved arenas can be suspended.
+      {
+        queryKey: ["admin-arenas", "approved", "suspended"],
+        queryFn: () => listArenaQueue("approved", 1, 100, true),
+      },
+    ],
+  });
+  const [approved, pending, rejected, suspended] = results;
+  const done = results.every((r) => r.data);
+  return {
+    arenas: results
+      .slice(0, 3)
+      .flatMap((r) => r.data?.items ?? [])
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    suspended: (suspended.data?.items ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)),
+    totals: done
+      ? {
+          approved: approved.data!.total,
+          pending: pending.data!.total,
+          rejected: rejected.data!.total,
+          suspended: suspended.data!.total,
+        }
+      : undefined,
+    truncated: results.some((r) => r.data && r.data.total > r.data.items.length),
+    isLoading: results.some((r) => r.isLoading),
+    isError: results.some((r) => r.isError),
+    refetch: () => results.forEach((r) => void r.refetch()),
+  };
+}
+
+export type ArenaAction = "suspend" | "reactivate" | "remove";
+
+/** Suspend / reactivate / remove an arena; refreshes every admin arena list. */
+export function useArenaModeration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      action,
+      arenaId,
+      reason,
+    }: {
+      action: ArenaAction;
+      arenaId: string;
+      reason: string;
+    }) =>
+      action === "suspend"
+        ? suspendArena(arenaId, reason)
+        : action === "reactivate"
+          ? reactivateArena(arenaId, reason)
+          : removeArena(arenaId, reason),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-arenas"] });
+      void qc.invalidateQueries({ queryKey: ["admin-arena"] });
+    },
+  });
+}
+
+export function useAdminArena(arenaId: string | null) {
+  return useQuery({
+    queryKey: ["admin-arena", arenaId],
+    queryFn: () => getAdminArena(arenaId as string),
+    enabled: !!arenaId,
+  });
+}
+
 export function useArenaVerification() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-arenas"] });
@@ -52,9 +134,20 @@ export function useArenaVerification() {
   return { approve, reject };
 }
 
-export function useUsers(params: { role?: UserRole; search?: string; page: number }) {
+export function useUsers(params: {
+  role?: UserRole;
+  search?: string;
+  is_active?: boolean;
+  page: number;
+}) {
   return useQuery({
-    queryKey: ["admin-users", params.role ?? "", params.search ?? "", params.page],
+    queryKey: [
+      "admin-users",
+      params.role ?? "",
+      params.search ?? "",
+      params.is_active ?? "",
+      params.page,
+    ],
     queryFn: () => listUsers(params),
   });
 }
@@ -80,9 +173,20 @@ export function useUserActions() {
   return { suspend, reactivate, remove };
 }
 
-export function useAllBookings(params: { status?: BookingStatus; page: number }) {
+export function useAllBookings(params: {
+  status?: BookingStatus;
+  date_from?: string;
+  date_to?: string;
+  page: number;
+}) {
   return useQuery({
-    queryKey: ["admin-bookings", params.status ?? "", params.page],
+    queryKey: [
+      "admin-bookings",
+      params.status ?? "",
+      params.date_from ?? "",
+      params.date_to ?? "",
+      params.page,
+    ],
     queryFn: () => listAllBookings(params),
   });
 }
@@ -90,10 +194,19 @@ export function useAllBookings(params: { status?: BookingStatus; page: number })
 export function useAllPayments(params: {
   status?: PaymentStatus;
   method?: PaymentMethod;
+  date_from?: string;
+  date_to?: string;
   page: number;
 }) {
   return useQuery({
-    queryKey: ["admin-payments", params.status ?? "", params.method ?? "", params.page],
+    queryKey: [
+      "admin-payments",
+      params.status ?? "",
+      params.method ?? "",
+      params.date_from ?? "",
+      params.date_to ?? "",
+      params.page,
+    ],
     queryFn: () => listAllPayments(params),
   });
 }

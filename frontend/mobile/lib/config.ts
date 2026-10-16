@@ -17,11 +17,19 @@ const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
 if (!__DEV__ && (!envApiUrl || !envApiUrl.startsWith('https://'))) {
   console.warn(
     'EXPO_PUBLIC_API_URL should be an https:// URL in production builds; ' +
-      'falling back to the dev localhost endpoint.',
+      'no request will be sent until it is.',
   );
 }
 
-export const API_URL = envApiUrl ?? 'http://localhost:8000';
+// Plain http:// is for development builds only. A release build that was not given an https:// address talks to
+// nothing real: ".invalid" is a reserved name that never resolves, so no traffic can leave in the clear.
+const PLAIN_HTTP_ALLOWED = __DEV__;
+export const API_URL =
+  envApiUrl && (envApiUrl.startsWith('https://') || PLAIN_HTTP_ALLOWED)
+    ? envApiUrl
+    : PLAIN_HTTP_ALLOWED
+      ? 'http://localhost:8000'
+      : 'https://api.arenahub.invalid';
 
 /** Versioned API base — mirrors the backend's /api/v1 prefix. */
 export const API_BASE = `${API_URL}/api/v1`;

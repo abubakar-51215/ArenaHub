@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ValidationError
 from app.database.session import get_db
 from app.modules.arena import service
 from app.modules.arena.model import ArenaCity
@@ -26,6 +27,7 @@ from app.modules.arena.schema import (
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User
+from app.shared import abuse
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -41,15 +43,25 @@ _owner = require_role("owner")
 
 @router.get("", summary="Search approved arenas")
 async def search_arenas(
-    q: str | None = None,
+    q: str | None = Query(None, max_length=100),
     city: ArenaCity | None = None,
-    sport: str | None = None,
+    sport: str | None = Query(None, max_length=50),
     price_min: Decimal | None = None,
     price_max: Decimal | None = None,
-    sort: str = "newest",
+    sort: str = Query("newest", max_length=30),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lon: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
     params: PaginationParams = Depends(pagination_params),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
+    # The player's position is only a search parameter: it is never stored (or logged) by the
+    # server.
+    if (lat is None) != (lon is None):
+        raise ValidationError("Send both lat and lon, or neither.")
+    if (sort == "near" or radius_km is not None) and lat is None:
+        raise ValidationError("Searching by distance needs lat and lon.")
+    near = (lat, lon) if lat is not None and lon is not None else None
     data = await service.search_arenas(
         db,
         q=q,
@@ -58,6 +70,8 @@ async def search_arenas(
         price_min=price_min,
         price_max=price_max,
         sort=sort,
+        near=near,
+        radius_km=radius_km,
         params=params,
     )
     return success(data=data, message="Arenas retrieved.")
@@ -119,14 +133,19 @@ async def get_bank_details(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.get_bank_details_for_checkout(db, arena_id)
+    data = await service.get_bank_details_for_checkout(db, user, arena_id)
     return success(data=data, message="Bank details retrieved.")
 
 
 # ---- owner management ----------------------------------------------------
 
 
-@owner_router.post("", status_code=status.HTTP_201_CREATED, summary="Register a new arena")
+@owner_router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new arena",
+    dependencies=[Depends(abuse.per_user("arena", 10, 86400))],
+)
 async def create_arena(
     data: ArenaCreate,
     user: User = Depends(_owner),

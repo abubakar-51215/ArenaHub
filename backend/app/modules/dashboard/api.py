@@ -78,6 +78,19 @@ async def list_owner_bookings(
     return success(data=data, message="Bookings retrieved.")
 
 
+@owner_router.post(
+    "/dashboard/bookings/{booking_id}/remind",
+    summary="Remind the player that a booking is waiting for payment",
+)
+async def remind_booking(
+    booking_id: uuid.UUID,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.remind_booking(db, user, booking_id)
+    return success(data=data, message="Reminder sent.")
+
+
 @owner_router.get("/dashboard/pending-approvals", summary="Booking-approval panel (all my arenas)")
 async def list_pending_approvals(
     params: PaginationParams = Depends(pagination_params),

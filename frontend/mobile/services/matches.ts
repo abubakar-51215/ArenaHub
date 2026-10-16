@@ -3,13 +3,11 @@ import { api } from '../lib/api';
 import type { ArenaCity, Match, MatchDetail, Page } from '../types';
 
 export interface MatchCreateInput {
-  arena_id: string;
-  court_id: string;
+  /** One of my own upcoming confirmed bookings. */
+  booking_group_id: string;
   sport: string;
-  match_date: string;
-  start_time: string;
-  end_time: string;
   max_players: number;
+  note?: string;
 }
 
 export interface OpenMatchesParams {

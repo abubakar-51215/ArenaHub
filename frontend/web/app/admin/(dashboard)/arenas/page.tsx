@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { ArenaDetailDialog } from "@/components/admin/arena-detail";
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
+import { AdminBadge, AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -23,11 +25,23 @@ import type { Arena, ArenaStatus } from "@/types";
 export default function AdminArenasPage() {
   const [status, setStatus] = useState<ArenaStatus>("pending");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useArenaQueue(status, page);
+  const { data, isLoading, isFetching } = useArenaQueue(status, page);
   const { approve, reject } = useArenaVerification();
 
   const [rejecting, setRejecting] = useState<Arena | null>(null);
+  const [viewing, setViewing] = useState<Arena | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // The tab label shows the live pending-queue depth, not a per-tab-switch
+  // recomputation — it only updates when a *pending* fetch actually resolves
+  // (gated on !isFetching so a stale cached value isn't briefly shown while a
+  // background refetch is in flight), so it stays correct while viewing
+  // Approved/Rejected instead of reading 0 (no pending data is in memory on
+  // those tabs) or undercounting from a single page of items.
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (status === "pending" && data && !isFetching) setPendingCount(data.total);
+  }, [status, data, isFetching]);
 
   const arenas = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
@@ -45,75 +59,107 @@ export default function AdminArenasPage() {
 
   return (
     <>
-      <PageHeader title="Arena Verification">
-        <Select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as ArenaStatus);
-            setPage(1);
-          }}
-          className="w-40"
-        >
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </Select>
-      </PageHeader>
+      <PageHeader
+        title="Arena approvals"
+        subtitle="Verify documents and photos before an arena can sell slots"
+      />
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <section className="ah-card">
+          <Tabs
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v as ArenaStatus);
+              setPage(1);
+            }}
+          >
+            <TabsList variant="line">
+              <TabsTrigger value="pending">
+                Pending
+                {pendingCount !== null && <span className="ah-tab-count">{pendingCount}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="approved">Approved</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Arena</TableHead>
                 <TableHead>City</TableHead>
                 <TableHead>Address</TableHead>
-                <TableHead>Submitted On</TableHead>
+                <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="ah-r">Decision</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
+                  <TableCell className="ah-mute" colSpan={6}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && arenas.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    No arenas in this queue.
+                  <TableCell colSpan={6} className="p-0">
+                    <AdminEmpty>No arenas in this queue.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {arenas.map((a) => (
                 <TableRow key={a.id}>
-                  <TableCell className="font-medium text-foreground">{a.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{a.city}</TableCell>
-                  <TableCell className="text-muted-foreground">{a.address}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <span className="ah-thumb" aria-hidden="true" />
+                      <div>
+                        <div className="ah-strong">{a.name}</div>
+                        {a.sports_offered?.length > 0 && (
+                          <div className="ah-sub">
+                            {a.sports_offered
+                              .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                              .join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{a.city}</TableCell>
+                  <TableCell className="ah-t2">{a.address}</TableCell>
+                  <TableCell className="ah-t2 tabular-nums">
                     {formatDate(a.created_at.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={a.status} />
+                    <AdminBadge status={a.status} />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
+                  <TableCell className="ah-r">
+                    <div className="flex justify-end gap-1.5">
+                      <Button variant="ghost" size="sm" onClick={() => setViewing(a)}>
+                        View
+                      </Button>
                       {a.status === "pending" && (
                         <>
-                          <Button
+                          <ActionButton
+                            tone="positive"
                             size="sm"
-                            className="bg-emerald-600 text-white shadow-xs transition-all hover:bg-emerald-700"
+                            className="ah-lime"
                             disabled={approve.isPending}
+                            busy={approve.isPending && approve.variables === a.id}
+                            failed={approve.isError}
                             onClick={() => approve.mutate(a.id)}
                           >
                             Approve
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => setRejecting(a)}>
+                          </ActionButton>
+                          <ActionButton
+                            tone="negative"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setRejecting(a)}
+                          >
                             Reject
-                          </Button>
+                          </ActionButton>
                         </>
                       )}
                     </div>
@@ -122,35 +168,50 @@ export default function AdminArenasPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
+
+      <ArenaDetailDialog
+        arena={viewing}
+        onOpenChange={(v) => !v && setViewing(null)}
+        actions={
+          viewing?.status === "pending" ? (
+            <>
+              <ActionButton
+                tone="negative"
+                variant="destructive"
+                onClick={() => {
+                  setRejecting(viewing);
+                  setViewing(null);
+                }}
+              >
+                Reject
+              </ActionButton>
+              <ActionButton
+                tone="positive"
+                className="ah-lime"
+                disabled={approve.isPending}
+                busy={approve.isPending && approve.variables === viewing.id}
+                failed={approve.isError}
+                onClick={() => approve.mutate(viewing.id, { onSuccess: () => setViewing(null) })}
+              >
+                Approve
+              </ActionButton>
+            </>
+          ) : undefined
+        }
+      />
 
       <TextInputDialog
         open={!!rejecting}
@@ -158,8 +219,10 @@ export default function AdminArenasPage() {
         title="Reject arena"
         description={rejecting ? `${rejecting.name} will be notified with your reason.` : undefined}
         placeholder="Reason for rejection…"
+        maxLength={500}
         confirmLabel="Reject Arena"
         destructive
+        motion
         pending={reject.isPending}
         error={error}
         onSubmit={onReject}

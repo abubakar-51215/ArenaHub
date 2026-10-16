@@ -11,29 +11,30 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.court.model import Weekday
+from app.shared.request_model import RequestModel, ShortName
 
 
-class CourtCreate(BaseModel):
+class CourtCreate(RequestModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
-    sport_types: list[str] = Field(min_length=1)
+    sport_types: list[ShortName] = Field(min_length=1, max_length=20)
     capacity: int | None = Field(default=None, ge=1)
     base_price: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     images: list[str] = Field(default_factory=list, max_length=20)
     is_available: bool = True
 
 
-class CourtUpdate(BaseModel):
+class CourtUpdate(RequestModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
-    sport_types: list[str] | None = Field(default=None, min_length=1)
+    sport_types: list[ShortName] | None = Field(default=None, min_length=1, max_length=20)
     capacity: int | None = Field(default=None, ge=1)
     base_price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     images: list[str] | None = Field(default=None, max_length=20)
     is_available: bool | None = None
 
 
-class AvailabilityUpdate(BaseModel):
+class AvailabilityUpdate(RequestModel):
     is_available: bool
 
 
@@ -51,7 +52,7 @@ class CourtResponse(BaseModel):
     is_available: bool
 
 
-class PricingRuleCreate(BaseModel):
+class PricingRuleCreate(RequestModel):
     name: str = Field(min_length=1, max_length=100)
     weekday: Weekday | None = None  # null = every day
     start_time: time
@@ -66,7 +67,7 @@ class PricingRuleCreate(BaseModel):
         return self
 
 
-class PricingRuleUpdate(BaseModel):
+class PricingRuleUpdate(RequestModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     weekday: Weekday | None = None
     start_time: time | None = None

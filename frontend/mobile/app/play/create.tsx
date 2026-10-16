@@ -1,297 +1,182 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FormScreen } from '@/components/g6/form-screen';
 import { Button } from '@/components/ui/button';
+import { IconExtra } from '@/components/ui/icon-extra';
+import { ScreenHead } from '@/components/ui/screen-head';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, ErrorState } from '@/components/ui/state-view';
+import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
+import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
-import { useArenaCourts } from '@/hooks/useArenas';
+import { useMyMatches } from '@/hooks/useMatches';
 import { ApiError } from '@/lib/api';
-import { toLocalDateString } from '@/lib/dates';
-import { searchArenas } from '@/services/arenas';
+import { errorHaptic, successHaptic, tapHaptic } from '@/lib/haptics';
+import { formatClock, formatDayShort } from '@/lib/karachi';
+import { formatRs } from '@/lib/money';
+import { priceEach } from '@/lib/match-ui';
 import { createMatch } from '@/services/matches';
-import type { Arena, Court } from '@/types';
+import { listBookingGroups } from '@/services/bookings';
+import type { BookingGroupItem } from '@/types';
 
-const HOURS = Array.from({ length: 18 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`);
+// Post a match, from arena-hub-player-app-play.html (frames 11 and 12): pick one of my own upcoming CONFIRMED booked games
+// (only those; a booking has one open match), how many more players are needed, an optional note, and the price line. The price
+// is text only ("about X each"): nothing is paid in the app. With no booked game there is a button to find an arena.
+const MAX_MORE = 29;
 
-function nextDays(n: number): { date: string; label: string; dayNum: string }[] {
-  const days = [];
-  const today = new Date();
-  for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    days.push({
-      date: toLocalDateString(d),
-      label: d.toLocaleDateString('en-US', { weekday: 'short' }),
-      dayNum: String(d.getDate()),
-    });
-  }
-  return days;
-}
-
-export default function CreateMatchScreen() {
-  const days = useMemo(() => nextDays(14), []);
-
-  const [arenaQuery, setArenaQuery] = useState('');
-  const [arena, setArena] = useState<Arena | null>(null);
-  const [court, setCourt] = useState<Court | null>(null);
-  const [sport, setSport] = useState<string | null>(null);
-  const [date, setDate] = useState(days[0].date);
-  const [startTime, setStartTime] = useState<string | null>(null);
-  const [endTime, setEndTime] = useState<string | null>(null);
-  const [maxPlayers, setMaxPlayers] = useState(10);
+export default function PostMatchScreen() {
+  const qc = useQueryClient();
+  const bookings = useQuery({ queryKey: ['booking-groups', 'upcoming', 'all'], queryFn: () => listBookingGroups('upcoming', 1, 100), retry: 1 });
+  const mine = useMyMatches();
+  const [picked, setPicked] = useState<string | null>(null);
+  const [more, setMore] = useState(4);
+  const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const arenaResults = useQuery({
-    queryKey: ['play-arena-search', arenaQuery],
-    queryFn: () => searchArenas({ q: arenaQuery.trim() || undefined, page_size: 10 }),
-    enabled: !arena && arenaQuery.trim().length > 0,
+  // confirmed bookings that do not have an open or full match yet
+  const taken = useMemo(() => new Set((mine.data?.created ?? []).filter((m) => m.status === 'open' || m.status === 'full').map((m) => m.booking_group_id)), [mine.data]);
+  const games = useMemo(() => (bookings.data?.items ?? []).filter((b) => b.status === 'confirmed' && !taken.has(b.booking_group_id)), [bookings.data, taken]);
+  const chosen: BookingGroupItem | undefined = games.find((g) => g.booking_group_id === picked) ?? (games.length === 1 ? games[0] : undefined);
+  const price = chosen ? priceEach(chosen.total, more + 1) : null;
+
+  const post = useMutation({
+    mutationFn: () => createMatch({ booking_group_id: chosen!.booking_group_id, sport: chosen!.sport ?? 'futsal', max_players: more + 1, ...(note.trim() ? { note: note.trim() } : {}) }),
+    onSuccess: () => {
+      successHaptic();
+      qc.invalidateQueries({ queryKey: ['open-matches'] });
+      qc.invalidateQueries({ queryKey: ['my-matches'] });
+      showToast('Match posted');
+      router.replace('/(tabs)/play' as unknown as Href);
+    },
+    onError: (err) => {
+      errorHaptic();
+      setError(err instanceof ApiError ? err.message : 'Could not post your match. Please try again.');
+    },
   });
 
-  const courts = useArenaCourts(arena?.id);
+  const submit = () => {
+    if (post.isPending) return;
+    if (!chosen) return setError('Pick one of your booked games.');
+    setError(null);
+    post.mutate();
+  };
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      createMatch({
-        arena_id: arena!.id,
-        court_id: court!.id,
-        sport: sport!,
-        match_date: date,
-        start_time: `${startTime}:00`,
-        end_time: `${endTime}:00`,
-        max_players: maxPlayers,
-      }),
-    onSuccess: (match) =>
-      router.replace({ pathname: '/play/[matchId]', params: { matchId: match.id } }),
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Something went wrong.'),
-  });
-
-  const canSubmit = !!arena && !!court && !!sport && !!date && !!startTime && !!endTime && startTime < endTime;
+  if (bookings.isLoading || mine.isLoading) {
+    return (
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Post a match" />
+        <View style={{ padding: 18, gap: 10 }}>
+          <Skeleton height={64} radius={15} />
+          <Skeleton height={64} radius={15} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if ((bookings.isError && !bookings.data) || (mine.isError && !mine.data)) {
+    return (
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Post a match" />
+        <ErrorState title="Could not load your booked games." onRetry={() => (bookings.isError ? bookings.refetch() : mine.refetch())} />
+      </SafeAreaView>
+    );
+  }
+  if (games.length === 0) {
+    return (
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Post a match" />
+        <EmptyState
+          icon={<IconExtra name="bookings" size={30} color={Colors.light.limeDeep} />}
+          title="No booked games."
+          text="You can post a match after you book a court."
+          buttonTitle="Find an arena"
+          onButton={() => router.replace('/(tabs)/search' as unknown as Href)}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
-        </Pressable>
-        <Text style={styles.title}>Create a Match</Text>
-        <View style={{ width: 22 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sectionTitle}>Arena</Text>
-        {arena ? (
-          <View style={styles.selectedRow}>
-            <Text style={styles.selectedText}>
-              {arena.name} · {arena.city}
-            </Text>
+    <FormScreen title="Post a match" footer={<Button title="Post match" offlineLabel="Post needs a connection" loading={post.isPending} disabled={!chosen} onPress={submit} />}>
+      <Text style={styles.intro}>Pick one of your booked games. Players can join until it is full.</Text>
+      <Text style={styles.label} accessibilityRole="header">
+        Your booked game
+      </Text>
+      <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+        {games.map((g) => {
+          const on = g.booking_group_id === chosen?.booking_group_id;
+          return (
             <Pressable
+              key={g.booking_group_id}
               onPress={() => {
-                setArena(null);
-                setCourt(null);
-                setSport(null);
-              }}>
-              <Text style={styles.changeText}>Change</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <TextField
-              placeholder="Search for an arena"
-              value={arenaQuery}
-              onChangeText={setArenaQuery}
-            />
-            {arenaResults.isLoading ? <ActivityIndicator color={Colors.light.tint} style={{ marginTop: 12 }} /> : null}
-            {(arenaResults.data?.items ?? []).map((a) => (
-              <Pressable key={a.id} style={styles.resultRow} onPress={() => setArena(a)}>
-                <Text style={styles.resultName}>{a.name}</Text>
-                <Text style={styles.resultMeta}>{a.city}</Text>
-              </Pressable>
-            ))}
-          </>
-        )}
-
-        {arena ? (
-          <>
-            <Text style={styles.sectionTitle}>Court</Text>
-            {courts.isLoading ? (
-              <ActivityIndicator color={Colors.light.tint} />
-            ) : (
-              <View style={styles.chipRow}>
-                {(courts.data ?? []).map((c) => (
-                  <Pressable
-                    key={c.id}
-                    style={[styles.chip, court?.id === c.id && styles.chipActive]}
-                    onPress={() => {
-                      setCourt(c);
-                      setSport(c.sport_types[0] ?? null);
-                    }}>
-                    <Text style={[styles.chipText, court?.id === c.id && styles.chipTextActive]}>
-                      {c.name}
-                    </Text>
-                  </Pressable>
-                ))}
+                tapHaptic();
+                setPicked(g.booking_group_id);
+                setError(null);
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${formatDayShort(g.booking_date)}, ${g.arena_name}, ${formatClock(g.start_time)} to ${formatClock(g.end_time)}, ${g.court_name}`}
+              style={[styles.game, on && styles.gameOn]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gameTitle}>
+                  {formatDayShort(g.booking_date)} · {g.arena_name}
+                </Text>
+                <Text style={styles.gameSub}>
+                  {formatClock(g.start_time)} – {formatClock(g.end_time)} · {g.court_name}
+                </Text>
               </View>
-            )}
-          </>
-        ) : null}
-
-        {court ? (
-          <>
-            <Text style={styles.sectionTitle}>Sport</Text>
-            <View style={styles.chipRow}>
-              {court.sport_types.map((s) => (
-                <Pressable
-                  key={s}
-                  style={[styles.chip, sport === s && styles.chipActive]}
-                  onPress={() => setSport(s)}>
-                  <Text style={[styles.chipText, sport === s && styles.chipTextActive]}>{s}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.sectionTitle}>Date</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateStrip}>
-              {days.map((d) => (
-                <Pressable
-                  key={d.date}
-                  style={[styles.dateChip, date === d.date && styles.chipActive]}
-                  onPress={() => setDate(d.date)}>
-                  <Text style={[styles.dateChipDay, date === d.date && styles.chipTextActive]}>{d.label}</Text>
-                  <Text style={[styles.dateChipNum, date === d.date && styles.chipTextActive]}>{d.dayNum}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.sectionTitle}>Start Time</Text>
-            <View style={styles.chipRow}>
-              {HOURS.map((h) => (
-                <Pressable
-                  key={h}
-                  style={[styles.chip, startTime === h && styles.chipActive]}
-                  onPress={() => setStartTime(h)}>
-                  <Text style={[styles.chipText, startTime === h && styles.chipTextActive]}>{h}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.sectionTitle}>End Time</Text>
-            <View style={styles.chipRow}>
-              {HOURS.map((h) => (
-                <Pressable
-                  key={h}
-                  disabled={!!startTime && h <= startTime}
-                  style={[
-                    styles.chip,
-                    endTime === h && styles.chipActive,
-                    !!startTime && h <= startTime && styles.chipDisabled,
-                  ]}
-                  onPress={() => setEndTime(h)}>
-                  <Text style={[styles.chipText, endTime === h && styles.chipTextActive]}>{h}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.sectionTitle}>Max Players</Text>
-            <View style={styles.stepper}>
-              <Pressable
-                style={styles.stepperBtn}
-                onPress={() => setMaxPlayers((n) => Math.max(2, n - 1))}>
-                <Text style={styles.stepperBtnText}>−</Text>
-              </Pressable>
-              <Text style={styles.stepperValue}>{maxPlayers}</Text>
-              <Pressable
-                style={styles.stepperBtn}
-                onPress={() => setMaxPlayers((n) => Math.min(50, n + 1))}>
-                <Text style={styles.stepperBtnText}>+</Text>
-              </Pressable>
-            </View>
-          </>
-        ) : null}
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Button
-          title="Create Match"
-          loading={mutation.isPending}
-          disabled={!canSubmit}
-          onPress={() => {
-            setError(null);
-            mutation.mutate();
-          }}
-        />
+              <View style={[styles.radio, on && styles.radioOn]}>{on ? <View style={styles.radioDot} /> : null}</View>
+            </Pressable>
+          );
+        })}
       </View>
-    </SafeAreaView>
+
+      <Text style={styles.label} accessibilityRole="header">
+        Players needed
+      </Text>
+      <View style={styles.stepper}>
+        <Pressable onPress={() => setMore((n) => Math.max(1, n - 1))} accessibilityRole="button" accessibilityLabel="Fewer players" disabled={more <= 1} style={[styles.stepBtn, more <= 1 && { opacity: 0.4 }]}>
+          <IconExtra name="minus" size={20} />
+        </Pressable>
+        <Text variant="archivo" style={styles.stepNum} accessibilityLiveRegion="polite">
+          {more}
+        </Text>
+        <Pressable onPress={() => setMore((n) => Math.min(MAX_MORE, n + 1))} accessibilityRole="button" accessibilityLabel="More players" disabled={more >= MAX_MORE} style={[styles.stepBtn, more >= MAX_MORE && { opacity: 0.4 }]}>
+          <IconExtra name="plus" size={20} />
+        </Pressable>
+        <Text style={styles.stepText}>more {more === 1 ? 'player' : 'players'}</Text>
+      </View>
+
+      <TextField label="Note (optional)" kind="multiline" placeholder="Friendly game, all levels." value={note} onChangeText={(t) => setNote(t.slice(0, 200))} maxLength={200} error={error} />
+
+      <View style={styles.note}>
+        <Text style={styles.noteText}>
+          {chosen && price ? `The booking costs ${formatRs(chosen.total)}. Shared by ${more + 1} players, that is ${price}. ` : ''}You settle it with each other. No payment happens in the app.
+        </Text>
+      </View>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
-  content: { padding: 20, paddingBottom: 24, gap: 6 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text, marginTop: 16, marginBottom: 8 },
-  selectedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 10,
-    padding: 12,
-  },
-  selectedText: { fontSize: 13, fontWeight: '600', color: Colors.light.text, flex: 1 },
-  changeText: { fontSize: 12, fontWeight: '700', color: Colors.light.tint },
-  resultRow: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.light.border },
-  resultName: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
-  resultMeta: { fontSize: 12, color: Colors.light.muted },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  chipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
-  chipDisabled: { opacity: 0.4 },
-  chipText: { fontSize: 12, color: Colors.light.text, textTransform: 'capitalize' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
-  dateStrip: { gap: 8, paddingBottom: 4 },
-  dateChip: {
-    width: 52,
-    height: 64,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateChipDay: { fontSize: 11, color: Colors.light.muted },
-  dateChipNum: { fontSize: 16, fontWeight: '700', color: Colors.light.text, marginTop: 2 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  stepperBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperBtnText: { fontSize: 18, color: Colors.light.text },
-  stepperValue: { fontSize: 16, fontWeight: '700', minWidth: 24, textAlign: 'center' },
-  errorText: { color: Colors.light.destructive, fontSize: 13, marginTop: 12 },
-  footer: { padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.light.border },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  intro: { fontSize: 14, lineHeight: 20, color: Colors.light.muted },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted },
+  game: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, backgroundColor: Colors.light.card, borderWidth: 1.5, borderColor: Colors.light.line, borderRadius: 15, padding: 14 },
+  gameOn: { backgroundColor: Colors.light.limeWash, borderColor: Colors.light.limeDeep },
+  gameTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  gameSub: { fontSize: 14, color: Colors.light.muted, marginTop: 2 },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: Colors.light.line, alignItems: 'center', justifyContent: 'center' },
+  radioOn: { borderColor: Colors.light.limeDeep },
+  radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.light.limeDeep },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepBtn: { width: 54, height: 54, borderRadius: 15, backgroundColor: Colors.light.card, borderWidth: 1.5, borderColor: Colors.light.line, alignItems: 'center', justifyContent: 'center' },
+  stepNum: { minWidth: 70, textAlign: 'center', fontSize: 24, fontWeight: '700', color: Colors.light.text },
+  stepText: { fontSize: 14, color: Colors.light.muted },
+  note: { backgroundColor: Colors.light.limeWash, borderWidth: 1, borderColor: Colors.light.limeDeep, borderRadius: 11, padding: 12 },
+  noteText: { fontSize: 14, lineHeight: 20, color: Colors.light.noteText },
 });

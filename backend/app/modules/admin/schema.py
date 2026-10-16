@@ -7,23 +7,54 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.modules.booking.model import BookingStatus, PaymentPlan
-from app.modules.payment.model import PaymentMethod
+from app.modules.payment.model import PaymentLifecycleStatus, PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import UserRole
+from app.shared.request_model import RequestModel
 
 
-class RejectArenaRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+class RejectArenaRequest(RequestModel):
+    """Why an arena was not approved: 1 to 500 characters, shown to the owner."""
+
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _trim(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
+
+
+class ArenaModerationRequest(RequestModel):
+    """Suspend, reactivate or remove an arena. The reason is mandatory: it goes
+    to the owner (suspend / remove) and into the audit log."""
+
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _trim(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
+
+
+class ReactivateArenaRequest(BaseModel):
+    """Lifting a suspension needs no reason; one may be given (up to 500 characters)."""
+
+    reason: str | None = Field(default=None, max_length=500)
 
 
 # ---- user management --------------------------------------------------
 
 
-class SuspendUserRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+class SuspendUserRequest(RequestModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _trim(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
 
 
 class AdminUserResponse(BaseModel):
@@ -32,7 +63,7 @@ class AdminUserResponse(BaseModel):
     id: uuid.UUID
     full_name: str
     email: str
-    phone: str
+    phone: str | None  # empty only for a Google account before "One more step"
     role: UserRole
     is_verified: bool
     is_active: bool
@@ -41,6 +72,9 @@ class AdminUserResponse(BaseModel):
 
 class AdminUserDetailResponse(AdminUserResponse):
     total_bookings: int
+    total_complaints: int = 0
+    # why an admin suspended the account (the latest suspension), while it is suspended
+    suspended_reason: str | None = None
 
 
 # ---- booking / payment monitoring --------------------------------------------------
@@ -48,6 +82,8 @@ class AdminUserDetailResponse(AdminUserResponse):
 
 class AdminBookingResponse(BaseModel):
     id: uuid.UUID
+    # the reference the player and the owner see (AHB-xxxxxx)
+    booking_code: str = ""
     player_id: uuid.UUID
     player_name: str
     arena_id: uuid.UUID
@@ -60,10 +96,14 @@ class AdminBookingResponse(BaseModel):
     payment_type: PaymentPlan
     status: BookingStatus
     created_at: datetime
+    # a refund for this booking is still waiting (gateway retry, or manual)
+    refund_pending: bool = False
 
 
 class AdminPaymentResponse(BaseModel):
     id: uuid.UUID
+    # the short reference the player reads out (AHB-xxxxxx)
+    booking_code: str
     player_id: uuid.UUID
     player_name: str
     arena_name: str | None
@@ -72,7 +112,12 @@ class AdminPaymentResponse(BaseModel):
     payment_method: PaymentMethod
     gateway_transaction_id: str | None
     status: PayStatus
+    # the fine-grained lifecycle ("refunded" once refunds reach the amount;
+    # status stays "completed" then)
+    lifecycle_status: PaymentLifecycleStatus
     created_at: datetime
+    # a refund against this payment is still waiting (gateway retry, or manual)
+    refund_pending: bool = False
 
 
 # ---- dashboard --------------------------------------------------
@@ -92,10 +137,87 @@ class DashboardMetrics(BaseModel):
     active_complaints: int
 
 
+class OverviewPeriod(BaseModel):
+    start: date
+    end: date
+    previous_start: date
+    previous_end: date
+    range: str
+
+
+class OverviewKpi(BaseModel):
+    """``value`` is the headline figure; ``delta_pct`` compares the current
+    period with the previous one (None when there is nothing to compare);
+    ``series`` is one point per day of the current period; ``extra`` is the
+    card's second figure (new sign-ups, bookings today, arenas pending)."""
+
+    value: float
+    delta_pct: float | None
+    series: list[float]
+    extra: int | None
+
+
+class OverviewKpis(BaseModel):
+    players: OverviewKpi
+    bookings: OverviewKpi
+    gross_value: OverviewKpi
+    live_arenas: OverviewKpi
+
+
+class DayPoint(BaseModel):
+    date: date
+    value: int
+
+
+class CityShare(BaseModel):
+    city: str
+    bookings: int
+    share_pct: float
+
+
+class HourPoint(BaseModel):
+    hour: int
+    used: int
+    total: int
+    pct: float
+
+
+class PeakWindow(BaseModel):
+    start_hour: int
+    end_hour: int
+
+
+class TopArena(BaseModel):
+    arena_id: uuid.UUID
+    name: str
+    city: str
+    bookings: int
+    value: float
+
+
+class QueueSummary(BaseModel):
+    pending_arenas: int
+    open_complaints: int
+    oldest_waiting_at: datetime | None
+
+
+class DashboardOverview(BaseModel):
+    period: OverviewPeriod
+    city: str | None
+    kpis: OverviewKpis
+    bookings_by_day: list[DayPoint]
+    previous_bookings_by_day: list[DayPoint]
+    by_city: list[CityShare]
+    utilisation_by_hour: list[HourPoint]
+    peak_window: PeakWindow | None
+    top_arenas: list[TopArena]
+    queue: QueueSummary
+
+
 # ---- platform settings --------------------------------------------------
 
 
-class EmailSettings(BaseModel):
+class EmailSettings(RequestModel):
     """Channel-level toggle + display name only — SMTP credentials stay in
     server-side env vars (app/core/config.py), never in this admin-editable
     row (docs/PROJECT_GUIDELINES.md: secrets never travel through the DB)."""
@@ -104,7 +226,7 @@ class EmailSettings(BaseModel):
     from_name: str = Field(default="ArenaHub", max_length=100)
 
 
-class SmsSettings(BaseModel):
+class SmsSettings(RequestModel):
     """No SMS gateway is wired yet (deviation #7: OTP delivery is email-only
     today) — this only records the platform's intent so the toggle isn't
     lost when a provider lands."""
@@ -113,27 +235,27 @@ class SmsSettings(BaseModel):
     provider: str = Field(default="", max_length=50)
 
 
-class PaymentGatewaySettings(BaseModel):
+class PaymentGatewaySettings(RequestModel):
     card_enabled: bool = True
     jazzcash_enabled: bool = True
     easypaisa_enabled: bool = True
     bank_transfer_enabled: bool = True
 
 
-class BookingPolicySettings(BaseModel):
+class BookingPolicySettings(RequestModel):
     default_advance_percentage: int = Field(default=50, ge=0, le=100)
     min_advance_hours: int = Field(default=1, ge=0)
     max_advance_days: int = Field(default=30, ge=1)
     auto_cancel_hours: int = Field(default=24, ge=1)
 
 
-class NotificationSettings(BaseModel):
+class NotificationSettings(RequestModel):
     booking_enabled: bool = True
     payment_enabled: bool = True
     reminder_enabled: bool = True
 
 
-class PlatformSettingsRequest(BaseModel):
+class PlatformSettingsRequest(RequestModel):
     site_name: str = Field(min_length=1, max_length=255)
     site_description: str = Field(default="", max_length=1000)
     site_email: str = Field(max_length=255)
@@ -157,10 +279,13 @@ class PlatformSettingsResponse(PlatformSettingsRequest):
 
 class AuditLogResponse(BaseModel):
     id: uuid.UUID
-    actor_id: uuid.UUID
+    actor_id: uuid.UUID | None  # empty when nobody was signed in (a failed sign-in)
     actor_name: str
     action: str
     target_type: str
     target_id: str
     details: dict
+    result: str = "ok"
+    ip: str | None = None
+    request_id: str | None = None
     created_at: datetime

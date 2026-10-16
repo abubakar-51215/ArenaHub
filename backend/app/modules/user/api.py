@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ServiceUnavailableError
 from app.database.session import get_db
 from app.modules.user import service
 from app.modules.user.model import User
@@ -21,6 +22,7 @@ from app.modules.user.schema import (
     PhoneChangeVerifyRequest,
     UpdateProfileRequest,
 )
+from app.shared import codes
 from app.shared.auth import get_current_user
 from app.shared.response import success
 
@@ -48,8 +50,9 @@ async def request_password_change(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    await service.request_password_change(db, user, data)
-    return success(message="OTP sent to your email.")
+    if not await service.request_password_change(db, user, data):
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(user.email)}.")
 
 
 @router.post("/me/password/verify", summary="Confirm a password change")
@@ -77,8 +80,9 @@ async def request_phone_change(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    await service.request_phone_change(db, user, data)
-    return success(message="OTP sent to the new number.")
+    if not await service.request_phone_change(db, user, data):
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(data.new_phone)}.")
 
 
 @router.post("/me/phone/verify", summary="Confirm a phone-number change")
@@ -97,8 +101,9 @@ async def request_email_change(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    await service.request_email_change(db, user, data)
-    return success(message="OTP sent to the new email address.")
+    if not await service.request_email_change(db, user, data):
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(data.new_email)}.")
 
 
 @router.post("/me/email/verify", summary="Confirm an email-address change")

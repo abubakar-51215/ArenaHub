@@ -10,9 +10,9 @@ from datetime import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import Arena, ArenaStatus
+from app.modules.arena.model import Arena
 from app.modules.court import repository as repo
 from app.modules.court.model import Court, CourtPricingRule
 from app.modules.court.schema import (
@@ -32,7 +32,8 @@ async def _owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: User) -> Are
     if arena is None:
         raise NotFoundError("Arena not found.")
     if arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        # another owner's arena answers exactly like one that does not exist
+        raise NotFoundError("Arena not found.")
     return arena
 
 
@@ -40,7 +41,9 @@ async def _owned_court(db: AsyncSession, court_id: uuid.UUID, user: User) -> Cou
     court = await repo.get_court(db, court_id)
     if court is None:
         raise NotFoundError("Court not found.")
-    await _owned_arena(db, court.arena_id, user)
+    arena = await arena_repo.get_arena(db, court.arena_id)
+    if arena is None or arena.owner_id != user.id:
+        raise NotFoundError("Court not found.")  # someone else's court looks like a missing one
     return court
 
 
@@ -106,7 +109,7 @@ async def delete_court(db: AsyncSession, user: User, court_id: uuid.UUID) -> Non
 
 async def list_public_courts(db: AsyncSession, arena_id: uuid.UUID) -> list[CourtResponse]:
     arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     rows = await repo.list_courts(db, arena_id, available_only=True)
     return [CourtResponse.model_validate(c) for c in rows]
@@ -121,7 +124,7 @@ async def list_public_pricing_rules(
     if court is None:
         raise NotFoundError("Court not found.")
     arena = await arena_repo.get_arena(db, court.arena_id)
-    if arena is None or arena.status != ArenaStatus.approved or not arena.is_active:
+    if arena is None or not arena.is_live:
         raise NotFoundError("Court not found.")
     rows = await repo.list_pricing_rules(db, court_id)
     return [PricingRuleResponse.model_validate(r) for r in rows if r.is_active]
@@ -188,6 +191,17 @@ async def list_pricing_rules(
 ) -> list[PricingRuleResponse]:
     await _owned_court(db, court_id, user)
     rows = await repo.list_pricing_rules(db, court_id)
+    return [PricingRuleResponse.model_validate(r) for r in rows]
+
+
+async def list_my_pricing_rules(
+    db: AsyncSession, user: User, arena_id: uuid.UUID | None = None
+) -> list[PricingRuleResponse]:
+    """The Pricing Rules page in one request: every rule on the owner's courts,
+    or on one of their arenas."""
+    if arena_id is not None:
+        await _owned_arena(db, arena_id, user)
+    rows = await repo.list_pricing_rules_for_owner(db, user.id, arena_id)
     return [PricingRuleResponse.model_validate(r) for r in rows]
 
 

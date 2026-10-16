@@ -2,6 +2,7 @@
 filtering on the player and owner reports."""
 
 from datetime import date, timedelta
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,8 +77,12 @@ async def test_player_bookings_report_csv(client: AsyncClient, db_session: Async
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")
     body = resp.text
-    assert "Date,Time,Status,Payment Status,Amount (PKR)" in body
-    assert monday.isoformat() in body
+    # the phone's words: its status tags, its dates and ₨
+    assert "Booking,Date,Time,Arena,Court,Status,Payment,Amount" in body
+    assert "Downtown Futsal Arena" in body and "Court A" in body
+    assert _phone_day(monday) in body
+    assert ',Confirmed,Paid,"₨ ' in body
+    _no_raw_values(body)
 
     # Filtered outside the booking's date -> header only, no data row.
     far_future = (monday + timedelta(days=365)).isoformat()
@@ -86,7 +91,7 @@ async def test_player_bookings_report_csv(client: AsyncClient, db_session: Async
         headers=auth_header(player),
         params={"format": "csv", "date_from": far_future},
     )
-    assert monday.isoformat() not in resp_filtered.text
+    assert _phone_day(monday) not in resp_filtered.text
 
 
 async def test_player_bookings_report_pdf(client: AsyncClient, db_session: AsyncSession) -> None:
@@ -110,7 +115,14 @@ async def test_owner_report_lists_bookings_across_arenas(
         "/api/v1/owner/reports", headers=auth_header(owner), params={"format": "csv"}
     )
     assert resp.status_code == 200
-    assert monday.isoformat() in resp.text
+    # the owner Bookings screen's words, money, dates and times; the booking code the player sees
+    head, first = resp.text.splitlines()[:2]
+    assert head == "Booking,Date,Time,Arena,Court,Player,Status,Payment,Amount"
+    assert first.startswith("AHB-")
+    assert f",{_web_day(monday)}," in first.replace('"', "")
+    assert ",8:00 AM – 9:00 AM," in first
+    assert ",Confirmed," in first and "· paid" in first and "Rs. " in first
+    _no_raw_values(resp.text)
 
 
 async def test_owner_report_forbidden_for_players(
@@ -137,6 +149,7 @@ async def test_admin_reports_all_types_and_formats(
             assert resp.status_code == 200, (report_type, fmt, resp.text)
             if fmt == "csv":
                 assert resp.headers["content-type"].startswith("text/csv")
+                _no_raw_values(resp.text)
             else:
                 assert resp.content.startswith(b"%PDF")
 
@@ -191,3 +204,31 @@ async def test_owner_occupancy_report(client: AsyncClient, db_session: AsyncSess
     )
     assert pdf.status_code == 200
     assert pdf.content.startswith(b"%PDF")
+
+
+# ---- exports use the words of the screens --------------------------------------------------
+
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _web_day(d: Any) -> str:
+    return f"{_MONTHS[d.month - 1]} {d.day}, {d.year}"
+
+
+def _phone_day(d: Any) -> str:
+    return f"{d.strftime('%a')} {d.day} {_MONTHS[d.month - 1]} {d.year}"
+
+
+def _no_raw_values(csv_text: str) -> None:
+    """No raw keys (pending_payment, bank_transfer), ISO dates, 24-hour times or bare amounts."""
+    import re
+
+    body = "\n".join(csv_text.splitlines()[1:])  # the rows, not the header
+    for pattern in (
+        r"\b[a-z]+_[a-z_]+\b",  # a raw key
+        r"\b\d{4}-\d{2}-\d{2}\b",  # an ISO date
+        r"\b\d{2}:\d{2}(:\d{2})?-",  # "08:00-09:00"
+        r"(?<![\d,.])\d{4,}\.\d{2}\b",  # "2000.00"
+    ):
+        found = re.search(pattern, body)
+        assert found is None, f"raw value {found.group(0)!r} in the export"

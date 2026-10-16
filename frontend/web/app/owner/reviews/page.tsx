@@ -1,51 +1,57 @@
 "use client";
 
-import { useMemo, useState } from "react";
+/**
+ * Owner Reviews, laid out as the owner prototype's Reviews screen: an
+ * average-rating card with the 5-to-1 star breakdown, and the review list
+ * with "Needs reply" / "Replied" badges and the existing reply flow. The
+ * average and count come from the rating summary endpoint (per arena, and
+ * combined by review count under "All arenas"); that endpoint has no
+ * breakdown, so every review of the chosen arena(s) is fetched (100 a page,
+ * up to 500) and the 5-to-1 bars count them all, leaving out reported ones
+ * as the summary does; until then the bars show a quiet loading state.
+ * The arena comes from the top bar picker. Left out: "What people mention
+ * most" (no data for it).
+ */
+import { Suspense, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { Flag, MessageSquareReply, Star } from "lucide-react";
 
+import { AdminAvatar, AdminBadge, AdminEmpty } from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
 import { TextInputDialog } from "@/components/owner/text-input-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Select } from "@/components/ui/select";
 import { useMyArenas } from "@/hooks/useArenas";
-import { formatDate } from "@/lib/format";
+import { useArenaParam } from "@/hooks/useArenaParam";
+import { formatDateShort, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
-import { listArenaReviews, respondToReview } from "@/services/reviews";
+import { UNANSWERED_REVIEWS_KEY } from "@/hooks/useReviews";
+import { getRatingSummary, listOwnerArenaReviews, respondToReview } from "@/services/reviews";
 import type { Review } from "@/types";
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star
-          key={i}
-          className={
-            i < rating ? "size-4 fill-amber-400 text-amber-400" : "size-4 text-muted-foreground/30"
-          }
-        />
-      ))}
-    </div>
-  );
-}
+const PAGE_SIZE = 100; // the API's largest page
+const CAP = 500; // most reviews counted for the breakdown
+const SHOW_STEP = 20; // review cards shown at a time
 
-function Avatar({ name }: { name: string }) {
-  const initials = name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+type Filter = "" | "reply" | "low";
+
+function Stars({ rating, size = 13 }: { rating: number; size?: number }) {
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
-      {initials || "?"}
+    <span className="ah-stars" role="img" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <svg
+          key={i}
+          viewBox="0 0 24 24"
+          width={size}
+          height={size}
+          className={i < Math.round(rating) ? undefined : "off"}
+          aria-hidden="true"
+        >
+          <path
+            fill="currentColor"
+            d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"
+          />
+        </svg>
+      ))}
     </span>
   );
 }
@@ -54,36 +60,71 @@ interface TaggedReview extends Review {
   arena_name: string;
 }
 
-export default function ReviewsPage() {
+function ReviewsInner() {
   const qc = useQueryClient();
-  const { data: arenaPage } = useMyArenas();
+  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
+  const [arenaId] = useArenaParam();
+  const picked = arenas.find((a) => a.id === arenaId);
+  const scope = picked ? [picked] : arenas;
 
-  // Fetched per-arena and merged client-side, so "load more" bumps a single
-  // shared page_size across every arena's query rather than paging each
-  // arena independently (simpler than per-arena cursors for a flattened,
-  // globally-sorted list).
-  const PAGE_SIZE_STEP = 50;
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_STEP);
-
+  // every review of each chosen arena, 100 a page (the API's maximum), up to
+  // CAP, so the star breakdown covers them all
   const reviewQueries = useQueries({
-    queries: arenas.map((a) => ({
-      queryKey: ["reviews", a.id, pageSize],
+    queries: scope.map((a) => ({
+      queryKey: ["reviews", a.id, "all"],
       queryFn: async (): Promise<{ items: TaggedReview[]; total: number }> => {
-        const page = await listArenaReviews(a.id, 1, pageSize);
-        return { items: page.items.map((r) => ({ ...r, arena_name: a.name })), total: page.total };
+        const items: TaggedReview[] = [];
+        let total = 0;
+        for (let page = 1; items.length < CAP; page++) {
+          const res = await listOwnerArenaReviews(a.id, page, PAGE_SIZE);
+          total = res.total;
+          items.push(...res.items.map((r) => ({ ...r, arena_name: a.name })));
+          if (res.items.length < PAGE_SIZE || items.length >= total) break;
+        }
+        return { items, total };
       },
     })),
   });
-  const loading = arenas.length > 0 && reviewQueries.some((q) => q.isLoading);
-  const reviews = useMemo(
-    () =>
-      reviewQueries
-        .flatMap((q) => q.data?.items ?? [])
-        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
-    [reviewQueries],
+  const summaryQueries = useQueries({
+    queries: scope.map((a) => ({
+      queryKey: ["rating-summary", a.id],
+      queryFn: () => getRatingSummary(a.id),
+    })),
+  });
+
+  const loading = arenasLoading || reviewQueries.some((q) => q.isLoading);
+  const failed = reviewQueries.some((q) => q.isError);
+  const merged = reviewQueries
+    .flatMap((q) => q.data?.items ?? [])
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  // across several arenas the cap applies to the whole list: the latest CAP
+  const capped =
+    merged.length > CAP ||
+    reviewQueries.some((q) => (q.data?.total ?? 0) > (q.data?.items.length ?? 0));
+  const reviews = merged.slice(0, CAP);
+
+  // average and count: the summaries, combined by review count
+  const summaries = summaryQueries.map((q) => q.data).filter((s) => !!s);
+  const count = summaries.reduce((n, s) => n + s.review_count, 0);
+  const weighted = summaries.reduce((n, s) => n + (s.average_rating ?? 0) * s.review_count, 0);
+  const average = count ? weighted / count : null;
+  const summaryLoading = summaryQueries.some((q) => q.isLoading);
+
+  // like the summary, the breakdown leaves out reviews that were reported
+  const counted = reviews.filter((r) => !r.is_flagged);
+  const dist = [5, 4, 3, 2, 1].map((star) => {
+    const n = counted.filter((r) => r.rating === star).length;
+    return { star, n, pct: counted.length ? Math.round((n / counted.length) * 100) : 0 };
+  });
+  const waiting = reviews.filter((r) => !r.owner_response).length;
+
+  const [filter, setFilter] = useState<Filter>("");
+  const [showCount, setShowCount] = useState(SHOW_STEP);
+  const matching = reviews.filter((r) =>
+    filter === "reply" ? !r.owner_response : filter === "low" ? r.rating <= 2 : true,
   );
-  const canLoadMore = reviewQueries.some((q) => (q.data?.total ?? 0) > pageSize);
+  const shown = matching.slice(0, showCount);
 
   const [responding, setResponding] = useState<TaggedReview | null>(null);
   const [pending, setPending] = useState(false);
@@ -96,6 +137,7 @@ export default function ReviewsPage() {
     try {
       await respondToReview(responding.id, text);
       qc.invalidateQueries({ queryKey: ["reviews", responding.arena_id] });
+      qc.invalidateQueries({ queryKey: UNANSWERED_REVIEWS_KEY });
       setResponding(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not post the response.");
@@ -106,114 +148,197 @@ export default function ReviewsPage() {
 
   return (
     <>
-      <PageHeader title="Reviews Management" />
-      <div className="space-y-4 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title="Reviews"
+        subtitle={
+          loading
+            ? undefined
+            : waiting
+              ? `${plural(waiting, "review")} ${waiting === 1 ? "is" : "are"} waiting on a reply`
+              : "Every review has a reply"
+        }
+      >
+        <Select
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value as Filter);
+            setShowCount(SHOW_STEP);
+          }}
+          aria-label="Show"
+        >
+          <option value="">All reviews</option>
+          <option value="reply">Needs reply</option>
+          <option value="low">1–2 stars</option>
+        </Select>
+      </PageHeader>
+
+      <div className="ah-ocanvas animate-fade-in ah-stack">
         {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
-        )}
-
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Arena</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead className="w-2/5">Review</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading && (
-                <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    Loading…
-                  </TableCell>
-                </TableRow>
-              )}
-              {!loading && reviews.length === 0 && (
-                <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    No reviews yet across your arenas.
-                  </TableCell>
-                </TableRow>
-              )}
-              {reviews.map((review) => (
-                <TableRow key={review.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={review.reviewer_name} />
-                      <span className="font-medium text-foreground">{review.reviewer_name}</span>
-                      {review.is_flagged && (
-                        <span title="Reported by a user">
-                          <Flag className="size-3.5 text-red-500" />
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{review.arena_name}</TableCell>
-                  <TableCell>
-                    <Stars rating={review.rating} />
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-foreground">{review.review_text ?? "—"}</p>
-                    {review.owner_response && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        <span className="font-medium">Your response:</span> {review.owner_response}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(review.created_at.slice(0, 10))}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      {!review.owner_response && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Respond"
-                          onClick={() => setResponding(review)}
-                        >
-                          <MessageSquareReply className="size-4 text-blue-600" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {canLoadMore && (
-          <div className="flex justify-center">
-            <Button
-              variant="outline"
-              onClick={() => setPageSize((n) => n + PAGE_SIZE_STEP)}
-              disabled={loading}
-            >
-              Load More
-            </Button>
+          <div className="ah-card-error" role="alert">
+            <span>{error}</span>
           </div>
         )}
+        <div className="ah-grid ah-g-23">
+          <section className="ah-card">
+            <div className="ah-card-body">
+              <p className="ah-eyebrow">Average rating</p>
+              <div className="ah-score-big">
+                <span className="ah-metric is-lg">
+                  {summaryLoading ? "—" : average != null ? average.toFixed(1) : "—"}
+                </span>
+                {average != null && <Stars rating={average} size={16} />}
+              </div>
+              <p className="ah-score-note">
+                {summaryLoading
+                  ? " "
+                  : count
+                    ? `Based on ${plural(count, "review")}${picked ? "" : " across your arenas"}`
+                    : "No reviews yet"}
+              </p>
+              {loading && (
+                <div className="ah-score-rows" aria-label="Loading the star breakdown">
+                  {[5, 4, 3, 2, 1].map((star) => (
+                    <div key={star} className="ah-score-row">
+                      <span className="tabular-nums">{star}★</span>
+                      <div className="ah-score-track" aria-hidden="true" />
+                      <span />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!loading && counted.length > 0 && (
+                <div className="ah-score-rows">
+                  {dist.map((d) => (
+                    <div key={d.star} className="ah-score-row" title={plural(d.n, "review")}>
+                      <span className="tabular-nums">{d.star}★</span>
+                      <div className="ah-score-track" aria-hidden="true">
+                        <i style={{ width: `${d.pct}%` }} />
+                      </div>
+                      <span className="tabular-nums ah-r">{d.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!loading && capped && (
+                <p className="ah-score-note" style={{ marginTop: 12, marginBottom: 0 }}>
+                  Based on the latest {CAP} reviews
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="ah-card">
+            <div className="ah-card-head">
+              <h2 className="ah-h2">Recent reviews</h2>
+              {waiting > 0 && filter !== "reply" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  style={{ marginLeft: "auto" }}
+                  onClick={() => setFilter("reply")}
+                >
+                  Needs reply ({waiting})
+                </Button>
+              )}
+            </div>
+            {loading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
+            {!loading && failed && (
+              <div className="ah-card-body">
+                <div className="ah-card-error" role="alert">
+                  <span>Could not load the reviews.</span>
+                  <button
+                    type="button"
+                    className="ah-link"
+                    onClick={() => reviewQueries.forEach((q) => void q.refetch())}
+                  >
+                    Try again
+                  </button>
+                </div>
+              </div>
+            )}
+            {!loading && !failed && shown.length === 0 && (
+              <AdminEmpty>
+                {reviews.length === 0 ? "No reviews yet." : "No reviews match this filter."}
+              </AdminEmpty>
+            )}
+            {shown.map((r) => (
+              <article key={r.id} className="ah-review">
+                <AdminAvatar name={r.reviewer_name} />
+                <div className="ah-review-b">
+                  <div className="ah-review-top">
+                    <b>{r.reviewer_name}</b>
+                    <Stars rating={r.rating} />
+                    <span className="ah-review-meta">
+                      {r.arena_name} · {formatDateShort(r.created_at.slice(0, 10))}
+                    </span>
+                    {r.is_flagged && <AdminBadge tone="off">Reported</AdminBadge>}
+                    <span className="ah-review-badge">
+                      {r.owner_response ? (
+                        <AdminBadge tone="idle">Replied</AdminBadge>
+                      ) : (
+                        <AdminBadge tone="wait">Needs reply</AdminBadge>
+                      )}
+                    </span>
+                  </div>
+                  <p className="ah-review-text">{r.review_text ?? "No written review."}</p>
+                  {r.owner_response && (
+                    <p className="ah-review-reply">
+                      <b>Your reply:</b> {r.owner_response}
+                    </p>
+                  )}
+                  {!r.owner_response && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ah-review-btn"
+                      onClick={() => setResponding(r)}
+                    >
+                      Write a reply
+                    </Button>
+                  )}
+                </div>
+              </article>
+            ))}
+            {!loading && matching.length > shown.length && (
+              <div className="ah-tbl-foot">
+                <span>
+                  Showing {shown.length} of {matching.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCount((n) => n + SHOW_STEP)}
+                >
+                  Show more
+                </Button>
+              </div>
+            )}
+          </section>
+        </div>
       </div>
 
       <TextInputDialog
         open={!!responding}
         onOpenChange={(v) => !v && setResponding(null)}
-        title="Respond to review"
+        title="Reply to this review"
         description={
           responding
-            ? `Publicly visible under ${responding.reviewer_name}'s review of ${responding.arena_name}.`
+            ? `Shown publicly under ${responding.reviewer_name}'s review of ${responding.arena_name}.`
             : undefined
         }
         placeholder="Thanks for the feedback! We're always working to improve…"
-        confirmLabel="Post Response"
+        confirmLabel="Post reply"
         pending={pending}
         onSubmit={onRespond}
       />
     </>
+  );
+}
+
+export default function ReviewsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReviewsInner />
+    </Suspense>
   );
 }

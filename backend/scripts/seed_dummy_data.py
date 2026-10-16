@@ -83,11 +83,13 @@ TODAY = date.today()
 
 
 def _img(seed: str, w: int = 800, h: int = 600) -> str:
-    """A stable, real, hosted placeholder photo — same seed always returns
-    the same image, so re-running the script (pre-idempotency-skip) is
-    deterministic. Used for non-court photos (receipts, avatars) where the
-    subject matter doesn't matter."""
-    return f"https://picsum.photos/seed/{seed}/{w}/{h}"
+    """A stable hosted placeholder photo for non-court images (receipts,
+    avatars): the same seed always returns the same image. It is picked from the
+    sport photo pool because images.unsplash.com is on the web dashboard's CSP
+    img-src allow-list; other hosts (picsum, pexels) are blocked there."""
+    pool = [photo_id for ids in SPORT_PHOTO_IDS.values() for photo_id in ids]
+    photo_id = pool[sum(seed.encode()) % len(pool)]
+    return f"https://images.unsplash.com/photo-{photo_id}?w={w}&h={h}&q=80&auto=format&fit=crop"
 
 
 # Real, sport-specific Unsplash photos (verified hotlinkable) — courts and
