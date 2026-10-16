@@ -211,7 +211,7 @@ async def test_bank_transfer_receipt_and_owner_approval(
     receipt = await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
     assert receipt.status_code == 200
 
@@ -248,7 +248,7 @@ async def test_bank_transfer_owner_rejection_releases_slot(
     await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
 
     rejected = await client.post(
@@ -285,7 +285,7 @@ async def test_owner_cannot_approve_another_arenas_payment(
     await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
 
     forbidden = await client.post(

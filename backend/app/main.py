@@ -4,6 +4,7 @@ Wires logging, exception handlers, CORS, and the /api/v1 routers. Feature
 modules register their own routers here as they land.
 """
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -44,6 +45,7 @@ from app.modules.equipment.api import owner_router as equipment_owner_router
 from app.modules.equipment.api import router as equipment_router
 from app.modules.health.api import router as health_router
 from app.modules.match.api import router as match_router
+from app.modules.media.api import receipt_router
 from app.modules.media.api import router as media_router
 from app.modules.notification.api import router as notification_router
 from app.modules.payment.api import admin_refund_router as payment_admin_refund_router
@@ -61,6 +63,7 @@ from app.modules.review.api import router as review_router
 from app.modules.slot.api import owner_router as slot_owner_router
 from app.modules.slot.api import router as slot_router
 from app.modules.user.api import router as user_router
+from app.shared.storage import uses_local_disk
 from app.tasks.scheduler import create_scheduler
 from app.websocket.api import router as websocket_router
 
@@ -80,6 +83,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Clean shutdown of pooled connections.
     await engine.dispose()
     await redis_client.aclose()
+
+
+class PublicMedia(StaticFiles):
+    """The public pictures folder, without the private ``receipts`` folder inside it."""
+
+    def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        full, found = super().lookup_path(path)
+        if found is not None:
+            private = os.path.realpath(os.path.join(str(self.directory), "receipts"))
+            if os.path.commonpath([os.path.realpath(full), private]) == private:
+                return "", None  # answered like a missing file
+        return full, found
 
 
 def create_app() -> FastAPI:
@@ -152,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(complaint_router, prefix=API_V1_PREFIX)
     app.include_router(complaint_admin_router, prefix=API_V1_PREFIX)
     app.include_router(media_router, prefix=API_V1_PREFIX)
+    app.include_router(receipt_router, prefix=API_V1_PREFIX)
     app.include_router(payment_router, prefix=API_V1_PREFIX)
     app.include_router(payment_owner_router, prefix=API_V1_PREFIX)
     app.include_router(payment_owner_refund_router, prefix=API_V1_PREFIX)
@@ -168,13 +184,16 @@ def create_app() -> FastAPI:
     app.include_router(match_router, prefix=API_V1_PREFIX)
     app.include_router(websocket_router)
 
-    # Serve locally-stored uploads in dev (Cloudinary serves them in prod).
-    Path(settings.media_root).mkdir(parents=True, exist_ok=True)
-    app.mount(
-        settings.media_url_prefix,
-        StaticFiles(directory=settings.media_root),
-        name="media",
-    )
+    # Pictures kept on this server's disk (development, or no CLOUDINARY_URL) are served here.
+    # Receipts are not: they live in the same folder but only come out through a signed link
+    # (GET /api/v1/media/receipts/..., see app/shared/receipt_links.py).
+    if uses_local_disk():
+        Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+        app.mount(
+            settings.media_url_prefix,
+            PublicMedia(directory=settings.media_root),
+            name="media",
+        )
 
     return app
 

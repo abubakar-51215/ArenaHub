@@ -2,6 +2,7 @@
 prices, owners, roles and states."""
 
 import uuid
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -13,7 +14,7 @@ from tests.helpers import auth_header, make_user
 from tests.modules.test_payment import _make_bookable_court, _slots
 
 
-async def _setup(client: AsyncClient, db: AsyncSession, tag: str):
+async def _setup(client: AsyncClient, db: AsyncSession, tag: str) -> Any:
     owner, _ = await make_user(client, db, f"br-owner-{tag}@example.com", "owner")
     player, _ = await make_user(client, db, f"br-player-{tag}@example.com", "player")
     _, court, day = await _make_bookable_court(client, db, owner, f"br-{tag}")
@@ -98,7 +99,7 @@ async def test_a_retried_receipt_does_not_double_submit(
     _, player, court, slots = await _setup(client, db_session, "idem5")
     pid = await _pay_by_bank(client, player, court, slots[0]["id"])
     headers = {**auth_header(player), "Idempotency-Key": "rcpt-" + uuid.uuid4().hex}
-    body = {"receipt_proof_url": "/uploads/receipts/ok.jpg"}
+    body = {"receipt_proof_url": "/uploads/receipts/e12f6e150d081437bc6ba7761416df89.jpg"}
     a = await client.post(f"/api/v1/payments/{pid}/receipt", headers=headers, json=body)
     b = await client.post(f"/api/v1/payments/{pid}/receipt", headers=headers, json=body)
     assert a.status_code == b.status_code == 200

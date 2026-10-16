@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.modules.booking.model import BookingStatus
 from app.modules.payment.model import PaymentLifecycleStatus, PaymentMethod, PaymentStatus
+from app.shared.receipt_links import ReceiptLink
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -37,7 +38,7 @@ class PendingApprovalItem(BaseModel):
     total_amount: Decimal
     payment_id: uuid.UUID | None = None
     payment_method: str | None = None
-    receipt_proof_url: str | None = None
+    receipt_proof_url: ReceiptLink = None
 
 
 class BookingReminderResponse(BaseModel):
@@ -143,7 +144,7 @@ class OwnerBookingRow(BaseModel):
     payment_method: PaymentMethod | None = None
     payment_status: PaymentStatus | None = None
     payment_lifecycle_status: PaymentLifecycleStatus | None = None
-    receipt_proof_url: str | None = None
+    receipt_proof_url: ReceiptLink = None
     # "Awaiting payment" and the slot still ahead: the owner may send a reminder
     can_remind: bool = False
     # minutes until another reminder may be sent, while one went out in the last hour

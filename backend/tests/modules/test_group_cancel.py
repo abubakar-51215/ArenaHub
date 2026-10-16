@@ -2,6 +2,7 @@
 arena's policy and never exceeds what was paid. Also the cancel preview."""
 
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -27,7 +28,7 @@ async def _paid_group(
     slot_count: int = 3,
     policy: list[dict] = POLICY_FULL,
     payment_type: str = "full",
-):
+) -> Any:
     """A confirmed booking group of ``slot_count`` consecutive 2000 PKR slots, paid by card."""
     owner, _ = await make_user(client, db, f"gco-{tag}@example.com", "owner")
     player, _ = await make_user(client, db, f"gcp-{tag}@example.com", "player")
@@ -198,7 +199,9 @@ async def test_cancel_preview_for_an_unpaid_booking_refunds_nothing(
     assert p["refund_percentage"] == 0
 
 
-async def _group_with_receipt(client: AsyncClient, db: AsyncSession, tag: str, with_receipt: bool):
+async def _group_with_receipt(
+    client: AsyncClient, db: AsyncSession, tag: str, with_receipt: bool
+) -> Any:
     """A bank-transfer booking group, with a receipt uploaded (awaiting approval) or without."""
     owner, _ = await make_user(client, db, f"gco-{tag}@example.com", "owner")
     player, _ = await make_user(client, db, f"gcp-{tag}@example.com", "player")
@@ -243,7 +246,7 @@ async def _group_with_receipt(client: AsyncClient, db: AsyncSession, tag: str, w
         sent = await client.post(
             f"/api/v1/payments/{payment['id']}/receipt",
             headers=auth_header(player),
-            json={"receipt_proof_url": "/uploads/receipts/r.jpg"},
+            json={"receipt_proof_url": "/uploads/receipts/17881c8a7588ccdd9a1d1585a0e5985a.jpg"},
         )
         assert sent.status_code == 200
     return owner, player, gid, payment, court_id, monday

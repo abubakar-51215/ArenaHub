@@ -87,6 +87,13 @@ def strip_metadata(content: bytes, content_type: str) -> bytes:
         raise ValidationError("File content does not match the declared image type.") from exc
 
 
+def uses_local_disk() -> bool:
+    """Whether pictures are written to this server's disk (development, or no CLOUDINARY_URL).
+    Outside development that is a go-live blocker: see docs/BEFORE_GOING_LIVE.md."""
+    settings = get_settings()
+    return settings.is_dev or settings.cloudinary_url is None
+
+
 def save_image(content: bytes, content_type: str, *, folder: str = "arenas") -> str:
     """Persist an uploaded image and return a servable URL.
 
@@ -106,7 +113,7 @@ def save_image(content: bytes, content_type: str, *, folder: str = "arenas") -> 
     settings = get_settings()
     name = f"{uuid.uuid4().hex}{ext}"
 
-    if settings.is_dev or settings.cloudinary_url is None:
+    if uses_local_disk():
         dest_dir = Path(settings.media_root) / folder
         dest_dir.mkdir(parents=True, exist_ok=True)
         (dest_dir / name).write_bytes(content)
