@@ -107,7 +107,14 @@ function CourtsInner() {
             setFormOpen(true);
           }}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           Add court
@@ -126,7 +133,11 @@ function CourtsInner() {
             <div className="ah-card-body">
               <div className="ah-card-error" role="alert">
                 <span>Could not load the courts.</span>
-                <button type="button" className="ah-link" onClick={() => courtQueries.forEach((q) => void q.refetch())}>
+                <button
+                  type="button"
+                  className="ah-link"
+                  onClick={() => courtQueries.forEach((q) => void q.refetch())}
+                >
                   Try again
                 </button>
               </div>
@@ -150,12 +161,17 @@ function CourtsInner() {
               <article key={court.id} className="ah-card ah-court-card">
                 <div className="ah-court-vis">
                   {court.images[0] ? (
-                    <div className="ah-court-photo" style={{ backgroundImage: `url(${court.images[0]})` }} />
+                    <div
+                      className="ah-court-photo"
+                      style={{ backgroundImage: `url(${court.images[0]})` }}
+                    />
                   ) : (
                     <CourtArt sport={court.sport_types[0]} />
                   )}
                   <span className="ah-court-badge">
-                    <AdminBadge tone={court.is_available ? "ok" : "idle"}>{court.is_available ? "Live" : "Off"}</AdminBadge>
+                    <AdminBadge tone={court.is_available ? "ok" : "idle"}>
+                      {court.is_available ? "Live" : "Off"}
+                    </AdminBadge>
                   </span>
                 </div>
                 <div className="ah-court-body">
@@ -180,9 +196,7 @@ function CourtsInner() {
                       <Switch
                         checked={court.is_available}
                         disabled={busy === court.id}
-                        onCheckedChange={(v) =>
-                          run(court, () => setCourtAvailability(court.id, v))
-                        }
+                        onCheckedChange={(v) => run(court, () => setCourtAvailability(court.id, v))}
                       />
                       Bookable
                     </label>
@@ -224,7 +238,12 @@ function CourtsInner() {
       </div>
 
       {slotsFor && (
-        <SlotsDialog key={slotsFor.id} court={slotsFor} open onOpenChange={(open) => !open && setSlotsFor(null)} />
+        <SlotsDialog
+          key={slotsFor.id}
+          court={slotsFor}
+          open
+          onOpenChange={(open) => !open && setSlotsFor(null)}
+        />
       )}
 
       {formOpen && formArenaId && (

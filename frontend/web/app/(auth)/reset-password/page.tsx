@@ -25,7 +25,6 @@ import { ApiError } from "@/services/api";
 import { forgotPassword, resetPassword } from "@/services/auth";
 import { cn } from "@/lib/utils";
 
-
 /** The same checks the server makes (validate_password_strength). */
 const RULES: { label: string; ok: (p: string) => boolean }[] = [
   { label: "At least 8 characters", ok: (p) => p.length >= 8 },
@@ -64,7 +63,8 @@ function ResetPasswordInner() {
       setStep(2);
     },
     onResend: () => {
-      if (!email.trim()) return Promise.reject(new ApiError("Enter your email address first.", 422));
+      if (!email.trim())
+        return Promise.reject(new ApiError("Enter your email address first.", 422));
       return forgotPassword(email.trim());
     },
   });
@@ -152,10 +152,16 @@ function ResetPasswordInner() {
               return (
                 <li
                   key={r.label}
-                  className={cn("flex items-center gap-2 text-sm", ok ? "text-foreground" : "text-muted-foreground")}
+                  className={cn(
+                    "flex items-center gap-2 text-sm",
+                    ok ? "text-foreground" : "text-muted-foreground",
+                  )}
                 >
                   {ok ? (
-                    <Check className="size-4 shrink-0 text-(--ok-text,#5d770b)" aria-hidden="true" />
+                    <Check
+                      className="size-4 shrink-0 text-(--ok-text,#5d770b)"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <X className="size-4 shrink-0" aria-hidden="true" />
                   )}
@@ -183,7 +189,12 @@ function ResetPasswordInner() {
 
           {error && <FormMessage>{error}</FormMessage>}
 
-          <Button type="submit" size="lg" disabled={submitting || !rulesOk || !matches} className="h-11 w-full">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={submitting || !rulesOk || !matches}
+            className="h-11 w-full"
+          >
             {submitting ? "Saving…" : "Set new password"}
           </Button>
           <Button
@@ -209,8 +220,8 @@ function ResetPasswordInner() {
       <p className="mt-1 text-sm text-muted-foreground">
         {emailFromLink ? (
           <>
-            We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span> if it is
-            registered. It works for 10 minutes.{" "}
+            We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>{" "}
+            if it is registered. It works for 10 minutes.{" "}
             {/* the tap area is a 44px pseudo-element, so the link keeps the line's height */}
             <Link
               href="/forgot-password"
@@ -248,11 +259,18 @@ function ResetPasswordInner() {
 
         {entry.boxes}
 
-        <Button type="submit" size="lg" disabled={!entry.ready || !email.trim()} className="h-11 w-full">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={!entry.ready || !email.trim()}
+          className="h-11 w-full"
+        >
           Continue
         </Button>
 
-        <div className="flex items-center justify-center text-sm text-muted-foreground">{entry.resendLink}</div>
+        <div className="flex items-center justify-center text-sm text-muted-foreground">
+          {entry.resendLink}
+        </div>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

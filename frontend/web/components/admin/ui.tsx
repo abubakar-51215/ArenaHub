@@ -53,7 +53,11 @@ export function AdminBadge({
   children?: React.ReactNode;
 }) {
   const t = tone ?? (status ? (TONE[status] ?? "idle") : "idle");
-  return <span className={cn("ah-badge", `ah-b-${t}`)}>{children ?? (status ? statusLabel(status) : null)}</span>;
+  return (
+    <span className={cn("ah-badge", `ah-b-${t}`)}>
+      {children ?? (status ? statusLabel(status) : null)}
+    </span>
+  );
 }
 
 /* ---- tag, avatar ------------------------------------------------------------ */
@@ -132,7 +136,13 @@ export function AdminKpi({
       <p className="ah-eyebrow">{label}</p>
       <div
         className={cn("ah-metric", size === "lg" && "is-lg")}
-        style={tone === "wait" ? { color: "var(--wait-text)" } : tone === "off" ? { color: "var(--off-text)" } : undefined}
+        style={
+          tone === "wait"
+            ? { color: "var(--wait-text)" }
+            : tone === "off"
+              ? { color: "var(--off-text)" }
+              : undefined
+        }
       >
         {value}
       </div>
@@ -145,7 +155,13 @@ export function AdminKpi({
 export function AdminEmpty({ children }: { children: React.ReactNode }) {
   return (
     <div className="ah-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        aria-hidden="true"
+      >
         <rect x="3" y="4" width="18" height="16" rx="3" />
         <path d="M3 9h18M8 14h8" strokeLinecap="round" />
       </svg>
@@ -180,7 +196,12 @@ export function AdminTableFoot({
       </span>
       {pages.length > 0 && onPage && page && pageCount && (
         <div className="ah-pager" data-pager>
-          <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          <button
+            type="button"
+            aria-label="Previous page"
+            disabled={page <= 1}
+            onClick={() => onPage(page - 1)}
+          >
             ‹
           </button>
           {pages.map((p, i) =>
@@ -216,7 +237,9 @@ export function AdminTableFoot({
 
 function pagerItems(page: number, count: number): (number | "…")[] {
   if (count <= 5) return Array.from({ length: count }, (_, i) => i + 1);
-  const set = new Set([1, 2, 3, page - 1, page, page + 1, count].filter((p) => p >= 1 && p <= count));
+  const set = new Set(
+    [1, 2, 3, page - 1, page, page + 1, count].filter((p) => p >= 1 && p <= count),
+  );
   const sorted = [...set].sort((a, b) => a - b);
   const out: (number | "…")[] = [];
   sorted.forEach((p, i) => {
@@ -227,6 +250,12 @@ function pagerItems(page: number, count: number): (number | "…")[] {
 }
 
 /** Field wrapper: prototype `.field` (label above control, 6px gap). */
-export function AdminField({ children, className }: { children: React.ReactNode; className?: string }) {
+export function AdminField({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return <div className={cn("ah-field", className)}>{children}</div>;
 }

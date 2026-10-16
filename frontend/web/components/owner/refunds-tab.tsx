@@ -11,8 +11,22 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AdminBadge } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useOwnerRefunds } from "@/hooks/useOwnerRefunds";
 import { formatDateShort, formatRs, formatTime, plural, joinParts } from "@/lib/format";
 import { ApiError } from "@/services/api";
@@ -30,12 +44,15 @@ function when(ts: string): string {
   const [date, time] = ts.slice(0, 19).split("T");
   return `${formatDateShort(date)}, ${formatTime(time ?? "00:00:00")}`;
 }
-const bookingWhen = (r: OwnerRefund) => `${formatDateShort(r.booking_date)} · ${formatTime(r.start_time)} – ${formatTime(r.end_time)}`;
+const bookingWhen = (r: OwnerRefund) =>
+  `${formatDateShort(r.booking_date)} · ${formatTime(r.start_time)} – ${formatTime(r.end_time)}`;
 
 function StatusBadge({ r }: { r: OwnerRefund }) {
   if (r.status === "pending") return <AdminBadge tone="wait">Waiting for you</AdminBadge>;
   if (r.status === "failed") return <AdminBadge tone="off">Failed</AdminBadge>;
-  return <AdminBadge tone="ok">Paid{r.processed_at ? ` · ${when(r.processed_at)}` : ""}</AdminBadge>;
+  return (
+    <AdminBadge tone="ok">Paid{r.processed_at ? ` · ${when(r.processed_at)}` : ""}</AdminBadge>
+  );
 }
 
 export function RefundsTab({
@@ -69,9 +86,15 @@ export function RefundsTab({
     setBusy(true);
     try {
       const result = await markRefundPaid(pick.id);
-      onToast(result.already_processed ? "Already marked as paid." : "Marked as paid. The player has been told.");
+      onToast(
+        result.already_processed
+          ? "Already marked as paid."
+          : "Marked as paid. The player has been told.",
+      );
     } catch (err) {
-      onToast(err instanceof ApiError ? err.message : "Could not mark it as paid. Please try again.");
+      onToast(
+        err instanceof ApiError ? err.message : "Could not mark it as paid. Please try again.",
+      );
     } finally {
       sending.current = false;
       setBusy(false);
@@ -83,16 +106,34 @@ export function RefundsTab({
   }
 
   return (
-    <div id="panel-refunds" role="tabpanel" aria-labelledby="tab-refunds" tabIndex={-1} ref={panel} className="ah-rf-panel">
+    <div
+      id="panel-refunds"
+      role="tabpanel"
+      aria-labelledby="tab-refunds"
+      tabIndex={-1}
+      ref={panel}
+      className="ah-rf-panel"
+    >
       <div className="ah-rf-bar">
         <div className="ah-seg" role="group" aria-label="Show refunds">
           {FILTERS.map((f) => (
-            <Button key={f.key} size="sm" variant={filter === f.key ? "default" : "ghost"} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+            <Button
+              key={f.key}
+              size="sm"
+              variant={filter === f.key ? "default" : "ghost"}
+              aria-pressed={filter === f.key}
+              onClick={() => setFilter(f.key)}
+            >
               {f.label}
             </Button>
           ))}
         </div>
-        <select className="ah-select" aria-label="Arena" value={arenaId} onChange={(e) => onArena(e.target.value)}>
+        <select
+          className="ah-select"
+          aria-label="Arena"
+          value={arenaId}
+          onChange={(e) => onArena(e.target.value)}
+        >
           <option value="">All arenas</option>
           {arenas.map((a) => (
             <option key={a.id} value={a.id}>
@@ -118,13 +159,18 @@ export function RefundsTab({
         <>
           {filter !== "processed" && (
             <p className="ah-rf-note" role="note">
-              These players cancelled after paying by bank transfer. Send the money to the player, then tap <b>Mark as paid</b>. The player gets a message.
+              These players cancelled after paying by bank transfer. Send the money to the player,
+              then tap <b>Mark as paid</b>. The player gets a message.
             </p>
           )}
           {rows.length === 0 ? (
             <div className="ah-rf-empty">
               <h3>{filter === "pending" ? "No refunds waiting." : "Nothing here."}</h3>
-              <p>{filter === "pending" ? "When a player cancels after paying, the refund shows up here." : "No refunds match this filter."}</p>
+              <p>
+                {filter === "pending"
+                  ? "When a player cancels after paying, the refund shows up here."
+                  : "No refunds match this filter."}
+              </p>
             </div>
           ) : (
             <>
@@ -164,7 +210,10 @@ export function RefundsTab({
                           {r.can_mark_paid && (
                             <Button size="sm" onClick={() => setPick(r)}>
                               Mark as paid
-                              <span className="sr-only"> for {r.player_name}, {r.booking_code}</span>
+                              <span className="sr-only">
+                                {" "}
+                                for {r.player_name}, {r.booking_code}
+                              </span>
                             </Button>
                           )}
                         </TableCell>
@@ -186,7 +235,8 @@ export function RefundsTab({
           <DialogHeader>
             <DialogTitle>Mark this refund as paid?</DialogTitle>
             <DialogDescription id="refund-dialog-text">
-              Only do this after you have sent the money. The player will be told it is done. This cannot be undone.
+              Only do this after you have sent the money. The player will be told it is done. This
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {pick && (

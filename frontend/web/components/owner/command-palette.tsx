@@ -20,17 +20,31 @@ import { listCourts } from "@/services/courts";
 type Result = { id: string; group: string; label: string; hint: string; href: string };
 
 const PAGES: Result[] = OWNER_NAV.flatMap((g) =>
-  g.items.map((i) => ({ id: `page:${i.href}`, group: "Pages", label: i.label, hint: "", href: i.href })),
+  g.items.map((i) => ({
+    id: `page:${i.href}`,
+    group: "Pages",
+    label: i.label,
+    hint: "",
+    href: i.href,
+  })),
 );
 
-export function OwnerCommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function OwnerCommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    if (open) openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (open)
+      openerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }, [open]);
 
   const { data: arenaPage } = useMyArenas();
@@ -75,7 +89,9 @@ export function OwnerCommandPalette({ open, onOpenChange }: { open: boolean; onO
 
   useEffect(() => setSel(0), [q]);
   useEffect(() => {
-    listRef.current?.querySelector<HTMLElement>(`[data-index="${sel}"]`)?.scrollIntoView({ block: "nearest" });
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-index="${sel}"]`)
+      ?.scrollIntoView({ block: "nearest" });
   }, [sel]);
 
   const close = (o: boolean) => {
@@ -114,7 +130,9 @@ export function OwnerCommandPalette({ open, onOpenChange }: { open: boolean; onO
             openerRef.current?.focus();
           }}
         >
-          <DialogPrimitive.Title className="sr-only">Search the owner console</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">
+            Search the owner console
+          </DialogPrimitive.Title>
           <input
             className="ah-cmdk-input"
             placeholder="Jump to a page, arena or court…"
@@ -128,13 +146,23 @@ export function OwnerCommandPalette({ open, onOpenChange }: { open: boolean; onO
             aria-activedescendant={results[sel] ? `ah-cmdk-${sel}` : undefined}
             aria-autocomplete="list"
           />
-          <div className="ah-cmdk-list" id="ah-cmdk-list" role="listbox" ref={listRef} aria-label="Results">
+          <div
+            className="ah-cmdk-list"
+            id="ah-cmdk-list"
+            role="listbox"
+            ref={listRef}
+            aria-label="Results"
+          >
             {results.map((r, i) => {
               const head = r.group !== lastGroup ? r.group : null;
               lastGroup = r.group;
               return (
                 <div key={r.id} role="presentation">
-                  {head && <p className="ah-cmdk-group" role="presentation">{head}</p>}
+                  {head && (
+                    <p className="ah-cmdk-group" role="presentation">
+                      {head}
+                    </p>
+                  )}
                   <button
                     type="button"
                     id={`ah-cmdk-${i}`}
@@ -146,7 +174,14 @@ export function OwnerCommandPalette({ open, onOpenChange }: { open: boolean; onO
                     onMouseMove={() => setSel(i)}
                     onClick={() => choose(r)}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      aria-hidden="true"
+                    >
                       <path d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
                     <span className="ah-cmdk-label">{r.label}</span>

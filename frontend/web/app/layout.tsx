@@ -36,7 +36,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ArenaHub",
     description: "Find a court. Get a game.",
-    images: [{ url: "/og-share.png", width: 1200, height: 630, alt: "ArenaHub. Find a court. Get a game." }],
+    images: [
+      {
+        url: "/og-share.png",
+        width: 1200,
+        height: 630,
+        alt: "ArenaHub. Find a court. Get a game.",
+      },
+    ],
   },
   twitter: { card: "summary_large_image", images: ["/og-share.png"] },
 };
@@ -52,9 +59,7 @@ export default function RootLayout({
         {/* applies the admin dark theme before first paint, /admin routes only */}
         <script dangerouslySetInnerHTML={{ __html: ADMIN_THEME_SCRIPT }} />
       </head>
-      <body
-        className={`${archivo.variable} ${interTight.variable} antialiased`}
-      >
+      <body className={`${archivo.variable} ${interTight.variable} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

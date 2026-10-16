@@ -30,14 +30,25 @@ export function OwnerAlerts() {
           className={unread ? "ah-icon-btn has-dot" : "ah-icon-btn"}
           aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            aria-hidden="true"
+          >
             <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" />
             <path d="M13.7 21a2 2 0 0 1-3.4 0" />
           </svg>
         </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content className="ah-pop" align="end" sideOffset={8} aria-label="Notifications">
+        <PopoverPrimitive.Content
+          className="ah-pop"
+          align="end"
+          sideOffset={8}
+          aria-label="Notifications"
+        >
           <p className="ah-pop-head">Notifications</p>
           {isLoading && <p className="ah-pop-note">Loading…</p>}
           {isError && <p className="ah-pop-note is-error">Couldn&apos;t load notifications.</p>}
@@ -54,7 +65,10 @@ export function OwnerAlerts() {
                 setOpen(false);
               }}
             >
-              <span className={n.read_at ? "ah-pop-dot is-read" : "ah-pop-dot"} aria-hidden="true" />
+              <span
+                className={n.read_at ? "ah-pop-dot is-read" : "ah-pop-dot"}
+                aria-hidden="true"
+              />
               <span className="ah-pop-text">
                 <b>{n.title}</b>
                 <small>

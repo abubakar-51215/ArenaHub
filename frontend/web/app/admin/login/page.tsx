@@ -40,7 +40,15 @@ const LINES = DOTS.flatMap((p, i) =>
 );
 
 const EyeIcon = (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+    aria-hidden="true"
+  >
     <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
@@ -114,7 +122,9 @@ export default function AdminLoginPage() {
           <AdminCodeStep
             challenge={challenge}
             fallbackEmail={email}
-            onVerify={async (code) => finish(await verifyAdminCode(challenge.challenge_token, code))}
+            onVerify={async (code) =>
+              finish(await verifyAdminCode(challenge.challenge_token, code))
+            }
             onBack={backToPassword}
           />
         ) : (
@@ -265,7 +275,8 @@ function AdminCodeStep({
     <>
       <h1 className="ah-h1 ah-auth-title">Verification code</h1>
       <p className="ah-mute" style={{ margin: "0 0 28px", fontSize: 14 }}>
-        We emailed a 6-digit code to <b style={{ color: "var(--text)" }}>{sentTo}</b>. It works for 10 minutes.
+        We emailed a 6-digit code to <b style={{ color: "var(--text)" }}>{sentTo}</b>. It works for
+        10 minutes.
       </p>
       <form
         onSubmit={(e) => {

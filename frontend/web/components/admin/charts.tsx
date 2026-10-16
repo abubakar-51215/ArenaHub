@@ -24,7 +24,13 @@ export function Sparkline({ values }: { values: number[] }) {
   return (
     <svg className="ah-spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true">
       <path d={s.area} fill="var(--lime-wash)" />
-      <path d={s.line} fill="none" stroke="var(--lime-deep)" strokeWidth="1.8" strokeLinejoin="round" />
+      <path
+        d={s.line}
+        fill="none"
+        stroke="var(--lime-deep)"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -50,28 +56,64 @@ export function LineChart({
   const b = prev && prev.length > 1 ? series(prev, W, H, P) : null;
   const last = a.pts[a.pts.length - 1];
   return (
-    <svg className="ah-chart-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Bookings per day">
+    <svg
+      className="ah-chart-svg"
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label="Bookings per day"
+    >
       {[0, 1, 2, 3, 4].map((i) => {
         const y = P + (i * (H - P * 2)) / 4;
         return <line key={i} x1={P} x2={W - P} y1={y} y2={y} stroke="var(--line-soft)" />;
       })}
       <path d={a.area} fill="var(--lime-wash)" opacity=".8" />
-      {b && <path d={b.line} fill="none" stroke="var(--line)" strokeWidth="2" strokeDasharray="4 4" />}
+      {b && (
+        <path d={b.line} fill="none" stroke="var(--line)" strokeWidth="2" strokeDasharray="4 4" />
+      )}
       <path d={a.line} fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" />
       {a.pts.map((p, i) => (
-        <circle key={i} cx={p[0]} cy={p[1]} r="2.8" fill="var(--card)" stroke="var(--ink)" strokeWidth="2" />
+        <circle
+          key={i}
+          cx={p[0]}
+          cy={p[1]}
+          r="2.8"
+          fill="var(--card)"
+          stroke="var(--ink)"
+          strokeWidth="2"
+        />
       ))}
       {last && (
         <>
-          <circle cx={last[0]} cy={last[1]} r="5.5" fill="var(--lime)" stroke="var(--ink)" strokeWidth="2" />
-          <text x={last[0] - 8} y={last[1] - 14} textAnchor="end" fontSize="12" fontWeight="700" fill="var(--text)">
+          <circle
+            cx={last[0]}
+            cy={last[1]}
+            r="5.5"
+            fill="var(--lime)"
+            stroke="var(--ink)"
+            strokeWidth="2"
+          />
+          <text
+            x={last[0] - 8}
+            y={last[1] - 14}
+            textAnchor="end"
+            fontSize="12"
+            fontWeight="700"
+            fill="var(--text)"
+          >
             {tip}
           </text>
         </>
       )}
       {labels.map((l, i) =>
         l && a.pts[i] ? (
-          <text key={i} x={a.pts[i][0]} y={H - 6} textAnchor="middle" fontSize="12" fill="var(--muted-foreground)">
+          <text
+            key={i}
+            x={a.pts[i][0]}
+            y={H - 6}
+            textAnchor="middle"
+            fontSize="12"
+            fill="var(--muted-foreground)"
+          >
             {l}
           </text>
         ) : null,
@@ -104,7 +146,14 @@ export function Donut({
   let off = 0;
   return (
     <div className="ah-row" style={{ gap: 22, alignItems: "center" }}>
-      <svg width="132" height="132" viewBox="0 0 132 132" style={{ flex: "none" }} role="img" aria-label={label}>
+      <svg
+        width="132"
+        height="132"
+        viewBox="0 0 132 132"
+        style={{ flex: "none" }}
+        role="img"
+        aria-label={label}
+      >
         {shares.map((s, i) => {
           // two shares can carry the same label for a moment (names still loading): key by place too
           const len = (C * s.pct) / 100;
@@ -125,10 +174,25 @@ export function Donut({
           off += len;
           return seg;
         })}
-        <text x="66" y="63" textAnchor="middle" fontFamily="var(--font-archivo), sans-serif" fontSize="20" fontWeight="700" fill="var(--text)">
+        <text
+          x="66"
+          y="63"
+          textAnchor="middle"
+          fontFamily="var(--font-archivo), sans-serif"
+          fontSize="20"
+          fontWeight="700"
+          fill="var(--text)"
+        >
           {centre ?? total.toLocaleString("en-US")}
         </text>
-        <text x="66" y="78" textAnchor="middle" fontSize="12" fill="var(--muted-foreground)" letterSpacing="1">
+        <text
+          x="66"
+          y="78"
+          textAnchor="middle"
+          fontSize="12"
+          fill="var(--muted-foreground)"
+          letterSpacing="1"
+        >
           {caption}
         </text>
       </svg>
@@ -146,13 +210,22 @@ export function Donut({
 }
 
 /** "Network utilisation by hour": prototype .bars (132px tall, peak bar ink). */
-export function HourBars({ data, peakIdx }: { data: { label: string; value: number; title: string }[]; peakIdx: number }) {
+export function HourBars({
+  data,
+  peakIdx,
+}: {
+  data: { label: string; value: number; title: string }[];
+  peakIdx: number;
+}) {
   const max = Math.max(...data.map((d) => d.value), 0) || 1;
   return (
     <div className="ah-bars">
       {data.map((d, i) => (
         <div key={`${d.label}-${i}`} className="ah-bar-col" title={d.title}>
-          <div className={cn("ah-bar", i === peakIdx && "is-peak")} style={{ height: `${(d.value / max) * 100}%` }} />
+          <div
+            className={cn("ah-bar", i === peakIdx && "is-peak")}
+            style={{ height: `${(d.value / max) * 100}%` }}
+          />
           <div className="ah-bar-lbl">{d.label}</div>
         </div>
       ))}
@@ -177,7 +250,10 @@ export function CityBars({ items }: { items: { city: string; bookings: number }[
               {plural(c.bookings, "booking")} · {Math.round(share)}%
             </span>
             <div className="ah-city-track" aria-hidden="true">
-              <i className={i === 0 && c.bookings > 0 ? "is-top" : undefined} style={{ width: `${share}%` }} />
+              <i
+                className={i === 0 && c.bookings > 0 ? "is-top" : undefined}
+                style={{ width: `${share}%` }}
+              />
             </div>
           </li>
         );
@@ -187,7 +263,11 @@ export function CityBars({ items }: { items: { city: string; bookings: number }[
 }
 
 /** "Top arenas": prototype .rank list with a value bar under each row. */
-export function RankList({ items }: { items: { key: string; name: string; sub: string; value: string; amount: number }[] }) {
+export function RankList({
+  items,
+}: {
+  items: { key: string; name: string; sub: string; value: string; amount: number }[];
+}) {
   const max = Math.max(...items.map((a) => a.amount), 0) || 1;
   return (
     <div className="ah-rank">

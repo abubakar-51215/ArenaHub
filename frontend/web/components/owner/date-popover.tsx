@@ -10,7 +10,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
-import { addDaysIso, addMonthsIso, monthGrid, monthTitle, shiftMonth, weekdayIndex } from "@/lib/karachi-date";
+import {
+  addDaysIso,
+  addMonthsIso,
+  monthGrid,
+  monthTitle,
+  shiftMonth,
+  weekdayIndex,
+} from "@/lib/karachi-date";
 import { cn } from "@/lib/utils";
 
 const WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -71,8 +78,20 @@ export function DatePopover({
       }}
     >
       <PopoverPrimitive.Trigger asChild>
-        <button type="button" className="ah-icon-btn" aria-label="Choose a date" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+        <button
+          type="button"
+          className="ah-icon-btn"
+          aria-label="Choose a date"
+          aria-haspopup="dialog"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <rect x="3.5" y="5" width="17" height="15" rx="3" />
             <path d="M3.5 10h17M8 3v4M16 3v4" />
           </svg>
@@ -91,19 +110,48 @@ export function DatePopover({
           }}
         >
           <div className="ah-datepop-head">
-            <button type="button" className="ah-icon-btn" aria-label="Previous month" onClick={() => move(shiftMonth(focusIso, -1))}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <button
+              type="button"
+              className="ah-icon-btn"
+              aria-label="Previous month"
+              onClick={() => move(shiftMonth(focusIso, -1))}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
                 <path d="m15 6-6 6 6 6" />
               </svg>
             </button>
             <b aria-live="polite">{monthTitle(month)}</b>
-            <button type="button" className="ah-icon-btn" aria-label="Next month" onClick={() => move(shiftMonth(focusIso, 1))}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <button
+              type="button"
+              className="ah-icon-btn"
+              aria-label="Next month"
+              onClick={() => move(shiftMonth(focusIso, 1))}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
                 <path d="m9 6 6 6-6 6" />
               </svg>
             </button>
           </div>
-          <div className="ah-datepop-grid" role="grid" aria-label={monthTitle(month)} onKeyDown={onKey}>
+          <div
+            className="ah-datepop-grid"
+            role="grid"
+            aria-label={monthTitle(month)}
+            onKeyDown={onKey}
+          >
             {WEEK.map((w) => (
               <span key={w} className="ah-datepop-dow" role="columnheader" aria-hidden="true">
                 {w}

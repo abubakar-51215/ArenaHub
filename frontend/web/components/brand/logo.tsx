@@ -17,9 +17,18 @@ export function Logo({
   const dark = tone === "dark";
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <ArenaMark tone={dark ? "dark" : "light"} size={32} title={compact ? "ArenaHub" : undefined} />
+      <ArenaMark
+        tone={dark ? "dark" : "light"}
+        size={32}
+        title={compact ? "ArenaHub" : undefined}
+      />
       {!compact && (
-        <span className={cn("font-display text-xl leading-none font-extrabold tracking-tight", dark ? "text-paper" : "text-ink")}>
+        <span
+          className={cn(
+            "font-display text-xl leading-none font-extrabold tracking-tight",
+            dark ? "text-paper" : "text-ink",
+          )}
+        >
           ArenaHub
         </span>
       )}

@@ -62,7 +62,8 @@ export function CodeBoxes({
           )}
           onChange={(e) => {
             const v = e.target.value;
-            if (v.length > 1) setFrom(i, v); // autofill or a fast typist
+            if (v.length > 1)
+              setFrom(i, v); // autofill or a fast typist
             else if (/^\d$/.test(v)) {
               const next = digits.slice();
               next[i] = v;

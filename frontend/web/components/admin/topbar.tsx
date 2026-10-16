@@ -26,16 +26,20 @@ export function useIsDark() {
  * Below 1024px the slim bar is used instead: menu button, brand mark and
  * the same search, theme and alerts controls (AdminSlimActions).
  */
-export function AdminTopbar({
-  onSearch,
-}: {
-  onSearch?: () => void;
-}) {
+export function AdminTopbar({ onSearch }: { onSearch?: () => void }) {
   const dark = useIsDark();
   return (
     <header className="ah-topbar ah-topbar-desk">
       <button type="button" className="ah-searchbar" onClick={onSearch}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
         </svg>
@@ -52,8 +56,20 @@ export function AdminTopbar({
 
 export function ThemeButton({ dark }: { dark: boolean }) {
   return (
-    <button type="button" className="ah-icon-btn" aria-label="Switch theme" aria-pressed={dark} onClick={() => toggleAdminTheme()}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+    <button
+      type="button"
+      className="ah-icon-btn"
+      aria-label="Switch theme"
+      aria-pressed={dark}
+      onClick={() => toggleAdminTheme()}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        aria-hidden="true"
+      >
         <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
       </svg>
     </button>
@@ -70,7 +86,13 @@ export function AdminSlimActions({ onSearch }: { onSearch: () => void }) {
   return (
     <div className="ah-slim-actions">
       <button type="button" className="ah-icon-btn" aria-label="Search" onClick={onSearch}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          aria-hidden="true"
+        >
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
         </svg>

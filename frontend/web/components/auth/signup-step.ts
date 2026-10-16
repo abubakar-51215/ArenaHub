@@ -8,7 +8,9 @@ export type SavedStep = { email: string; sentTo: string; codeSent: boolean; at: 
 
 export function readSavedStep(): SavedStep | null {
   try {
-    const saved = JSON.parse(window.sessionStorage.getItem(SAVED_STEP) ?? "null") as SavedStep | null;
+    const saved = JSON.parse(
+      window.sessionStorage.getItem(SAVED_STEP) ?? "null",
+    ) as SavedStep | null;
     return saved && Date.now() - saved.at < 10 * 60 * 1000 ? saved : null;
   } catch {
     return null;

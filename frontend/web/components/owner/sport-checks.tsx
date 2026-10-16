@@ -20,9 +20,14 @@ export function SportChecks({
     ...SPORTS.map((s) => ({ value: s.value as string, label: s.label })),
     ...otherSports(value).map((v) => ({ value: v, label: v })),
   ];
-  const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  const toggle = (v: string) =>
+    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
   return (
-    <div role="group" aria-label="Sports" className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3">
+    <div
+      role="group"
+      aria-label="Sports"
+      className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3"
+    >
       {options.map((o) => (
         <label
           key={o.value}

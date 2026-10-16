@@ -14,7 +14,8 @@ export function useFormDialog(): [boolean, (open: boolean) => void] {
 
   const setOpen = useCallback((next: boolean) => {
     if (next) {
-      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      opener.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
     } else {
       const el = opener.current;
       opener.current = null;

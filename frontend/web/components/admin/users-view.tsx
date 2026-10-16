@@ -84,9 +84,7 @@ export function UsersView({
     <>
       <PageHeader
         title={title}
-        subtitle={
-          noun ? (data ? plural(data.total, noun[0], noun[1]) : undefined) : subtitle
-        }
+        subtitle={noun ? (data ? plural(data.total, noun[0], noun[1]) : undefined) : subtitle}
       >
         <Input
           placeholder="Search name or email"

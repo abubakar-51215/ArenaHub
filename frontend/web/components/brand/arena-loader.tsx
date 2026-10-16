@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-import { BALL_FACES, BALL_KEYS, LOADER_CSS, MARK_INNER } from "@/components/brand/arena-mark.generated";
+import {
+  BALL_FACES,
+  BALL_KEYS,
+  LOADER_CSS,
+  MARK_INNER,
+} from "@/components/brand/arena-mark.generated";
 import { useAuthStore } from "@/store/auth";
 
 const RING2 =
@@ -21,7 +26,10 @@ function shuffled<T>(a: readonly T[]): T[] {
 function loaderHtml(size: number, dark: boolean, order: readonly string[]): string {
   const run = dark ? "#C4F546" : "#7FA30F";
   const faces = order
-    .map((k, i) => `<svg class="bm-lf bm-k${i}" style="--k:${i}" viewBox="-9 -9 18 18" width="18" height="18" aria-hidden="true">${BALL_FACES[k]}</svg>`)
+    .map(
+      (k, i) =>
+        `<svg class="bm-lf bm-k${i}" style="--k:${i}" viewBox="-9 -9 18 18" width="18" height="18" aria-hidden="true">${BALL_FACES[k]}</svg>`,
+    )
     .join("");
   return (
     `<div class="bm-ldbox" style="transform:scale(${size / 120})"><svg class="bm-hsvg" viewBox="0 0 120 120" width="120" height="120" overflow="visible" aria-hidden="true">${dark ? MARK_INNER.loaderDark : MARK_INNER.loaderLight}` +
@@ -80,8 +88,16 @@ export function FirstLoadLoader() {
   return (
     <div className="am-firstload" data-phase={phase} role="status" aria-label="Loading ArenaHub">
       <style dangerouslySetInnerHTML={{ __html: LOADER_CSS }} />
-      <div className="am-fl-light" dangerouslySetInnerHTML={{ __html: loaderHtml(72, false, order) }} style={box} />
-      <div className="am-fl-dark" dangerouslySetInnerHTML={{ __html: loaderHtml(72, true, order) }} style={box} />
+      <div
+        className="am-fl-light"
+        dangerouslySetInnerHTML={{ __html: loaderHtml(72, false, order) }}
+        style={box}
+      />
+      <div
+        className="am-fl-dark"
+        dangerouslySetInnerHTML={{ __html: loaderHtml(72, true, order) }}
+        style={box}
+      />
     </div>
   );
 }

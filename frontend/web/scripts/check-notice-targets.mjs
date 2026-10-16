@@ -24,5 +24,7 @@ for (const [event, data, want] of cases) {
     console.error(`FAIL ${event}: got ${got}, want ${want}`);
   }
 }
-console.log(bad ? `${bad} of ${cases.length} failed` : `notice targets: ${cases.length} cases pass`);
+console.log(
+  bad ? `${bad} of ${cases.length} failed` : `notice targets: ${cases.length} cases pass`,
+);
 process.exit(bad ? 1 : 0);

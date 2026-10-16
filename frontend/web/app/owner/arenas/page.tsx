@@ -13,7 +13,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQueries } from "@tanstack/react-query";
 
-import { AdminAvatar, AdminBadge, AdminCard, AdminEmpty, AdminTableFoot } from "@/components/admin/ui";
+import {
+  AdminAvatar,
+  AdminBadge,
+  AdminCard,
+  AdminEmpty,
+  AdminTableFoot,
+} from "@/components/admin/ui";
 import { ArenaForm } from "@/components/owner/arena-form";
 import { PageHeader } from "@/components/owner/page-header";
 import { ActionButton } from "@/components/ui/action-button";
@@ -62,10 +68,16 @@ function ArenaStatus({ a, lock }: { a: Arena; lock: Lock }) {
 /** The admin's note, a rejection reason, or the switched-off line. */
 function ArenaNote({ a, lock }: { a: Arena; lock: Lock }) {
   if (lock.removed)
-    return <div className="ah-note ah-note-off">Removed by admin{a.deleted_reason ? `: ${a.deleted_reason}` : ""}</div>;
+    return (
+      <div className="ah-note ah-note-off">
+        Removed by admin{a.deleted_reason ? `: ${a.deleted_reason}` : ""}
+      </div>
+    );
   if (lock.suspended)
     return (
-      <div className="ah-note ah-note-off">Suspended by admin{a.suspended_reason ? `: ${a.suspended_reason}` : ""}</div>
+      <div className="ah-note ah-note-off">
+        Suspended by admin{a.suspended_reason ? `: ${a.suspended_reason}` : ""}
+      </div>
     );
   if (a.status === "rejected" && a.rejection_reason)
     return <div className="ah-note ah-note-off">Rejected: {a.rejection_reason}</div>;
@@ -85,7 +97,9 @@ export default function ArenasPage() {
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return arenas;
-    return arenas.filter((a) => [a.name, a.city, a.area ?? "", a.address].some((s) => s.toLowerCase().includes(q)));
+    return arenas.filter((a) =>
+      [a.name, a.city, a.area ?? "", a.address].some((s) => s.toLowerCase().includes(q)),
+    );
   }, [arenas, search]);
 
   // the month so far, for occupancy and revenue
@@ -104,14 +118,19 @@ export default function ArenasPage() {
   const occupancyQueries = useQueries({
     queries: arenas.map((a) => ({
       queryKey: ["dashboard-analytics", month.from, month.to, "", a.id],
-      queryFn: () => getDashboardAnalytics({ dateFrom: month.from, dateTo: month.to, arenaId: a.id }),
+      queryFn: () =>
+        getDashboardAnalytics({ dateFrom: month.from, dateTo: month.to, arenaId: a.id }),
     })),
   });
   const revenue = useRevenue({ dateFrom: month.from, dateTo: month.to });
 
   const courtCount = new Map(arenas.map((a, i) => [a.id, courtQueries[i]?.data?.length]));
-  const occupancy = new Map(arenas.map((a, i) => [a.id, occupancyQueries[i]?.data?.occupancy_rate]));
-  const revenueByArena = new Map((revenue.data?.breakdown_by_arena ?? []).map((r) => [r.id, r.amount]));
+  const occupancy = new Map(
+    arenas.map((a, i) => [a.id, occupancyQueries[i]?.data?.occupancy_rate]),
+  );
+  const revenueByArena = new Map(
+    (revenue.data?.breakdown_by_arena ?? []).map((r) => [r.id, r.amount]),
+  );
 
   function openCreate() {
     setEditing(undefined);
@@ -124,7 +143,13 @@ export default function ArenasPage() {
 
   const actions = (a: Arena, lock: Lock) => (
     <div className="ah-row-actions">
-      <Button variant="ghost" size="sm" onClick={() => openEdit(a)} title={lock.locked ? lock.title : undefined} disabled={lock.locked}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => openEdit(a)}
+        title={lock.locked ? lock.title : undefined}
+        disabled={lock.locked}
+      >
         Edit
       </Button>
       <Button variant="ghost" size="sm" asChild>
@@ -151,7 +176,8 @@ export default function ArenasPage() {
           busy={deactivate.isPending && deactivate.variables === a.id}
           failed={deactivate.isError}
           onClick={() => {
-            if (confirm(`Deactivate “${a.name}”? It will be hidden from search.`)) deactivate.mutate(a.id);
+            if (confirm(`Deactivate “${a.name}”? It will be hidden from search.`))
+              deactivate.mutate(a.id);
           }}
         >
           Deactivate
@@ -185,7 +211,11 @@ export default function ArenasPage() {
     <>
       <PageHeader
         title="Arenas"
-        subtitle={data ? `${plural(arenas.length, "arena")}${arenas.length ? ` · ${[...new Set(arenas.map((a) => a.city))].join(", ")}` : ""}` : undefined}
+        subtitle={
+          data
+            ? `${plural(arenas.length, "arena")}${arenas.length ? ` · ${[...new Set(arenas.map((a) => a.city))].join(", ")}` : ""}`
+            : undefined
+        }
       >
         <Input
           className="ah-search"
@@ -196,7 +226,14 @@ export default function ArenasPage() {
           aria-label="Search arenas"
         />
         <Button className="ah-lime" onClick={openCreate}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           Add arena
@@ -248,7 +285,9 @@ export default function ArenasPage() {
                               <AdminAvatar name={a.name} />
                               <div className="min-w-0">
                                 <div className="ah-strong">{a.name}</div>
-                                {(a.area ?? a.address) && <div className="ah-sub">{a.area ?? a.address}</div>}
+                                {(a.area ?? a.address) && (
+                                  <div className="ah-sub">{a.area ?? a.address}</div>
+                                )}
                                 <ArenaNote a={a} lock={lock} />
                               </div>
                             </div>
@@ -288,7 +327,9 @@ export default function ArenasPage() {
                       <ArenaNote a={a} lock={lock} />
                       <div className="ah-card-line">
                         <span>
-                          {courtCount.get(a.id) != null ? plural(courtCount.get(a.id) as number, "court") : "—"}
+                          {courtCount.get(a.id) != null
+                            ? plural(courtCount.get(a.id) as number, "court")
+                            : "—"}
                         </span>
                         {money(a) === "—" ? (
                           <span className="ah-sub">No revenue in {month.label}</span>
@@ -316,7 +357,12 @@ export default function ArenasPage() {
       </div>
 
       {formOpen && (
-        <ArenaForm key={editing?.id ?? "new"} open={formOpen} onOpenChange={setFormOpen} arena={editing} />
+        <ArenaForm
+          key={editing?.id ?? "new"}
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          arena={editing}
+        />
       )}
     </>
   );

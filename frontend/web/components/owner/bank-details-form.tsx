@@ -107,7 +107,9 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
 
   return (
     <div className="ah-bank">
-      {list.length === 0 && !editing && <p className="ah-bank-none">No bank accounts yet for this arena.</p>}
+      {list.length === 0 && !editing && (
+        <p className="ah-bank-none">No bank accounts yet for this arena.</p>
+      )}
 
       {list.length > 0 && (
         <ul className="ah-bank-list">
@@ -165,7 +167,9 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
 
       {editing ? (
         <form onSubmit={onSubmit} className="ah-bank-form">
-          <p className="ah-eyebrow">{editing === "new" ? "Add bank account" : "Edit bank account"}</p>
+          <p className="ah-eyebrow">
+            {editing === "new" ? "Add bank account" : "Edit bank account"}
+          </p>
           <div className="ah-grid ah-g-2" style={{ gap: 14 }}>
             <div className="ah-field">
               <Label htmlFor={`bd-label-${arenaId}`}>Label (optional)</Label>
@@ -206,7 +210,11 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
             </div>
             <div className="ah-field">
               <Label htmlFor={`bd-iban-${arenaId}`}>IBAN (optional)</Label>
-              <Input id={`bd-iban-${arenaId}`} value={form.iban ?? ""} onChange={(e) => set("iban", e.target.value)} />
+              <Input
+                id={`bd-iban-${arenaId}`}
+                value={form.iban ?? ""}
+                onChange={(e) => set("iban", e.target.value)}
+              />
             </div>
             <div className="ah-field">
               <Label htmlFor={`bd-branch-${arenaId}`}>Branch code (optional)</Label>
@@ -236,7 +244,11 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
             />
           </div>
           <label className="ah-check">
-            <input type="checkbox" checked={!!form.is_default} onChange={(e) => set("is_default", e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={!!form.is_default}
+              onChange={(e) => set("is_default", e.target.checked)}
+            />
             Set as default (shown first at checkout)
           </label>
 

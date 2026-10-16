@@ -12,7 +12,11 @@ export const UNANSWERED_REVIEWS_KEY = ["owner-reviews-unanswered"] as const;
 
 /** Reviews waiting for the owner's reply; refreshes every minute, like the Refunds badge. */
 export function useUnansweredReviewCount() {
-  return useQuery({ queryKey: UNANSWERED_REVIEWS_KEY, queryFn: countUnansweredReviews, refetchInterval: 60_000 });
+  return useQuery({
+    queryKey: UNANSWERED_REVIEWS_KEY,
+    queryFn: countUnansweredReviews,
+    refetchInterval: 60_000,
+  });
 }
 
 export function useArenaReviews(arenaId: string | null, page = 1, pageSize = 20) {

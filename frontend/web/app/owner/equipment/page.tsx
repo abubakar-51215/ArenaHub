@@ -15,7 +15,14 @@ import { AdminBadge, AdminCard, AdminEmpty, AdminTag } from "@/components/admin/
 import { EquipmentForm } from "@/components/owner/equipment-form";
 import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useArenaParam } from "@/hooks/useArenaParam";
@@ -34,7 +41,10 @@ function EquipmentInner() {
   const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
   const queries = useQueries({
-    queries: scope.map((a) => ({ queryKey: ["equipment", a.id], queryFn: () => listEquipment(a.id) })),
+    queries: scope.map((a) => ({
+      queryKey: ["equipment", a.id],
+      queryFn: () => listEquipment(a.id),
+    })),
   });
   const loading = arenasLoading || queries.some((q) => q.isLoading);
   const failed = queries.some((q) => q.isError);
@@ -134,7 +144,14 @@ function EquipmentInner() {
             setFormOpen(true);
           }}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           Add item
@@ -147,13 +164,22 @@ function EquipmentInner() {
             <span>{error}</span>
           </div>
         )}
-        <AdminCard title="Rental items" actions={items.length > 0 ? <AdminTag>{plural(items.length, "item")}</AdminTag> : undefined}>
+        <AdminCard
+          title="Rental items"
+          actions={
+            items.length > 0 ? <AdminTag>{plural(items.length, "item")}</AdminTag> : undefined
+          }
+        >
           {loading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
           {!loading && failed && (
             <div className="ah-card-body">
               <div className="ah-card-error" role="alert">
                 <span>Could not load the equipment.</span>
-                <button type="button" className="ah-link" onClick={() => queries.forEach((q) => void q.refetch())}>
+                <button
+                  type="button"
+                  className="ah-link"
+                  onClick={() => queries.forEach((q) => void q.refetch())}
+                >
                   Try again
                 </button>
               </div>
@@ -189,7 +215,9 @@ function EquipmentInner() {
                           <div className="ah-strong">{i.name}</div>
                           {i.description && <div className="ah-sub">{i.description}</div>}
                         </TableCell>
-                        {!picked && <TableCell className="ah-t2">{arenaName.get(i.arena_id) ?? ""}</TableCell>}
+                        {!picked && (
+                          <TableCell className="ah-t2">{arenaName.get(i.arena_id) ?? ""}</TableCell>
+                        )}
                         <TableCell className="ah-r ah-money">{formatRs(i.rental_price)}</TableCell>
                         <TableCell>{stock(i)}</TableCell>
                         <TableCell>{status(i)}</TableCell>
@@ -207,7 +235,11 @@ function EquipmentInner() {
                       {status(i)}
                     </div>
                     {(i.description || !picked) && (
-                      <div className="ah-sub">{[i.description, picked ? null : arenaName.get(i.arena_id)].filter(Boolean).join(" · ")}</div>
+                      <div className="ah-sub">
+                        {[i.description, picked ? null : arenaName.get(i.arena_id)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
                     )}
                     <div className="ah-card-line">
                       <span className="ah-money">

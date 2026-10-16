@@ -165,7 +165,12 @@ export const OWNER_NAV: { label: string | null; items: OwnerNavItem[] }[] = [
   {
     label: null,
     items: [
-      { label: "Notifications", href: "/owner/notifications", icon: "notifications", count: "unread" },
+      {
+        label: "Notifications",
+        href: "/owner/notifications",
+        icon: "notifications",
+        count: "unread",
+      },
       { label: "Profile", href: "/owner/profile", icon: "profile" },
     ],
   },
@@ -197,7 +202,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const activeHref = OWNER_NAV.flatMap((g) => g.items)
     .map((i) => i.href)
     .filter((href) =>
-      href === "/owner" ? pathname === "/owner" : pathname === href || pathname.startsWith(href + "/"),
+      href === "/owner"
+        ? pathname === "/owner"
+        : pathname === href || pathname.startsWith(href + "/"),
     )
     .sort((x, y) => y.length - x.length)[0];
 
@@ -266,7 +273,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className="ah-rail">
-      <Link href="/owner" className="ah-brand" onClick={onNavigate} aria-label="Arena Hub — go to Live Board">
+      <Link
+        href="/owner"
+        className="ah-brand"
+        onClick={onNavigate}
+        aria-label="Arena Hub — go to Live Board"
+      >
         <OwnerBrandMark />
         <div className="ah-brand-name">
           Arena Hub<small>Owner console</small>

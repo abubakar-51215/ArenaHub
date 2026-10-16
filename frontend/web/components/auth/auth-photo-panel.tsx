@@ -83,18 +83,25 @@ export function AuthPhotoPanel({ imageSrc, imageAlt, credit, quote, stats }: Aut
 
       <div
         className="pointer-events-none absolute -top-[14%] -left-[12%] aspect-square w-[70%]"
-        style={{ backgroundImage: "radial-gradient(circle, rgba(196,245,70,.20) 0%, rgba(196,245,70,0) 68%)" }}
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(196,245,70,.20) 0%, rgba(196,245,70,0) 68%)",
+        }}
       />
       <div
         className="pointer-events-none absolute -right-[16%] -bottom-[18%] aspect-square w-[62%]"
-        style={{ backgroundImage: "radial-gradient(circle, rgba(159,216,255,.12) 0%, rgba(159,216,255,0) 70%)" }}
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(159,216,255,.12) 0%, rgba(159,216,255,0) 70%)",
+        }}
       />
 
       {/* thin lime rule, echoes a pitch sideline without redrawing one */}
       <div
         className="absolute inset-x-0 bottom-0 z-[3] h-[3px]"
         style={{
-          backgroundImage: "linear-gradient(to right, var(--accent) 0%, rgba(196,245,70,.15) 42%, transparent 100%)",
+          backgroundImage:
+            "linear-gradient(to right, var(--accent) 0%, rgba(196,245,70,.15) 42%, transparent 100%)",
         }}
       />
 

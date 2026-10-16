@@ -522,7 +522,9 @@
 --------------------------------------------------------------------------- */
 @utility metric {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 76, "wght" 700;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
   font-size: 2.375rem;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -530,14 +532,18 @@
 }
 @utility metric-sm {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 76, "wght" 700;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
   font-size: 1.625rem;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 @utility metric-lg {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 76, "wght" 700;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
   font-size: 3.5rem; /* 56px, matches design/prototypes' .metric.lg */
   line-height: 1;
   letter-spacing: -0.01em;
@@ -545,7 +551,9 @@
 }
 @utility eyebrow {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 125, "wght" 600;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
   font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -562,7 +570,9 @@
 }
 @utility heading {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 88, "wght" 700;
+  font-variation-settings:
+    "wdth" 88,
+    "wght" 700;
   letter-spacing: -0.02em;
 }
 
@@ -689,7 +699,9 @@
 }
 [data-admin] .ah-brand-name {
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 100, "wght" 700;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 700;
   color: #ffffff;
   font-size: 15px;
   letter-spacing: -0.01em;
@@ -697,7 +709,9 @@
 }
 [data-admin] .ah-brand-name small {
   display: block;
-  font-variation-settings: "wdth" 125, "wght" 500;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 500;
   font-size: 12px;
   letter-spacing: 0.2em;
   color: var(--rail-text);
@@ -726,7 +740,9 @@ html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
   margin: 7.2px 0;
   padding: 0 8px 5.6px;
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 125, "wght" 600;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
   /* 9px x 0.8 = 7.2px, held at the 9px floor */
   font-size: 12px;
   letter-spacing: 0.18em;
@@ -1269,7 +1285,9 @@ html[data-theme="dark"] [data-admin] [data-slot="button"][data-variant="default"
   color: #0f1a15;
   border-color: var(--lime);
 }
-html[data-theme="dark"] [data-admin] [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
+html[data-theme="dark"]
+  [data-admin]
+  [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
   background: #d2ff63;
   border-color: #d2ff63;
 }
@@ -1553,7 +1571,6 @@ html[data-theme="dark"] [data-admin] .ah-rank-bar i {
   background: var(--lime);
 }
 
-
 /* page-header filters keep the prototype's auto width (.select), side by side */
 [data-admin] .ah-page-actions [data-slot="select"] {
   width: auto;
@@ -1736,7 +1753,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 [data-admin] .ah-h1 {
   margin: 0;
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 88, "wght" 700;
+  font-variation-settings:
+    "wdth" 88,
+    "wght" 700;
   font-weight: 700;
   font-size: 26px;
   line-height: 1.15;
@@ -1872,7 +1891,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   line-height: 1.5;
   padding: 9px 18px;
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 118, "wght" 600;
+  font-variation-settings:
+    "wdth" 118,
+    "wght" 600;
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 0.14em;
@@ -2378,7 +2399,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   font-weight: 700;
   margin: 0 auto 0 0;
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 92, "wght" 650;
+  font-variation-settings:
+    "wdth" 92,
+    "wght" 650;
   font-size: 15px;
   letter-spacing: -0.01em;
 }
@@ -2396,7 +2419,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 [data-admin] .ah-eyebrow {
   margin: 0;
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 125, "wght" 600;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
   font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -2404,7 +2429,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 }
 [data-admin] .ah-metric {
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 76, "wght" 700;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
   font-size: 26px;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -2464,7 +2491,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 }
 [data-admin] [data-slot="dialog-title"] {
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 92, "wght" 650;
+  font-variation-settings:
+    "wdth" 92,
+    "wght" 650;
   font-size: 15px;
   letter-spacing: -0.01em;
 }
@@ -2690,7 +2719,9 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
 }
 [data-admin] .ah-auth-quote h3 {
   font-family: var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 84, "wght" 700;
+  font-variation-settings:
+    "wdth" 84,
+    "wght" 700;
   font-size: 38px;
   font-weight: 700;
   line-height: 1.02;
@@ -4685,7 +4716,6 @@ html[data-theme="dark"] .am-theme .am-d {
   }
 }
 
-
 /* owner Payments > Refunds tab (design/prototypes/arena-hub-owner-refunds.html): the filter row, the note, the table that
    scrolls inside its own box (never the page), the empty / error states and the rows of the confirm dialog. */
 [data-owner] .ah-tab-wait {
@@ -4796,25 +4826,37 @@ html[data-theme="dark"] .am-theme .am-d {
    every tap target is at least 44px. Sizes only; the phone-width layout changes stay below 768px.
    Mirrors the 44px rules of the max-width: 767.98px blocks above. */
 @media (pointer: coarse) {
-  :is([data-admin], [data-owner]) :is(
-      .ah-cmdk-item, .ah-pop-item, .ah-nav-item, .ah-menu-item, .ah-tab, .ah-check, .ah-head-link,
-      .ah-court-switch, .ah-cal-more, .ah-pager button, .ah-card-error .ah-link,
-      .ah-venue-pick, .ah-searchbar, .ah-brand,
-      [data-slot="button"], [data-slot="input"], [data-slot="select"], [data-slot="tabs-trigger"],
+  :is([data-admin], [data-owner])
+    :is(
+      .ah-cmdk-item,
+      .ah-pop-item,
+      .ah-nav-item,
+      .ah-menu-item,
+      .ah-tab,
+      .ah-check,
+      .ah-head-link,
+      .ah-court-switch,
+      .ah-cal-more,
+      .ah-pager button,
+      .ah-card-error .ah-link,
+      .ah-venue-pick,
+      .ah-searchbar,
+      .ah-brand,
+      [data-slot="button"],
+      [data-slot="input"],
+      [data-slot="select"],
+      [data-slot="tabs-trigger"],
       [data-slot="dialog-close"]
     ) {
     /* restated here because the console rules above are unlayered and beat the utilities */
     min-height: 44px;
   }
-  :is([data-admin], [data-owner]) :is(
-      .ah-icon-btn, .ah-logout, .ah-pw-toggle, .ah-cal-mdate
-    ) {
+  :is([data-admin], [data-owner]) :is(.ah-icon-btn, .ah-logout, .ah-pw-toggle, .ah-cal-mdate) {
     min-width: 44px;
     min-height: 44px;
   }
-  :is([data-admin], [data-owner]) :is(
-      [data-slot="button"], .ah-pager button, [data-slot="dialog-close"]
-    ) {
+  :is([data-admin], [data-owner])
+    :is([data-slot="button"], .ah-pager button, [data-slot="dialog-close"]) {
     min-width: 44px;
   }
 }

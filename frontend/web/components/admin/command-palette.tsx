@@ -26,7 +26,13 @@ const MIN_QUERY = 2;
 const DEBOUNCE_MS = 250;
 
 const PAGES: Result[] = NAV_GROUPS.flatMap((g) =>
-  g.items.map((i) => ({ id: `page:${i.href}`, group: "Pages", label: i.label, hint: "", href: i.href })),
+  g.items.map((i) => ({
+    id: `page:${i.href}`,
+    group: "Pages",
+    label: i.label,
+    hint: "",
+    href: i.href,
+  })),
 );
 
 function useDebounced(value: string, ms: number) {
@@ -54,7 +60,13 @@ export function useCommandPaletteShortcut(setOpen: (fn: (o: boolean) => boolean)
   }, [setOpen]);
 }
 
-export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
@@ -63,7 +75,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const openerRef = useRef<HTMLElement | null>(null);
   // layout effect: runs before Radix moves focus into the dialog
   useLayoutEffect(() => {
-    if (open) openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (open)
+      openerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }, [open]);
   const term = useDebounced(q.trim(), DEBOUNCE_MS);
   const searching = term.length >= MIN_QUERY;
@@ -88,8 +102,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     });
     return [
       ...pages,
-      ...people.filter((u) => u.role === "player").map((u) => toResult(u, "Players", "/admin/users")),
-      ...people.filter((u) => u.role === "owner").map((u) => toResult(u, "Arena owners", "/admin/owners")),
+      ...people
+        .filter((u) => u.role === "player")
+        .map((u) => toResult(u, "Players", "/admin/users")),
+      ...people
+        .filter((u) => u.role === "owner")
+        .map((u) => toResult(u, "Arena owners", "/admin/owners")),
     ];
   }, [q, searching, users.data]);
 
@@ -97,7 +115,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   useEffect(() => setSel(0), [q, users.data]);
 
   useEffect(() => {
-    listRef.current?.querySelector<HTMLElement>(`[data-index="${sel}"]`)?.scrollIntoView({ block: "nearest" });
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-index="${sel}"]`)
+      ?.scrollIntoView({ block: "nearest" });
   }, [sel]);
 
   const close = (o: boolean) => {
@@ -154,13 +174,23 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             aria-activedescendant={results[sel] ? `ah-cmdk-${sel}` : undefined}
             aria-autocomplete="list"
           />
-          <div className="ah-cmdk-list" id="ah-cmdk-list" role="listbox" ref={listRef} aria-label="Results">
+          <div
+            className="ah-cmdk-list"
+            id="ah-cmdk-list"
+            role="listbox"
+            ref={listRef}
+            aria-label="Results"
+          >
             {results.map((r, i) => {
               const head = r.group !== lastGroup ? r.group : null;
               lastGroup = r.group;
               return (
                 <div key={r.id} role="presentation">
-                  {head && <p className="ah-cmdk-group" role="presentation">{head}</p>}
+                  {head && (
+                    <p className="ah-cmdk-group" role="presentation">
+                      {head}
+                    </p>
+                  )}
                   <button
                     type="button"
                     id={`ah-cmdk-${i}`}
@@ -172,7 +202,14 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                     onMouseMove={() => setSel(i)}
                     onClick={() => choose(r)}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      aria-hidden="true"
+                    >
                       <path d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
                     <span className="ah-cmdk-label">{r.label}</span>

@@ -24,7 +24,14 @@ const OFF = new Set(["cancelled", "rejected"]);
 
 function Chevron({ dir }: { dir: "left" | "right" }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
       <path d={dir === "left" ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6"} />
     </svg>
   );
@@ -92,20 +99,32 @@ export function LiveBoard() {
                 </Button>
               )}
             </span>
-            <button type="button" className="ah-icon-btn" aria-label="Previous day" onClick={() => setDate(addDaysIso(date, -1))}>
+            <button
+              type="button"
+              className="ah-icon-btn"
+              aria-label="Previous day"
+              onClick={() => setDate(addDaysIso(date, -1))}
+            >
               <Chevron dir="left" />
             </button>
             <b className="ah-lb-label" aria-live="polite">
               {dayLabel(date, today)}
             </b>
-            <button type="button" className="ah-icon-btn" aria-label="Next day" onClick={() => setDate(addDaysIso(date, 1))}>
+            <button
+              type="button"
+              className="ah-icon-btn"
+              aria-label="Next day"
+              onClick={() => setDate(addDaysIso(date, 1))}
+            >
               <Chevron dir="right" />
             </button>
             <DatePopover value={date} today={today} onChange={setDate} />
           </div>
         )}
       </div>
-      {isLoading && <div className="ah-skeleton" style={{ height: 160, margin: 18 }} aria-label="Loading" />}
+      {isLoading && (
+        <div className="ah-skeleton" style={{ height: 160, margin: 18 }} aria-label="Loading" />
+      )}
       {isError && (
         <div className="ah-card-body">
           <div className="ah-card-error" role="alert">

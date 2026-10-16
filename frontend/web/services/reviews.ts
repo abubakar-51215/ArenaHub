@@ -9,8 +9,14 @@ export function listArenaReviews(arenaId: string, page = 1, pageSize = 20): Prom
 }
 
 /** Owner view of one of their own arenas. Includes deactivated arenas, which the public list hides. */
-export function listOwnerArenaReviews(arenaId: string, page = 1, pageSize = 20): Promise<Page<Review>> {
-  return api.get<Page<Review>>(`/owner/arenas/${arenaId}/reviews?page=${page}&page_size=${pageSize}`);
+export function listOwnerArenaReviews(
+  arenaId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<Page<Review>> {
+  return api.get<Page<Review>>(
+    `/owner/arenas/${arenaId}/reviews?page=${page}&page_size=${pageSize}`,
+  );
 }
 
 export function getRatingSummary(arenaId: string): Promise<RatingSummary> {

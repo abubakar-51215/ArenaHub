@@ -85,21 +85,35 @@ export function SplitAuthShell({
   children,
 }: SplitAuthShellProps) {
   const resolvedVariant = variant ?? (badge?.toLowerCase().includes("admin") ? "admin" : "owner");
-  const resolvedCredit = credit ?? (resolvedVariant === "admin" ? "Platform live now" : "328 arenas live tonight");
+  const resolvedCredit =
+    credit ?? (resolvedVariant === "admin" ? "Platform live now" : "328 arenas live tonight");
   const resolvedQuote = quote ?? {
     eyebrow: resolvedVariant === "admin" ? "Arena Hub for admins" : "Arena Hub for owners",
-    title: caption?.title ?? (resolvedVariant === "admin" ? "Keep the platform running." : "Manage. Grow. Thrive."),
+    title:
+      caption?.title ??
+      (resolvedVariant === "admin" ? "Keep the platform running." : "Manage. Grow. Thrive."),
     desc:
       caption?.desc ??
       (resolvedVariant === "admin"
         ? "Verify new owners, monitor bookings, and keep standards consistent across the platform."
         : "All your arenas, bookings and analytics in one place."),
   };
-  const resolvedStats = stats ?? [
-    { value: resolvedVariant === "admin" ? "24/7" : "328", label: resolvedVariant === "admin" ? "Platform uptime" : "Arenas listed" },
-    { value: resolvedVariant === "admin" ? "99.9%" : "0%", label: resolvedVariant === "admin" ? "Verification rate" : "Setup fees" },
-    { value: resolvedVariant === "admin" ? "Live" : "24/7", label: resolvedVariant === "admin" ? "Monitor mode" : "Booking availability" },
-  ] as const;
+  const resolvedStats =
+    stats ??
+    ([
+      {
+        value: resolvedVariant === "admin" ? "24/7" : "328",
+        label: resolvedVariant === "admin" ? "Platform uptime" : "Arenas listed",
+      },
+      {
+        value: resolvedVariant === "admin" ? "99.9%" : "0%",
+        label: resolvedVariant === "admin" ? "Verification rate" : "Setup fees",
+      },
+      {
+        value: resolvedVariant === "admin" ? "Live" : "24/7",
+        label: resolvedVariant === "admin" ? "Monitor mode" : "Booking availability",
+      },
+    ] as const);
 
   return (
     <div data-theme="arena" className="grid min-h-screen bg-card lg:grid-cols-2">

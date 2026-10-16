@@ -12,7 +12,8 @@ import { statusLabel } from "./status-words";
 /** The payment, in words, from the real payment: one of our four methods and
  *  its state ("Card · paid"), "Refunded" for a refunded one. */
 export function paymentParts(row: OwnerBookingRow): { method: string; state: string | null } {
-  if (!row.payment_method) return { method: row.status === "pending_payment" ? "Not paid yet" : "—", state: null };
+  if (!row.payment_method)
+    return { method: row.status === "pending_payment" ? "Not paid yet" : "—", state: null };
   const method = PAYMENT_METHOD_LABEL[row.payment_method];
   if (row.payment_status === "refunded" || row.payment_lifecycle_status === "refunded")
     return { method, state: "refunded" };
@@ -39,7 +40,17 @@ const field = (v: string): string => `"${v.replace(/"/g, '""')}"`;
 /** The rows as CSV with the screen's words: "AHB-1A2B3C", "Oct 14, 2026", "7:00 PM – 8:00 PM", "Awaiting payment",
  *  "Bank transfer · paid", "Rs. 2,000". */
 export function bookingsCsv(rows: OwnerBookingRow[]): string {
-  const header = ["Booking", "Date", "Time", "Arena", "Court", "Customer", "Status", "Payment", "Amount"];
+  const header = [
+    "Booking",
+    "Date",
+    "Time",
+    "Arena",
+    "Court",
+    "Customer",
+    "Status",
+    "Payment",
+    "Amount",
+  ];
   const lines = rows.map((r) =>
     [
       bookingRef(r),

@@ -14,7 +14,14 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 
-import { AdminBadge, AdminCard, AdminEmpty, AdminPerson, AdminTableFoot, statusLabel } from "@/components/admin/ui";
+import {
+  AdminBadge,
+  AdminCard,
+  AdminEmpty,
+  AdminPerson,
+  AdminTableFoot,
+  statusLabel,
+} from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
 import { Toast, useToast } from "@/components/owner/toast";
 import { ReceiptReviewDialog } from "@/components/owner/receipt-review-dialog";
@@ -33,7 +40,12 @@ import {
 } from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
-import { useApprovePayment, useOwnerBookings, useRejectPayment, useRemindBooking } from "@/hooks/useDashboard";
+import {
+  useApprovePayment,
+  useOwnerBookings,
+  useRejectPayment,
+  useRemindBooking,
+} from "@/hooks/useDashboard";
 import { formatDateShort, formatRs, formatTime, plural, joinParts } from "@/lib/format";
 import { shortDay } from "@/lib/karachi-date";
 import { bookingRef, bookingsCsv, paymentParts, paymentText } from "@/lib/bookings-csv";
@@ -53,7 +65,6 @@ function exportCsv(rows: OwnerBookingRow[]) {
   a.click();
   URL.revokeObjectURL(url);
 }
-
 
 const STATUSES: BookingStatus[] = [
   "pending_payment",
@@ -91,7 +102,9 @@ function Bookings() {
   const setPage = (p: number) => setScoped({ arena: arenaId, courtId, page: p });
 
   const askedStatus = useSearchParams().get("status") ?? "";
-  const [status, setStatus] = useState(STATUSES.includes(askedStatus as BookingStatus) ? askedStatus : "");
+  const [status, setStatus] = useState(
+    STATUSES.includes(askedStatus as BookingStatus) ? askedStatus : "",
+  );
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -136,7 +149,8 @@ function Bookings() {
         void qc.invalidateQueries({ queryKey: ["owner-bookings"] });
       }, 1100);
     } catch (err) {
-      const left = err instanceof ApiError && err.status === 409 ? err.message.match(/in (\d+) minute/) : null;
+      const left =
+        err instanceof ApiError && err.status === 409 ? err.message.match(/in (\d+) minute/) : null;
       if (left) setWaits((w) => ({ ...w, [row.booking_id]: Number(left[1]) }));
       showToast(err instanceof ApiError ? err.message : "Could not send the reminder.");
     }
@@ -171,7 +185,8 @@ function Bookings() {
 
   const filtered = !!(courtId || status || dateFrom || dateTo);
 
-  const slotTime = (row: OwnerBookingRow) => `${formatTime(row.start_time)} – ${formatTime(row.end_time)}`;
+  const slotTime = (row: OwnerBookingRow) =>
+    `${formatTime(row.start_time)} – ${formatTime(row.end_time)}`;
 
   // the same buttons in the table row and the phone card
   const actions = (row: OwnerBookingRow) => (
@@ -180,7 +195,12 @@ function Bookings() {
         (() => {
           const wait = waits[row.booking_id] ?? row.remind_wait_minutes;
           return wait ? (
-            <Button variant="outline" size="sm" disabled title="A reminder went out in the last hour">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              title="A reminder went out in the last hour"
+            >
               Sent · {wait} min
             </Button>
           ) : (
@@ -307,7 +327,9 @@ function Bookings() {
             </div>
           )}
           {data && rows.length === 0 && (
-            <AdminEmpty>{filtered ? "No bookings match these filters." : "No bookings yet."}</AdminEmpty>
+            <AdminEmpty>
+              {filtered ? "No bookings match these filters." : "No bookings yet."}
+            </AdminEmpty>
           )}
           {rows.length > 0 && (
             <>
@@ -342,9 +364,13 @@ function Bookings() {
                         </TableCell>
                         <TableCell>
                           <div className="ah-pay-method">{paymentParts(row).method}</div>
-                          {paymentParts(row).state && <div className="ah-sub">{paymentParts(row).state}</div>}
+                          {paymentParts(row).state && (
+                            <div className="ah-sub">{paymentParts(row).state}</div>
+                          )}
                         </TableCell>
-                        <TableCell className="ah-r ah-money">{formatRs(row.total_amount)}</TableCell>
+                        <TableCell className="ah-r ah-money">
+                          {formatRs(row.total_amount)}
+                        </TableCell>
                         <TableCell>
                           <AdminBadge status={row.status} />
                         </TableCell>
@@ -363,9 +389,7 @@ function Bookings() {
                     </div>
                     <AdminPerson name={row.player_name} sub={cleanPhone(row.player_phone)} />
                     <div>
-                      <div>
-                        {joinParts([row.court_name, row.arena_name])}
-                      </div>
+                      <div>{joinParts([row.court_name, row.arena_name])}</div>
                       <div className="ah-sub">{paymentText(row)}</div>
                       <div className="ah-sub tabular-nums">
                         {shortDay(row.booking_date)} · {slotTime(row)}
