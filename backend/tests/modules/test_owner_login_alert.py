@@ -1,6 +1,7 @@
 """The login-alert email for arena owners: sent once per new owner sign-in and never otherwise."""
 
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 import structlog
@@ -24,8 +25,8 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     calls: list[dict] = []
 
     async def fake(
-        to, subject, body, html=None, *, timeout=8, kind="email"
-    ):  # noqa: ANN001, ANN202
+        to: Any, subject: Any, body: Any, html: Any = None, *, timeout: Any = 8, kind: Any = "email"
+    ) -> Any:  # noqa: ANN001, ANN202
         calls.append({"to": to, "subject": subject, "body": body, "html": html, "kind": kind})
         return True
 
@@ -37,7 +38,7 @@ def _alerts(sent: list[dict]) -> list[dict]:
     return [c for c in sent if c["kind"] == "owner_login_alert"]
 
 
-async def _login(client: AsyncClient, email: str, password: str = PASSWORD):
+async def _login(client: AsyncClient, email: str, password: str = PASSWORD) -> Any:
     return await client.post("/api/v1/auth/login", json={"identifier": email, "password": password})
 
 
@@ -136,7 +137,9 @@ async def test_a_failing_or_slow_mail_never_breaks_the_login_and_logs_safely(
         TimeoutError(),
     ):
 
-        async def broken(*args, _f=failure, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        async def broken(
+            *args: Any, _f: Any = failure, **kwargs: Any
+        ) -> None:  # noqa: ANN002, ANN003, ANN202
             raise _f
 
         monkeypatch.setattr(login_alert, "send_email", broken)

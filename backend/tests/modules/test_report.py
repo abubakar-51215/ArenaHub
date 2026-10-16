@@ -2,6 +2,7 @@
 filtering on the player and owner reports."""
 
 from datetime import date, timedelta
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -210,11 +211,11 @@ async def test_owner_occupancy_report(client: AsyncClient, db_session: AsyncSess
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 
-def _web_day(d) -> str:
+def _web_day(d: Any) -> str:
     return f"{_MONTHS[d.month - 1]} {d.day}, {d.year}"
 
 
-def _phone_day(d) -> str:
+def _phone_day(d: Any) -> str:
     return f"{d.strftime('%a')} {d.day} {_MONTHS[d.month - 1]} {d.year}"
 
 

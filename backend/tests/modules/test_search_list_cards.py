@@ -3,7 +3,9 @@ list-card fields as the arena search, sort=best, and the extra sport words."""
 
 import uuid
 from datetime import datetime, timedelta
+from typing import Any
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +40,9 @@ async def _approved_arena_with_court(
     return arena_id
 
 
-async def test_smart_search_items_carry_the_list_card_fields(client, db_session):
+async def test_smart_search_items_carry_the_list_card_fields(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     arena_id = await _approved_arena_with_court(client, db_session, "nlp")
 
     res = await client.get("/api/v1/search/nlp", params={"q": "futsal"})
@@ -49,7 +53,9 @@ async def test_smart_search_items_carry_the_list_card_fields(client, db_session)
     assert str(item["min_price"]).startswith("1500")
 
 
-async def test_recommendations_carry_the_list_card_fields(client, db_session):
+async def test_recommendations_carry_the_list_card_fields(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     arena_id = await _approved_arena_with_court(client, db_session, "rec")
     player, _ = await make_user(client, db_session, "sc-player-rec@example.com")
 
@@ -60,11 +66,11 @@ async def test_recommendations_carry_the_list_card_fields(client, db_session):
     assert str(item["min_price"]).startswith("1500")
 
 
-def parse_search_query(text: str):
+def parse_search_query(text: str) -> Any:
     return parse(text, places=places_from_areas([]), now=datetime(2026, 10, 14, 12, 0))
 
 
-def test_smart_search_knows_the_four_new_sports_and_keeps_tennis():
+def test_smart_search_knows_the_four_new_sports_and_keeps_tennis() -> None:
     assert parse_search_query("padel in Lahore").sport == "padel"
     assert parse_search_query("cheap squash courts").sport == "squash"
     assert parse_search_query("snooker tonight").sport == "snooker"
@@ -73,7 +79,7 @@ def test_smart_search_knows_the_four_new_sports_and_keeps_tennis():
     assert parse_search_query("football arena").sport == "futsal"
 
 
-async def _rated_arena(client, db_session, tag: str, rating: int) -> str:
+async def _rated_arena(client: AsyncClient, db_session: AsyncSession, tag: str, rating: int) -> str:
     """An approved arena with one review. The review row is written directly:
     the real path needs a completed, paid booking, and card payments need a
     Stripe key that the test environment does not have."""
@@ -103,7 +109,9 @@ async def _rated_arena(client, db_session, tag: str, rating: int) -> str:
     return arena_id
 
 
-async def test_sort_best_is_rating_then_review_count_then_newest(client, db_session, monkeypatch):
+async def test_sort_best_is_rating_then_review_count_then_newest(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # this test signs up eight accounts in a row, more than the sign-up budget of a minute
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 1000)
     ids = {}

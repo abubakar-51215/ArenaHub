@@ -5,6 +5,7 @@ rules, listing rules and the notices."""
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -84,7 +85,7 @@ async def _book(
     return group_id
 
 
-async def _setup(client: AsyncClient, db: AsyncSession, tag: str, **kw):
+async def _setup(client: AsyncClient, db: AsyncSession, tag: str, **kw: Any) -> Any:
     """(creator tokens, creator user, group_id, arena_id, court_id, day) with a confirmed
     booking."""
     _, arena_id, court_id, day = await _arena_and_court(client, db, tag)
@@ -93,13 +94,13 @@ async def _setup(client: AsyncClient, db: AsyncSession, tag: str, **kw):
     return creator, user, group_id, arena_id, court_id, day
 
 
-async def _post(client: AsyncClient, who: dict, group_id: str, **over):
+async def _post(client: AsyncClient, who: dict, group_id: str, **over: Any) -> Any:
     body = {"booking_group_id": group_id, "sport": "futsal", "max_players": 2}
     body.update(over)
     return await client.post("/api/v1/matches", headers=auth_header(who), json=body)
 
 
-async def _notices(db: AsyncSession, user_id, event: str) -> int:
+async def _notices(db: AsyncSession, user_id: Any, event: str) -> int:
     return (
         await db.scalar(
             select(func.count())
@@ -243,6 +244,7 @@ async def test_matches_at_a_suspended_arena_are_not_listed(
     assert any(m["id"] == match_id for m in seen.json()["data"]["items"])
 
     arena = await db_session.get(Arena, uuid.UUID(arena_id))
+    assert arena is not None
     arena.suspended_at = datetime.now()
     await db_session.flush()
     gone = await client.get("/api/v1/matches", headers=auth_header(creator))

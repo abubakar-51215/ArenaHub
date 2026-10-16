@@ -4,6 +4,7 @@ refused."""
 
 import re
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -24,14 +25,14 @@ async def _me(client: AsyncClient, tokens: dict) -> str:
     return (await client.get(f"{API}/users/me", headers=auth_header(tokens))).json()["data"]["id"]
 
 
-async def _notices(db: AsyncSession, user_id, event: str) -> list[Notification]:
+async def _notices(db: AsyncSession, user_id: Any, event: str) -> list[Notification]:
     rows = await db.scalars(
         select(Notification).where(Notification.user_id == user_id, Notification.event == event)
     )
     return list(rows.all())
 
 
-async def _roles(client: AsyncClient, db: AsyncSession, tag: str):
+async def _roles(client: AsyncClient, db: AsyncSession, tag: str) -> Any:
     admin = await make_admin(client, db, f"{tag}-admin@example.com")
     owner, _ = await make_user(client, db, f"{tag}-owner@example.com", "owner")
     player, _ = await make_user(client, db, f"{tag}-player@example.com", "player")
@@ -299,6 +300,7 @@ async def test_a_new_arena_tells_every_active_admin_once_and_nobody_else(
     player, _ = await make_user(client, db_session, "ph8-player@example.com", "player")
     sleeping_id = await _me(client, sleeping)
     user = await db_session.get(User, sleeping_id)
+    assert user is not None
     user.is_active = False
     await db_session.commit()
 

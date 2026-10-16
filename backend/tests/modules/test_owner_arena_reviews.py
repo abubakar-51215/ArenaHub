@@ -3,13 +3,15 @@ including deactivated ones. The public endpoint keeps its approved-and-active
 rule, so a deactivated arena is still hidden from players.
 """
 
+from typing import Any
+
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
 
 
-async def _owner_arena(client: AsyncClient, db_session: AsyncSession, email: str):
+async def _owner_arena(client: AsyncClient, db_session: AsyncSession, email: str) -> Any:
     owner, _ = await make_user(client, db_session, email, "owner")
     created = await client.post(
         "/api/v1/owner/arenas", headers=auth_header(owner), json=arena_payload()
@@ -20,7 +22,9 @@ async def _owner_arena(client: AsyncClient, db_session: AsyncSession, email: str
     return owner, arena_id
 
 
-async def test_owner_reads_reviews_for_own_active_arena(client, db_session):
+async def test_owner_reads_reviews_for_own_active_arena(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, arena_id = await _owner_arena(client, db_session, "ownrev-active@example.com")
 
     res = await client.get(f"/api/v1/owner/arenas/{arena_id}/reviews", headers=auth_header(owner))
@@ -29,7 +33,9 @@ async def test_owner_reads_reviews_for_own_active_arena(client, db_session):
     assert res.json()["data"]["items"] == []
 
 
-async def test_owner_still_reads_reviews_after_deactivating_arena(client, db_session):
+async def test_owner_still_reads_reviews_after_deactivating_arena(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, arena_id = await _owner_arena(client, db_session, "ownrev-deact@example.com")
     deactivated = await client.delete(
         f"/api/v1/owner/arenas/{arena_id}", headers=auth_header(owner)
@@ -45,7 +51,7 @@ async def test_owner_still_reads_reviews_after_deactivating_arena(client, db_ses
     assert public_view.status_code == 404
 
 
-async def test_other_owner_gets_not_found(client, db_session):
+async def test_other_owner_gets_not_found(client: AsyncClient, db_session: AsyncSession) -> None:
     _, arena_id = await _owner_arena(client, db_session, "ownrev-a@example.com")
     other, _ = await make_user(client, db_session, "ownrev-b@example.com", "owner")
 

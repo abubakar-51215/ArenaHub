@@ -7,6 +7,7 @@ import json
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 import pytest
@@ -28,7 +29,7 @@ REFRESH = "/api/v1/auth/refresh"
 BAD = "Wrong#Pass1"
 
 
-async def _login(client: AsyncClient, who: str, password: str = PASSWORD):
+async def _login(client: AsyncClient, who: str, password: str = PASSWORD) -> Any:
     return await client.post(LOGIN, json={"identifier": who, "password": password})
 
 
@@ -60,7 +61,7 @@ async def test_the_wait_starts_at_the_fifth_wrong_password_for_known_and_unknown
 
 
 async def test_the_right_password_is_refused_during_the_wait_and_works_after_it(
-    client: AsyncClient, db_session: AsyncSession, fake_redis
+    client: AsyncClient, db_session: AsyncSession, fake_redis: Any
 ) -> None:
     await make_user(client, db_session, "ss-wait@example.com")
     for _ in range(5):
@@ -79,7 +80,7 @@ async def test_the_right_password_is_refused_during_the_wait_and_works_after_it(
 
 
 async def test_a_second_wrong_series_waits_longer(
-    client: AsyncClient, db_session: AsyncSession, fake_redis
+    client: AsyncClient, db_session: AsyncSession, fake_redis: Any
 ) -> None:
     await make_user(client, db_session, "ss-grow@example.com")
     for _ in range(5):
@@ -167,6 +168,7 @@ async def test_an_unknown_expired_or_signed_token_is_not_a_refresh_token(
         await client.post(REFRESH, json={"refresh_token": tokens["access_token"]})
     ).status_code == 401
     row = await db_session.scalar(select(RefreshToken).where(RefreshToken.user_id == user.id))
+    assert row is not None
     row.expires_at = datetime.now(UTC) - timedelta(seconds=5)
     await db_session.commit()
     gone = await client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]})
@@ -368,11 +370,11 @@ async def test_wrong_current_passwords_wait_like_sign_ins_and_are_audited(
 
 
 async def test_password_and_email_changes_are_told_to_the_account_owner(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sent: list[tuple[str, str, str]] = []
 
-    async def capture(to, subject, body, html=None, **kwargs):
+    async def capture(to: Any, subject: Any, body: Any, html: Any = None, **kwargs: Any) -> Any:
         sent.append((to, subject, body))
         return True
 

@@ -3,6 +3,7 @@
 only, text limits). No outside service is involved."""
 
 import uuid
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -104,7 +105,7 @@ def test_a_tie_is_not_sure() -> None:
 # ---- the endpoint ------------------------------------------------------------------------------
 
 
-async def _ask(client: AsyncClient, tok: dict, **body) -> dict:
+async def _ask(client: AsyncClient, tok: dict, **body: Any) -> dict:
     res = await client.post(ASK, headers=auth_header(tok), json=body)
     assert res.status_code == 200, res.text
     return res.json()["data"]

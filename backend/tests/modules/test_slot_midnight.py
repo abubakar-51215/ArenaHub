@@ -7,6 +7,7 @@ at 10 PM, and counts as finished only after 23:59:59.
 """
 
 from datetime import date, datetime, time, timedelta
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -22,7 +23,7 @@ from tests.helpers import arena_payload, auth_header, make_admin, make_user
 DAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 
-async def _court(client: AsyncClient, db: AsyncSession, tag: str, open_: str, close: str):
+async def _court(client: AsyncClient, db: AsyncSession, tag: str, open_: str, close: str) -> Any:
     owner, _ = await make_user(client, db, f"mid-{tag}@example.com", "owner")
     admin = await make_admin(client, db, f"mid-{tag}-admin@example.com")
     hours = {d: {"open": open_, "close": close} for d in DAYS}
@@ -62,7 +63,13 @@ async def _court(client: AsyncClient, db: AsyncSession, tag: str, open_: str, cl
     ],
 )
 async def test_the_last_hour_follows_the_closing_time(
-    client: AsyncClient, db_session: AsyncSession, tag, open_, close, count, last
+    client: AsyncClient,
+    db_session: AsyncSession,
+    tag: Any,
+    open_: Any,
+    close: Any,
+    count: Any,
+    last: Any,
 ) -> None:
     _, _, _, _, slots = await _court(client, db_session, tag, open_, close)
     assert len(slots) == count

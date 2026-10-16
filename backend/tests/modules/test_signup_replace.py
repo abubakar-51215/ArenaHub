@@ -2,7 +2,9 @@
 phone or email; a confirmed account still refuses. Resend answers one way for every address."""
 
 from datetime import timedelta
+from typing import Any
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +45,7 @@ async def test_a_never_confirmed_sign_up_is_replaced_by_the_same_phone(
     assert again.json()["data"]["otp_sent_to"] == "r***@gmail.com"
     assert await _accounts(db_session) == before  # the same account, not a second one
     user = await repo.get_user_by_email(db_session, "right@gmail.com")
+    assert user is not None
     await db_session.refresh(user)
     assert user.full_name == "Second Try" and user.role.value == "owner" and not user.is_verified
     assert await repo.get_user_by_email(db_session, "typo@gmial.com") is None
@@ -59,6 +62,7 @@ async def test_a_never_confirmed_sign_up_is_replaced_by_the_same_email(
     again = await client.post(REGISTER, json=_body("same@x.pk", "03111000012", "New Name"))
     assert again.status_code == 201
     user = await repo.get_user_by_email(db_session, "same@x.pk")
+    assert user is not None
     await db_session.refresh(user)
     assert user.phone == "03111000012" and user.full_name == "New Name"
 
@@ -74,6 +78,7 @@ async def test_two_unconfirmed_sign_ups_become_one(
     assert res.status_code == 201
     assert await _accounts(db_session) == before - 1
     user = await repo.get_user_by_email(db_session, "one@x.pk")
+    assert user is not None
     await db_session.refresh(user)
     assert user.phone == "03111000022"
 
@@ -127,6 +132,7 @@ async def test_the_hourly_code_maximum_still_applies(
     # nothing was changed by the refused try
     assert await repo.get_user_by_email(db_session, "h-over@x.pk") is None
     user = await repo.get_user_by_phone(db_session, "03111000051")
+    assert user is not None
     assert (
         await repo.count_recent_otps(
             db_session, user.id, OtpPurpose.registration, timedelta(hours=1)
@@ -149,7 +155,7 @@ async def test_a_replaced_sign_up_answers_like_a_new_one(
 
 
 async def test_resend_answers_the_same_even_when_the_email_cannot_go_out(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assert (await client.post(REGISTER, json=_body("out@x.pk", "03111000071"))).status_code == 201
     user = await repo.get_user_by_email(db_session, "out@x.pk")
@@ -162,7 +168,7 @@ async def test_resend_answers_the_same_even_when_the_email_cannot_go_out(
         row.expires_at -= timedelta(seconds=61)
     await db_session.commit()
 
-    async def broken(*args, **kwargs):
+    async def broken(*args: Any, **kwargs: Any) -> None:
         raise EmailSendError("cannot connect or timed out", "Check EMAIL_HOST.", temporary=True)
 
     monkeypatch.setattr(codes, "send_email", broken)

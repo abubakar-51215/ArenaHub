@@ -2,6 +2,7 @@
 (once only), and the limits: never above what was paid, gateway refunds never by hand."""
 
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -13,7 +14,7 @@ from tests.helpers import auth_header, make_admin, make_user
 from tests.modules.test_group_cancel import _group_with_receipt, _paid_group
 
 
-async def _cancelled_bank_group(client: AsyncClient, db: AsyncSession, tag: str):
+async def _cancelled_bank_group(client: AsyncClient, db: AsyncSession, tag: str) -> Any:
     """A bank-transfer group whose player cancelled with the receipt waiting: one pending refund."""
     owner, player, gid, payment, _, _ = await _group_with_receipt(client, db, tag, True)
     done = await client.post(
@@ -26,7 +27,7 @@ async def _cancelled_bank_group(client: AsyncClient, db: AsyncSession, tag: str)
     return owner, player, payment, refund
 
 
-async def _count(db: AsyncSession, event: str, user_id) -> int:
+async def _count(db: AsyncSession, event: str, user_id: Any) -> int:
     return (
         await db.scalar(
             select(func.count())
@@ -106,6 +107,7 @@ async def test_mark_paid_once_only_and_notifies_the_player_once(
     assert refund.status == RefundStatus.processed
     assert refund.processed_at is not None and str(refund.processed_by) == owner_id
     pay = await db_session.get(Payment, refund.payment_id)
+    assert pay is not None
     await db_session.refresh(pay)
     # a receipt-waiting cancel ends the payment as expired (a terminal state); the Refund row
     # holds the money
@@ -158,7 +160,7 @@ async def test_gateway_refunds_cannot_be_marked_by_hand(
     assert row["payment_method"] == "card" and row["can_mark_paid"] is False
 
 
-async def _first_booking_id(db: AsyncSession, payment_id: str):
+async def _first_booking_id(db: AsyncSession, payment_id: str) -> Any:
     from app.modules.booking.model import Booking
 
     pay = await db.get(Payment, payment_id)
@@ -178,7 +180,9 @@ async def test_mark_paid_refuses_a_refund_larger_than_the_payment(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     owner, player, payment, refund = await _cancelled_bank_group(client, db_session, "or5")
+    assert refund is not None
     pay = await db_session.get(Payment, refund.payment_id)
+    assert pay is not None
     refund.amount = pay.amount + Decimal("1.00")  # a corrupted row: more than was paid
     await db_session.flush()
     res = await client.post(

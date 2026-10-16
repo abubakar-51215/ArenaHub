@@ -2,6 +2,8 @@
 cancels the match and tells the others once; rescheduling the booking moves the match. A
 booking of several hours is one "Booking cancelled" notice."""
 
+from typing import Any
+
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +17,7 @@ from tests.modules.test_payment import _slots
 API = "/api/v1"
 
 
-async def _count(db: AsyncSession, user_id, event: str) -> int:
+async def _count(db: AsyncSession, user_id: Any, event: str) -> int:
     return (
         await db.scalar(
             select(func.count())

@@ -6,6 +6,7 @@ capped at 1. A court without active rules keeps its base price.
 """
 
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import event
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
 
 
-async def _approved_arena(client: AsyncClient, db_session: AsyncSession, email: str):
+async def _approved_arena(client: AsyncClient, db_session: AsyncSession, email: str) -> Any:
     owner, _ = await make_user(client, db_session, email, "owner")
     created = await client.post(
         "/api/v1/owner/arenas", headers=auth_header(owner), json=arena_payload()
@@ -26,7 +27,9 @@ async def _approved_arena(client: AsyncClient, db_session: AsyncSession, email: 
     return owner, arena_id
 
 
-async def _court(client: AsyncClient, owner: dict, arena_id: str, base: str, *, available=True):
+async def _court(
+    client: AsyncClient, owner: dict, arena_id: str, base: str, *, available: Any = True
+) -> Any:
     created = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/courts",
         headers=auth_header(owner),
@@ -61,7 +64,9 @@ async def _list_item(client: AsyncClient, arena_id: str) -> dict:
     return next(item for item in res.json()["data"]["items"] if item["id"] == arena_id)
 
 
-async def test_arena_without_courts_or_reviews_has_null_price_and_zero_reviews(client, db_session):
+async def test_arena_without_courts_or_reviews_has_null_price_and_zero_reviews(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, arena_id = await _approved_arena(client, db_session, "lf-empty@example.com")
 
     item = await _list_item(client, arena_id)
@@ -71,7 +76,9 @@ async def test_arena_without_courts_or_reviews_has_null_price_and_zero_reviews(c
     assert item["min_price"] is None
 
 
-async def test_min_price_applies_the_discount_rule_to_the_cheapest_court(client, db_session):
+async def test_min_price_applies_the_discount_rule_to_the_cheapest_court(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, arena_id = await _approved_arena(client, db_session, "lf-discount@example.com")
     discounted = await _court(client, owner, arena_id, "2000.00")
     await _rule(client, owner, discounted, "0.80")
@@ -82,7 +89,9 @@ async def test_min_price_applies_the_discount_rule_to_the_cheapest_court(client,
     assert Decimal(str(item["min_price"])) == Decimal("1600.00")
 
 
-async def test_peak_only_rule_never_lowers_the_from_price(client, db_session):
+async def test_peak_only_rule_never_lowers_the_from_price(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, arena_id = await _approved_arena(client, db_session, "lf-peak@example.com")
     court = await _court(client, owner, arena_id, "2000.00")
     await _rule(client, owner, court, "1.50")
@@ -92,7 +101,9 @@ async def test_peak_only_rule_never_lowers_the_from_price(client, db_session):
     assert Decimal(str(item["min_price"])) == Decimal("2000.00")
 
 
-async def test_unavailable_court_is_ignored_for_the_from_price(client, db_session):
+async def test_unavailable_court_is_ignored_for_the_from_price(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, arena_id = await _approved_arena(client, db_session, "lf-unavail@example.com")
     await _court(client, owner, arena_id, "1000.00", available=False)
     await _court(client, owner, arena_id, "2000.00")
@@ -102,7 +113,9 @@ async def test_unavailable_court_is_ignored_for_the_from_price(client, db_sessio
     assert Decimal(str(item["min_price"])) == Decimal("2000.00")
 
 
-async def test_price_filter_uses_the_same_from_price_as_the_card(client, db_session):
+async def test_price_filter_uses_the_same_from_price_as_the_card(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, arena_id = await _approved_arena(client, db_session, "lf-filter@example.com")
     discounted = await _court(client, owner, arena_id, "2000.00")
     await _rule(client, owner, discounted, "0.80")
@@ -114,10 +127,14 @@ async def test_price_filter_uses_the_same_from_price_as_the_card(client, db_sess
     assert arena_id not in [i["id"] for i in below.json()["data"]["items"]]
 
 
-async def test_list_uses_a_fixed_number_of_queries_regardless_of_arena_count(client, db_session):
+async def test_list_uses_a_fixed_number_of_queries_regardless_of_arena_count(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     statements: list[str] = []
 
-    def _count(conn, cursor, statement, parameters, context, executemany):
+    def _count(
+        conn: Any, cursor: Any, statement: Any, parameters: Any, context: Any, executemany: Any
+    ) -> None:
         statements.append(statement)
 
     async def _count_list_queries(page_size: int) -> int:

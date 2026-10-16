@@ -13,7 +13,7 @@ from app.shared.codes import dev_last_code
 from app.shared.otp import OtpPurpose
 
 
-def last_code(user_id, purpose: OtpPurpose) -> str:
+def last_code(user_id: Any, purpose: OtpPurpose) -> str:
     """The newest code sent to a user for a purpose (the database keeps only its hash; dev and
     tests keep the code in memory, see app/shared/codes.py)."""
     code = dev_last_code(user_id, purpose)

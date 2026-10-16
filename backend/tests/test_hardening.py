@@ -2,6 +2,8 @@
 
 import asyncio
 import inspect
+from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -36,7 +38,7 @@ async def test_stored_pictures_cannot_run_as_pages(client: AsyncClient) -> None:
 
 
 async def test_hsts_is_sent_only_outside_development() -> None:
-    async def inner(scope, receive, send):  # noqa: ANN001, ANN202
+    async def inner(scope: Any, receive: Any, send: Any) -> None:  # noqa: ANN001, ANN202
         await JSONResponse({})(scope, receive, send)
 
     for production, expected in ((False, False), (True, True)):
@@ -59,7 +61,7 @@ async def test_a_body_over_the_size_limit_is_refused_before_it_is_read(
 async def test_a_body_that_lies_about_its_size_is_stopped_while_it_arrives(
     client: AsyncClient,
 ) -> None:
-    async def chunks():  # noqa: ANN202
+    async def chunks() -> AsyncIterator[Any]:  # noqa: ANN202
         for _ in range(3):
             yield b"y" * (600 * 1024)
 
@@ -72,7 +74,7 @@ async def test_a_body_that_lies_about_its_size_is_stopped_while_it_arrives(
 async def test_a_request_that_runs_too_long_is_ended(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(hardening, "REQUEST_SECONDS", 0.05)
 
-    async def slow(request):  # noqa: ANN001, ANN202
+    async def slow(request: pytest.FixtureRequest) -> Any:  # noqa: ANN001, ANN202
         await asyncio.sleep(1)
         return JSONResponse({})
 

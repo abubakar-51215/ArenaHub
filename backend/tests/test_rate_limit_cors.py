@@ -5,6 +5,9 @@ limiter used to sit outside the CORS middleware, so its 429s had none and the
 browser reported a CORS failure instead.
 """
 
+import pytest
+from httpx import AsyncClient
+
 from app.core.config import Settings, get_settings
 
 ORIGIN = "http://localhost:3000"
@@ -13,13 +16,15 @@ ORIGIN = "http://localhost:3000"
 INVALID_BODY: dict = {}
 
 
-def test_default_budgets_are_unchanged():
+def test_default_budgets_are_unchanged() -> None:
     fields = Settings.model_fields
     assert fields["rate_limit_auth_per_minute"].default == 20
     assert fields["rate_limit_api_per_minute"].default == 100
 
 
-async def test_rate_limited_response_carries_cors_and_retry_after(client, monkeypatch):
+async def test_rate_limited_response_carries_cors_and_retry_after(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
 
     responses = [
@@ -35,7 +40,7 @@ async def test_rate_limited_response_carries_cors_and_retry_after(client, monkey
     assert "retry-after" in limited.headers["access-control-expose-headers"].lower()
 
 
-async def test_dev_allows_expo_web_origin_and_nothing_else(client):
+async def test_dev_allows_expo_web_origin_and_nothing_else(client: AsyncClient) -> None:
     for origin, allowed in (("http://localhost:8081", True), ("http://evil.example", False)):
         res = await client.options(
             "/api/v1/auth/login",
@@ -48,7 +53,7 @@ async def test_dev_allows_expo_web_origin_and_nothing_else(client):
 # The test client connects from 127.0.0.1.
 
 
-async def _three_logins(client, forwarded: list[str]) -> list[int]:
+async def _three_logins(client: AsyncClient, forwarded: list[str]) -> list[int]:
     return [
         (
             await client.post(
@@ -59,7 +64,9 @@ async def _three_logins(client, forwarded: list[str]) -> list[int]:
     ]
 
 
-async def test_spoofed_forwarded_header_is_ignored_by_default(client, monkeypatch):
+async def test_spoofed_forwarded_header_is_ignored_by_default(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
     monkeypatch.setattr(get_settings(), "trusted_proxies", "")
     # a new made-up address on every request does not buy a new budget
@@ -67,7 +74,9 @@ async def test_spoofed_forwarded_header_is_ignored_by_default(client, monkeypatc
     assert codes == [422, 422, 429]
 
 
-async def test_forwarded_header_is_honoured_only_from_a_trusted_proxy(client, monkeypatch):
+async def test_forwarded_header_is_honoured_only_from_a_trusted_proxy(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
     monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16, 127.0.0.1")
     # three real clients behind the proxy: three budgets
@@ -82,7 +91,9 @@ async def test_forwarded_header_is_honoured_only_from_a_trusted_proxy(client, mo
     assert codes == [422, 422, 429]
 
 
-async def test_malformed_forwarded_header_never_crashes_or_bypasses(client, monkeypatch):
+async def test_malformed_forwarded_header_never_crashes_or_bypasses(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
     monkeypatch.setattr(get_settings(), "trusted_proxies", "127.0.0.1")
     bad = ["not-an-ip", "999.1.1.1, ,", "::zz, <script>"]
@@ -90,7 +101,7 @@ async def test_malformed_forwarded_header_never_crashes_or_bypasses(client, monk
     assert await _three_logins(client, bad) == [422, 422, 429]
 
 
-def test_trusted_proxies_reads_addresses_and_ranges_and_skips_junk():
+def test_trusted_proxies_reads_addresses_and_ranges_and_skips_junk() -> None:
     s = Settings(TRUSTED_PROXIES="10.0.0.5, 10.1.0.0/16, ::1, nonsense")
     assert [str(n) for n in s.trusted_proxy_networks] == ["10.0.0.5/32", "10.1.0.0/16", "::1/128"]
     assert Settings.model_fields["trusted_proxies"].default == ""

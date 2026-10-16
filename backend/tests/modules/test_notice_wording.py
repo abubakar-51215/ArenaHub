@@ -4,6 +4,7 @@ and one event makes one notice."""
 import re
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -160,7 +161,7 @@ def test_each_changed_notice_reads_as_planned() -> None:
     )
 
 
-async def _count(db: AsyncSession, user_id, event: str) -> int:
+async def _count(db: AsyncSession, user_id: Any, event: str) -> int:
     return (
         await db.scalar(
             select(func.count())

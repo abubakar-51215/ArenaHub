@@ -7,6 +7,7 @@ and that a suspended or removed arena disappears for players."""
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -31,7 +32,7 @@ def _next_monday() -> date:
     return today + timedelta(days=(7 - today.weekday()) % 7 or 7)
 
 
-async def _fresh(db: AsyncSession, stmt):
+async def _fresh(db: AsyncSession, stmt: Any) -> Any:
     """Run ``stmt`` reloading the rows it returns, so changes the API made are seen."""
     result = await db.execute(stmt.execution_options(populate_existing=True))
     return result.scalars().all()
@@ -97,7 +98,9 @@ async def _paid_booking(client: AsyncClient, player: dict, court_id: str, slot_i
     return group_id
 
 
-async def _act(client: AsyncClient, admin: dict, arena_id: str, action: str, reason=REASON):
+async def _act(
+    client: AsyncClient, admin: dict, arena_id: str, action: str, reason: Any = REASON
+) -> Any:
     """POST suspend / reactivate, or DELETE for remove; ``reason=None`` sends no body field."""
     body = {} if reason is None else {"reason": reason}
     if action == "delete":
@@ -176,7 +179,7 @@ async def test_suspended_filter_on_admin_list(
     await _act(client, s["admin"], s["arena_id"], "suspend")
     h = auth_header(s["admin"])
 
-    async def ids(**params) -> list[str]:
+    async def ids(**params: Any) -> list[str]:
         resp = await client.get(
             f"{API}/admin/arenas", headers=h, params={"status": "approved", **params}
         )
@@ -189,7 +192,7 @@ async def test_suspended_filter_on_admin_list(
 
 @pytest.mark.parametrize("reason", [None, "", "         "])
 async def test_suspend_and_delete_need_a_reason(
-    client: AsyncClient, db_session: AsyncSession, reason
+    client: AsyncClient, db_session: AsyncSession, reason: Any
 ) -> None:
     s = await _setup(client, db_session, f"mod5{len(reason or '')}")
     for action in ("suspend", "delete"):
@@ -243,11 +246,11 @@ async def _bookings(db: AsyncSession, arena_id: str) -> list[Booking]:
     return await _fresh(db, select(Booking).where(Booking.arena_id == arena_id))
 
 
-async def _refunds(db: AsyncSession, booking_id) -> list[Refund]:
+async def _refunds(db: AsyncSession, booking_id: Any) -> list[Refund]:
     return await _fresh(db, select(Refund).where(Refund.booking_id == booking_id))
 
 
-async def _events(db: AsyncSession, user_id) -> list[Notification]:
+async def _events(db: AsyncSession, user_id: Any) -> list[Notification]:
     return await _fresh(db, select(Notification).where(Notification.user_id == user_id))
 
 
@@ -359,7 +362,9 @@ class _Gateway:
         self.answer = answer
         self.keys: list[str | None] = []
 
-    async def refund(self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key=None):
+    async def refund(
+        self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key: Any = None
+    ) -> Any:
         self.keys.append(idempotency_key)
         if self.failures > 0:
             self.failures -= 1
@@ -368,8 +373,13 @@ class _Gateway:
 
 
 async def _suspend_with_gateway(
-    client: AsyncClient, db: AsyncSession, monkeypatch, tag: str, failures: int, answer="processed"
-):
+    client: AsyncClient,
+    db: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    tag: str,
+    failures: int,
+    answer: Any = "processed",
+) -> Any:
     """A paid future booking, then a suspend while the gateway is failing."""
     s = await _setup(client, db, tag)
     player, player_user = await make_user(client, db, f"{tag}-player@example.com")
@@ -386,7 +396,7 @@ async def _suspend_with_gateway(
 
 
 async def test_gateway_failure_keeps_refund_pending_and_suspend_succeeds(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     before = datetime.now()
     s, _, booking, refund, gateway = await _suspend_with_gateway(
@@ -414,7 +424,7 @@ async def test_gateway_failure_keeps_refund_pending_and_suspend_succeeds(
 
 
 async def test_retry_job_completes_refund_on_a_later_try(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, player_user, booking, refund, gateway = await _suspend_with_gateway(
         client, db_session, monkeypatch, "gw2", failures=1
@@ -438,7 +448,7 @@ async def test_retry_job_completes_refund_on_a_later_try(
 
 
 async def test_retry_job_running_again_does_not_refund_twice(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, player_user, booking, refund, gateway = await _suspend_with_gateway(
         client, db_session, monkeypatch, "gw3", failures=1
@@ -457,7 +467,7 @@ async def test_retry_job_running_again_does_not_refund_twice(
 
 
 async def test_retry_job_hands_over_to_manual_after_six_tries(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, player_user, booking, refund, gateway = await _suspend_with_gateway(
         client, db_session, monkeypatch, "gw4", failures=100
@@ -632,7 +642,7 @@ async def test_removed_arena_is_read_only_for_its_owner(
 
 
 async def test_gateway_answering_pending_counts_as_a_try_until_manual(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A gateway that never raises but keeps answering "pending" must not leave
     the refund pending forever: each answer is a try, and the sixth hands over."""
