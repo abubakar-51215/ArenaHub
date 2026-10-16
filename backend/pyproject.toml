@@ -27,6 +27,7 @@ dependencies = [
     "requests>=2.31",
     "argon2-cffi>=25.1.0",
     "cloudinary>=1.46.3",
+    "sentry-sdk[fastapi]>=2.72.0",
 ]
 
 [dependency-groups]

@@ -134,6 +134,10 @@ class Settings(BaseSettings):
     # Which provider backs the gateway payment methods — see PaymentMode.
     payment_mode: PaymentMode = Field(default=PaymentMode.auto, alias="PAYMENT_MODE")
 
+    # Error tracking (Sentry). Empty = off: no SDK init, no network call.
+    # See app/core/observability.py for the scrubber.
+    sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
+
     @property
     def stripe_configured(self) -> bool:
         """True only for a real-looking secret key. An empty value or a

@@ -21,6 +21,7 @@ import { Colors, Font } from "@/constants/theme";
 import { AnimatedSplash } from "@/components/brand/animated-splash";
 import { NetworkShell } from "@/components/ui/network-banner";
 import { startNetworkWatcher } from "@/lib/network";
+import { initSentry } from "@/lib/sentry";
 import { ToastHost } from "@/components/ui/toast";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { ApiError } from "@/lib/api";
@@ -100,6 +101,9 @@ function RootNavigator() {
   // one is saved, it is checked with the server (GET /users/me, 8 s limit). If the server cannot be reached the app goes
   // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
   useEffect(() => startNetworkWatcher(), []);
+  useEffect(() => {
+    void initSentry(); // error tracking, a no-op unless EXPO_PUBLIC_SENTRY_DSN is set
+  }, []);
 
   // a link opened before the account is loaded (signed out, or a saved sign-in still being checked) is kept: it opens
   // after Log in, or after "Try again" when the server could not be reached at start (lib/deeplink.ts)
