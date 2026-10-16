@@ -1,6 +1,7 @@
 """The rules every emailed code follows (app/shared/codes.py), without any real network."""
 
 from datetime import timedelta
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -23,7 +24,7 @@ FORGOT = "/api/v1/auth/forgot-password"
 _phone = iter(range(3_100_000_000, 3_200_000_000))
 
 
-async def _register(client: AsyncClient, email: str):
+async def _register(client: AsyncClient, email: str) -> Any:
     return await client.post(
         REGISTER,
         json={
@@ -36,12 +37,12 @@ async def _register(client: AsyncClient, email: str):
     )
 
 
-async def _unverified(client: AsyncClient, db: AsyncSession, email: str):
+async def _unverified(client: AsyncClient, db: AsyncSession, email: str) -> Any:
     assert (await _register(client, email)).status_code == 201
     return await repo.get_user_by_email(db, email)
 
 
-async def _clear_waits(fake_redis, db: AsyncSession, user) -> None:
+async def _clear_waits(fake_redis: Any, db: AsyncSession, user: Any) -> None:
     """Pretend 61 s have passed: the per-address wait and the per-account one."""
     for key in await fake_redis.keys("codes:*:cool"):
         await fake_redis.delete(key)
@@ -63,6 +64,7 @@ async def test_only_a_keyed_hash_is_stored_and_the_right_code_works_once(
     user = await _unverified(client, db_session, "c-right@example.com")
     code = last_code(user.id, OtpPurpose.registration)
     row = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
+    assert row is not None
     assert not hasattr(OtpVerification, "code")
     assert len(row.code_hash) == 64 and code not in row.code_hash
     assert row.code_hash == codes.code_hash(
@@ -88,6 +90,7 @@ async def test_wrong_expired_and_locked(client: AsyncClient, db_session: AsyncSe
 
     other = await _unverified(client, db_session, "c-expired@example.com")
     row = await repo.get_latest_otp(db_session, other.id, OtpPurpose.registration)
+    assert row is not None
     row.expires_at -= timedelta(minutes=11)
     await db_session.commit()
     expired = await client.post(
@@ -97,7 +100,7 @@ async def test_wrong_expired_and_locked(client: AsyncClient, db_session: AsyncSe
 
 
 async def test_a_new_code_ends_the_old_one_and_the_wait_is_in_seconds(
-    client: AsyncClient, db_session: AsyncSession, fake_redis
+    client: AsyncClient, db_session: AsyncSession, fake_redis: Any
 ) -> None:
     user = await _unverified(client, db_session, "c-new@example.com")
     first = last_code(user.id, OtpPurpose.registration)
@@ -120,7 +123,9 @@ async def test_a_new_code_ends_the_old_one_and_the_wait_is_in_seconds(
     ).status_code == 200
 
 
-async def test_hourly_maximum(client: AsyncClient, db_session: AsyncSession, fake_redis) -> None:
+async def test_hourly_maximum(
+    client: AsyncClient, db_session: AsyncSession, fake_redis: Any
+) -> None:
     """At most 5 codes an hour for an account; the 6th request an hour for an address is told
     to try later (the same for every address)."""
     user = await _unverified(client, db_session, "c-hour@example.com")
@@ -158,9 +163,9 @@ async def test_unknown_and_known_addresses_get_the_same_answers(
 
 
 async def test_a_failed_send_is_said_and_resend_works_without_counting(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def broken(*args, **kwargs):
+    async def broken(*args: Any, **kwargs: Any) -> None:
         raise EmailSendError("cannot connect or timed out", "Check EMAIL_HOST.", temporary=True)
 
     monkeypatch.setattr(codes, "send_email", broken)
@@ -169,10 +174,12 @@ async def test_a_failed_send_is_said_and_resend_works_without_counting(
     assert reg.json()["data"]["code_sent"] is False
     assert reg.json()["message"] == "We could not send the code. Tap Resend."
     user = await repo.get_user_by_email(db_session, "c-fail@example.com")
+    assert user is not None
     row = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
+    assert row is not None
     assert row.delivery_failed is True
 
-    async def works(*args, **kwargs):
+    async def works(*args: Any, **kwargs: Any) -> Any:
         return True
 
     monkeypatch.setattr(codes, "send_email", works)
@@ -201,7 +208,7 @@ async def test_a_code_never_works_for_another_purpose(
 
 
 async def test_unverified_sign_in_is_told_to_verify_and_gets_a_code(
-    client: AsyncClient, db_session: AsyncSession, fake_redis
+    client: AsyncClient, db_session: AsyncSession, fake_redis: Any
 ) -> None:
     user = await _unverified(client, db_session, "c-login@example.com")
     await _clear_waits(fake_redis, db_session, user)
@@ -232,7 +239,7 @@ async def test_reset_ends_every_session(client: AsyncClient, db_session: AsyncSe
 
 
 async def test_change_email_asks_the_password_binds_the_code_and_tells_the_old_address(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     tokens, user = await make_user(client, db_session, "c-old@example.com")
     h = auth_header(tokens)
@@ -250,6 +257,7 @@ async def test_change_email_asks_the_password_binds_the_code_and_tells_the_old_a
     assert yes.status_code == 200
     code = last_code(user.id, OtpPurpose.email_change)
     row = await repo.get_latest_otp(db_session, user.id, OtpPurpose.email_change)
+    assert row is not None
     # bound to the NEW address: the same code for another address would not match
     assert row.code_hash == codes.code_hash(
         code, user_id=user.id, purpose=OtpPurpose.email_change, destination="c-new2@example.com"
@@ -262,7 +270,7 @@ async def test_change_email_asks_the_password_binds_the_code_and_tells_the_old_a
 
     sent: list[str] = []
 
-    async def capture(to, subject, *args, **kwargs):
+    async def capture(to: Any, subject: Any, *args: Any, **kwargs: Any) -> Any:
         sent.append(f"{to}|{subject}")
         return True
 
@@ -285,6 +293,7 @@ async def test_admin_code_flow(client: AsyncClient, db_session: AsyncSession) ->
     )
     challenge = login.json()["data"]["challenge_token"]
     user = await repo.get_user_by_email(db_session, "c-admin@example.com")
+    assert user is not None
     code = last_code(user.id, OtpPurpose.admin_login)
     ok = await client.post(
         "/api/v1/auth/admin/verify-code", json={"challenge_token": challenge, "code": code}
@@ -293,12 +302,12 @@ async def test_admin_code_flow(client: AsyncClient, db_session: AsyncSession) ->
 
 
 async def test_the_compare_is_constant_time(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = []
     real = codes.hmac.compare_digest
 
-    def spy(a, b):
+    def spy(a: Any, b: Any) -> Any:
         calls.append(1)
         return real(a, b)
 
@@ -309,7 +318,7 @@ async def test_the_compare_is_constant_time(
 
 
 async def test_no_code_or_hash_reaches_the_log_outside_dev(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     settings = get_settings()
     issued: list[str] = []
@@ -320,7 +329,7 @@ async def test_no_code_or_hash_reaches_the_log_outside_dev(
         issued.append(value)
         return value
 
-    async def sent(*args, **kwargs):
+    async def sent(*args: Any, **kwargs: Any) -> Any:
         return True
 
     monkeypatch.setattr(codes, "generate_code", remember)
@@ -330,7 +339,9 @@ async def test_no_code_or_hash_reaches_the_log_outside_dev(
         reg = await _register(client, "c-prod@example.com")
         assert reg.status_code == 201
         user = await repo.get_user_by_email(db_session, "c-prod@example.com")
+        assert user is not None
         row = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
+        assert row is not None
         await client.post(VERIFY, json={"email": user.email, "code": "000000"})
         await client.post(FORGOT, json={"email": user.email})
     assert issued, "a code was made"

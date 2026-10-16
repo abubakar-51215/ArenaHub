@@ -5,6 +5,7 @@ email + otp + new_password. The older token path still works.
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 import pytest
@@ -23,24 +24,26 @@ from tests.helpers import PASSWORD, auth_header, last_code, make_user
 NEW_PASSWORD = "Another#Pass9"
 
 
-async def _forgot(client: AsyncClient, email: str):
+async def _forgot(client: AsyncClient, email: str) -> Any:
     return await client.post("/api/v1/auth/forgot-password", json={"email": email})
 
 
-async def _reset(client: AsyncClient, email: str, otp: str, password: str = NEW_PASSWORD):
+async def _reset(client: AsyncClient, email: str, otp: str, password: str = NEW_PASSWORD) -> Any:
     return await client.post(
         "/api/v1/auth/reset-password",
         json={"email": email, "otp": otp, "new_password": password},
     )
 
 
-async def _latest_code(db_session: AsyncSession, user) -> str:
+async def _latest_code(db_session: AsyncSession, user: Any) -> str:
     otp = await repo.get_latest_otp(db_session, user.id, OtpPurpose.password_reset)
     assert otp is not None, "no outstanding code"
     return last_code(user.id, OtpPurpose.password_reset)
 
 
-async def test_forgot_password_issues_a_six_digit_code(client, db_session):
+async def test_forgot_password_issues_a_six_digit_code(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-issue@example.com")
 
     res = await _forgot(client, "rst-issue@example.com")
@@ -50,7 +53,9 @@ async def test_forgot_password_issues_a_six_digit_code(client, db_session):
     assert len(code) == 6 and code.isdigit()
 
 
-async def test_forgot_password_for_unknown_email_looks_identical(client, db_session):
+async def test_forgot_password_for_unknown_email_looks_identical(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     known = await _forgot(client, "nobody-here@example.com")
     _, _ = await make_user(client, db_session, "rst-known@example.com")
     real = await _forgot(client, "rst-known@example.com")
@@ -60,8 +65,8 @@ async def test_forgot_password_for_unknown_email_looks_identical(client, db_sess
 
 
 async def test_second_request_inside_the_cooldown_says_how_long_and_sends_no_new_code(
-    client, db_session
-):
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-cool@example.com")
     await _forgot(client, "rst-cool@example.com")
     first = await _latest_code(db_session, user)
@@ -74,7 +79,9 @@ async def test_second_request_inside_the_cooldown_says_how_long_and_sends_no_new
     assert await _latest_code(db_session, user) == first
 
 
-async def test_reset_with_the_code_changes_the_password(client, db_session):
+async def test_reset_with_the_code_changes_the_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-ok@example.com")
     await _forgot(client, "rst-ok@example.com")
     code = await _latest_code(db_session, user)
@@ -92,7 +99,9 @@ async def test_reset_with_the_code_changes_the_password(client, db_session):
     assert old_login.status_code == 401
 
 
-async def test_a_used_code_cannot_be_used_twice(client, db_session):
+async def test_a_used_code_cannot_be_used_twice(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-once@example.com")
     await _forgot(client, "rst-once@example.com")
     code = await _latest_code(db_session, user)
@@ -103,7 +112,9 @@ async def test_a_used_code_cannot_be_used_twice(client, db_session):
     assert second.status_code == 422
 
 
-async def test_wrong_code_is_rejected_and_five_misses_lock_the_code(client, db_session):
+async def test_wrong_code_is_rejected_and_five_misses_lock_the_code(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-bad@example.com")
     await _forgot(client, "rst-bad@example.com")
     code = await _latest_code(db_session, user)
@@ -117,7 +128,9 @@ async def test_wrong_code_is_rejected_and_five_misses_lock_the_code(client, db_s
     assert "Too many wrong tries" in locked.json()["message"]
 
 
-async def test_reusing_the_current_password_is_rejected_and_the_code_survives(client, db_session):
+async def test_reusing_the_current_password_is_rejected_and_the_code_survives(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-reuse@example.com")
     await _forgot(client, "rst-reuse@example.com")
     code = await _latest_code(db_session, user)
@@ -129,7 +142,7 @@ async def test_reusing_the_current_password_is_rejected_and_the_code_survives(cl
     assert retry.status_code == 200
 
 
-async def test_weak_new_password_is_rejected(client, db_session):
+async def test_weak_new_password_is_rejected(client: AsyncClient, db_session: AsyncSession) -> None:
     _, user = await make_user(client, db_session, "rst-weak@example.com")
     await _forgot(client, "rst-weak@example.com")
     code = await _latest_code(db_session, user)
@@ -139,7 +152,9 @@ async def test_weak_new_password_is_rejected(client, db_session):
     assert res.status_code == 422
 
 
-async def test_unknown_email_on_reset_gets_the_same_error_as_a_wrong_code(client, db_session):
+async def test_unknown_email_on_reset_gets_the_same_error_as_a_wrong_code(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-same@example.com")
     await _forgot(client, "rst-same@example.com")
 
@@ -150,13 +165,15 @@ async def test_unknown_email_on_reset_gets_the_same_error_as_a_wrong_code(client
     assert unknown.json()["message"] == wrong.json()["message"]
 
 
-async def test_reset_without_otp_or_token_is_a_validation_error(client):
+async def test_reset_without_otp_or_token_is_a_validation_error(client: AsyncClient) -> None:
     res = await client.post("/api/v1/auth/reset-password", json={"new_password": NEW_PASSWORD})
 
     assert res.status_code == 422
 
 
-async def test_reset_signs_out_existing_sessions(client, db_session):
+async def test_reset_signs_out_existing_sessions(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     tokens, user = await make_user(client, db_session, "rst-sessions@example.com")
     assert (await client.get("/api/v1/users/me", headers=auth_header(tokens))).status_code == 200
     await _forgot(client, "rst-sessions@example.com")
@@ -179,14 +196,14 @@ class _TickingClock:
     def __init__(self) -> None:
         self._now = datetime.now(UTC).replace(microsecond=0)
 
-    def now(self, tz=None):
+    def now(self, tz: Any = None) -> Any:
         self._now += timedelta(milliseconds=1)
         return self._now
 
 
 async def test_reset_and_login_in_the_same_second_old_token_dead_new_token_alive(
-    client, db_session, monkeypatch
-):
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
     clock = _TickingClock()
     monkeypatch.setattr(security, "datetime", clock)
     monkeypatch.setattr(token_store, "datetime", clock)
@@ -220,7 +237,9 @@ async def test_reset_and_login_in_the_same_second_old_token_dead_new_token_alive
     assert new_refresh.status_code == 200
 
 
-async def test_a_token_from_before_the_millisecond_claim_is_still_revoked(client, db_session):
+async def test_a_token_from_before_the_millisecond_claim_is_still_revoked(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """Tokens minted before ``iat_ms`` existed carry only whole-second ``iat``."""
     tokens, user = await make_user(client, db_session, "rst-legacy-iat@example.com")
     payload = jwt.decode(tokens["access_token"], options={"verify_signature": False})
@@ -240,7 +259,7 @@ async def test_a_token_from_before_the_millisecond_claim_is_still_revoked(client
 # --- Reset codes and registration codes never stand in for each other --------
 
 
-async def _register_unverified(client, db_session, email: str):
+async def _register_unverified(client: AsyncClient, db_session: AsyncSession, email: str) -> Any:
     await client.post(
         "/api/v1/auth/register",
         json={
@@ -256,7 +275,9 @@ async def _register_unverified(client, db_session, email: str):
     return user
 
 
-async def test_a_registration_code_cannot_reset_a_password(client, db_session):
+async def test_a_registration_code_cannot_reset_a_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     user = await _register_unverified(client, db_session, "rst-reg-as-reset@example.com")
     reg = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
     assert reg is not None
@@ -270,7 +291,9 @@ async def test_a_registration_code_cannot_reset_a_password(client, db_session):
     assert verify_password(PASSWORD, user.password_hash), "the password must not have changed"
 
 
-async def test_a_reset_code_cannot_verify_an_account(client, db_session):
+async def test_a_reset_code_cannot_verify_an_account(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     user = await _register_unverified(client, db_session, "rst-reset-as-reg@example.com")
     reg = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
     assert reg is not None
@@ -293,8 +316,8 @@ async def test_a_reset_code_cannot_verify_an_account(client, db_session):
 
 
 async def test_the_right_code_for_each_purpose_still_works_on_an_unverified_account(
-    client, db_session
-):
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     user = await _register_unverified(client, db_session, "rst-both@example.com")
     assert (await _forgot(client, "rst-both@example.com")).status_code == 200
     reset_code = await _latest_code(db_session, user)
@@ -311,7 +334,9 @@ async def test_the_right_code_for_each_purpose_still_works_on_an_unverified_acco
     assert reset.status_code == 200
 
 
-async def test_codes_for_the_other_flows_cannot_reset_a_password(client, db_session):
+async def test_codes_for_the_other_flows_cannot_reset_a_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-other-flows@example.com")
     for purpose in (
         OtpPurpose.password_change,
@@ -336,7 +361,9 @@ async def test_codes_for_the_other_flows_cannot_reset_a_password(client, db_sess
     assert res.status_code == 422
 
 
-async def test_forgot_password_leaves_the_registration_code_alone(client, db_session):
+async def test_forgot_password_leaves_the_registration_code_alone(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     user = await _register_unverified(client, db_session, "rst-retire@example.com")
     await _forgot(client, "rst-retire@example.com")
 
@@ -345,7 +372,9 @@ async def test_forgot_password_leaves_the_registration_code_alone(client, db_ses
     assert reg is not None, "requesting a reset must not use up the registration code"
 
 
-async def test_the_old_reset_link_token_is_gone(client, db_session):
+async def test_the_old_reset_link_token_is_gone(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """Only the 6-digit code resets a password; the old link token is not accepted."""
     await make_user(client, db_session, "rst-token@example.com")
     res = await client.post(
@@ -354,7 +383,9 @@ async def test_the_old_reset_link_token_is_gone(client, db_session):
     assert res.status_code == 422
 
 
-async def test_two_wrong_checks_of_one_code_count_two_attempts(client, db_session):
+async def test_two_wrong_checks_of_one_code_count_two_attempts(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, user = await make_user(client, db_session, "rst-lock@example.com")
     await _forgot(client, "rst-lock@example.com")
     code = await _latest_code(db_session, user)

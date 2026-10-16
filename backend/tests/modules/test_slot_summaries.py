@@ -5,6 +5,7 @@ at 12:00 today so the counts do not depend on when the tests run."""
 import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -23,13 +24,13 @@ TODAY = date.today()
 
 
 @pytest.fixture(autouse=True)
-def _noon(monkeypatch):
+def _noon(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(slot_service, "_now", lambda: datetime.combine(TODAY, time(12, 0)))
 
 
 async def _arena_with_courts(
     client: AsyncClient, db: AsyncSession, tag: str, courts: int = 1, approve: bool = True
-):
+) -> Any:
     owner, _ = await make_user(client, db, f"ss-{tag}@example.com", "owner")
     h = auth_header(owner)
     arena = await client.post(
@@ -69,8 +70,8 @@ async def _slots(db: AsyncSession, court_id: str, day: date) -> list[TimeSlot]:
 
 
 async def test_availability_counts_open_slots_per_day_and_hides_past_times_today(
-    client, db_session
-):
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, (court_id,) = await _arena_with_courts(client, db_session, "av1")
     tomorrow = await _slots(db_session, court_id, TODAY + timedelta(days=1))
     tomorrow[0].status = SlotStatus.booked
@@ -91,7 +92,9 @@ async def test_availability_counts_open_slots_per_day_and_hides_past_times_today
     assert counts[(TODAY + timedelta(days=3)).isoformat()] == 0  # no slots made for that day
 
 
-async def test_availability_rejects_a_bad_range_and_an_unknown_court(client, db_session):
+async def test_availability_rejects_a_bad_range_and_an_unknown_court(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     _, (court_id,) = await _arena_with_courts(client, db_session, "av2")
     url = f"/api/v1/courts/{court_id}/availability"
 
@@ -107,7 +110,9 @@ async def test_availability_rejects_a_bad_range_and_an_unknown_court(client, db_
     assert unknown.status_code == 404
 
 
-async def test_slots_today_gives_open_count_and_lowest_price_per_court(client, db_session):
+async def test_slots_today_gives_open_count_and_lowest_price_per_court(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     arena_id, (court_a, court_b) = await _arena_with_courts(client, db_session, "st1", courts=2)
     a_slots = await _slots(db_session, court_a, TODAY)
     next(s for s in a_slots if s.start_time == time(18, 0)).price = Decimal("1600.00")
@@ -125,7 +130,9 @@ async def test_slots_today_gives_open_count_and_lowest_price_per_court(client, d
     assert by_court[court_b]["lowest_price"] is None
 
 
-async def test_slots_today_hides_an_arena_that_is_not_live(client, db_session):
+async def test_slots_today_hides_an_arena_that_is_not_live(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     arena_id, _ = await _arena_with_courts(client, db_session, "st2", approve=False)
 
     res = await client.get(f"/api/v1/arenas/{arena_id}/slots-today")

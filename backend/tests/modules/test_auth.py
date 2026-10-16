@@ -143,7 +143,7 @@ async def test_register_weak_password_rejected(
 
 
 async def test_resend_otp_issues_fresh_code_and_retires_old(
-    client: AsyncClient, db_session: AsyncSession, fake_redis
+    client: AsyncClient, db_session: AsyncSession, fake_redis: Any
 ) -> None:
     await _register(client, email="resend1@example.com", phone="03007777771")
     user = await repo.get_user_by_email(db_session, "resend1@example.com")
@@ -163,6 +163,7 @@ async def test_resend_otp_issues_fresh_code_and_retires_old(
     for key in await fake_redis.keys("codes:registration:*:cool"):
         await fake_redis.delete(key)
     original = await repo.get_latest_otp(db_session, user.id, OtpPurpose.registration)
+    assert original is not None
     original.expires_at -= timedelta(seconds=120)
     await db_session.commit()
     resent = await client.post("/api/v1/auth/resend-otp", json={"email": "resend1@example.com"})
@@ -231,6 +232,7 @@ async def test_login_by_phone_compares_all_digits_for_other_countries(
     reg = await _register(client, email="uk@example.com", phone="+44 7911 123456")
     assert reg.status_code == 201, reg.text
     user = await repo.get_user_by_email(db_session, "uk@example.com")
+    assert user is not None
     await client.post(
         "/api/v1/auth/verify-otp",
         json={"email": "uk@example.com", "code": last_code(user.id, OtpPurpose.registration)},
@@ -244,6 +246,7 @@ async def test_phone_shared_by_two_accounts_is_refused_like_a_wrong_password(
 ) -> None:
     await _register_and_verify(client, db_session, "share-a@example.com")
     first = await repo.get_user_by_email(db_session, "share-a@example.com")
+    assert first is not None
     # old data could hold the same number spelled another way
     twin = await repo.create_user(
         db_session,
@@ -296,6 +299,7 @@ async def test_admin_still_gets_the_code_step_and_not_by_phone(
     assert by_email.status_code == 200
     assert by_email.json()["data"]["mfa_required"] is True
     admin = await repo.get_user_by_email(db_session, "adm-who@example.com")
+    assert admin is not None
     by_phone = await _phone_login(client, admin.phone or "")
     assert by_phone.status_code == 401
     # the older field still works

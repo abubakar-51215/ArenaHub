@@ -67,7 +67,7 @@ def token(
 
 
 @pytest.fixture(autouse=True)
-def google_ready(monkeypatch):
+def google_ready(monkeypatch: pytest.MonkeyPatch) -> None:
     """Google sign-in set up for the test client id; Google's keys come from the test key."""
     monkeypatch.setattr(get_settings(), "google_client_ids_raw", CLIENT_ID)
     monkeypatch.setattr("google.oauth2.id_token._fetch_certs", lambda *a, **k: _CERTS)
@@ -87,6 +87,7 @@ async def test_a_new_person_gets_a_player_account_that_needs_a_phone(
     assert data["user"]["role"] == "player" and data["user"]["is_verified"] is True
     assert data["user"]["phone"] is None and data["user"]["full_name"] == "Google Person"
     user = await repo.get_user_by_email(db_session, "new.g@gmail.com")
+    assert user is not None
     assert user.google_sub == "g-new"
     # no password works for it: the same answer as a wrong password
     for pw in (PASSWORD, ""):
@@ -126,6 +127,7 @@ async def test_owners_and_admins_must_use_their_password(
     assert res.status_code == 403
     assert res.json()["message"] == "This account must log in with email and password."
     user = await repo.get_user_by_email(db_session, "staff.g@gmail.com")
+    assert user is not None
     assert user.google_sub is None
 
 
@@ -149,6 +151,7 @@ async def test_an_unconfirmed_sign_up_is_confirmed_but_its_password_and_sessions
     assert res.json()["data"]["password_removed"] is True
     assert "Forgot password" in res.json()["message"]
     user = await repo.get_user_by_email(db_session, "taken.g@gmail.com")
+    assert user is not None
     await db_session.refresh(user)
     assert user.is_verified and user.google_sub == "g-real"
     # the password the other person chose no longer works
@@ -177,6 +180,7 @@ async def test_a_session_from_before_the_takeover_is_ended(
     )
     assert reg.status_code == 201
     user = await repo.get_user_by_email(db_session, "early.g@gmail.com")
+    assert user is not None
     before = create_access_token(user.id, "player")
     epoch_before = await tokens.get_session_epoch_ms(str(user.id))
     assert (
@@ -244,7 +248,7 @@ async def test_a_token_signed_by_another_key_is_refused(
 
 
 async def test_not_set_up_means_not_available(
-    client: AsyncClient, db_session: AsyncSession, monkeypatch
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(get_settings(), "google_client_ids_raw", "")
     res = await client.post(GOOGLE, json={"id_token": token("off.g@gmail.com", "g-off")})

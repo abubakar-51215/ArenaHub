@@ -2,6 +2,8 @@
 their states, the card "not available yet" answer, the price preview, the
 booking-group details and leaving checkout (release)."""
 
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +15,7 @@ from tests.modules.test_payment import _create_booking_group, _make_bookable_cou
 pytestmark = pytest.mark.real_gateway_rules
 
 
-async def _setup(client: AsyncClient, db: AsyncSession, tag: str):
+async def _setup(client: AsyncClient, db: AsyncSession, tag: str) -> Any:
     owner, _ = await make_user(client, db, f"co-{tag}@example.com", "owner")
     player, _ = await make_user(client, db, f"cp-{tag}@example.com", "player")
     arena_id, court_id, day = await _make_bookable_court(client, db, owner, f"co-{tag}")

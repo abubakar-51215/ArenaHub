@@ -78,14 +78,6 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 ignore_missing_imports = true
 
-# Tests are checked for real type mistakes, but test helpers and fixtures need not spell out
-# every annotation, and a row fetched in a test is not re-checked for None before each use (a
-# missing row fails the test anyway). The app code above stays strict.
-[[tool.mypy.overrides]]
-module = ["tests.*", "tests"]
-disallow_untyped_defs = false
-disable_error_code = ["union-attr"]
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

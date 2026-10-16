@@ -3,6 +3,7 @@
 import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import event, text
@@ -17,7 +18,9 @@ from tests.helpers import arena_payload, auth_header, make_admin, make_user
 URL = "/api/v1/admin/dashboard/overview"
 
 
-async def _arena_with_court(client: AsyncClient, db: AsyncSession, tag: str, city: str = "Lahore"):
+async def _arena_with_court(
+    client: AsyncClient, db: AsyncSession, tag: str, city: str = "Lahore"
+) -> Any:
     owner, _ = await make_user(client, db, f"ov-owner-{tag}@example.com", "owner")
     created = await client.post(
         "/api/v1/owner/arenas",
@@ -79,7 +82,9 @@ async def _booking(
     await db.flush()
 
 
-async def test_only_admins_can_read_the_overview(client, db_session):
+async def test_only_admins_can_read_the_overview(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     player, _ = await make_user(client, db_session, "ov-player@example.com", "player")
     owner, _ = await make_user(client, db_session, "ov-owner@example.com", "owner")
     admin = await make_admin(client, db_session, "ov-admin@example.com")
@@ -90,7 +95,9 @@ async def test_only_admins_can_read_the_overview(client, db_session):
     assert (await client.get(URL, headers=auth_header(admin))).status_code == 200
 
 
-async def test_empty_data_gives_zeros_and_no_deltas(client, db_session):
+async def test_empty_data_gives_zeros_and_no_deltas(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     admin = await make_admin(client, db_session, "ov-empty@example.com")
 
     data = (await client.get(URL, headers=auth_header(admin))).json()["data"]
@@ -105,7 +112,9 @@ async def test_empty_data_gives_zeros_and_no_deltas(client, db_session):
     assert data["peak_window"] is None
 
 
-async def test_period_with_no_previous_data_omits_the_delta(client, db_session):
+async def test_period_with_no_previous_data_omits_the_delta(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     admin, arena_id, court_id = await _arena_with_court(client, db_session, "noprev")
     _, player = await make_user(client, db_session, "ov-p-noprev@example.com", "player")
     today = platform_today()
@@ -123,7 +132,9 @@ async def test_period_with_no_previous_data_omits_the_delta(client, db_session):
     assert data["top_arenas"][0]["value"] == 2000.0
 
 
-async def test_deltas_compare_with_the_previous_period(client, db_session):
+async def test_deltas_compare_with_the_previous_period(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     admin, arena_id, court_id = await _arena_with_court(client, db_session, "delta")
     _, player = await make_user(client, db_session, "ov-p-delta@example.com", "player")
     today = platform_today()
@@ -156,7 +167,9 @@ async def test_deltas_compare_with_the_previous_period(client, db_session):
     assert data["peak_window"] == {"start_hour": 18, "end_hour": 21}
 
 
-async def test_cancelled_and_rejected_bookings_add_no_count_or_value(client, db_session):
+async def test_cancelled_and_rejected_bookings_add_no_count_or_value(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     admin, arena_id, court_id = await _arena_with_court(client, db_session, "cancel")
     _, player = await make_user(client, db_session, "ov-p-cancel@example.com", "player")
     today = platform_today()
@@ -187,7 +200,9 @@ async def test_cancelled_and_rejected_bookings_add_no_count_or_value(client, db_
     assert data["kpis"]["gross_value"]["value"] == 0.0
 
 
-async def test_days_and_today_are_karachi_days(client, db_session):
+async def test_days_and_today_are_karachi_days(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """created_at is a naive wall-clock time in the database session's zone.
     With the session in UTC, 18:30 UTC is 23:30 in Karachi and 19:30 UTC is
     00:30 the next Karachi day; the overview must bucket them that way."""
@@ -250,7 +265,9 @@ def _slot(court_id: uuid.UUID, on: date, status: SlotStatus) -> TimeSlot:
     )
 
 
-async def test_utilisation_counts_only_bookable_slots_of_live_arenas(client, db_session):
+async def test_utilisation_counts_only_bookable_slots_of_live_arenas(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, _ = await make_user(client, db_session, "ov-owner-util@example.com", "owner")
     created = await client.post(
         "/api/v1/owner/arenas",
@@ -287,14 +304,14 @@ async def test_utilisation_counts_only_bookable_slots_of_live_arenas(client, db_
     await db_session.commit()
     after = (await client.get(URL, headers=auth_header(admin))).json()["data"]
 
-    def at_six(data):
+    def at_six(data: Any) -> Any:
         return next(h for h in data["utilisation_by_hour"] if h["hour"] == 18)
 
     assert at_six(before) == {"hour": 18, "used": 1, "total": 2, "pct": 50.0}
     assert at_six(after) == at_six(before)
 
 
-async def test_bad_city_or_range_is_rejected(client, db_session):
+async def test_bad_city_or_range_is_rejected(client: AsyncClient, db_session: AsyncSession) -> None:
     admin = await make_admin(client, db_session, "ov-bad@example.com")
 
     bad_city = await client.get(URL, params={"city": "Atlantis"}, headers=auth_header(admin))
@@ -304,7 +321,7 @@ async def test_bad_city_or_range_is_rejected(client, db_session):
     assert bad_range.status_code == 422
 
 
-async def test_city_filter_limits_every_card(client, db_session):
+async def test_city_filter_limits_every_card(client: AsyncClient, db_session: AsyncSession) -> None:
     admin, lahore_arena, lahore_court = await _arena_with_court(client, db_session, "lhr", "Lahore")
     _, karachi_arena, karachi_court = await _arena_with_court(client, db_session, "khi", "Karachi")
     _, player = await make_user(client, db_session, "ov-p-city@example.com", "player")
@@ -347,7 +364,9 @@ async def test_city_filter_limits_every_card(client, db_session):
     assert [a["city"] for a in karachi["top_arenas"]] == ["Karachi"]
 
 
-async def test_quarter_range_starts_on_the_first_day_of_the_quarter(client, db_session):
+async def test_quarter_range_starts_on_the_first_day_of_the_quarter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     admin = await make_admin(client, db_session, "ov-quarter@example.com")
     today = platform_today()
 
@@ -360,13 +379,17 @@ async def test_quarter_range_starts_on_the_first_day_of_the_quarter(client, db_s
     assert len(data["bookings_by_day"]) == (today - start).days + 1
 
 
-async def test_overview_uses_a_fixed_number_of_queries(client, db_session):
+async def test_overview_uses_a_fixed_number_of_queries(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     statements: list[str] = []
 
-    def _count(conn, cursor, statement, parameters, context, executemany):
+    def _count(
+        conn: Any, cursor: Any, statement: Any, parameters: Any, context: Any, executemany: Any
+    ) -> None:
         statements.append(statement)
 
-    async def _queries(admin) -> int:
+    async def _queries(admin: Any) -> int:
         statements.clear()
         event.listen(Engine, "before_cursor_execute", _count)
         try:
@@ -403,7 +426,9 @@ async def test_overview_uses_a_fixed_number_of_queries(client, db_session):
     assert many == one
 
 
-async def test_queue_counts_match_the_approvals_list(client, db_session):
+async def test_queue_counts_match_the_approvals_list(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     owner, _ = await make_user(client, db_session, "ov-owner-queue@example.com", "owner")
     for i in range(2):
         await client.post(

@@ -2,6 +2,8 @@
 words, very long text, emoji, script tags and control characters. Nothing may break (no 500) and
 nothing may run (the text only ever comes back as text)."""
 
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
@@ -31,7 +33,7 @@ def _no_address_limit(client: AsyncClient) -> None:
 
     real = client.request
 
-    async def request(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    async def request(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN002, ANN003, ANN202
         await redis_cache.get_redis().delete("ratelimit:api:127.0.0.1", "abuse:nlp")
         return await real(*args, **kwargs)
 

@@ -112,6 +112,7 @@ async def test_an_old_bcrypt_hash_is_replaced_by_argon2id_at_the_next_sign_in(
     ok = await client.post("/api/v1/auth/login", json={"email": user.email, "password": PASSWORD})
     assert ok.status_code == 200
     again = await repo.get_user_by_email(db_session, user.email)
+    assert again is not None
     await db_session.refresh(again)
     assert again.password_hash.startswith("$argon2id$")
     assert security.verify_password(PASSWORD, again.password_hash)

@@ -23,6 +23,7 @@ it once with:
 
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import dotenv_values
 
@@ -139,10 +140,10 @@ def _record_route_hits() -> Iterator[None]:
     worked: set[str] = set()
     original = APIRoute.handle
 
-    async def handle(self, scope, receive, send):
+    async def handle(self: Any, scope: Any, receive: Any, send: Any) -> None:
         status: dict[str, int] = {}
 
-        async def send_wrapper(message):
+        async def send_wrapper(message: Any) -> None:
             if message["type"] == "http.response.start":
                 status["code"] = message["status"]
             await send(message)

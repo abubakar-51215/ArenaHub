@@ -4,6 +4,7 @@ input."""
 
 from datetime import time, timedelta
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,9 @@ async def _arena(
     return arena_id, court.json()["data"]["id"]
 
 
-async def _slot(db: AsyncSession, court_id: str, day, start: int, status=SlotStatus.available):
+async def _slot(
+    db: AsyncSession, court_id: str, day: Any, start: int, status: Any = SlotStatus.available
+) -> None:
     db.add(
         TimeSlot(
             court_id=court_id,
@@ -47,7 +50,7 @@ async def _slot(db: AsyncSession, court_id: str, day, start: int, status=SlotSta
     await db.commit()
 
 
-async def _search(client: AsyncClient, q: str, **params) -> dict:
+async def _search(client: AsyncClient, q: str, **params: Any) -> dict:
     res = await client.get(NLP, params={"q": q, **params})
     assert res.status_code == 200, res.text
     return res.json()["data"]

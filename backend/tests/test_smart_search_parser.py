@@ -161,17 +161,23 @@ def test_karachi_midnight_edge() -> None:
     """Just before and just after midnight, "today" and "tonight" are the Karachi day of ``now``."""
     before = datetime(2026, 10, 14, 23, 59)
     after = datetime(2026, 10, 15, 0, 1)
-    assert parse("tonight", places=PLACES, now=before).time.first_day == date(2026, 10, 14)
-    assert parse("tonight", places=PLACES, now=after).time.first_day == date(2026, 10, 15)
-    assert parse("tomorrow", places=PLACES, now=after).time.first_day == date(2026, 10, 16)
+    for text, now, day in (
+        ("tonight", before, date(2026, 10, 14)),
+        ("tonight", after, date(2026, 10, 15)),
+        ("tomorrow", after, date(2026, 10, 16)),
+    ):
+        window = parse(text, places=PLACES, now=now).time
+        assert window is not None and window.first_day == day
 
 
 def test_weekend_on_saturday_and_sunday() -> None:
     sat = datetime(2026, 10, 17, 10, 0)
     sun = datetime(2026, 10, 18, 10, 0)
     w = parse("this weekend", places=PLACES, now=sat).time
+    assert w is not None
     assert (w.first_day, w.last_day) == (date(2026, 10, 17), date(2026, 10, 18))
     w = parse("weekend", places=PLACES, now=sun).time
+    assert w is not None
     assert (w.first_day, w.last_day) == (date(2026, 10, 18), date(2026, 10, 18))
 
 
@@ -198,4 +204,5 @@ def test_unknown_words_are_kept_apart_and_filler_is_ignored() -> None:
 def test_places_come_from_the_arenas_data_not_a_fixed_list() -> None:
     assert parse("gulberg", places=places_from_areas([]), now=NOW).place is None
     custom = places_from_areas(["Bahria Town Phase 8"])
-    assert parse("padel bahria town", places=custom, now=NOW).place.label == "Bahria Town"
+    place = parse("padel bahria town", places=custom, now=NOW).place
+    assert place is not None and place.label == "Bahria Town"
