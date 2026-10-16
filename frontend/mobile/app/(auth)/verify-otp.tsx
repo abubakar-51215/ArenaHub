@@ -1,115 +1,71 @@
-import { useMutation } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/ui/text-field";
-import { Colors } from "@/constants/theme";
-import { ApiError } from "@/lib/api";
-import { fetchMe, resendOtp, verifyOtp } from "@/services/auth";
-import { useAuthStore } from "@/store/auth";
+import { AuthScreen } from '@/components/auth/auth-screen';
+import { useCodeEntry } from '@/components/auth/use-code-entry';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Colors } from '@/constants/theme';
+import { fetchMe, resendOtp, verifyOtp } from '@/services/auth';
+import { useAuthStore } from '@/store/auth';
 
+// "Check your email" (arena-hub-player-app-auth.html, OTP verify): opened after sign-up, and after signing in to an
+// account whose email is not confirmed yet. `sentTo` is the masked address from the server; `codeSent=0` means the
+// email could not go out, so the screen says so and "Send a new code" is ready at once. Back returns to the form with
+// what was typed still there (this screen is pushed on top of it); from sign-up, "Wrong email? Use a different
+// email" does the same (frame 13 of arena-hub-player-app-google.html).
 export default function VerifyOtpScreen() {
-  const { email, sentTo } = useLocalSearchParams<{
-    email: string;
-    sentTo?: string;
-  }>();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const { email, sentTo, codeSent, from } = useLocalSearchParams<{ email?: string; sentTo?: string; codeSent?: string; from?: string }>();
   const setSession = useAuthStore((s) => s.setSession);
 
-  const resend = useMutation({
-    mutationFn: () => resendOtp(email),
-    onSuccess: () => {
-      setError(null);
-      setNotice("A new code is on its way.");
-    },
-    onError: (err) => {
-      setNotice(null);
-      setError(
-        err instanceof ApiError ? err.message : "Could not resend the code.",
-      );
-    },
-  });
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      const tokens = await verifyOtp(email, code.trim());
+  const entry = useCodeEntry({
+    sentTo,
+    codeSent: codeSent !== '0',
+    onVerify: async (code) => {
+      const tokens = await verifyOtp(email!, code);
       useAuthStore.getState().setTokens(tokens);
       const me = await fetchMe();
-      return { tokens, me };
-    },
-    onSuccess: ({ tokens, me }) => {
       setSession(tokens, me);
-      router.replace("/(tabs)");
+      router.replace('/(tabs)');
     },
-    onError: (err) => {
-      setError(
-        err instanceof ApiError ? err.message : "Invalid code. Try again.",
-      );
-    },
+    onResend: () => resendOtp(email!),
   });
 
+  if (!email) return <Redirect href="/(auth)/register" />;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Verify your account</Text>
-      <Text style={styles.subtitle}>
-        We sent a 6-digit code to {sentTo ?? email}. In development it&apos;s
-        logged to the backend console instead of actually being emailed.
-      </Text>
-
-      <TextField
-        label="Verification Code"
-        keyboardType="number-pad"
-        maxLength={6}
-        value={code}
-        onChangeText={setCode}
-        placeholder="123456"
-        style={styles.codeInput}
-      />
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
-
-      <Button
-        title="Verify"
-        loading={mutation.isPending}
-        onPress={() => {
-          setError(null);
-          setNotice(null);
-          mutation.mutate();
-        }}
-      />
-
-      <Pressable onPress={() => resend.mutate()} disabled={resend.isPending}>
-        <Text style={[styles.resendText, resend.isPending && { opacity: 0.4 }]}>
-          {resend.isPending ? "Sending…" : "Didn't get a code? Resend"}
-        </Text>
-      </Pressable>
-    </View>
+    <AuthScreen
+      showMark
+      title="Check your email"
+      subtitleGap={22}
+      subtitle={sentTo ? (
+        <>
+          We sent a 6-digit code to <Text style={styles.strong}>{sentTo}</Text>.
+        </>
+      ) : (
+        'We sent a 6-digit code to your email.'
+      )}>
+      {entry.boxes}
+      <View style={styles.button}>
+        <Button title="Confirm" loading={entry.loading} disabled={!entry.ready} onPress={entry.confirm} />
+      </View>
+      <View style={styles.resend}>{entry.resendLink}</View>
+      {from === 'signup' ? (
+        // frame 13 (arena-hub-player-app-google.html): back to the form with every detail kept
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Use a different email" style={styles.wrongRow}>
+          <Text style={styles.wrongText}>
+            Wrong email? <Text style={styles.strong}>Use a different email</Text>
+          </Text>
+        </Pressable>
+      ) : null}
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 24,
-    justifyContent: "center",
-    gap: 16,
-  },
-  title: { fontSize: 22, fontWeight: "700", color: Colors.light.text },
-  subtitle: { fontSize: 14, color: Colors.light.muted, lineHeight: 20 },
-  codeInput: { fontSize: 22, letterSpacing: 8, textAlign: "center" },
-  errorText: { color: Colors.light.destructive, fontSize: 13 },
-  noticeText: { color: Colors.light.success, fontSize: 13 },
-  resendText: {
-    color: Colors.light.tint,
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 4,
-  },
+  strong: { fontWeight: '700', color: Colors.light.text },
+  button: { marginTop: 22 },
+  resend: { marginTop: 3 },
+  wrongRow: { minHeight: 44, justifyContent: 'center' },
+  wrongText: { fontSize: 14, color: Colors.light.muted, textAlign: 'center' },
 });

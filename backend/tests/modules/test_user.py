@@ -9,6 +9,8 @@ from app.core.exceptions import ForbiddenError
 from app.modules.auth import repository as repo
 from app.modules.user.model import User, UserRole
 from app.shared.auth import require_role
+from app.shared.otp import OtpPurpose
+from tests.helpers import last_code
 
 PASSWORD = "StrongP@ss1"
 
@@ -26,9 +28,12 @@ async def _verified_tokens(client: AsyncClient, db: AsyncSession, email: str) ->
     )
     user = await repo.get_user_by_email(db, email)
     assert user is not None
-    otp = await repo.get_latest_otp(db, user.id)
+    otp = await repo.get_latest_otp(db, user.id, OtpPurpose.registration)
     assert otp is not None
-    resp = await client.post("/api/v1/auth/verify-otp", json={"email": email, "code": otp.code})
+    resp = await client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "code": last_code(user.id, OtpPurpose.registration)},
+    )
     return resp.json()["data"]
 
 

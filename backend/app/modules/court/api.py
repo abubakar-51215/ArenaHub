@@ -140,6 +140,16 @@ async def create_pricing_rule(
     return success(data=rule, message="Pricing rule created.")
 
 
+@owner_router.get("/pricing-rules", summary="All my pricing rules (or one arena's), in one list")
+async def list_my_pricing_rules(
+    arena_id: uuid.UUID | None = None,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows = await service.list_my_pricing_rules(db, user, arena_id)
+    return success(data=rows, message="Pricing rules retrieved.")
+
+
 @owner_router.get("/courts/{court_id}/pricing-rules", summary="List peak-pricing rules")
 async def list_pricing_rules(
     court_id: uuid.UUID,

@@ -4,9 +4,10 @@ Callers own the transaction.
 """
 
 import uuid
-from datetime import date
+from datetime import date, time
+from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.court.model import Court
@@ -79,6 +80,45 @@ async def occupancy_counts(
     )
     total, booked = result.one()
     return int(total or 0), int(booked or 0)
+
+
+async def open_counts_by_date(
+    db: AsyncSession, court_id: uuid.UUID, start: date, end: date, today: date, after: time
+) -> dict[date, int]:
+    """date -> number of open ("available") slots, for dates that have any.
+    Slots of ``today`` that have already started (start time not after
+    ``after``) do not count."""
+    stmt = (
+        select(TimeSlot.date, func.count())
+        .where(
+            TimeSlot.court_id == court_id,
+            TimeSlot.date >= start,
+            TimeSlot.date <= end,
+            TimeSlot.status == SlotStatus.available,
+            or_(TimeSlot.date != today, TimeSlot.start_time > after),
+        )
+        .group_by(TimeSlot.date)
+    )
+    return {d: int(n) for d, n in (await db.execute(stmt)).all()}
+
+
+async def open_today_by_court(
+    db: AsyncSession, court_ids: list[uuid.UUID], today: date, after: time
+) -> dict[uuid.UUID, tuple[int, Decimal]]:
+    """court id -> (open slots left today, lowest price among them)."""
+    if not court_ids:
+        return {}
+    stmt = (
+        select(TimeSlot.court_id, func.count(), func.min(TimeSlot.price))
+        .where(
+            TimeSlot.court_id.in_(court_ids),
+            TimeSlot.date == today,
+            TimeSlot.status == SlotStatus.available,
+            TimeSlot.start_time > after,
+        )
+        .group_by(TimeSlot.court_id)
+    )
+    return {cid: (int(n), low) for cid, n, low in (await db.execute(stmt)).all()}
 
 
 async def occupancy_by_court(

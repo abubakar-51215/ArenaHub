@@ -1,166 +1,235 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { StatusPill } from '@/components/booking/parts';
 import { Button } from '@/components/ui/button';
+import { ConfirmSheet } from '@/components/ui/confirm-sheet';
+import { CourtArt } from '@/components/ui/court-art';
+import { Icon } from '@/components/ui/icon';
+import { ScreenHead } from '@/components/ui/screen-head';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/state-view';
+import { StickyBar } from '@/components/ui/sticky-bar';
+import { Text } from '@/components/ui/text';
+import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { useMatch } from '@/hooks/useMatches';
 import { ApiError } from '@/lib/api';
+import { errorHaptic, successHaptic } from '@/lib/haptics';
+import { hasStarted } from '@/lib/karachi';
+import { matchPill, matchWhen, priceEach } from '@/lib/match-ui';
 import { cancelMatch, joinMatch, leaveMatch } from '@/services/matches';
+import { sportLabel } from '@/constants/sports';
+import { formatRs } from '@/lib/money';
 import { useAuthStore } from '@/store/auth';
-import type { MatchParticipant } from '@/types';
+import { dotJoin } from '@/lib/text';
 
-const STATUS_LABEL = { open: 'Open', full: 'Full', cancelled: 'Cancelled', completed: 'Completed' } as const;
-
+// Match detail, from arena-hub-player-app-play.html (frames 14 to 22): the arena, when, court, how many players and "about X
+// each" (text only), the players with the host marked, the host's note, and one button for what I can do: Join, Leave, Cancel,
+// or a plain line when the match is full, cancelled or already started. Nothing is paid in the app.
 export default function MatchDetailScreen() {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
-  const currentUser = useAuthStore((s) => s.user);
-  const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
+  const me = useAuthStore((s) => s.user);
+  const qc = useQueryClient();
+  const q = useMatch(matchId);
+  const [sheet, setSheet] = useState<'leave' | 'cancel' | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const m = q.data;
 
-  const { data: match, isLoading } = useMatch(matchId);
+  const refresh = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['match', matchId] });
+    qc.invalidateQueries({ queryKey: ['open-matches'] });
+    qc.invalidateQueries({ queryKey: ['my-matches'] });
+  }, [qc, matchId]);
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['match', matchId] });
-    queryClient.invalidateQueries({ queryKey: ['open-matches'] });
-    queryClient.invalidateQueries({ queryKey: ['my-matches'] });
-  };
-
-  const joinMutation = useMutation({
-    mutationFn: () => joinMatch(matchId as string),
-    onSuccess: invalidate,
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not join.'),
-  });
-
-  const leaveMutation = useMutation({
-    mutationFn: () => leaveMatch(matchId as string),
+  const join = useMutation({
+    mutationFn: () => joinMatch(matchId),
     onSuccess: () => {
-      invalidate();
-      router.back();
+      successHaptic();
+      showToast('You joined the match');
+      refresh();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not leave.'),
+    onError: (err) => {
+      errorHaptic();
+      const message = err instanceof ApiError ? err.message : '';
+      showToast(err instanceof ApiError && err.status === 409 && /full/i.test(message) ? 'Sorry, that match just filled up.' : message || 'Could not join. Please try again.');
+      refresh();
+    },
   });
-
-  const cancelMutation = useMutation({
-    mutationFn: () => cancelMatch(matchId as string),
+  const leave = useMutation({
+    mutationFn: () => leaveMatch(matchId),
     onSuccess: () => {
-      invalidate();
-      router.back();
+      setSheet(null);
+      showToast('You left the match');
+      refresh();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not cancel.'),
+    onError: () => showToast('Could not leave. Please try again.'),
+  });
+  const cancel = useMutation({
+    mutationFn: () => cancelMatch(matchId),
+    onSuccess: () => {
+      setSheet(null);
+      showToast('Match cancelled');
+      refresh();
+    },
+    onError: () => showToast('Could not cancel. Please try again.'),
   });
 
-  if (isLoading || !match) {
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await q.refetch();
+    setRefreshing(false);
+  }, [q]);
+
+  if (q.isLoading) {
     return (
-      <SafeAreaView style={styles.loading} edges={['top']}>
-        <ActivityIndicator color={Colors.light.tint} />
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Match" />
+        <View style={{ padding: 18, gap: 12 }}>
+          <Skeleton height={130} radius={18} />
+          <Skeleton height={14} width="60%" radius={7} />
+          <Skeleton height={14} width="40%" radius={7} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (q.isError || !m) {
+    const gone = q.error instanceof ApiError && q.error.status === 404;
+    return (
+      <SafeAreaView style={styles.page} edges={['bottom']}>
+        <ScreenHead title="Match" />
+        <ErrorState title={gone ? 'This match is not available.' : 'Could not load this match.'} text={gone ? 'It may have been removed.' : undefined} onRetry={() => q.refetch()} />
       </SafeAreaView>
     );
   }
 
-  const isCreator = currentUser?.id === match.creator_id;
-  const isParticipant = match.participants.some((p) => p.player_id === currentUser?.id);
-  const canJoin = match.status === 'open' && !isParticipant;
+  const host = m.creator_id === me?.id;
+  const live = m.status === 'open' || m.status === 'full';
+  const started = hasStarted(m.match_date, m.start_time);
+  const pill = matchPill(m, me?.id);
+  const price = priceEach(m.booking_total, m.max_players);
+  const others = Math.max(0, m.players_joined - 1);
+
+  let action: { title: string; variant?: 'lime' | 'ghost' | 'off'; onPress?: () => void; loading?: boolean; disabled?: boolean; offlineLabel?: string };
+  if (m.status === 'cancelled') action = { title: 'This match was cancelled', variant: 'off', disabled: true };
+  else if (host && live) action = { title: 'Cancel match', variant: 'ghost', onPress: () => setSheet('cancel') };
+  else if (m.joined_by_me && live) action = { title: 'Leave match', variant: 'ghost', onPress: () => setSheet('leave') };
+  else if (!live || started) action = { title: started ? 'This match has started' : 'This match is over', variant: 'off', disabled: true };
+  else if (m.status === 'full') action = { title: 'Match is full', variant: 'off', disabled: true };
+  else action = { title: 'Join match', variant: 'lime', onPress: () => !join.isPending && join.mutate(), loading: join.isPending, offlineLabel: 'Join needs a connection' };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
-        </Pressable>
-        <Text style={styles.title}>Match Details</Text>
-        <View style={{ width: 22 }} />
-      </View>
-
-      <View style={styles.content}>
+    <SafeAreaView style={styles.page} edges={['bottom']}>
+      <ScreenHead title="Match" />
+      <ScrollView
+        contentContainerStyle={styles.pad}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.ink} colors={[Colors.light.ink]} />}>
         <View style={styles.card}>
-          <Text style={styles.sport}>{match.sport}</Text>
-          <Text style={styles.arenaName}>
-            {match.arena_name} · {match.court_name}
-          </Text>
-          <Text style={styles.meta}>{match.city}</Text>
-          <Text style={styles.meta}>
-            {match.match_date} · {match.start_time.slice(0, 5)}–{match.end_time.slice(0, 5)}
-          </Text>
-          <Text style={styles.meta}>Organized by {match.creator_name}</Text>
-          <View style={styles.statusRow}>
-            <Text style={styles.players}>
-              {match.players_joined} / {match.max_players} Players
-            </Text>
-            <Text style={styles.status}>{STATUS_LABEL[match.status]}</Text>
+          <View style={styles.art}>
+            <CourtArt sport={m.sport} />
+          </View>
+          <View style={styles.info}>
+            <View style={styles.titleRow}>
+              <Text variant="archivo" style={styles.title} accessibilityRole="header">
+                {m.arena_name}
+              </Text>
+              <StatusPill label={pill.label} tone={pill.tone} />
+            </View>
+            <Text style={styles.sub}>{m.city}</Text>
+            <View style={styles.rows}>
+              <Row label="When" value={matchWhen(m)} />
+              <Row label="Court" value={dotJoin([m.court_name, sportLabel(m.sport)])} />
+              <Row label="Players" value={`${m.players_joined} / ${m.max_players}`} />
+              {price ? <Row label="Share" value={price} /> : null}
+            </View>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Participants</Text>
-        <FlatList
-          data={match.participants}
-          keyExtractor={(p: MatchParticipant) => p.player_id}
-          renderItem={({ item }) => (
-            <View style={styles.participantRow}>
-              <Ionicons name="person-circle-outline" size={22} color={Colors.light.muted} />
-              <Text style={styles.participantName}>{item.player_name}</Text>
-              {item.player_id === match.creator_id ? <Text style={styles.hostTag}>Host</Text> : null}
+        <Text style={styles.label} accessibilityRole="header">
+          Players
+        </Text>
+        <View style={styles.card}>
+          {m.participants.map((p, i) => (
+            <View key={p.player_id} style={[styles.player, i < m.participants.length - 1 && styles.playerLine]}>
+              <View style={styles.avatar}>
+                <Icon name="user" size={16} color={Colors.light.text2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.playerName}>
+                  {p.player_name}
+                  {p.player_id === me?.id ? <Text style={styles.you}> · You</Text> : null}
+                </Text>
+                {p.player_id === m.creator_id ? <Text style={styles.host}>Host</Text> : null}
+              </View>
             </View>
-          )}
-        />
+          ))}
+        </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </View>
+        <Text style={styles.noteText}>
+          {m.note ? `${m.note} ` : ''}{m.booking_total ? `The booking costs ${formatRs(m.booking_total)}; the share above is only a guess. ` : ''}You settle it with each other. No payment happens in the app.
+        </Text>
+      </ScrollView>
 
-      <View style={styles.footer}>
-        {isCreator ? (
-          <Button
-            title="Cancel Match"
-            variant="outline"
-            loading={cancelMutation.isPending}
-            onPress={() =>
-              Alert.alert('Cancel this match?', 'This cancels it for everyone who joined.', [
-                { text: 'Keep match', style: 'cancel' },
-                { text: 'Cancel match', style: 'destructive', onPress: () => cancelMutation.mutate() },
-              ])
-            }
-          />
-        ) : isParticipant ? (
-          <Button
-            title="Leave Match"
-            variant="outline"
-            loading={leaveMutation.isPending}
-            onPress={() => leaveMutation.mutate()}
-          />
-        ) : canJoin ? (
-          <Button title="Join Match" loading={joinMutation.isPending} onPress={() => joinMutation.mutate()} />
-        ) : null}
-      </View>
+      <StickyBar>
+        <Button title={action.title} variant={action.variant} loading={action.loading} disabled={action.disabled} offlineLabel={action.offlineLabel} onPress={action.onPress} />
+      </StickyBar>
+
+      <ConfirmSheet
+        visible={sheet === 'leave'}
+        title="Leave this match?"
+        message="Your place will open for someone else."
+        confirmLabel="Yes, leave match"
+        loading={leave.isPending}
+        stacked
+        onConfirm={() => !leave.isPending && leave.mutate()}
+        onCancel={() => !leave.isPending && setSheet(null)}
+      />
+      <ConfirmSheet
+        visible={sheet === 'cancel'}
+        title="Cancel this match?"
+        message={`${others > 0 ? `The ${others} ${others === 1 ? 'player who joined' : 'players who joined'} will be told. ` : ''}Your court booking stays as it is.`}
+        confirmLabel="Yes, cancel match"
+        loading={cancel.isPending}
+        stacked
+        onConfirm={() => !cancel.isPending && cancel.mutate()}
+        onCancel={() => !cancel.isPending && setSheet(null)}
+      />
     </SafeAreaView>
   );
 }
 
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
-  content: { flex: 1, paddingHorizontal: 20 },
-  card: { backgroundColor: Colors.light.card, borderRadius: 12, padding: 14, gap: 4, marginBottom: 16 },
-  sport: { fontSize: 18, fontWeight: '700', color: Colors.light.text, textTransform: 'capitalize' },
-  arenaName: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
-  meta: { fontSize: 12, color: Colors.light.muted },
-  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  players: { fontSize: 13, fontWeight: '700', color: Colors.light.tint },
-  status: { fontSize: 12, fontWeight: '700', color: Colors.light.text, textTransform: 'capitalize' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.light.text, marginBottom: 10 },
-  participantRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
-  participantName: { fontSize: 14, color: Colors.light.text, flex: 1 },
-  hostTag: { fontSize: 11, fontWeight: '700', color: Colors.light.tint },
-  errorText: { color: Colors.light.destructive, fontSize: 13, marginTop: 12 },
-  footer: { padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.light.border },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  pad: { paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 },
+  card: { backgroundColor: Colors.light.card, borderWidth: 1, borderColor: Colors.light.line, borderRadius: 18, overflow: 'hidden' },
+  art: { height: 120 },
+  info: { padding: 14 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  title: { flex: 1, fontSize: 18, fontWeight: '700', letterSpacing: -0.3, color: Colors.light.text },
+  sub: { fontSize: 14, color: Colors.light.muted, marginTop: 2 },
+  rows: { marginTop: 12, gap: 6 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  rowLabel: { fontSize: 14, color: Colors.light.muted },
+  rowValue: { flexShrink: 1, fontSize: 14, color: Colors.light.text, textAlign: 'right' },
+  label: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 18, marginBottom: 8 },
+  player: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 14, paddingVertical: 8 },
+  playerLine: { borderBottomWidth: 1, borderBottomColor: Colors.light.lineSoft },
+  avatar: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.light.lineSoft, alignItems: 'center', justifyContent: 'center' },
+  playerName: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  you: { fontWeight: '500', color: Colors.light.muted },
+  host: { fontSize: 14, color: Colors.light.muted },
+  noteText: { fontSize: 14, lineHeight: 21, color: Colors.light.muted, marginTop: 16 },
 });

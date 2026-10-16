@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/services/api";
 import type { CourtInput } from "@/services/courts";
 import { useCreateCourt, useUpdateCourt } from "@/hooks/useCourts";
+import { SportChecks } from "@/components/owner/sport-checks";
 import type { Court } from "@/types";
 
 export function CourtForm({
@@ -38,7 +39,7 @@ export function CourtForm({
 
   const [name, setName] = useState(court?.name ?? "");
   const [description, setDescription] = useState(court?.description ?? "");
-  const [sportTypes, setSportTypes] = useState((court?.sport_types ?? []).join(", "));
+  const [sportTypes, setSportTypes] = useState<string[]>(court?.sport_types ?? []);
   const [capacity, setCapacity] = useState(court?.capacity ? String(court.capacity) : "");
   const [basePrice, setBasePrice] = useState(court?.base_price ?? "");
   const [images, setImages] = useState((court?.images ?? []).join("\n"));
@@ -50,12 +51,9 @@ export function CourtForm({
     e.preventDefault();
     setError(null);
 
-    const sports = sportTypes
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const sports = sportTypes;
     if (sports.length === 0) {
-      setError("Add at least one sport type.");
+      setError("Choose at least one sport.");
       return;
     }
 
@@ -105,14 +103,8 @@ export function CourtForm({
             />
           </div>
           <div>
-            <Label htmlFor="c-sports">Sport Types</Label>
-            <Input
-              id="c-sports"
-              value={sportTypes}
-              onChange={(e) => setSportTypes(e.target.value)}
-              placeholder="futsal, cricket"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated.</p>
+            <Label>Sport Types</Label>
+            <SportChecks idPrefix="c-sport" value={sportTypes} onChange={setSportTypes} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -170,7 +162,7 @@ export function CourtForm({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+              className="bg-primary text-primary-foreground transition-all hover:opacity-95"
             >
               {pending ? "Saving…" : editing ? "Save Changes" : "Add Court"}
             </Button>

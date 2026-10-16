@@ -36,7 +36,7 @@ async def get_current_user(
         raise UnauthorizedError("Token has been revoked.")
 
     user_id = payload["sub"]
-    if int(payload.get("iat", 0)) < await tokens.get_session_epoch(user_id):
+    if await tokens.is_session_stale(user_id, payload):
         raise UnauthorizedError("Session expired, please log in again.")
 
     user = await db.get(User, uuid.UUID(user_id))

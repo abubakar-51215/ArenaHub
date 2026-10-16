@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand/logo";
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center bg-brand-gradient-soft px-6 py-10 sm:px-14 lg:bg-none lg:px-20">
+      <div className="flex items-center justify-center bg-background px-6 py-10 sm:px-14 lg:bg-none lg:px-20">
         <div className="animate-fade-in-up w-full max-w-sm">
           <Logo className="mb-8" />
           {children}
@@ -22,7 +22,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         }}
       >
         {/* Soft brand glow to tie the photo to the palette */}
-        <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-blue-500/30 blur-3xl" />
+        <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-lime/30 blur-3xl" />
         <div className="pointer-events-none absolute bottom-10 -left-20 size-64 rounded-full bg-emerald-500/20 blur-3xl" />
 
         <div className="animate-fade-in-up absolute inset-x-0 top-[60%] flex flex-col items-center px-14 text-center text-white [animation-delay:0.15s]">

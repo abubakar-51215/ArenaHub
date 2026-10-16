@@ -5,6 +5,18 @@ what got done, what was tricky, and what's next.
 
 ---
 
+## Known gotcha — backend can silently go down between sessions
+
+`uvicorn` on port 8000 isn't guaranteed to survive across working sessions on this
+dev box. Symptom: any Playwright script that logs in first gets a generic
+"Something went wrong. Please try again." on the login form and every
+subsequent authed check silently no-ops (page bounces back to `/login1`/
+`/admin/login1`). Before any authed Playwright run, confirm the backend is up
+(`netstat -ano | grep :8000`) and restart it if not:
+`cd backend && uv run uvicorn app.main:app --reload --port 8000`.
+
+---
+
 ## 2026-07-24 — Demo data for every screen on all three sides
 
 ### Completed
@@ -32,6 +44,10 @@ what got done, what was tricky, and what's next.
 ### Next
 - Demo walkthrough of all three sides with the fresh data (wireframe-parity check screen by screen).
 - Fold the pending auth deep-dive findings into the audit remediation work.
+
+---
+
+## 2026-07-17 — Closed the four payment "minor limitations"
 
 Turned the documented minor limitations into real fixes/features.
 

@@ -28,6 +28,12 @@ def rows_to_csv(headers: list[str], rows: list[list[str]]) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
+def _latin1(text: str) -> str:
+    """The PDF's core Helvetica is latin-1: the rupee sign becomes "Rs.", dashes become "-"."""
+    text = text.replace("₨", "Rs.").replace("–", "-").replace("—", "-")
+    return text.encode("latin-1", "replace").decode("latin-1")
+
+
 def rows_to_pdf(title: str, headers: list[str], rows: list[list[str]]) -> bytes:
     pdf = FPDF(orientation="L", format="A4")
     pdf.add_page()
@@ -44,7 +50,7 @@ def rows_to_pdf(title: str, headers: list[str], rows: list[list[str]]) -> bytes:
     pdf.set_font("Helvetica", "", 8)
     for row in rows:
         for cell in row:
-            pdf.cell(col_width, 7, str(cell)[:40], border=1)
+            pdf.cell(col_width, 7, _latin1(str(cell))[:40], border=1)
         pdf.ln(7)
 
     if not rows:

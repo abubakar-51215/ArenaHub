@@ -27,11 +27,18 @@ class OtpVerification(UUIDPrimaryKeyMixin, Base):
         nullable=False,
         index=True,
     )
-    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    # HMAC-SHA256 of the code (keyed with CODE_HASH_SECRET, bound to the purpose, the user and
+    # the address it went to); the code itself is never stored. See app/shared/codes.py.
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     channel: Mapped[str] = mapped_column(String(10), nullable=False)  # email | sms
+    # OtpPurpose value. Lookups always filter on it (see app.shared.otp.OtpPurpose).
+    purpose: Mapped[str] = mapped_column(String(20), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # set when the code is accepted, or ended by a newer code: a code works once
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # the email could not be sent: this code does not count toward the wait or the hourly maximum
+    delivery_failed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
 
@@ -65,3 +72,27 @@ class PasswordHistory(UUIDPrimaryKeyMixin, Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+
+class RefreshToken(UUIDPrimaryKeyMixin, Base):
+    """One refresh token of one sign-in. Only the SHA-256 hash is kept (the token itself is a
+    random string the app holds), and the tokens of one sign-in share a ``family_id``. A token works
+    once: using it again (``used_at`` set) means it was copied, so the whole family is revoked. See
+    app/modules/auth/sessions.py."""
+
+    __tablename__ = "refresh_tokens"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    family_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -21,7 +21,15 @@ class MockProvider:
     def __init__(self, name: str = "mock") -> None:
         self._name = name
 
-    async def initiate(self, *, amount: Decimal, currency: str, reference: str) -> InitiateResult:
+    async def initiate(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        reference: str,
+        wallet_number: str | None = None,
+        return_url: str | None = None,
+    ) -> InitiateResult:
         txn = f"{self._name}_test_{uuid.uuid4().hex}"
         return InitiateResult(
             gateway_transaction_id=txn,
@@ -33,5 +41,7 @@ class MockProvider:
         # dev simulate-confirm endpoint, which drives the same code path.
         raise ValidationError("MockProvider has no webhook; use the dev simulate-confirm endpoint.")
 
-    async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:
+    async def refund(
+        self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key: str | None = None
+    ) -> RefundResult:
         return RefundResult(provider_reference=f"mock_re_{uuid.uuid4().hex}", status="processed")

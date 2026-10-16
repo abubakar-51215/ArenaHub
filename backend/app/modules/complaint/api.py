@@ -17,6 +17,7 @@ from app.modules.complaint import service
 from app.modules.complaint.model import ComplaintCategory, ComplaintStatus
 from app.modules.complaint.schema import ComplaintCreate, ComplaintRespondRequest
 from app.modules.user.model import User
+from app.shared import abuse
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -27,7 +28,12 @@ admin_router = APIRouter(prefix="/admin/complaints", tags=["admin-complaints"])
 _admin = require_role("admin")
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, summary="Submit a complaint")
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit a complaint",
+    dependencies=[Depends(abuse.per_user("complaint", 10, 3600))],
+)
 async def submit_complaint(
     data: ComplaintCreate,
     user: User = Depends(get_current_user),
@@ -45,6 +51,16 @@ async def list_my_complaints(
 ) -> dict[str, Any]:
     data = await service.list_my_complaints(db, user, params)
     return success(data=data, message="Complaints retrieved.")
+
+
+@router.get("/{complaint_id}", summary="Get one of my complaints")
+async def get_my_complaint(
+    complaint_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    complaint = await service.get_my_complaint(db, user, complaint_id)
+    return success(data=complaint, message="Complaint retrieved.")
 
 
 @admin_router.get("", summary="Get all complaints")

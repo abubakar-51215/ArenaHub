@@ -11,6 +11,8 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.booking.model import BookingStatus
+from app.modules.payment.model import PaymentLifecycleStatus, PaymentMethod, PaymentStatus
+from app.shared.receipt_links import ReceiptLink
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -36,7 +38,13 @@ class PendingApprovalItem(BaseModel):
     total_amount: Decimal
     payment_id: uuid.UUID | None = None
     payment_method: str | None = None
-    receipt_proof_url: str | None = None
+    receipt_proof_url: ReceiptLink = None
+
+
+class BookingReminderResponse(BaseModel):
+    player_name: str
+    # a new reminder is possible after this many minutes
+    next_reminder_in_minutes: int
 
 
 class CalendarBookingResponse(BaseModel):
@@ -118,6 +126,8 @@ class OwnerBookingRow(BaseModel):
     """One row of the booking-management table (wireframe screen 5)."""
 
     booking_id: uuid.UUID
+    # the reference the player sees and writes on a bank transfer (AHB-xxxxxx)
+    booking_code: str = ""
     booking_date: date
     start_time: time
     end_time: time
@@ -128,5 +138,14 @@ class OwnerBookingRow(BaseModel):
     player_name: str
     total_amount: Decimal
     status: BookingStatus
+    # the player's phone, masked (+92 300 11••••): the full number never leaves the server
+    player_phone: str | None = None
     payment_id: uuid.UUID | None = None
-    receipt_proof_url: str | None = None
+    payment_method: PaymentMethod | None = None
+    payment_status: PaymentStatus | None = None
+    payment_lifecycle_status: PaymentLifecycleStatus | None = None
+    receipt_proof_url: ReceiptLink = None
+    # "Awaiting payment" and the slot still ahead: the owner may send a reminder
+    can_remind: bool = False
+    # minutes until another reminder may be sent, while one went out in the last hour
+    remind_wait_minutes: int | None = None

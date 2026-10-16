@@ -14,7 +14,9 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
+import { queryClient } from '../lib/query-client';
 import type { Tokens, User } from '../types';
+import { useCheckout } from './checkout';
 
 // expo-secure-store has no web implementation (there's no OS keychain in a
 // browser) — fall back to localStorage there. Native (iOS/Android) always
@@ -22,9 +24,17 @@ import type { Tokens, User } from '../types';
 const secureStorage: StateStorage =
   Platform.OS === 'web'
     ? {
-        getItem: (name) => window.localStorage.getItem(name),
-        setItem: (name, value) => window.localStorage.setItem(name, value),
-        removeItem: (name) => window.localStorage.removeItem(name),
+        // Async on purpose: a sync read rehydrates inside create(), before
+        // `useAuthStore` is assigned, so onRehydrateStorage below would hit it
+        // uninitialised and `hydrated` would never become true. The window
+        // guards cover Expo's static-export render pass, which runs in Node.
+        getItem: async (name) => (typeof window === 'undefined' ? null : window.localStorage.getItem(name)),
+        setItem: async (name, value) => {
+          if (typeof window !== 'undefined') window.localStorage.setItem(name, value);
+        },
+        removeItem: async (name) => {
+          if (typeof window !== 'undefined') window.localStorage.removeItem(name);
+        },
       }
     : {
         getItem: async (name) => (await SecureStore.getItemAsync(name)) ?? null,
@@ -64,7 +74,13 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (tokens) =>
         set({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token }),
       setUser: (user) => set({ user }),
-      clear: () => set({ accessToken: null, refreshToken: null, user: null }),
+      // signing out (or a refused refresh) also forgets everything fetched for this player, so the next person
+      // who signs in on the phone never sees the previous player's bookings, unread count or half-made booking
+      clear: () => {
+        set({ accessToken: null, refreshToken: null, user: null });
+        queryClient.clear();
+        useCheckout.getState().forget();
+      },
     }),
     {
       name: 'arenahub-auth',

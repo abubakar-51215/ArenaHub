@@ -10,12 +10,14 @@ single feature module, so it lives here instead.
 import secrets
 import uuid
 from datetime import date, datetime
+from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.admin import repository as repo
-from app.modules.admin.model import AuditLog, PlatformSettings
+from app.modules.admin.model import PlatformSettings
 from app.modules.admin.schema import (
     AdminBookingResponse,
     AdminPaymentResponse,
@@ -28,14 +30,16 @@ from app.modules.admin.schema import (
 )
 from app.modules.arena import repository as arena_repo
 from app.modules.arena import service as arena_service
-from app.modules.arena.model import ArenaStatus
+from app.modules.arena.model import Arena, ArenaStatus
 from app.modules.arena.schema import ArenaResponse
-from app.modules.auth import tokens
+from app.modules.auth import sessions, tokens
+from app.modules.booking import service as booking_service
 from app.modules.booking.model import BookingStatus
 from app.modules.complaint import service as complaint_service
-from app.modules.payment.model import PaymentMethod
+from app.modules.payment.model import PaymentMethod, Refund, RefundStatus
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import User, UserRole
+from app.shared.audit import audit
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams, paginated
 
@@ -48,24 +52,25 @@ async def record_audit(
     target_id: str,
     details: dict | None = None,
 ) -> None:
-    await repo.add_audit_log(
-        db,
-        AuditLog(
-            actor_id=actor.id,
-            action=action,
-            target_type=target_type,
-            target_id=target_id,
-            details=details or {},
-        ),
+    await audit(
+        db, action, actor=actor, target_type=target_type, target_id=target_id, details=details
     )
+
+
+ALREADY_HANDLED = "Someone already handled this arena."
 
 
 # ---- arena verification (existing) --------------------------------------------------
 
 
-async def list_queue(db: AsyncSession, status: ArenaStatus, params: PaginationParams) -> dict:
+async def list_queue(
+    db: AsyncSession,
+    status: ArenaStatus,
+    params: PaginationParams,
+    suspended: bool | None = None,
+) -> dict:
     arenas, total = await arena_repo.list_arenas_by_status(
-        db, status, offset=params.offset, limit=params.page_size
+        db, status, offset=params.offset, limit=params.page_size, suspended=suspended
     )
     items = [ArenaResponse.model_validate(a) for a in arenas]
     return paginated(items, total, params)
@@ -79,10 +84,13 @@ async def get_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
 
 
 async def approve_arena(db: AsyncSession, actor: User, arena_id: uuid.UUID) -> ArenaResponse:
-    arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None:
-        raise NotFoundError("Arena not found.")
+    arena = await _lock_arena(db, arena_id)
+    if arena.is_deleted:
+        raise ConflictError("This arena has been removed.")
+    if arena.status != ArenaStatus.pending:
+        raise ConflictError(ALREADY_HANDLED)
     await arena_service.set_status(db, arena, ArenaStatus.approved)
+    await notify_user(db, arena.owner_id, "arena_approved", arena_name=arena.name)
     await record_audit(db, actor, "arena.approve", "arena", str(arena_id))
     await db.commit()
     refreshed = await arena_repo.get_arena(db, arena_id)
@@ -93,15 +101,126 @@ async def approve_arena(db: AsyncSession, actor: User, arena_id: uuid.UUID) -> A
 async def reject_arena(
     db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str
 ) -> ArenaResponse:
-    arena = await arena_repo.get_arena(db, arena_id)
-    if arena is None:
-        raise NotFoundError("Arena not found.")
+    arena = await _lock_arena(db, arena_id)
+    if arena.is_deleted:
+        raise ConflictError("This arena has been removed.")
+    if arena.status != ArenaStatus.pending:
+        raise ConflictError(ALREADY_HANDLED)
     await arena_service.set_status(db, arena, ArenaStatus.rejected, reason=reason)
+    await notify_user(db, arena.owner_id, "arena_rejected", arena_name=arena.name, reason=reason)
     await record_audit(db, actor, "arena.reject", "arena", str(arena_id), {"reason": reason})
     await db.commit()
     refreshed = await arena_repo.get_arena(db, arena_id)
     assert refreshed is not None
     return ArenaResponse.model_validate(refreshed)
+
+
+# ---- arena moderation: suspend / reactivate / remove ----------------------
+
+
+async def _lock_arena(db: AsyncSession, arena_id: uuid.UUID) -> Arena:
+    """Row-locked read, so two admins acting on the same arena cannot both
+    pass the state check (the second waits, then sees the new state)."""
+    arena = await db.scalar(
+        select(Arena)
+        .where(Arena.id == arena_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if arena is None:
+        raise NotFoundError("Arena not found.")
+    return arena
+
+
+async def _arena_response(db: AsyncSession, arena_id: uuid.UUID) -> ArenaResponse:
+    refreshed = await arena_repo.get_arena(db, arena_id)
+    assert refreshed is not None
+    return ArenaResponse.model_validate(refreshed)
+
+
+async def suspend_arena(
+    db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str
+) -> ArenaResponse:
+    """Take a live (approved) arena off the platform: hidden from players,
+    no new bookings or slots, upcoming bookings cancelled with a full refund.
+    The owner keeps the arena and their account."""
+    arena = await _lock_arena(db, arena_id)
+    if arena.is_deleted:
+        raise ConflictError("This arena has been removed.")
+    if arena.is_suspended:
+        raise ConflictError("This arena is already suspended.")
+    if arena.status != ArenaStatus.approved:
+        raise ConflictError("Only an approved arena can be suspended.")
+    arena.suspended_at = datetime.now()
+    arena.suspended_reason = reason
+    arena.suspended_by = actor.id
+    cancelled, pending = await booking_service.cancel_future_bookings_for_arena(
+        db, arena.id, "The arena was suspended by ArenaHub."
+    )
+    await notify_user(db, arena.owner_id, "arena_suspended", arena_name=arena.name, reason=reason)
+    await record_audit(
+        db,
+        actor,
+        "arena.suspend",
+        "arena",
+        str(arena.id),
+        {"reason": reason, "bookings_cancelled": cancelled, "refunds_pending": pending},
+    )
+    await db.commit()
+    return await _arena_response(db, arena.id)
+
+
+async def reactivate_arena(
+    db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str | None = None
+) -> ArenaResponse:
+    """Lift a suspension. Bookings cancelled by it stay cancelled."""
+    arena = await _lock_arena(db, arena_id)
+    if arena.is_deleted:
+        raise ConflictError("This arena has been removed.")
+    if not arena.is_suspended:
+        raise ConflictError("This arena is not suspended.")
+    arena.suspended_at = None
+    arena.suspended_reason = None
+    arena.suspended_by = None
+    await notify_user(db, arena.owner_id, "arena_reactivated", arena_name=arena.name)
+    await record_audit(
+        db,
+        actor,
+        "arena.reactivate",
+        "arena",
+        str(arena.id),
+        {"reason": reason, "bookings_cancelled": 0, "refunds_pending": 0},
+    )
+    await db.commit()
+    return await _arena_response(db, arena.id)
+
+
+async def delete_arena(
+    db: AsyncSession, actor: User, arena_id: uuid.UUID, reason: str
+) -> ArenaResponse:
+    """Soft delete: the arena disappears for players and becomes read-only for
+    its owner; upcoming bookings are cancelled with a full refund. The row,
+    its bookings, payments, refunds, reviews and audit rows stay."""
+    arena = await _lock_arena(db, arena_id)
+    if arena.is_deleted:
+        raise ConflictError("This arena is already removed.")
+    arena.deleted_at = datetime.now()
+    arena.deleted_reason = reason
+    arena.deleted_by = actor.id
+    cancelled, pending = await booking_service.cancel_future_bookings_for_arena(
+        db, arena.id, "The arena was removed from ArenaHub."
+    )
+    await notify_user(db, arena.owner_id, "arena_deleted", arena_name=arena.name, reason=reason)
+    await record_audit(
+        db,
+        actor,
+        "arena.delete",
+        "arena",
+        str(arena.id),
+        {"reason": reason, "bookings_cancelled": cancelled, "refunds_pending": pending},
+    )
+    await db.commit()
+    return await _arena_response(db, arena.id)
 
 
 # ---- user management --------------------------------------------------
@@ -133,7 +252,10 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> AdminUserDeta
         raise NotFoundError("User not found.")
     total_bookings = await repo.count_user_bookings(db, user_id)
     return AdminUserDetailResponse(
-        **AdminUserResponse.model_validate(user).model_dump(), total_bookings=total_bookings
+        **AdminUserResponse.model_validate(user).model_dump(),
+        total_bookings=total_bookings,
+        total_complaints=await repo.count_user_complaints(db, user_id),
+        suspended_reason=None if user.is_active else await repo.last_suspend_reason(db, user_id),
     )
 
 
@@ -148,6 +270,8 @@ async def suspend_user(
     if user.role == UserRole.admin:
         raise ForbiddenError("Admin accounts cannot be suspended.")
     user.is_active = False
+    # every sign-in of this account ends now, and stays ended after a later reactivation
+    await sessions.revoke_all(db, user_id)
     await record_audit(db, actor, "user.suspend", "user", str(user_id), {"reason": reason})
     # The email is the channel that matters here — a suspended account can't
     # open the app to read the in-app copy until it's reactivated.
@@ -185,6 +309,7 @@ async def delete_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> None
     user.bio = None
 
     await record_audit(db, actor, "user.delete", "user", str(user_id))
+    await sessions.revoke_all(db, user_id)
     await db.commit()
     await tokens.bump_session_epoch(str(user_id))
 
@@ -203,6 +328,19 @@ async def reactivate_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> 
 
 
 # ---- platform-wide monitoring --------------------------------------------------
+
+
+async def _pending_refund_ids(
+    db: AsyncSession, column: Any, ids: list[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of ``ids`` (booking or payment ids, per ``column``) have a refund
+    that is still pending."""
+    if not ids:
+        return set()
+    rows = await db.scalars(
+        select(column).where(column.in_(ids), Refund.status == RefundStatus.pending).distinct()
+    )
+    return set(rows.all())
 
 
 async def list_bookings(
@@ -225,9 +363,11 @@ async def list_bookings(
         offset=params.offset,
         limit=params.page_size,
     )
+    waiting = await _pending_refund_ids(db, Refund.booking_id, [b.id for b, *_ in rows])
     items = [
         AdminBookingResponse(
             id=b.id,
+            booking_code=booking_service.booking_code_for(b.booking_group_id),
             player_id=b.player_id,
             player_name=pn,
             arena_id=b.arena_id,
@@ -240,6 +380,7 @@ async def list_bookings(
             payment_type=b.payment_type,
             status=b.status,
             created_at=b.created_at,
+            refund_pending=b.id in waiting,
         )
         for b, an, cn, pn in rows
     ]
@@ -266,9 +407,11 @@ async def list_payments(
         offset=params.offset,
         limit=params.page_size,
     )
+    waiting = await _pending_refund_ids(db, Refund.payment_id, [p.id for p, *_ in rows])
     items = [
         AdminPaymentResponse(
             id=p.id,
+            booking_code=booking_service.booking_code_for(p.booking_group_id),
             player_id=p.player_id,
             player_name=pn,
             arena_name=an,
@@ -277,7 +420,9 @@ async def list_payments(
             payment_method=p.payment_method,
             gateway_transaction_id=p.gateway_transaction_id,
             status=p.status,
+            lifecycle_status=p.lifecycle_status,
             created_at=p.created_at,
+            refund_pending=p.id in waiting,
         )
         for p, an, pn in rows
     ]
@@ -336,6 +481,9 @@ async def list_audit_logs(
             target_type=log.target_type,
             target_id=log.target_id,
             details=log.details,
+            result=log.result,
+            ip=log.ip,
+            request_id=log.request_id,
             created_at=log.created_at,
         )
         for log in logs

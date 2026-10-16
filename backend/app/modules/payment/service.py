@@ -9,20 +9,26 @@ place that ever moves a booking group out of pending_payment.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
+import structlog
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
 from app.core.config import get_settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.integrations.payments import get_provider
+from app.integrations.payments.base import mask_wallet
 from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
+from app.modules.booking.service import booking_code_for, release_discount_use
+from app.modules.court import repository as court_repo
 from app.modules.equipment import service as equipment_service
+from app.modules.payment import methods, state_machine
 from app.modules.payment import repository as repo
-from app.modules.payment import state_machine
 from app.modules.payment.model import (
     Payment,
     PaymentMethod,
@@ -35,20 +41,73 @@ from app.modules.payment.model import (
 )
 from app.modules.payment.receipt import build_receipt_pdf
 from app.modules.payment.schema import (
+    OwnerRefundItem,
+    OwnerRefundMarkPaidResponse,
     PaymentEventResponse,
     PaymentHistoryItem,
     PaymentInitiateRequest,
     PaymentInitiateResponse,
+    PaymentRefundItem,
     PaymentResponse,
     RefundResponse,
 )
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
-from app.shared.notify import notify_user
+from app.shared import payment_return, receipt_links
+from app.shared.audit import audit
+from app.shared.notify import booking_when, notify_user
 from app.shared.pagination import PaginationParams, paginated
+from app.shared.phone import phone_key
 from app.shared.qr import generate_booking_qr
 from app.websocket.manager import broadcast_slot_status
+
+log = structlog.get_logger()
+
+# Gateway refunds that fail are retried with a growing delay: 5, 10, 20, 40
+# and 80 minutes after each failure, six tries in all; after that the refund
+# is flagged for manual handling and the player is told.
+REFUND_RETRY_BASE = timedelta(minutes=5)
+REFUND_MAX_ATTEMPTS = 6
+
+
+def _next_refund_attempt(now: datetime, attempts: int) -> datetime:
+    return now + REFUND_RETRY_BASE * (2 ** (attempts - 1))
+
+
+async def _record_failed_try(
+    db: AsyncSession, refund: Refund, payment: Payment, booking: Booking, now: datetime, error: str
+) -> None:
+    """One gateway try that did not complete the refund: it raised, or it
+    answered with anything other than "processed". Counts toward the
+    REFUND_MAX_ATTEMPTS tries; schedules the next one, or after the last one
+    flags the refund for manual handling and tells the player."""
+    refund.status = RefundStatus.pending
+    refund.gateway_attempts += 1
+    refund.last_error = error[:500]
+    if refund.gateway_attempts >= REFUND_MAX_ATTEMPTS:
+        refund.needs_manual = True
+        refund.next_attempt_at = None
+        await state_machine.record_note(
+            db, payment, f"Refund of Rs. {refund.amount} needs manual handling."
+        )
+        await notify_user(
+            db,
+            booking.player_id,
+            "refund_needs_manual",
+            booking_id=str(booking.id),
+            amount=str(refund.amount),
+            **booking_when(booking),
+        )
+    else:
+        refund.next_attempt_at = _next_refund_attempt(now, refund.gateway_attempts)
+    log.warning(
+        "refund_gateway_try_failed",
+        refund_id=str(refund.id),
+        attempts=refund.gateway_attempts,
+        error=refund.last_error,
+    )
+
 
 _PROVIDER_NAME = {
     PaymentMethod.card: "stripe",
@@ -59,13 +118,19 @@ _PROVIDER_NAME = {
 
 
 async def _group_bookings_for_player(
-    db: AsyncSession, user: User, booking_group_id: uuid.UUID
+    db: AsyncSession, user: User, booking_group_id: uuid.UUID, *, lock: bool = False
 ) -> list[Booking]:
-    bookings = await booking_repo.list_group(db, booking_group_id)
+    """The player's bookings in a group. ``lock`` holds the rows until the transaction ends, so
+    two requests for the same group (a double tap, a retry) run one after the other: the second
+    then sees the first one's payment instead of making another."""
+    if lock:
+        bookings = await booking_repo.list_group_for_update(db, booking_group_id)
+    else:
+        bookings = await booking_repo.list_group(db, booking_group_id)
     if not bookings:
         raise NotFoundError("Booking group not found.")
     if any(b.player_id != user.id for b in bookings):
-        raise ForbiddenError("You do not own this booking.")
+        raise NotFoundError("Booking group not found.")  # not yours = the same as a missing one
     return bookings
 
 
@@ -73,14 +138,18 @@ async def list_my_payments(db: AsyncSession, user: User, params: PaginationParam
     rows, total = await repo.list_payments_for_player(
         db, user.id, offset=params.offset, limit=params.page_size
     )
-    items = [
-        PaymentHistoryItem(
-            **PaymentResponse.model_validate(payment).model_dump(),
-            arena_name=arena_name,
-            booking_date=booking_date,
+    items = []
+    for payment, arena_name, booking_date in rows:
+        refunds = await repo.list_refunds_for_payment(db, payment.id)
+        items.append(
+            PaymentHistoryItem(
+                **PaymentResponse.model_validate(payment).model_dump(),
+                arena_name=arena_name,
+                booking_date=booking_date,
+                booking_code=booking_code_for(payment.booking_group_id),
+                refunds=[PaymentRefundItem.model_validate(r) for r in refunds],
+            )
         )
-        for payment, arena_name, booking_date in rows
-    ]
     return paginated(items, total, params)
 
 
@@ -97,13 +166,37 @@ async def get_payment_by_group(
     return PaymentResponse.model_validate(payment)
 
 
+_WALLETS = {PaymentMethod.jazzcash: "JazzCash", PaymentMethod.easypaisa: "EasyPaisa"}
+
+
+def _gateway_details(data: PaymentInitiateRequest) -> tuple[str | None, str | None]:
+    """(wallet number in local form 03XXXXXXXXX, return address) for a gateway payment.
+
+    A wallet payment needs the player's Pakistani mobile number (the request goes to that
+    wallet). A card payment may name the app address to come back to; only app addresses are
+    accepted (app/shared/payment_return.py)."""
+    wallet = None
+    if data.payment_method in _WALLETS:
+        if not data.wallet_number or not data.wallet_number.strip():
+            raise ValidationError(
+                messages.WALLET_NUMBER_NEEDED.format(wallet=_WALLETS[data.payment_method])
+            )
+        key = phone_key(data.wallet_number)
+        if not (len(key) == 12 and key.startswith("923")):
+            raise ValidationError(messages.WALLET_NUMBER_INVALID)
+        wallet = "0" + key[2:]
+    if data.return_url is not None and not payment_return.is_allowed(data.return_url):
+        raise ValidationError(messages.RETURN_ADDRESS_REFUSED)
+    return wallet, data.return_url
+
+
 async def initiate_payment(
     db: AsyncSession, user: User, data: PaymentInitiateRequest
 ) -> PaymentInitiateResponse:
     if user.role != UserRole.player:
         raise ForbiddenError("Only players can pay for bookings.")
 
-    bookings = await _group_bookings_for_player(db, user, data.booking_group_id)
+    bookings = await _group_bookings_for_player(db, user, data.booking_group_id, lock=True)
     if any(b.status != BookingStatus.pending_payment for b in bookings):
         raise ValidationError("This booking group is not awaiting payment.")
 
@@ -111,10 +204,16 @@ async def initiate_payment(
     if existing is not None and existing.status in (PaymentStatus.pending, PaymentStatus.completed):
         raise ConflictError("A payment for this booking already exists.")
 
+    methods.ensure_usable(data.payment_method)
+    wallet, return_url = _gateway_details(data)
     amount = sum((b.advance_amount for b in bookings), Decimal("0"))
     provider = get_provider(data.payment_method.value)
     result = await provider.initiate(
-        amount=amount, currency="PKR", reference=str(data.booking_group_id)
+        amount=amount,
+        currency="PKR",
+        reference=str(data.booking_group_id),
+        wallet_number=wallet,
+        return_url=return_url,
     )
 
     payment = Payment(
@@ -131,9 +230,12 @@ async def initiate_payment(
     await repo.add_payment(db, payment)
     await state_machine.record_created(db, payment)
     if data.payment_method != PaymentMethod.bank_transfer:
-        await state_machine.advance(
-            db, payment, Lifecycle.initiated, note="Charge initiated with gateway."
+        note = (
+            f"Payment request sent to {mask_wallet(wallet)}."
+            if wallet
+            else "Charge initiated with gateway."
         )
+        await state_machine.advance(db, payment, Lifecycle.initiated, note=note)
     await db.commit()
 
     return PaymentInitiateResponse(
@@ -154,18 +256,24 @@ async def initiate_balance_payment(
     if data.payment_method == PaymentMethod.bank_transfer:
         raise ValidationError("Pay the remaining balance online, or in person at the venue.")
 
-    bookings = await _group_bookings_for_player(db, user, data.booking_group_id)
+    bookings = await _group_bookings_for_player(db, user, data.booking_group_id, lock=True)
     if any(b.status != BookingStatus.confirmed for b in bookings):
         raise ValidationError("Only a confirmed booking can have its balance paid online.")
+    methods.ensure_usable(data.payment_method)
     outstanding = sum((b.remaining_amount for b in bookings), Decimal("0"))
     if outstanding <= 0:
         raise ValidationError("This booking has no outstanding balance.")
     if await repo.get_pending_balance_payment(db, data.booking_group_id) is not None:
         raise ConflictError("A balance payment is already in progress for this booking.")
 
+    wallet, return_url = _gateway_details(data)
     provider = get_provider(data.payment_method.value)
     result = await provider.initiate(
-        amount=outstanding, currency="PKR", reference=str(data.booking_group_id)
+        amount=outstanding,
+        currency="PKR",
+        reference=str(data.booking_group_id),
+        wallet_number=wallet,
+        return_url=return_url,
     )
     payment = Payment(
         booking_group_id=data.booking_group_id,
@@ -210,7 +318,10 @@ async def _confirm_group(db: AsyncSession, payment: Payment) -> None:
             await broadcast_slot_status(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
-        await notify_user(db, booking.player_id, "booking_confirmed", booking_id=str(booking.id))
+    # one booking (a group of hours) is one event: one notice, opening the first hour
+    await notify_user(
+        db, bookings[0].player_id, "booking_confirmed", booking_id=str(bookings[0].id)
+    )
     arena = await arena_repo.get_arena(db, bookings[0].arena_id)
     if arena is not None:
         await notify_user(db, arena.owner_id, "new_confirmed_booking", count=len(bookings))
@@ -238,9 +349,23 @@ async def _fail_group(
                 booking.court_id, slot.id, slot.date, slot.start_time, slot.status.value
             )
         await equipment_service.release_for_booking(db, booking.id)
+    # never paid: the discount use the group reserved goes back (once)
+    await release_discount_use(db, payment.booking_group_id)
+    # one notice for the whole booking; a rejected receipt says so, with the owner's reason
+    first = bookings[0]
+    if rejected:
+        arena = await arena_repo.get_arena(db, first.arena_id)
         await notify_user(
-            db, booking.player_id, "booking_payment_failed", booking_id=str(booking.id)
+            db,
+            first.player_id,
+            "receipt_rejected",
+            booking_id=str(first.id),
+            booking_code=booking_code_for(first.booking_group_id),
+            arena_name=arena.name if arena else "The arena",
+            reason=first.cancellation_reason or "No reason given.",
         )
+    else:
+        await notify_user(db, first.player_id, "booking_payment_failed", booking_id=str(first.id))
 
 
 async def _settle_balance(db: AsyncSession, payment: Payment) -> None:
@@ -271,6 +396,8 @@ async def handle_webhook(
 ) -> None:
     provider = get_provider(payment_method)
     event = provider.verify_webhook(payload, headers)
+    if event.status == "ignored":
+        return  # a gateway event that changes nothing here (Stripe sends many kinds)
     payment = await repo.get_payment_by_gateway_transaction_id_for_update(
         db, event.gateway_transaction_id
     )
@@ -339,12 +466,48 @@ async def dev_simulate_confirm(
     return PaymentResponse.model_validate(payment)
 
 
+async def dev_checkout_payment(db: AsyncSession, txn: str) -> Payment:
+    """The pending card payment behind a development test card page (development only)."""
+    if not get_settings().is_dev or not txn.startswith("cs_sim_"):
+        raise NotFoundError("Not found.")
+    payment = await repo.get_payment_by_gateway_transaction_id_for_update(db, txn)
+    if payment is None or payment.payment_method != PaymentMethod.card:
+        raise NotFoundError("Not found.")
+    return payment
+
+
+async def dev_finish_checkout(db: AsyncSession, txn: str, paid: bool) -> None:
+    """The development test card page's Pay or Cancel: the same outcome Stripe's webhook brings
+    (paid: the booking is confirmed at once; cancelled: the attempt fails)."""
+    payment = await dev_checkout_payment(db, txn)
+    if payment.status != PaymentStatus.pending:
+        return  # pressed twice, or already settled
+    if payment.purpose == PaymentPurpose.balance:
+        await (_settle_balance(db, payment) if paid else _fail_balance(db, payment))
+    else:
+        bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
+        if any(b.status != BookingStatus.pending_payment for b in bookings):
+            return
+        if paid:
+            await _confirm_group(db, payment)
+        else:
+            await _fail_group(db, payment, rejected=False, bookings=bookings)
+    await db.commit()
+
+
+def _is_our_receipt_url(url: str) -> bool:
+    """Only an address our own upload endpoint handed out (never a link to some other site)."""
+    return receipt_links.stored_name(url) is not None
+
+
 async def upload_receipt(
     db: AsyncSession, user: User, payment_id: uuid.UUID, receipt_proof_url: str
 ) -> PaymentResponse:
     payment = await repo.get_payment_for_update(db, payment_id)
     if payment is None or payment.player_id != user.id:
         raise NotFoundError("Payment not found.")
+    if not _is_our_receipt_url(receipt_proof_url):
+        raise ValidationError("Upload the receipt photo first.")
     if payment.payment_method != PaymentMethod.bank_transfer:
         raise ValidationError("Only bank_transfer payments take a receipt upload.")
     if payment.status != PaymentStatus.pending:
@@ -357,6 +520,19 @@ async def upload_receipt(
     bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
     for booking in bookings:
         booking.status = BookingStatus.pending_approval
+    # the owner has to approve it: one notice per receipt, opening the first hour
+    arena = await arena_repo.get_arena(db, bookings[0].arena_id) if bookings else None
+    if arena is not None:
+        await notify_user(
+            db,
+            arena.owner_id,
+            "receipt_to_review",
+            booking_id=str(bookings[0].id),
+            booking_code=booking_code_for(payment.booking_group_id),
+            amount=str(payment.amount),
+            arena_name=arena.name,
+            player_name=user.full_name,
+        )
     await db.commit()
     return PaymentResponse.model_validate(payment)
 
@@ -367,14 +543,14 @@ async def _owned_bank_transfer_payment(
     payment = await repo.get_payment_for_update(db, payment_id)
     if payment is None:
         raise NotFoundError("Payment not found.")
-    if payment.payment_method != PaymentMethod.bank_transfer:
-        raise ValidationError("Only bank_transfer payments require owner approval.")
     bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
     if not bookings:
-        raise NotFoundError("Booking group not found.")
+        raise NotFoundError("Payment not found.")
     arena = await arena_repo.get_arena(db, bookings[0].arena_id)
     if arena is None or arena.owner_id != user.id:
-        raise ForbiddenError("You do not own this arena.")
+        raise NotFoundError("Payment not found.")  # checked BEFORE anything about the payment
+    if payment.payment_method != PaymentMethod.bank_transfer:
+        raise ValidationError("Only bank_transfer payments require owner approval.")
     if payment.receipt_proof_url is None:
         raise ValidationError("No receipt has been uploaded yet.")
     if payment.status != PaymentStatus.pending:
@@ -387,6 +563,10 @@ async def approve_bank_transfer(
 ) -> PaymentResponse:
     payment = await _owned_bank_transfer_payment(db, user, payment_id)
     await _confirm_group(db, payment)
+    await audit(
+        db, "payment.approve", actor=user, target_type="payment", target_id=payment.id,
+        details={"amount": str(payment.amount)},
+    )  # fmt: skip
     await db.commit()
     return PaymentResponse.model_validate(payment)
 
@@ -399,6 +579,10 @@ async def reject_bank_transfer(
     for booking in bookings:
         booking.cancellation_reason = reason
     await _fail_group(db, payment, rejected=True, bookings=bookings)
+    await audit(
+        db, "payment.reject", actor=user, target_type="payment", target_id=payment.id,
+        details={"amount": str(payment.amount)},
+    )  # fmt: skip
     await db.commit()
     return PaymentResponse.model_validate(payment)
 
@@ -444,22 +628,199 @@ async def _issue_refund(
         amount=amount,
         reason=reason,
         status=RefundStatus.pending,
+        gateway_attempts=0,
     )
     await repo.add_refund(db, refund)
+    await audit(
+        db, "refund.create", target_type="refund", target_id=refund.id,
+        details={"booking_id": str(booking.id), "amount": str(amount), "kind": kind},
+    )  # fmt: skip
 
     provider = get_provider(payment.payment_method.value)
-    result = await provider.refund(
-        gateway_transaction_id=payment.gateway_transaction_id or "", amount=amount
-    )
-    refund.status = RefundStatus.processed if result.status == "processed" else RefundStatus.pending
-    if refund.status == RefundStatus.processed:
-        refund.processed_at = datetime.now()
+    try:
+        result = await provider.refund(
+            gateway_transaction_id=payment.gateway_transaction_id or "",
+            amount=amount,
+            idempotency_key=str(refund.id),
+        )
+    except Exception as exc:  # noqa: BLE001 - any gateway failure must not undo the cancellation
+        # The gateway could not take the refund right now (outage, bad key,
+        # ...). Keep it pending and let the scheduler retry; whatever
+        # cancelled the booking still goes through.
+        await _record_failed_try(
+            db, refund, payment, booking, datetime.now(), f"{type(exc).__name__}: {exc}"
+        )
+    else:
+        if result.status == "processed":
+            refund.status = RefundStatus.processed
+            refund.processed_at = datetime.now()
+        elif payment.payment_method == PaymentMethod.bank_transfer:
+            # a bank-transfer refund is pending by design: the owner sends the
+            # money and marks it processed; it is never retried automatically
+            refund.status = RefundStatus.pending
+        else:
+            # a gateway that answers "pending" (or anything but processed)
+            # counts as a try, so the refund cannot sit pending forever
+            await _record_failed_try(
+                db, refund, payment, booking, datetime.now(), f"gateway answered {result.status!r}"
+            )
     await state_machine.record_note(db, payment, f"Refund of Rs. {amount} issued ({kind}).")
     await _mark_refunded_if_fully(db, payment)
     await notify_user(
-        db, booking.player_id, "refund_initiated", booking_id=str(booking.id), amount=str(amount)
+        db,
+        booking.player_id,
+        "refund_initiated",
+        booking_id=str(booking.id),
+        amount=str(amount),
+        **booking_when(booking),
     )
+    if (
+        payment.payment_method == PaymentMethod.bank_transfer
+        and refund.status == RefundStatus.pending
+    ):
+        await _notify_owner_refund_to_send(db, booking, amount)
     return refund
+
+
+async def _notify_owner_refund_to_send(db: AsyncSession, booking: Booking, amount: Decimal) -> None:
+    """A bank-transfer refund waits for the arena owner to send the money: tell them."""
+    arena = await arena_repo.get_arena(db, booking.arena_id)
+    player = await db.get(User, booking.player_id)
+    if arena is None:
+        return
+    await notify_user(
+        db,
+        arena.owner_id,
+        "refund_to_send",
+        booking_id=str(booking.id),
+        amount=str(amount),
+        **booking_when(booking),
+        arena_name=arena.name,
+        player_name=player.full_name if player else "A player",
+    )
+
+
+# ---- owner: pending bank-transfer refunds ----------------------------------
+
+
+def _owner_refund_item(
+    refund: Refund,
+    payment: Payment,
+    booking: Booking,
+    arena_name: str,
+    player_name: str,
+    court_name: str,
+) -> OwnerRefundItem:
+    return OwnerRefundItem(
+        id=refund.id,
+        status=refund.status,
+        amount=refund.amount,
+        reason=refund.reason,
+        payment_method=payment.payment_method,
+        player_name=player_name,
+        booking_code=booking_code_for(booking.booking_group_id),
+        arena_name=arena_name,
+        court_name=court_name,
+        booking_date=booking.booking_date,
+        start_time=booking.start_time,
+        end_time=booking.end_time,
+        created_at=refund.created_at,
+        processed_at=refund.processed_at,
+        can_mark_paid=refund.status == RefundStatus.pending
+        and payment.payment_method == PaymentMethod.bank_transfer,
+    )
+
+
+async def list_owner_refunds(
+    db: AsyncSession,
+    owner: User,
+    status: str,
+    params: PaginationParams,
+    arena_id: uuid.UUID | None = None,
+) -> dict:
+    """The owner's refunds (own arenas only). ``status``: pending | processed | all."""
+    wanted = None if status == "all" else RefundStatus(status)
+    rows, total = await repo.list_refunds_for_owner(
+        db, owner.id, wanted, arena_id=arena_id, offset=params.offset, limit=params.page_size
+    )
+    return paginated([_owner_refund_item(*r) for r in rows], total, params)
+
+
+async def list_admin_refunds(db: AsyncSession, status: str, params: PaginationParams) -> dict:
+    """Every arena's refunds, for the admin. ``status``: pending | processed | all."""
+    wanted = None if status == "all" else RefundStatus(status)
+    rows, total = await repo.list_refunds_for_owner(
+        db, None, wanted, offset=params.offset, limit=params.page_size
+    )
+    return paginated([_owner_refund_item(*r) for r in rows], total, params)
+
+
+async def mark_refund_paid(
+    db: AsyncSession, owner: User, refund_id: uuid.UUID
+) -> OwnerRefundMarkPaidResponse:
+    """The owner sent a bank-transfer refund back: mark it processed (once). A second
+    call changes nothing and says so. Gateway refunds are never marked by hand."""
+    return await _mark_paid(db, refund_id, actor=owner, as_admin=False)
+
+
+async def admin_mark_refund_paid(
+    db: AsyncSession, admin: User, refund_id: uuid.UUID
+) -> OwnerRefundMarkPaidResponse:
+    """The same, done by an admin when the owner cannot. Writes an audit line (first time only)."""
+    return await _mark_paid(db, refund_id, actor=admin, as_admin=True)
+
+
+async def _mark_paid(
+    db: AsyncSession, refund_id: uuid.UUID, *, actor: User, as_admin: bool
+) -> OwnerRefundMarkPaidResponse:
+    refund = await repo.get_refund_for_update(db, refund_id)
+    if refund is None:
+        raise NotFoundError("Refund not found.")
+    booking = await booking_repo.get_booking(db, refund.booking_id)
+    arena = await arena_repo.get_arena(db, booking.arena_id) if booking else None
+    if booking is None or arena is None or (not as_admin and arena.owner_id != actor.id):
+        raise NotFoundError("Refund not found.")  # not theirs: do not reveal that it exists
+    payment = await repo.get_payment(db, refund.payment_id)
+    if payment is None:
+        raise NotFoundError("Refund not found.")
+    player = await db.get(User, booking.player_id)
+    player_name = player.full_name if player else "A player"
+    court = await court_repo.get_court(db, booking.court_id)
+    court_name = court.name if court else ""
+    if refund.status == RefundStatus.processed:
+        item = _owner_refund_item(refund, payment, booking, arena.name, player_name, court_name)
+        return OwnerRefundMarkPaidResponse(refund=item, already_processed=True)
+    if payment.payment_method != PaymentMethod.bank_transfer:
+        raise ValidationError("Only bank-transfer refunds can be marked as paid by hand.")
+    if refund.status != RefundStatus.pending:
+        raise ValidationError("This refund cannot be marked as paid.")
+    refunded = await repo.sum_refunds_for_payment(db, payment.id)
+    if refund.amount > payment.amount or refunded > payment.amount:
+        raise ConflictError("The refund is more than what was paid. Contact support.")
+    refund.status = RefundStatus.processed
+    refund.processed_at = datetime.now()
+    refund.processed_by = actor.id
+    refund.next_attempt_at = None
+    who = "an administrator" if as_admin else "the arena owner"
+    await state_machine.record_note(
+        db, payment, f"Refund of Rs. {refund.amount} marked as paid by {who}."
+    )
+    await _mark_refunded_if_fully(db, payment)
+    await notify_user(
+        db,
+        booking.player_id,
+        "refund_completed",
+        booking_id=str(booking.id),
+        amount=str(refund.amount),
+        **booking_when(booking),
+    )
+    await audit(
+        db, "refund.mark_paid", actor=actor, target_type="refund", target_id=refund.id,
+        details={"booking_id": str(booking.id), "amount": str(refund.amount), "as_admin": as_admin},
+    )  # fmt: skip
+    await db.commit()
+    item = _owner_refund_item(refund, payment, booking, arena.name, player_name, court_name)
+    return OwnerRefundMarkPaidResponse(refund=item, already_processed=False)
 
 
 async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking) -> Refund | None:
@@ -475,7 +836,12 @@ async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking
     # Base the tier on what was actually captured (payment.amount, which for
     # advance-payment bookings is less than total_amount) — _issue_refund then
     # caps it at the still-refundable balance.
-    computed = payment.amount * Decimal(booking.refund_percentage) / Decimal(100)
+    # This booking's share of the payment: a group is paid once, so cancelling
+    # one slot of three must refund a third, never the whole payment.
+    siblings = await booking_repo.list_group(db, booking.booking_group_id)
+    group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
+    share = booking.advance_amount / group_advance if group_advance > 0 else Decimal("1")
+    computed = payment.amount * Decimal(booking.refund_percentage) / Decimal(100) * share
     return await _issue_refund(
         db,
         booking=booking,
@@ -484,6 +850,137 @@ async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking
         reason=booking.cancellation_reason or "Booking cancelled.",
         kind="cancellation",
     )
+
+
+async def create_refund_for_cancelled_group(
+    db: AsyncSession, bookings: list[Booking], refund_percentage: int, reason: str | None
+) -> Refund | None:
+    """One refund for a whole group cancelled together: the policy percentage of
+    what was captured, for the cancelled bookings' share of it. Capped, like every
+    refund, at what is still refundable on the payment."""
+    if refund_percentage <= 0 or not bookings:
+        return None
+    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
+    if payment is None or payment.status != PaymentStatus.completed:
+        return None
+    siblings = await booking_repo.list_group(db, bookings[0].booking_group_id)
+    group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
+    cancelled_advance = sum((b.advance_amount for b in bookings), Decimal("0"))
+    share = cancelled_advance / group_advance if group_advance > 0 else Decimal("1")
+    computed = payment.amount * Decimal(refund_percentage) / Decimal(100) * share
+    return await _issue_refund(
+        db,
+        booking=bookings[0],
+        payment=payment,
+        requested_amount=computed,
+        reason=reason or "Booking cancelled.",
+        kind="cancellation",
+    )
+
+
+async def create_refund_for_waiting_receipt(
+    db: AsyncSession, bookings: list[Booking], reason: str | None
+) -> Refund | None:
+    """The player cancelled while a bank-transfer receipt was still waiting for the
+    owner. The money may already have arrived, so the full amount becomes a pending
+    refund (the owner sends it back and marks it done) instead of being lost."""
+    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
+    if payment is None or not payment.receipt_proof_url:
+        return None
+    siblings = await booking_repo.list_group(db, bookings[0].booking_group_id)
+    group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
+    cancelled_advance = sum((b.advance_amount for b in bookings), Decimal("0"))
+    share = cancelled_advance / group_advance if group_advance > 0 else Decimal("1")
+    return await _issue_refund(
+        db,
+        booking=bookings[0],
+        payment=payment,
+        requested_amount=payment.amount * share,
+        reason=reason or "Cancelled while the receipt was waiting.",
+        kind="cancellation",
+    )
+
+
+async def receipt_waiting_payment(db: AsyncSession, bookings: list[Booking]) -> Payment | None:
+    """The group payment, when every live booking awaits approval and a receipt was sent."""
+    if not bookings or any(b.status != BookingStatus.pending_approval for b in bookings):
+        return None
+    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
+    if (
+        payment is None
+        or payment.status != PaymentStatus.pending
+        or not payment.receipt_proof_url
+        or payment.payment_method != PaymentMethod.bank_transfer
+    ):
+        return None
+    return payment
+
+
+async def retry_pending_refunds(db: AsyncSession, now: datetime | None = None) -> int:
+    """Scheduler job: try again every gateway refund that is due. Safe to run
+    twice at once: due rows are taken with FOR UPDATE SKIP LOCKED and checked
+    again under the lock, a retry re-sends the same refund (never a new one),
+    and the gateway gets the refund's id as its idempotency key. Returns how
+    many refunds were tried."""
+    now = now or datetime.now()
+    rows = (
+        (
+            await db.execute(
+                select(Refund)
+                .where(
+                    Refund.status == RefundStatus.pending,
+                    Refund.needs_manual.is_(False),
+                    Refund.next_attempt_at.is_not(None),
+                    Refund.next_attempt_at <= now,
+                )
+                .order_by(Refund.next_attempt_at)
+                .limit(50)
+                .with_for_update(skip_locked=True)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for refund in rows:
+        payment = await repo.get_payment(db, refund.payment_id)
+        booking = await booking_repo.get_booking(db, refund.booking_id)
+        if payment is None or booking is None:
+            continue
+        provider = get_provider(payment.payment_method.value)
+        try:
+            result = await provider.refund(
+                gateway_transaction_id=payment.gateway_transaction_id or "",
+                amount=refund.amount,
+                idempotency_key=str(refund.id),
+            )
+        except Exception as exc:  # noqa: BLE001
+            await _record_failed_try(
+                db, refund, payment, booking, now, f"{type(exc).__name__}: {exc}"
+            )
+            continue
+        if result.status != "processed":
+            # "pending" or any other answer is a try that did not finish
+            await _record_failed_try(
+                db, refund, payment, booking, now, f"gateway answered {result.status!r}"
+            )
+            continue
+        refund.gateway_attempts += 1
+        refund.last_error = None
+        refund.next_attempt_at = None
+        refund.status = RefundStatus.processed
+        refund.processed_at = now
+        await state_machine.record_note(db, payment, f"Refund of Rs. {refund.amount} completed.")
+        await _mark_refunded_if_fully(db, payment)
+        await notify_user(
+            db,
+            booking.player_id,
+            "refund_completed",
+            booking_id=str(booking.id),
+            amount=str(refund.amount),
+            **booking_when(booking),
+        )
+    await db.commit()
+    return len(rows)
 
 
 async def refund_reschedule_overpayment(
@@ -557,7 +1054,7 @@ async def _payment_visible_to(db: AsyncSession, user: User, payment: Payment) ->
         arena = await arena_repo.get_arena(db, bookings[0].arena_id)
         allowed = arena is not None and arena.owner_id == user.id
     if not allowed:
-        raise ForbiddenError("You cannot view this payment.")
+        raise NotFoundError("Payment not found.")
     return bookings
 
 

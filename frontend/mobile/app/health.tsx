@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Redirect } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -16,7 +17,13 @@ const DEPENDENCIES: { key: keyof HealthData; label: string }[] = [
  * Proves the mobile app can reach the FastAPI backend end-to-end:
  * env var -> typed API client -> TanStack Query -> screen.
  */
+// A developer screen: in a release build (and for anyone opening arenahub://health) it goes to the app.
 export default function HealthScreen() {
+  if (!__DEV__) return <Redirect href="/" />;
+  return <HealthDetails />;
+}
+
+function HealthDetails() {
   const { data, isPending, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ['health'],
     queryFn: fetchHealth,

@@ -11,5 +11,6 @@ export const API_URL = rawApiUrl ?? "";
 /** Versioned API base — mirrors the backend's /api/v1 prefix. */
 export const API_BASE = API_URL ? `${API_URL}/api/v1` : "/api/v1";
 
+// an empty value (as in .env.example) means the default
 export const MAP_TILE_URL =
-  process.env.NEXT_PUBLIC_MAP_TILE_URL ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim() || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";

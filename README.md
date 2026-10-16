@@ -8,10 +8,7 @@
 
 [![Backend CI](https://github.com/abubakar-51215/ArenaHub/actions/workflows/backend.yml/badge.svg)](https://github.com/abubakar-51215/ArenaHub/actions/workflows/backend.yml)
 [![Frontend CI](https://github.com/abubakar-51215/ArenaHub/actions/workflows/frontend.yml/badge.svg)](https://github.com/abubakar-51215/ArenaHub/actions/workflows/frontend.yml)
-![Last commit](https://img.shields.io/github/last-commit/abubakar-51215/ArenaHub)
-![Repo size](https://img.shields.io/github/repo-size/abubakar-51215/ArenaHub)
-![Open issues](https://img.shields.io/github/issues/abubakar-51215/ArenaHub)
-![License](https://img.shields.io/github/license/abubakar-51215/ArenaHub)
+
 
 <p>
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" height="42" alt="Python"/>&nbsp;&nbsp;
@@ -99,10 +96,6 @@ real-time digital system.
 | 📦 Package Managers | **uv** (backend) · npm (frontend) |
 | 🪵 Logging | structlog |
 
-> **No Docker until the final sprint** — local dev runs against natively
-> installed PostgreSQL, Memurai, a uv-managed Python venv, and the JS dev
-> servers directly (see PROJECT_GUIDELINES.md deviation #1).
-
 ---
 
 ## 🧱 Architecture
@@ -127,7 +120,6 @@ real-time digital system.
           │  ACID data store │              │  locks + caching │
           └──────────────────┘              └──────────────────┘
 
-   External: Stripe · JazzCash · EasyPaisa · Cloudinary · FCM · SMTP
 ```
 
 ---

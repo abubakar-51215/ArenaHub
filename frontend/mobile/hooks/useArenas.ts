@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { getArena, getRatingSummary, searchArenas, type ArenaSearchParams } from '../services/arenas';
 import { listCourts } from '../services/courts';
 
-export function useArenaSearch(params: ArenaSearchParams) {
+export function useArenaSearch(params: ArenaSearchParams, opts?: { timeoutMs?: number; enabled?: boolean }) {
   return useQuery({
     queryKey: ['arenas', params],
-    queryFn: () => searchArenas(params),
+    queryFn: () => searchArenas(params, { timeoutMs: opts?.timeoutMs }),
+    enabled: opts?.enabled ?? true,
   });
 }
 

@@ -19,9 +19,12 @@ const CONNECT_SRC = ["'self'"];
 if (API_ORIGIN) CONNECT_SRC.push(API_ORIGIN);
 if (API_WS_ORIGIN) CONNECT_SRC.push(API_WS_ORIGIN);
 
+const isProd = process.env.NODE_ENV === "production";
+
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // eval is only for fast refresh while developing; a built site never needs it
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src ${IMG_SRC.join(" ")}`,
   `connect-src ${CONNECT_SRC.join(" ")}`,
@@ -38,6 +41,11 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  // the map tiles need the site name as referrer, so this is not "no-referrer" as on the API
+  ...(isProd
+    ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]
+    : []),
 ];
 
 const nextConfig: NextConfig = {

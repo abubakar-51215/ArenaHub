@@ -6,6 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.modules.user.model import UserRole
+from app.shared.request_model import RequestModel, ShortName
 
 
 class UserPublic(BaseModel):
@@ -16,7 +17,7 @@ class UserPublic(BaseModel):
     id: uuid.UUID
     full_name: str
     email: EmailStr
-    phone: str
+    phone: str | None  # empty only for a Google account before "One more step"
     role: UserRole
     is_verified: bool
     is_active: bool
@@ -28,35 +29,39 @@ class UserPublic(BaseModel):
     created_at: datetime
 
 
-class UpdateProfileRequest(BaseModel):
+class UpdateProfileRequest(RequestModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     bio: str | None = Field(default=None, max_length=2000)
     profile_picture: str | None = Field(default=None, max_length=500)
-    preferred_sports: list[str] | None = None
-    preferred_locations: list[str] | None = None
-    notification_preferences: dict | None = None
+    preferred_sports: list[ShortName] | None = Field(default=None, max_length=30)
+    preferred_locations: list[ShortName] | None = Field(default=None, max_length=30)
+    notification_preferences: dict[ShortName, dict[ShortName, bool]] | None = Field(
+        default=None, max_length=30
+    )
 
 
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str = Field(min_length=8, max_length=72)
+class ChangePasswordRequest(RequestModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
-class ChangePasswordVerifyRequest(BaseModel):
+class ChangePasswordVerifyRequest(RequestModel):
     code: str = Field(min_length=6, max_length=6)
 
 
-class PhoneChangeRequest(BaseModel):
+class PhoneChangeRequest(RequestModel):
     new_phone: str = Field(min_length=10, max_length=20)
 
 
-class PhoneChangeVerifyRequest(BaseModel):
+class PhoneChangeVerifyRequest(RequestModel):
     code: str = Field(min_length=6, max_length=6)
 
 
-class EmailChangeRequest(BaseModel):
+class EmailChangeRequest(RequestModel):
     new_email: EmailStr
+    # asked again before a code is sent to the new address
+    current_password: str = Field(min_length=1, max_length=128)
 
 
-class EmailChangeVerifyRequest(BaseModel):
+class EmailChangeVerifyRequest(RequestModel):
     code: str = Field(min_length=6, max_length=6)

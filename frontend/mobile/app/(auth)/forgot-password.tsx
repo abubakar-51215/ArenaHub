@@ -1,108 +1,92 @@
 import { useMutation } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { Link, router, type Href } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { Colors } from '@/constants/theme';
+import { AuthScreen } from '@/components/auth/auth-screen';
+import { FieldMessage } from '@/components/auth/field-message';
+import { Button, useButtonStatus } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
+import { Text } from '@/components/ui/text';
+import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
-import { forgotPassword, resetPassword } from '@/services/auth';
+import { forgotPassword } from '@/services/auth';
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Frame 2 of arena-hub-player-app-auth-2-fixed.html. The server answers the same
+// way whether or not the email has an account, so this screen always goes on
+// to the code step, and says "if an account exists" there.
 export default function ForgotPasswordScreen() {
-  const [step, setStep] = useState<'request' | 'reset'>('request');
   const [email, setEmail] = useState('');
-  const [token, setToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [btnStatus, flash] = useButtonStatus();
 
-  const requestMutation = useMutation({
+  const mutation = useMutation({
     mutationFn: () => forgotPassword(email.trim()),
-    onSuccess: () => setStep('reset'),
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Something went wrong.'),
+    onSuccess: () => {
+      router.push({ pathname: '/(auth)/reset-password', params: { email: email.trim() } } as Href);
+    },
+    onError: (err) => {
+      flash('error');
+      if (err instanceof ApiError && err.status === 429) {
+        setError('Too many attempts. Please wait a minute and try again.');
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Could not reach the server. Check your connection and try again.');
+      }
+    },
   });
 
-  const resetMutation = useMutation({
-    mutationFn: () => resetPassword(token.trim(), newPassword),
-    onSuccess: () => router.replace('/(auth)/login'),
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Something went wrong.'),
-  });
+  const submit = () => {
+    if (mutation.isPending) return;
+    setError(null);
+    if (!EMAIL.test(email.trim())) {
+      setError('Enter a valid email address.');
+      flash('error');
+      return;
+    }
+    mutation.mutate();
+  };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {step === 'request' ? (
-          <>
-            <Text style={styles.title}>Reset your password</Text>
-            <Text style={styles.subtitle}>
-              Enter your account email and we&apos;ll send a reset link. In development
-              it&apos;s logged to the backend console.
-            </Text>
-            <View style={styles.form}>
-              <TextField
-                label="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-              />
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              <Button
-                title="Send Reset Link"
-                loading={requestMutation.isPending}
-                onPress={() => {
-                  setError(null);
-                  requestMutation.mutate();
-                }}
-              />
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.title}>Enter your reset code</Text>
-            <Text style={styles.subtitle}>
-              Paste the reset token you received and choose a new password.
-            </Text>
-            <View style={styles.form}>
-              <TextField
-                label="Reset Token"
-                autoCapitalize="none"
-                value={token}
-                onChangeText={setToken}
-                placeholder="Reset token"
-              />
-              <TextField
-                label="New Password"
-                secureTextEntry
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="At least 8 characters"
-              />
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              <Button
-                title="Reset Password"
-                loading={resetMutation.isPending}
-                onPress={() => {
-                  setError(null);
-                  resetMutation.mutate();
-                }}
-              />
-            </View>
-          </>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <AuthScreen showMark title="Forgot password?" subtitle="Enter your email. We will send a 6-digit code if an account exists.">
+      <View style={styles.form}>
+        <Field
+          icon="mail"
+          placeholder="Email"
+          value={email}
+          onChangeText={(t) => {
+            setEmail(t);
+            setError(null);
+          }}
+          error={!!error}
+          autoComplete="email"
+          textContentType="emailAddress"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="go"
+          onSubmitEditing={submit}
+          accessibilityLabel="Email"
+        />
+        {error ? <FieldMessage>{error}</FieldMessage> : null}
+        <Button title="Send reset code" loading={mutation.isPending} status={btnStatus} onPress={submit} />
+      </View>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Remembered it? </Text>
+        <Link href="/(auth)/login" dismissTo style={styles.footerLink} accessibilityRole="link">
+          Log in
+        </Link>
+      </View>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.light.text },
-  subtitle: { fontSize: 14, color: Colors.light.muted, marginTop: 4, marginBottom: 24, lineHeight: 20 },
-  form: { gap: 14 },
-  errorText: { color: Colors.light.destructive, fontSize: 13 },
+  form: { gap: 11 },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', minHeight: 44, marginTop: 4 },
+  footerText: { fontSize: 14, color: Colors.light.muted },
+  footerLink: { fontSize: 14, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
 });

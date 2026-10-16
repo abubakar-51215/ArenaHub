@@ -1,387 +1,383 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useQuery } from '@tanstack/react-query';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useRef } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ArenaCard } from "@/components/arena-card";
-import { StaticMap } from "@/components/static-map";
-import { Colors } from "@/constants/theme";
-import { useArena, useArenaCourts, useArenaRating } from "@/hooks/useArenas";
-import { getRecommendations } from "@/services/ai";
-import { likeArena, listLikedArenas, unlikeArena } from "@/services/arenas";
-import { listPricingRules } from "@/services/courts";
+import { PhotoGallery } from '@/components/arena/photo-gallery';
+import { LightStatusBar, useDarkTop } from '@/components/ui/light-status-bar';
+import { Badge } from '@/components/ui/badge';
+import { BrandMark } from '@/components/brand/brand-mark';
+import { Button } from '@/components/ui/button';
+import { ErrorCopy } from '@/components/ui/state-view';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { ReadMore } from '@/components/ui/read-more';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StickyBar } from '@/components/ui/sticky-bar';
+import { Text } from '@/components/ui/text';
+import { Colors, Font } from '@/constants/theme';
+import { sportLabel } from '@/constants/sports';
+import { useArena, useArenaCourts, useArenaRating } from '@/hooks/useArenas';
+import { useSlotsToday } from '@/hooks/useSlotsInfo';
+import { ApiError } from '@/lib/api';
+import { formatRs } from '@/lib/money';
+import { openTillLabel } from '@/lib/slots';
+import { listArenaReviews } from '@/services/reviews';
+import type { Court } from '@/types';
+import { TapBox } from '@/components/ui/tap-box';
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Arena details, from arena-hub-player-app-arena-slots.html: the photo area,
+// the name and rating, the sports and "Open till" tags, the description (with
+// Read more), what you get, the Courts rows ("N open tonight" and the from
+// price), a recent review, and a sticky "Choose a court". Each section that
+// can fail shows its own "Could not load. Try again". A missing or suspended
+// arena shows "This arena is not available".
+const AMENITY_ICON: Record<string, IconName> = {
+  parking: 'park',
+  changing: 'shirt',
+  'changing room': 'shirt',
+  floodlights: 'light',
+  cafe: 'cafe',
+};
+const amenityIcon = (name: string): IconName => AMENITY_ICON[name.trim().toLowerCase()] ?? 'tick'; // unknown amenities get a plain tick
 
-/** "Sat 18:00–23:00 ×1.5" / "Daily 18:00–23:00 ×1.5" peak-window lines. */
-function PeakPricingLines({ courtId }: { courtId: string }) {
-  const rules = useQuery({
-    queryKey: ["pricing-rules", courtId],
-    queryFn: () => listPricingRules(courtId),
-  });
-  if (!rules.data?.length) return null;
+function SectionLabel({ children }: { children: string }) {
   return (
-    <View style={styles.peakLines}>
-      {rules.data.map((r) => (
-        <View key={r.id} style={styles.peakLine}>
-          <Ionicons name="flash" size={11} color={Colors.light.warning} />
-          <Text style={styles.peakLineText}>
-            Peak: {r.weekday ? WEEKDAYS[r.weekday - 1] : "Daily"}{" "}
-            {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)} ×
-            {Number(r.price_multiplier)}
-          </Text>
-        </View>
-      ))}
+    <Text style={styles.eyebrow} accessibilityRole="header">
+      {children}
+    </Text>
+  );
+}
+
+function InlineError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={styles.inlineError}>
+      <Text style={styles.muted}>Could not load.</Text>
+      <TapBox onPress={onRetry} slop={14} accessibilityRole="button" accessibilityLabel="Try again">
+        <Text style={styles.inlineLink}>Try again</Text>
+      </TapBox>
     </View>
   );
 }
 
-function openDirections(lat: number, lng: number, name: string) {
-  const label = encodeURIComponent(name);
-  const url = Platform.select({
-    ios: `http://maps.apple.com/?ll=${lat},${lng}&q=${label}`,
-    android: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
-    default: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`,
-  });
-  Linking.openURL(url).catch(() => {
-    // Fall back to the OSM website if no maps app handles the URI.
-    Linking.openURL(
-      `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`,
-    );
-  });
+function CourtRow({ court, open, lowest, onPress }: { court: Court; open: number | undefined; lowest: string | null | undefined; onPress: () => void }) {
+  const meta = [court.sport_types.map(sportLabel).join(' · '), court.capacity ? `up to ${court.capacity} players` : null].filter(Boolean).join(' · ');
+  return (
+    <PressableScale
+      style={styles.courtBox}
+      contentStyle={styles.courtRow}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${court.name}, choose a time`}>
+      <View style={styles.courtIcon}>
+        <Icon name="ball" size={16} color={Colors.light.limeDeep} />
+      </View>
+      <View style={styles.flex}>
+        <Text style={styles.courtName}>{court.name}</Text>
+        <Text style={[styles.muted, { marginTop: 2 }]} numberOfLines={1}>
+          {meta}
+        </Text>
+        {open === undefined ? null : (
+          <Text style={[styles.openLine, open > 0 ? styles.openYes : styles.muted]}>{open > 0 ? `${open} open tonight` : 'Fully booked tonight'}</Text>
+        )}
+      </View>
+      <View style={styles.right}>
+        <Text style={styles.price}>{formatRs(lowest ?? court.base_price)}</Text>
+        <Text style={styles.unit}>from /hr</Text>
+      </View>
+    </PressableScale>
+  );
 }
 
-export default function ArenaDetailScreen() {
+export default function ArenaDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const arena = useArena(id);
   const courts = useArenaCourts(id);
+  const today = useSlotsToday(id);
   const rating = useArenaRating(id);
-  const similar = useQuery({
-    queryKey: [
-      "similar-arenas",
-      id,
-      arena.data?.city,
-      arena.data?.sports_offered,
-    ],
-    queryFn: () => getRecommendations({ city: arena.data?.city, limit: 8 }),
-    enabled: !!arena.data,
-  });
+  const reviews = useQuery({ queryKey: ['arena-reviews-preview', id], queryFn: () => listArenaReviews(id as string), enabled: !!id });
+  const scroll = useRef<ScrollView>(null);
+  const darkTop = useDarkTop(120); // the photo is about 200 px tall
+  const courtsY = useRef(0);
 
-  const queryClient = useQueryClient();
-  const liked = useQuery({
-    queryKey: ["liked-arenas"],
-    queryFn: listLikedArenas,
-  });
-  const isLiked = !!liked.data?.items.some((item) => item.id === id);
-  const toggleLike = useMutation({
-    mutationFn: () =>
-      isLiked ? unlikeArena(id as string) : likeArena(id as string),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["liked-arenas"] }),
-  });
+  const missing = arena.error instanceof ApiError && arena.error.status === 404;
+
+  if (missing) {
+    return (
+      <View style={styles.page}>
+        <View style={[styles.plainHead, { paddingTop: insets.top + 8 }]}>
+          <TapBox onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} slop={7} inner={styles.back} accessibilityRole="button" accessibilityLabel="Back">
+            <Icon name="back" size={15} color={Colors.light.text} />
+          </TapBox>
+        </View>
+        <View style={styles.centerBox}>
+          <View style={[styles.stateIcon, { backgroundColor: Colors.light.lineSoft }]}>
+            <Icon name="pin" size={26} color={Colors.light.text2} />
+          </View>
+          <Text variant="archivo" style={styles.stateTitle}>
+            This arena is not available
+          </Text>
+          <Text style={styles.stateText}>It may be closed for now or no longer listed.</Text>
+          <View style={styles.stateButton}>
+            <Button title="Back to search" variant="ghost" onPress={() => router.replace('/(tabs)/search')} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (arena.isError) {
+    return (
+      <View style={styles.page}>
+        <View style={[styles.plainHead, { paddingTop: insets.top + 8 }]}>
+          <TapBox onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} slop={7} inner={styles.back} accessibilityRole="button" accessibilityLabel="Back">
+            <Icon name="back" size={15} color={Colors.light.text} />
+          </TapBox>
+        </View>
+        <View style={styles.centerBox}>
+          <View style={{ marginBottom: 10 }}>
+<BrandMark mode="offline" size={72} />
+</View>
+          <ErrorCopy title="Could not load this arena" titleStyle={styles.stateTitle} textStyle={styles.stateText} />
+          <View style={styles.stateButton}>
+            <Button title="Try again" onPress={() => arena.refetch()} />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   if (arena.isLoading || !arena.data) {
     return (
-      <SafeAreaView style={styles.loading} edges={["top"]}>
-        <ActivityIndicator color={Colors.light.tint} />
-      </SafeAreaView>
+      <View style={styles.page}>
+        <Skeleton height={176 + insets.top} radius={0} />
+        <View style={styles.pad}>
+          <View style={{ height: 16 }} />
+          <Skeleton width="60%" height={20} radius={6} />
+          <View style={{ height: 8 }} />
+          <Skeleton width="40%" height={12} radius={6} />
+          <View style={{ height: 14 }} />
+          <View style={styles.row}>
+            <Skeleton width={60} height={22} radius={6} />
+            <Skeleton width={60} height={22} radius={6} />
+          </View>
+          <View style={{ height: 16 }} />
+          <Skeleton height={12} radius={6} />
+          <View style={{ height: 6 }} />
+          <Skeleton height={12} radius={6} />
+          <View style={{ height: 6 }} />
+          <Skeleton width="70%" height={12} radius={6} />
+          <View style={{ height: 22 }} />
+          <View style={styles.row}>
+            {[0, 1, 2, 3].map((i) => (
+              <View key={i} style={styles.flex}>
+                <Skeleton height={58} radius={11} />
+              </View>
+            ))}
+          </View>
+          <View style={{ height: 22 }} />
+          <Skeleton height={74} radius={14} />
+          <View style={{ height: 9 }} />
+          <Skeleton height={74} radius={14} />
+        </View>
+      </View>
     );
   }
 
   const a = arena.data;
+  const sports = a.sports_offered.slice(0, 3);
+  const open = openTillLabel(a.operating_hours);
+  const courtList = courts.data ?? [];
+  const todayBy = new Map((today.data ?? []).map((t) => [t.court_id, t]));
+  const prices = courtList.map((c) => Number(todayBy.get(c.id)?.lowest_price ?? c.base_price));
+  const fromPrice = prices.length ? Math.min(...prices) : null;
+  const goToCourt = (courtId: string) => router.push({ pathname: '/court/[id]/slots', params: { id: courtId, arenaId: a.id } });
+  const chooseCourt = () => {
+    if (courtList.length === 1) goToCourt(courtList[0].id);
+    else scroll.current?.scrollTo({ y: Math.max(0, courtsY.current - 12), animated: true });
+  };
+  const summary = rating.data;
+  const first = reviews.data?.items[0];
+  const initials = (first?.reviewer_name ?? '')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        <View>
-          {a.images.length ? (
-            <FlatList
-              data={a.images}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(uri, i) => `${uri}-${i}`}
-              renderItem={({ item }) => (
-                <Image
-                  source={{ uri: item }}
-                  style={styles.heroImage}
-                  contentFit="cover"
-                />
-              )}
-            />
-          ) : (
-            <View
-              style={[styles.heroImage, { backgroundColor: Colors.light.card }]}
-            />
-          )}
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
-          </Pressable>
-          <Pressable
-            style={styles.likeButton}
-            disabled={toggleLike.isPending}
-            onPress={() => toggleLike.mutate()}
-          >
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={20}
-              color={isLiked ? Colors.light.destructive : Colors.light.text}
-            />
-          </Pressable>
-        </View>
-
-        <View style={styles.body}>
-          <Text style={styles.name}>{a.name}</Text>
-          <Pressable
-            style={styles.metaRow}
-            onPress={() =>
-              router.push({
-                pathname: "/arena/[id]/reviews",
-                params: { id: a.id },
-              })
-            }
-          >
-            <Ionicons name="star" size={14} color="#F59E0B" />
-            <Text style={styles.meta}>
-              {rating.data?.average_rating?.toFixed(1) ?? "—"} (
-              {rating.data?.review_count ?? 0} reviews)
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={14}
-              color={Colors.light.muted}
-            />
-          </Pressable>
-          <View style={styles.metaRow}>
-            <Ionicons
-              name="location-outline"
-              size={14}
-              color={Colors.light.muted}
-            />
-            <Text style={styles.meta}>
-              {a.area ? `${a.area}, ` : ""}
-              {a.city}
-            </Text>
+    <View style={styles.page}>
+      <LightStatusBar light={darkTop.onTop} />
+      <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }} onScroll={darkTop.onScroll} scrollEventThrottle={darkTop.scrollEventThrottle}>
+        <PhotoGallery arenaId={a.id} photos={a.images} sport={a.sports_offered[0]} />
+        <View style={styles.pad}>
+          <View style={styles.headRow}>
+            <View style={styles.flex}>
+              <Text variant="archivo" style={styles.title} accessibilityRole="header">
+                {a.name}
+              </Text>
+              <View style={styles.where}>
+                <Icon name="pin" size={12} color={Colors.light.muted} />
+                <Text style={styles.muted}>{a.area ? `${a.area}, ${a.city}` : a.city}</Text>
+              </View>
+            </View>
+            {summary && summary.review_count > 0 && summary.average_rating != null ? (
+              <Badge status="ok" label={`${summary.average_rating} · ${summary.review_count}`} />
+            ) : (
+              <Badge status="ok" label="New" />
+            )}
           </View>
 
-          <View style={styles.sportsRow}>
-            {a.sports_offered.map((s) => (
-              <View key={s} style={styles.sportPill}>
-                <Text style={styles.sportPillText}>{s}</Text>
+          <View style={styles.tags}>
+            {sports.map((s) => (
+              <View key={s} style={styles.tag}>
+                <Text style={styles.tagText}>{sportLabel(s)}</Text>
               </View>
             ))}
+            {open ? (
+              <View style={[styles.tag, styles.tagOpen]}>
+                <Text style={[styles.tagText, { color: Colors.light.limeText }]}>{open}</Text>
+              </View>
+            ) : null}
           </View>
+
+          {a.description ? (
+            <View style={{ marginTop: 12 }}>
+              <ReadMore text={a.description} />
+            </View>
+          ) : null}
 
           {a.amenities.length ? (
             <>
-              <Text style={styles.sectionTitle}>Amenities</Text>
-              <View style={styles.amenitiesRow}>
-                {a.amenities.map((am) => (
-                  <View key={am.id} style={styles.amenityPill}>
-                    <Text style={styles.amenityText}>{am.name}</Text>
+              <SectionLabel>What you get</SectionLabel>
+              <View style={styles.amen}>
+                {a.amenities.map((m) => (
+                  <View key={m.id} style={styles.amenCell}>
+                    <Icon name={amenityIcon(m.name)} size={16} color={Colors.light.limeDeep} />
+                    <Text style={styles.amenText} numberOfLines={1}>
+                      {m.name}
+                    </Text>
                   </View>
                 ))}
               </View>
             </>
           ) : null}
 
-          {a.description ? (
-            <>
-              <Text style={styles.sectionTitle}>About Arena</Text>
-              <Text style={styles.description}>{a.description}</Text>
-            </>
-          ) : null}
+          <View onLayout={(e) => (courtsY.current = e.nativeEvent.layout.y)}>
+            <SectionLabel>Courts</SectionLabel>
+            {courts.isLoading ? (
+              <View style={{ gap: 9 }}>
+                <Skeleton height={74} radius={14} />
+                <Skeleton height={74} radius={14} />
+              </View>
+            ) : courts.isError ? (
+              <InlineError onRetry={() => courts.refetch()} />
+            ) : courtList.length === 0 ? (
+              <Text style={styles.muted}>No courts are open for booking yet.</Text>
+            ) : (
+              <View style={{ gap: 9 }}>
+                {courtList.map((c) => (
+                  <CourtRow key={c.id} court={c} open={today.isError ? undefined : todayBy.get(c.id)?.open_count} lowest={todayBy.get(c.id)?.lowest_price} onPress={() => goToCourt(c.id)} />
+                ))}
+              </View>
+            )}
+          </View>
 
-          <Text style={styles.sectionTitle}>Location</Text>
-          <Text style={styles.address}>{a.address}</Text>
-          <StaticMap
-            latitude={Number(a.latitude)}
-            longitude={Number(a.longitude)}
-          />
-          <Pressable
-            style={styles.directionsButton}
-            onPress={() =>
-              openDirections(Number(a.latitude), Number(a.longitude), a.name)
-            }
-          >
-            <Ionicons
-              name="navigate-outline"
-              size={16}
-              color={Colors.light.tint}
-            />
-            <Text style={styles.directionsText}>Get Directions</Text>
-          </Pressable>
-
-          <Text style={styles.sectionTitle}>Courts</Text>
-          {courts.isLoading ? (
-            <ActivityIndicator
-              color={Colors.light.tint}
-              style={{ marginTop: 8 }}
-            />
-          ) : (
-            (courts.data ?? []).map((court) => (
-              <Pressable
-                key={court.id}
-                style={styles.courtRow}
-                disabled={!court.is_available}
-                onPress={() =>
-                  router.push({
-                    pathname: "/court/[id]/slots",
-                    params: { id: court.id, arenaId: a.id },
-                  })
-                }
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.courtName}>{court.name}</Text>
-                  <Text style={styles.courtSports}>
-                    {court.sport_types.join(" · ")}
-                  </Text>
-                  <PeakPricingLines courtId={court.id} />
+          <View style={styles.reviewsHead}>
+            <SectionLabel>Recent reviews</SectionLabel>
+            {summary && summary.review_count > 0 ? (
+              <TapBox onPress={() => router.push({ pathname: '/arena/[id]/reviews', params: { id: a.id } })} slop={14} accessibilityRole="link" accessibilityLabel={`See all ${summary.review_count} reviews`}>
+                <Text style={styles.seeAll}>See all {summary.review_count}</Text>
+              </TapBox>
+            ) : null}
+          </View>
+          {reviews.isLoading ? (
+            <Skeleton height={74} radius={14} />
+          ) : reviews.isError ? (
+            <InlineError onRetry={() => reviews.refetch()} />
+          ) : first ? (
+            <View style={styles.review}>
+              <View style={styles.row}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials}</Text>
                 </View>
-                <Text style={styles.courtPrice}>
-                  Rs. {court.base_price} / hr
-                </Text>
-                {!court.is_available ? (
-                  <Text style={styles.unavailable}>Unavailable</Text>
-                ) : (
-                  <Ionicons
-                    name="chevron-forward"
-                    size={18}
-                    color={Colors.light.muted}
-                  />
-                )}
-              </Pressable>
-            ))
+                <Text style={styles.reviewer}>{first.reviewer_name}</Text>
+                <View style={styles.stars} accessibilityLabel={`${first.rating} out of 5`}>
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Icon key={i} name="star" size={12} color={i < first.rating ? Colors.light.amber : Colors.light.line} />
+                  ))}
+                </View>
+              </View>
+              {first.review_text ? <Text style={styles.reviewText}>{first.review_text}</Text> : null}
+            </View>
+          ) : (
+            <Text style={styles.muted}>No reviews yet.</Text>
           )}
-
-          {similar.data?.items.filter((s) => s.id !== a.id).length ? (
-            <>
-              <Text style={styles.sectionTitle}>You Might Also Like</Text>
-              <FlatList
-                data={similar.data.items.filter((s) => s.id !== a.id)}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.similarRow}
-                renderItem={({ item }) => (
-                  <ArenaCard arena={item} width={160} />
-                )}
-              />
-            </>
-          ) : null}
         </View>
       </ScrollView>
+
+      <StickyBar style={{ paddingBottom: Math.max(14, insets.bottom) }}>
+        {fromPrice != null ? (
+          <View style={styles.fromRow}>
+            <Text style={styles.muted}>From</Text>
+            <Text>
+              <Text style={styles.fromPrice}>{formatRs(fromPrice)}</Text>
+              <Text style={styles.unit}> / hour</Text>
+            </Text>
+          </View>
+        ) : null}
+        <Button title="Choose a court" disabled={courts.isLoading || courtList.length === 0} onPress={chooseCourt} />
+      </StickyBar>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  loading: { flex: 1, alignItems: "center", justifyContent: "center" },
-  heroImage: { width: 400, height: 220 },
-  backButton: {
-    position: "absolute",
-    top: 48,
-    left: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  likeButton: {
-    position: "absolute",
-    top: 48,
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  body: { padding: 20, gap: 4 },
-  name: { fontSize: 22, fontWeight: "700", color: Colors.light.text },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  meta: { fontSize: 13, color: Colors.light.muted },
-  sportsRow: { flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" },
-  sportPill: {
-    backgroundColor: Colors.light.card,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  sportPillText: {
-    fontSize: 12,
-    color: Colors.light.tint,
-    fontWeight: "600",
-    textTransform: "capitalize",
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.light.text,
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  amenitiesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  amenityPill: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  amenityText: { fontSize: 12, color: Colors.light.text },
-  description: { fontSize: 14, color: Colors.light.muted, lineHeight: 20 },
-  courtRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-  },
-  courtName: { fontSize: 15, fontWeight: "600", color: Colors.light.text },
-  courtSports: {
-    fontSize: 12,
-    color: Colors.light.muted,
-    textTransform: "capitalize",
-  },
-  courtPrice: { fontSize: 13, fontWeight: "600", color: Colors.light.text },
-  unavailable: { fontSize: 11, color: Colors.light.destructive },
-  similarRow: { gap: 12, paddingBottom: 8 },
-  address: { fontSize: 13, color: Colors.light.muted, marginBottom: 10 },
-  directionsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    borderRadius: 10,
-    paddingVertical: 10,
-    marginTop: 10,
-  },
-  directionsText: { fontSize: 13, fontWeight: "600", color: Colors.light.tint },
-  peakLines: { marginTop: 3, gap: 1 },
-  peakLine: { flexDirection: "row", alignItems: "center", gap: 4 },
-  peakLineText: {
-    fontSize: 11,
-    color: Colors.light.warning,
-    fontWeight: "600",
-  },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  flex: { flex: 1 },
+  pad: { paddingHorizontal: 18, paddingTop: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  muted: { fontSize: 14, color: Colors.light.muted },
+  plainHead: { paddingHorizontal: 18, paddingBottom: 12, flexDirection: 'row' },
+  back: { width: 30, height: 30, borderRadius: 9, borderWidth: 1, borderColor: Colors.light.line, backgroundColor: Colors.light.card, alignItems: 'center', justifyContent: 'center' },
+  centerBox: { alignItems: 'center', paddingTop: 90, paddingHorizontal: 18 },
+  stateIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  stateTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
+  stateText: { fontSize: 14, lineHeight: 21, color: Colors.light.muted, marginTop: 6, marginBottom: 18, textAlign: 'center' },
+  stateButton: { width: 200 },
+  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  title: { fontSize: 17, lineHeight: 20, fontWeight: '700', letterSpacing: -0.34, color: Colors.light.text },
+  where: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  tag: { backgroundColor: Colors.light.lineSoft, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
+  tagOpen: { backgroundColor: Colors.light.limeWash },
+  tagText: { fontSize: 14, fontWeight: '600', color: Colors.light.text2 },
+  // a decorative uppercase label: 12px (the floor for micro labels; information text is 14px)
+  eyebrow: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 16, marginBottom: 8 },
+  amen: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  amenCell: { width: '23.4%', alignItems: 'center', gap: 4, paddingVertical: 9, paddingHorizontal: 4, borderRadius: 11, borderWidth: 1, borderColor: Colors.light.line, backgroundColor: Colors.light.card },
+  amenText: { fontSize: 14, fontWeight: '600', color: Colors.light.text2 },
+  courtBox: { backgroundColor: Colors.light.card, borderColor: Colors.light.line, borderWidth: 1, borderRadius: 15 },
+  courtRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, minHeight: 74 },
+  courtIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.light.limeWash, alignItems: 'center', justifyContent: 'center' },
+  courtName: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  openLine: { fontSize: 14, fontWeight: '600', marginTop: 3 },
+  openYes: { color: Colors.light.limeText },
+  right: { alignItems: 'flex-end' },
+  price: { fontFamily: Font.display, fontSize: 15, color: Colors.light.text },
+  unit: { fontSize: 14, color: Colors.light.muted },
+  reviewsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  seeAll: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText, marginTop: 10 },
+  review: { backgroundColor: Colors.light.card, borderColor: Colors.light.line, borderWidth: 1, borderRadius: 15, padding: 11 },
+  avatar: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.light.lineSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 12, fontWeight: '700', color: Colors.light.text2 },
+  reviewer: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  stars: { flexDirection: 'row', gap: 1, marginLeft: 'auto' },
+  reviewText: { fontSize: 14, lineHeight: 20, color: Colors.light.text2, marginTop: 6 },
+  fromRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  fromPrice: { fontFamily: Font.display, fontSize: 19, color: Colors.light.text },
+  inlineError: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
+  inlineLink: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
 });

@@ -11,7 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
 from app.modules.booking.model import Booking, PaymentStatus
-from app.modules.payment.model import Payment, PaymentEvent, PaymentPurpose, Refund
+from app.modules.court.model import Court
+from app.modules.payment.model import (
+    Payment,
+    PaymentEvent,
+    PaymentPurpose,
+    Refund,
+    RefundStatus,
+)
+from app.modules.user.model import User
 
 
 async def get_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
@@ -119,6 +127,13 @@ async def sum_refunds_for_payment(db: AsyncSession, payment_id: uuid.UUID) -> De
         select(func.coalesce(func.sum(Refund.amount), 0)).where(Refund.payment_id == payment_id)
     )
     return Decimal(total or 0)
+
+
+async def list_refunds_for_payment(db: AsyncSession, payment_id: uuid.UUID) -> list[Refund]:
+    result = await db.execute(
+        select(Refund).where(Refund.payment_id == payment_id).order_by(Refund.created_at.asc())
+    )
+    return list(result.scalars().all())
 
 
 async def list_payment_events(db: AsyncSession, payment_id: uuid.UUID) -> list[PaymentEvent]:
@@ -231,3 +246,38 @@ async def revenue_by_day(
     day = func.date(inner.c.created_at).label("day")
     result = await db.execute(select(day, func.sum(inner.c.amount)).group_by(day).order_by(day))
     return [(row_day, Decimal(amount)) for row_day, amount in result.all()]
+
+
+async def list_refunds_for_owner(
+    db: AsyncSession,
+    owner_id: uuid.UUID | None,
+    status: RefundStatus | None,
+    *,
+    arena_id: uuid.UUID | None = None,
+    offset: int,
+    limit: int,
+) -> tuple[list[tuple[Refund, Payment, Booking, str, str, str]], int]:
+    """Refunds on the owner's own arenas (every arena when ``owner_id`` is None, the admin's view),
+    newest first, with the payment, booking, arena name and player name each row needs."""
+    base = (
+        select(Refund, Payment, Booking, Arena.name, User.full_name, Court.name)
+        .join(Payment, Payment.id == Refund.payment_id)
+        .join(Booking, Booking.id == Refund.booking_id)
+        .join(Court, Court.id == Booking.court_id)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .join(User, User.id == Booking.player_id)
+    )
+    if owner_id is not None:
+        base = base.where(Arena.owner_id == owner_id)
+    if status is not None:
+        base = base.where(Refund.status == status)
+    if arena_id is not None:
+        base = base.where(Arena.id == arena_id)
+    total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    rows = await db.execute(base.order_by(Refund.created_at.desc()).offset(offset).limit(limit))
+    return [(r, p, b, an, pn, cn) for r, p, b, an, pn, cn in rows.all()], total
+
+
+async def get_refund_for_update(db: AsyncSession, refund_id: uuid.UUID) -> Refund | None:
+    result = await db.execute(select(Refund).where(Refund.id == refund_id).with_for_update())
+    return result.scalar_one_or_none()
