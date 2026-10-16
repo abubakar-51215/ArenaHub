@@ -50,16 +50,23 @@ They do not prove: that there are no other bugs; that real email, real payment p
 ## Remaining risks (see the final report for severity)
 
 - **Web sign-in tokens live in the browser's local storage.** A script injected into the page could read them. Moving them to httpOnly cookies needs CSRF protection and depends on the final web address (cookie domain), which is not chosen. Waiting for the owner.
-- **Receipt pictures are served from a public folder** under a random, hard-to-guess name. Serving them only to the player, the owner and admins needs a design decision (an authenticated download route; the apps would load them with the sign-in). Waiting for the owner.
+- **Receipt pictures** are private now: the public `/uploads` folder refuses `receipts/`, and a receipt is shown only through a 15-minute signed link (`/api/v1/media/receipts/...`) handed to the player, the arena owner or an admin. Anyone holding a link can open it until it ends, so links must not be shared or logged. Production storage for pictures is still a go-live blocker (see `docs/BEFORE_GOING_LIVE.md`).
 - The web Content-Security-Policy still allows inline scripts (the framework needs them). A nonce-based policy is later work.
 - Some dev-tool packages in the web and phone apps have known issues; their fixes are major version changes (see the audit list in the report). They do not ship to users.
 - Money columns are exact decimals, but the database has no CHECK that an amount is not negative; the code never writes one.
 - No certificate pinning and no biometric lock on the phone (later items, deliberately not built).
 - Independent security review and penetration test before real payments: not done.
 
+## Dependency review (2026-10-16)
+
+- **Backend (pip-audit):** no known vulnerabilities after upgrading pyjwt, anyio and urllib3.
+- **Web (npm audit): 11 high, 0 critical.** Next.js was moved to 15.5.28 (fixed the critical ones). What is left sits in tools that run while building or developing, not in the pages sent to people: `eslint-config-next` / `@next/eslint-plugin-next` (lint), `shadcn` and its `@shadcn/registry`, `ts-morph`, `fast-glob`, `micromatch`, `braces` (the component CLI), `postcss` and `sharp` as pulled in by the build. Their fixes are major versions (Next 16, shadcn 1.x line) and need their own upgrade round with full testing.
+- **Phone (npm audit): 26 high, 0 critical.** All come through the Expo and React Native toolchain: `@expo/cli`, `metro*`, `jest*`, `babel-jest`, `image-size` (asset sizes at bundle time), `node-forge` (Expo code-signing certificates), `@react-native/community-cli-plugin`. `expo`, `react-native`, `react-native-reanimated` and `@react-native-google-signin/google-signin` are listed only because they depend on those tools. The fix offered is a forced downgrade to Expo 44, which is wrong; the right fix is the next Expo SDK upgrade.
+- Decision needed later (not made here): when to schedule the Next 16 and the next Expo SDK upgrades.
+
 ## Later items
 
-Certificate pinning (phone), biometric unlock (phone), nonce-based CSP (web), httpOnly cookie sessions (web), private receipt downloads, database CHECK constraints for amounts, a separate migration user and a least-privilege app user (see below), alerting on audit-log patterns.
+Certificate pinning (phone), biometric unlock (phone), nonce-based CSP (web), httpOnly cookie sessions (web), database CHECK constraints for amounts, a separate migration user and a least-privilege app user (see below), alerting on audit-log patterns.
 
 ## Database users (least privilege)
 

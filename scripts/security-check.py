@@ -143,7 +143,9 @@ def env_files() -> None:
 
 def headers() -> None:
     try:
-        with urllib.request.urlopen(f"{API}/api/v1/health", timeout=8) as res:  # noqa: S310
+        with urllib.request.urlopen(
+            f"{API}/api/v1/health", timeout=8
+        ) as res:  # noqa: S310
             got = {k.lower(): v for k, v in res.headers.items()}
     except OSError:
         record("response headers", "SKIP", f"nothing is answering on {API}")
@@ -194,8 +196,22 @@ def startup_check() -> None:
     )
 
 
+def environment_set() -> None:
+    """ENVIRONMENT defaults to dev on purpose (for developers); a server must set it."""
+    value = os.environ.get("ENVIRONMENT")
+    if value:
+        record("ENVIRONMENT is set", "PASS", value)
+    else:
+        record(
+            "ENVIRONMENT is set",
+            "WARN",
+            "not set here: the app falls back to dev; set prod or staging on every server",
+        )
+
+
 def main() -> int:
     for step in (
+        environment_set,
         pip_audit,
         bandit,
         lambda: npm_audit("web"),
@@ -207,8 +223,10 @@ def main() -> int:
     ):
         step()
     failed = [r for r in results if r[1] == "FAIL"]
+    warned = [r for r in results if r[1] == "WARN"]
     print(
-        f"\n{len(results) - len(failed)} of {len(results)} steps passed or skipped, {len(failed)} failed"
+        f"\n{len(results) - len(failed) - len(warned)} of {len(results)} steps passed or skipped,"
+        f" {len(warned)} warning(s), {len(failed)} failed"
     )
     return 1 if failed else 0
 
