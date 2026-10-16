@@ -5,6 +5,7 @@ inserts only, no business rules. Callers own the transaction.
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +50,7 @@ async def get_match_for_update(db: AsyncSession, match_id: uuid.UUID) -> Match |
 Row = tuple[Match, str, str, str, int, "Decimal | None", bool]
 
 
-def _extras(viewer_id: uuid.UUID):
+def _extras(viewer_id: uuid.UUID) -> Any:
     """Subqueries every match row needs: players joined, the booking's total price, did the
     viewer join."""
     participant = aliased(MatchParticipant)
@@ -70,7 +71,7 @@ def _extras(viewer_id: uuid.UUID):
     return joined, total, mine
 
 
-def _rows(result) -> list[Row]:
+def _rows(result: Any) -> list[Row]:
     return [
         (match, arena_name, city_val.value, court_name, joined, total, bool(mine))
         for match, arena_name, city_val, court_name, joined, total, mine in result.all()

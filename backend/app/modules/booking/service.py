@@ -13,6 +13,7 @@ booking row in the group and released on cancellation/auto-cancel — see
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,7 +91,7 @@ def _discount_problem(
     return None
 
 
-def plan_for_arena(arena) -> PaymentPlan:
+def plan_for_arena(arena: Any) -> PaymentPlan:
     """The first payment is the arena's advance when it takes one, else the full price."""
     if arena.require_full_payment or arena.advance_percentage >= 100:
         return PaymentPlan.full
@@ -495,7 +496,7 @@ async def _apply_cancellation(
     refund_percentage: int,
     refund: bool = True,
     notify: bool = True,
-):
+) -> Any:
     """The cancellation itself, shared by a user's cancel and the platform's
     (an admin suspending or removing an arena): free the slot, cancel the
     booking, release equipment, refund what was captured at
@@ -843,11 +844,11 @@ async def get_group_details(
         refund_status = (
             None
             if not refunds
-            else "failed"
-            if "failed" in states
-            else "pending"
-            if "pending" in states
-            else "processed"
+            else (
+                "failed"
+                if "failed" in states
+                else "pending" if "pending" in states else "processed"
+            )
         )
     live = [b for b in bookings if b.status in _CANCELLABLE]
     not_started = bool(live) and _booking_start(live[0]) > datetime.now()
@@ -918,7 +919,7 @@ async def release_group(db: AsyncSession, user: User, group_id: uuid.UUID) -> Bo
 RESCHEDULE_NOTE = "Booking rescheduled."
 
 
-async def _was_rescheduled(db: AsyncSession, payment) -> bool:
+async def _was_rescheduled(db: AsyncSession, payment: Any) -> bool:
     """A booking may be moved once. The move is written on its payment history
     (no extra column), so a note with this text means it was already moved."""
     if payment is None:

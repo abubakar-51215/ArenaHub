@@ -7,6 +7,7 @@ populated on the returned instance.
 
 import uuid
 from datetime import datetime, timedelta
+from typing import Any
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +35,7 @@ async def get_user_by_google_sub(db: AsyncSession, sub: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-def _phone_matches(phone: str):
+def _phone_matches(phone: str) -> Any:
     """Rows whose stored phone is this number, whatever its spelling (see
     app.shared.phone). Deleted accounts hold an anonymised value and never match."""
     return (

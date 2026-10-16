@@ -10,6 +10,7 @@ player's own bookings). Nothing is stored; only the intent name is logged, never
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Any
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,7 +112,7 @@ async def _next_booking(db: AsyncSession, user: User, _: str) -> Answer:
     )
 
 
-async def _bookings_count(db: AsyncSession, user: User, _: str) -> Answer:
+async def _bookings_count(db: AsyncSession, user: User, _text: str) -> Answer:
     _, upcoming = await group_service.list_groups(db, user, "upcoming", 1, 1)
     _, past = await group_service.list_groups(db, user, "past", 1, 1)
     _, cancelled = await group_service.list_groups(db, user, "cancelled", 1, 1)
@@ -214,7 +215,7 @@ async def _refund_status(db: AsyncSession, user: User, _: str) -> Answer:
     )
 
 
-async def _awaiting_payment(db: AsyncSession, user: User, _: str) -> Answer:
+async def _awaiting_payment(db: AsyncSession, user: User, _text: str) -> Answer:
     general = (
         "A booking waits for payment until it is paid. With Bank transfer, send the exact amount "
         "to the arena account shown, then upload your receipt. A booking not paid within 24 hours "
@@ -241,7 +242,7 @@ async def _awaiting_payment(db: AsyncSession, user: User, _: str) -> Answer:
     return Answer("awaiting_payment", general, [], ["bank_transfer", "next_booking"])
 
 
-def _fixed(intent: str, text: str, actions=None, suggestions=None):
+def _fixed(intent: str, text: str, actions: Any = None, suggestions: Any = None) -> Any:
     async def answer(db: AsyncSession, user: User, _: str) -> Answer:
         return Answer(intent, text, list(actions or []), list(suggestions or []))
 

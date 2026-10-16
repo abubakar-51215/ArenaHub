@@ -103,7 +103,7 @@ async def get_rating_breakdown(db: AsyncSession, arena_id: uuid.UUID) -> list[in
         .where(Review.arena_id == arena_id, Review.is_flagged.is_(False))
         .group_by(Review.rating)
     )
-    counts = dict(result.all())
+    counts: dict[int, int] = {int(r[0]): int(r[1]) for r in result.all()}
     return [counts.get(star, 0) for star in range(1, 6)]
 
 

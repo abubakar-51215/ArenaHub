@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy import Date, case, cast, extract, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,7 +88,7 @@ def _delta(current: float, previous: float) -> float | None:
     return round((current - previous) / previous * 100, 1)
 
 
-def _karachi(column):
+def _karachi(column: Any) -> Any:
     """A naive timestamp column (written in the session's zone) as a naive
     Asia/Karachi wall-clock time."""
     session_zone = func.current_setting("TimeZone")
@@ -118,20 +118,19 @@ async def build_overview(
     )
     signup_at = _karachi(User.created_at)
     signup_day = cast(signup_at, Date)
-    signups = dict(
-        (
-            await db.execute(
-                select(signup_day, func.count())
-                .where(
-                    User.role == UserRole.player,
-                    User.deleted_at.is_(None),
-                    signup_at >= window_start,
-                    signup_at < window_end,
-                )
-                .group_by(signup_day)
+    signup_rows = (
+        await db.execute(
+            select(signup_day, func.count())
+            .where(
+                User.role == UserRole.player,
+                User.deleted_at.is_(None),
+                signup_at >= window_start,
+                signup_at < window_end,
             )
-        ).all()
-    )
+            .group_by(signup_day)
+        )
+    ).all()
+    signups: dict[date, int] = {row[0]: int(row[1]) for row in signup_rows}
 
     # 2. bookings per day over both periods: live count and confirmed value
     booked_at = _karachi(Booking.created_at)
@@ -262,8 +261,8 @@ async def build_overview(
     def booking_value(d: date) -> Decimal:
         return by_day.get(d, (0, Decimal(0)))[1]
 
-    cur_bookings = sum(booking_count(d) for d in cur_days)
-    prev_bookings = sum(booking_count(d) for d in prev_days)
+    cur_bookings = sum(int(booking_count(d)) for d in cur_days)
+    prev_bookings = sum(int(booking_count(d)) for d in prev_days)
     cur_value = sum((booking_value(d) for d in cur_days), Decimal(0))
     prev_value = sum((booking_value(d) for d in prev_days), Decimal(0))
     cur_signups = sum(int(signups.get(d, 0)) for d in cur_days)

@@ -8,6 +8,8 @@ deviation #16).
 import contextlib
 import logging
 import sys
+from collections.abc import MutableMapping
+from typing import Any
 
 import structlog
 
@@ -28,7 +30,7 @@ _HIDE_EXACT = {"code", "otp", "pin", "cvv", "card"}
 HIDDEN = "[hidden]"
 
 
-def redact_secrets(_: object, __: str, event: dict) -> dict:
+def redact_secrets(_: Any, __: str, event: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
     """Last line of defence: whatever a log call is given, a value stored under a name that
     sounds like a secret never reaches the log. (The emailed code is shown in development
     only, where nothing is hidden, so a test never waits for an inbox.)"""

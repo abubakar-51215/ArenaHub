@@ -104,4 +104,4 @@ async def delete_expired(db: AsyncSession) -> int:
     """Tokens are removed a week after they ended (so reuse of a recent one is still detected)."""
     cutoff = _now() - REFRESH_TOKEN_TTL
     result = await db.execute(delete(RefreshToken).where(RefreshToken.expires_at < cutoff))
-    return int(result.rowcount or 0)
+    return int(getattr(result, "rowcount", 0) or 0)

@@ -7,6 +7,7 @@ against Google's published keys (fetched over the network, 8 s limit, run off th
 
 import asyncio
 from dataclasses import dataclass
+from typing import Any
 
 import structlog
 from google.auth import exceptions as google_exceptions
@@ -39,7 +40,7 @@ class GoogleIdentity:
 class _Request(google_requests.Request):
     """Google's request transport with an 8 s limit."""
 
-    def __call__(self, *args, **kwargs):  # type: ignore[override]
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         kwargs["timeout"] = _TIMEOUT_S
         return super().__call__(*args, **kwargs)
 

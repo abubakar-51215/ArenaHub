@@ -9,6 +9,7 @@ reschedule that moves every slot together (with a price preview).
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -145,7 +146,7 @@ async def _my_rating(db: AsyncSession, rows: list[Booking]) -> int | None:
     return None
 
 
-async def _refund_summary(db: AsyncSession, payment) -> tuple[Decimal, str | None]:
+async def _refund_summary(db: AsyncSession, payment: Any) -> tuple[Decimal, str | None]:
     if payment is None:
         return Decimal("0"), None
     from app.modules.payment import repository as payment_repo
@@ -159,7 +160,7 @@ async def _refund_summary(db: AsyncSession, payment) -> tuple[Decimal, str | Non
 
 
 async def _cancel_figures(
-    db: AsyncSession, live: list[Booking], arena
+    db: AsyncSession, live: list[Booking], arena: Any
 ) -> tuple[int, Decimal, Decimal]:
     """(refund percentage, paid share, refund amount) for cancelling ``live`` now."""
     from app.modules.payment import repository as payment_repo
@@ -268,7 +269,7 @@ async def _close_pending_payment(db: AsyncSession, group_id: uuid.UUID, note: st
 
 async def _plan_reschedule(
     db: AsyncSession, user: User, group_id: uuid.UUID, new_slot_ids: list[uuid.UUID]
-):
+) -> Any:
     rows = await _group_for_player(db, user, group_id)
     live = sorted((b for b in rows if b.status in _CANCELLABLE), key=lambda b: b.start_time)
     if not live or any(b.status not in _RESCHEDULABLE for b in live):
