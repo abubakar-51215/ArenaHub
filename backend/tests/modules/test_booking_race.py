@@ -8,7 +8,9 @@ the test empties the test database afterwards (only a database whose name ends i
 
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Any
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import func, select, text
@@ -18,6 +20,7 @@ from app.cache import redis as redis_cache
 from app.core.config import get_settings
 from app.database.session import SessionFactory, engine
 from app.modules.booking.model import Booking
+from app.modules.payment.model import Payment
 from tests.helpers import auth_header, make_user
 from tests.modules.test_payment import _make_bookable_court, _slots
 
@@ -73,3 +76,55 @@ async def test_eight_players_racing_for_one_slot_leave_exactly_one_booking(
             select(func.count()).select_from(Booking).where(Booking.slot_id == slot)
         )
     assert kept == 1
+
+
+async def test_eight_parallel_payment_starts_for_one_booking_make_one_payment(
+    client: AsyncClient, committed_db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A double tap or a retry storm on Pay must not create several payments for one booking.
+    The provider call sits between "is there a payment already?" and saving the new one; it is
+    made to take 0.3 s (a real gateway or network takes longer), so without the group lock every
+    request passes the check before any saves (seen on a real server: 5 payments from 8 taps)."""
+    from app.integrations.payments import get_provider as real_get_provider
+    from app.modules.payment import service as payment_service
+
+    class SlowProvider:
+        def __init__(self, inner: Any) -> None:
+            self.inner = inner
+
+        async def initiate(self, **kwargs: Any) -> Any:
+            await asyncio.sleep(0.3)
+            return await self.inner.initiate(**kwargs)
+
+    monkeypatch.setattr(
+        payment_service, "get_provider", lambda method: SlowProvider(real_get_provider(method))
+    )
+    owner, _ = await make_user(client, committed_db, "pay-race-owner@example.com", "owner")
+    _, court, day = await _make_bookable_court(client, committed_db, owner, "pay-race-owner")
+    slot = (await _slots(client, court, day))[0]["id"]
+    await _clear_address_limits()
+    player, _ = await make_user(client, committed_db, "pay-race-player@example.com")
+    await _clear_address_limits()
+    booked = await client.post(
+        "/api/v1/bookings",
+        headers=auth_header(player),
+        json={"court_id": court, "slot_ids": [slot], "payment_type": "full"},
+    )
+    group = booked.json()["data"]["booking_group_id"]
+
+    body = {"booking_group_id": group, "payment_method": "bank_transfer"}
+    answers = await asyncio.gather(
+        *(
+            client.post("/api/v1/payments/initiate", headers=auth_header(player), json=body)
+            for _ in range(8)
+        )
+    )
+    codes = sorted(a.status_code for a in answers)
+    assert codes.count(200) == 1, codes
+    assert set(codes) <= {200, 409}, codes
+
+    async with SessionFactory() as fresh:
+        made = await fresh.scalar(
+            select(func.count()).select_from(Payment).where(Payment.booking_group_id == group)
+        )
+    assert made == 1

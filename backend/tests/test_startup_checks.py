@@ -80,3 +80,33 @@ def test_secrets_do_not_print(monkeypatch: pytest.MonkeyPatch) -> None:
     shown = repr(s) + str(s.model_dump())
     for value in ("a" * 40, "b" * 40, "c" * 40):
         assert value not in shown
+
+
+def test_env_example_lists_every_setting_and_loads_as_the_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """backend/.env.example names every setting the app reads (and nothing else but the tests'
+    TEST_DATABASE_URL), and a copy of it with its empty values starts in development."""
+    from pathlib import Path
+
+    example = Path(__file__).resolve().parent.parent / ".env.example"
+    names = {
+        line.split("=", 1)[0].strip()
+        for line in example.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#") and "=" in line
+    }
+    read = {str(field.alias) for field in Settings.model_fields.values() if field.alias is not None}
+    assert read <= names, sorted(read - names)
+    assert names - read == {"TEST_DATABASE_URL"}
+    # every value in the example is empty: no real value, no secret
+    for line in example.read_text(encoding="utf-8").splitlines():
+        if line.strip() and not line.lstrip().startswith("#"):
+            assert line.strip().endswith("="), line
+
+    for name in read:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/x_test")
+    settings = Settings(_env_file=example)
+    assert settings.is_dev
+    assert settings.email_port == 587 and settings.debug is False
+    assert settings.rate_limit_api_per_minute == 100 and settings.rate_limit_auth_per_minute == 20

@@ -91,6 +91,7 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | GET | `/matches/{match_id}` | any signed-in user |
 | POST | `/matches/{match_id}/join` | any signed-in user |
 | POST | `/matches/{match_id}/leave` | any signed-in user |
+| GET | `/media/receipts/{name}` | nobody (public) |
 | GET | `/notifications` | any signed-in user |
 | POST | `/notifications/devices` | any signed-in user |
 | DELETE | `/notifications/devices/{token}` | any signed-in user |
@@ -150,10 +151,13 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | GET | `/owner/reviews/unanswered-count` | owner |
 | POST | `/owner/reviews/{review_id}/response` | owner |
 | GET | `/payments/by-group/{booking_group_id}` | any signed-in user |
+| GET | `/payments/dev-checkout/{txn}` | nobody (public) |
+| POST | `/payments/dev-checkout/{txn}` | nobody (public) |
 | POST | `/payments/initiate` | any signed-in user |
 | POST | `/payments/initiate-balance` | any signed-in user |
 | GET | `/payments/methods` | any signed-in user |
 | GET | `/payments/my` | any signed-in user |
+| GET | `/payments/return` | nobody (public) |
 | GET | `/payments/{payment_id}/events` | any signed-in user |
 | POST | `/payments/{payment_id}/receipt` | any signed-in user |
 | GET | `/payments/{payment_id}/receipt.pdf` | any signed-in user |

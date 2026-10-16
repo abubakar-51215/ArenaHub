@@ -21,7 +21,15 @@ class MockProvider:
     def __init__(self, name: str = "mock") -> None:
         self._name = name
 
-    async def initiate(self, *, amount: Decimal, currency: str, reference: str) -> InitiateResult:
+    async def initiate(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        reference: str,
+        wallet_number: str | None = None,
+        return_url: str | None = None,
+    ) -> InitiateResult:
         txn = f"{self._name}_test_{uuid.uuid4().hex}"
         return InitiateResult(
             gateway_transaction_id=txn,

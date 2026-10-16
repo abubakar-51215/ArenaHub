@@ -20,6 +20,10 @@ from app.shared.request_model import RequestModel
 class PaymentInitiateRequest(RequestModel):
     booking_group_id: uuid.UUID
     payment_method: PaymentMethod
+    # JazzCash / EasyPaisa: the player's wallet number, where the payment request is sent
+    wallet_number: str | None = Field(default=None, max_length=20)
+    # card: the app address to come back to after Stripe's card page
+    return_url: str | None = Field(default=None, max_length=500)
 
 
 class ReceiptUploadRequest(RequestModel):

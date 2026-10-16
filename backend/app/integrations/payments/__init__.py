@@ -34,13 +34,17 @@ _MOCK_PROVIDERS: dict[str, PaymentProvider] = {
 }
 
 
+# Provider names as they appear in a webhook address (/webhooks/stripe) -> the payment method.
+_ALIASES = {"stripe": "card", "manual": "bank_transfer"}
+
+
 def get_provider(payment_method: str) -> PaymentProvider:
-    """Resolve a payment method to its provider. In ``PAYMENT_MODE=mock`` the
-    gateway methods resolve to the deterministic MockProvider; bank_transfer
-    is always the manual provider."""
+    """Resolve a payment method (or its provider name, as in the webhook address) to its
+    provider. In ``PAYMENT_MODE=mock`` the gateway methods resolve to the deterministic
+    MockProvider; bank_transfer is always the manual provider."""
     mock_mode = get_settings().payment_mode == PaymentMode.mock
     table = _MOCK_PROVIDERS if mock_mode else _LIVE_PROVIDERS
-    provider = table.get(payment_method)
+    provider = table.get(_ALIASES.get(payment_method, payment_method))
     if provider is None:
         raise ValueError(f"No payment provider registered for '{payment_method}'.")
     return provider

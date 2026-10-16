@@ -50,6 +50,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        # an empty value (as in .env.example) means "use the default"; outside development the
+        # start-up checks below still refuse a default secret
+        env_ignore_empty=True,
         # a failed start-up check must never print the values it read (connection strings, secrets)
         hide_input_in_errors=True,
     )
@@ -145,6 +148,8 @@ class Settings(BaseSettings):
     # Public address of the web app. Email templates load the logo badge from
     # {web_public_url}/brand/email-badge@2x.png, so it must be reachable from a mail client.
     web_public_url: str = Field(default="http://localhost:3000", alias="WEB_PUBLIC_URL")
+    # Where this API is reached from outside (the card page sends the player back through it).
+    api_public_url: str = Field(default="http://localhost:8000", alias="API_PUBLIC_URL")
 
     # Email (OTP + notification delivery). Unset in dev -> console log instead
     # of a real SMTP connection (same seam as deliver_otp).
