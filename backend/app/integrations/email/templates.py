@@ -213,13 +213,13 @@ def password_changed_email(when: datetime) -> tuple[str, str, str]:
     )
 
 
-def owner_login_alert_email(name: str, when_text: str, support_email: str) -> tuple[str, str, str]:
-    """Sent to an arena owner after each new sign-in: plain text and a simple page. No images, no
-    tracking; the only link is a mailto to support. The name is escaped."""
+def _login_alert_email(
+    lines: tuple[str, str, str, str], support_email: str
+) -> tuple[str, str, str]:
+    """Build the (subject, text, page) of a login-alert email from its four lines.
+    No images, no tracking; the only link is a mailto to support. The name is escaped."""
     subject = messages.OWNER_LOGIN_SUBJECT
-    greeting, happened, advice, thanks = messages.owner_login_alert_lines(
-        name, when_text, support_email
-    )
+    greeting, happened, advice, thanks = lines
     sep = chr(10) * 2
     text = sep.join((greeting, happened, advice, thanks)) + chr(10)
     safe_support = html_lib.escape(support_email, quote=True)
@@ -242,6 +242,18 @@ def owner_login_alert_email(name: str, when_text: str, support_email: str) -> tu
         footer="This message was sent to the email address of your account.",
     )
     return subject, text, html
+
+
+def owner_login_alert_email(name: str, when_text: str, support_email: str) -> tuple[str, str, str]:
+    """Login-alert email for an arena owner, sent after each new sign-in."""
+    lines = messages.owner_login_alert_lines(name, when_text, support_email)
+    return _login_alert_email(lines, support_email)
+
+
+def player_login_alert_email(name: str, when_text: str, support_email: str) -> tuple[str, str, str]:
+    """Login-alert email for a player, sent after each new sign-in."""
+    lines = messages.player_login_alert_lines(name, when_text, support_email)
+    return _login_alert_email(lines, support_email)
 
 
 def notification_email(title: str, body: str) -> tuple[str, str, str]:

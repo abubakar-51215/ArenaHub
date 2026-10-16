@@ -35,7 +35,7 @@ from app.core.security import (
 )
 from app.modules.auth import login_guard, sessions, tokens
 from app.modules.auth import repository as repo
-from app.modules.auth.login_alert import send_owner_login_alert
+from app.modules.auth.login_alert import send_owner_login_alert, send_player_login_alert
 from app.modules.auth.schema import (
     AdminCodeRequest,
     AdminLoginChallenge,
@@ -246,11 +246,14 @@ async def login(
             code_sent=delivered,
         )
     token_pair = await _issue_tokens(db, user)
-    if user.role == UserRole.owner and background is not None:
-        # a new owner sign-in: one alert email, sent after the answer is on its way
-        background.add_task(
-            send_owner_login_alert, user.id, user.full_name, user.email, datetime.now(UTC)
-        )
+    if background is not None:
+        # a new player/owner sign-in: one alert email, sent after the answer is on its way.
+        # Admins are excluded (they finish with an emailed code above, a stronger second step).
+        now = datetime.now(UTC)
+        if user.role == UserRole.owner:
+            background.add_task(send_owner_login_alert, user.id, user.full_name, user.email, now)
+        elif user.role == UserRole.player:
+            background.add_task(send_player_login_alert, user.id, user.full_name, user.email, now)
     return token_pair
 
 

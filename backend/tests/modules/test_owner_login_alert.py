@@ -38,6 +38,10 @@ def _alerts(sent: list[dict]) -> list[dict]:
     return [c for c in sent if c["kind"] == "owner_login_alert"]
 
 
+def _player_alerts(sent: list[dict]) -> list[dict]:
+    return [c for c in sent if c["kind"] == "player_login_alert"]
+
+
 async def _login(client: AsyncClient, email: str, password: str = PASSWORD) -> Any:
     return await client.post("/api/v1/auth/login", json={"identifier": email, "password": password})
 
@@ -102,13 +106,32 @@ async def test_refresh_and_ordinary_requests_send_nothing(
     assert not _alerts(sent)
 
 
-async def test_players_and_admins_get_no_alert(
+async def test_a_successful_player_login_sends_one_role_neutral_alert(
     client: AsyncClient, db_session: AsyncSession, sent: list[dict]
 ) -> None:
-    _, player = await make_user(client, db_session, "alert-player@example.com", "player")
+    _, player = await make_user(client, db_session, "alert-player1@example.com", "player")
+    player.full_name = "Bilal Ahmed"
+    await db_session.commit()
+    sent.clear()
+
     assert (await _login(client, player.email)).status_code == 200
+    mails = _player_alerts(sent)
+    assert len(mails) == 1
+    mail = mails[0]
+    assert mail["to"] == "alert-player1@example.com"
+    assert mail["subject"] == "ArenaHub login alert"
+    body = mail["body"]
+    assert "Dear Bilal Ahmed," in body
+    # role-neutral wording: "your ArenaHub account", never "owner account"
+    assert "successfully logged into your ArenaHub account on " in body
+    assert "owner account" not in body
+    # a player login raises no owner alert
     assert not _alerts(sent)
 
+
+async def test_admins_get_no_login_alert(
+    client: AsyncClient, db_session: AsyncSession, sent: list[dict]
+) -> None:
     await make_admin(client, db_session, "alert-admin@example.com")
     sent.clear()
     first = await _login(client, "alert-admin@example.com")
@@ -125,6 +148,7 @@ async def test_players_and_admins_get_no_alert(
     )
     assert done.status_code == 200
     assert not _alerts(sent)
+    assert not _player_alerts(sent)
 
 
 async def test_a_failing_or_slow_mail_never_breaks_the_login_and_logs_safely(

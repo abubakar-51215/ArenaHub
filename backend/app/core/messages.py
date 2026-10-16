@@ -67,18 +67,32 @@ REQUEST_TOO_SLOW = "That took too long. Please try again."
 OWNER_LOGIN_SUBJECT = "ArenaHub login alert"
 
 
-def owner_login_alert_lines(
-    name: str, when_text: str, support_email: str
+def _login_alert_lines(
+    name: str, when_text: str, support_email: str, account_noun: str
 ) -> tuple[str, str, str, str]:
     """(greeting, what happened, what to do if it was not you, sign-off)."""
     return (
         f"Dear {name},",
-        "This is to inform you that you have successfully logged into your ArenaHub owner account "
-        f"on {when_text} (Pakistan time).",
+        f"This is to inform you that you have successfully logged into your ArenaHub "
+        f"{account_noun} on {when_text} (Pakistan time).",
         "If this was not you, please change your password right away and contact ArenaHub "
         f"support at {support_email}.",
         "Thank you," + chr(10) + "ArenaHub",
     )
+
+
+def owner_login_alert_lines(
+    name: str, when_text: str, support_email: str
+) -> tuple[str, str, str, str]:
+    """The login-alert lines for an arena owner."""
+    return _login_alert_lines(name, when_text, support_email, "owner account")
+
+
+def player_login_alert_lines(
+    name: str, when_text: str, support_email: str
+) -> tuple[str, str, str, str]:
+    """The login-alert lines for a player (role-neutral: "your ArenaHub account")."""
+    return _login_alert_lines(name, when_text, support_email, "account")
 
 
 # Paying by card or mobile wallet (approved by the owner on 2026-10-16)
