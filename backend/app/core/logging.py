@@ -5,16 +5,48 @@ Configure once at startup via `configure_logging()`; every module then does
 deviation #16).
 """
 
+import contextlib
 import logging
 import sys
+from collections.abc import MutableMapping
+from typing import Any
 
 import structlog
 
 from app.core.config import get_settings
 
 
+def make_stream_safe(stream: object) -> None:
+    """Never let a log line crash a request: a Windows console that is not UTF-8 cannot print the
+    rupee sign in a notice, so characters it cannot write are replaced instead of raising."""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if callable(reconfigure):
+        with contextlib.suppress(ValueError, OSError):
+            reconfigure(errors="replace")
+
+
+_HIDE_CONTAINING = ("password", "secret", "token", "authorization", "cookie", "account", "iban")
+_HIDE_EXACT = {"code", "otp", "pin", "cvv", "card"}
+HIDDEN = "[hidden]"
+
+
+def redact_secrets(_: Any, __: str, event: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
+    """Last line of defence: whatever a log call is given, a value stored under a name that
+    sounds like a secret never reaches the log. (The emailed code is shown in development
+    only, where nothing is hidden, so a test never waits for an inbox.)"""
+    if get_settings().is_dev:
+        return event
+    for key in list(event):
+        name = key.lower()
+        if name in _HIDE_EXACT or any(word in name for word in _HIDE_CONTAINING):
+            event[key] = HIDDEN
+    return event
+
+
 def configure_logging() -> None:
     settings = get_settings()
+    make_stream_safe(sys.stdout)
+    make_stream_safe(sys.stderr)
 
     logging.basicConfig(
         format="%(message)s",
@@ -24,6 +56,7 @@ def configure_logging() -> None:
 
     shared_processors: list[structlog.typing.Processor] = [
         structlog.contextvars.merge_contextvars,
+        redact_secrets,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.TimeStamper(fmt="iso"),

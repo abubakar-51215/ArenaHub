@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { useBankDetails } from "@/hooks/useBankDetails";
 import { formatDate, formatRs, formatTime } from "@/lib/format";
-import { isSafeMediaUrl } from "@/lib/safe-media-url";
+import { isSafeMediaUrl, mediaSrc } from "@/lib/safe-media-url";
 import type { OwnerBookingRow } from "@/types";
 
 /** Read-only verification panel: the receipt image next to the arena's own
@@ -31,9 +31,11 @@ export function ReceiptReviewDialog({
     <Dialog open={!!row} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Verify Bank Transfer</DialogTitle>
+          <DialogTitle>Verify bank transfer</DialogTitle>
           <DialogDescription>
-            {row ? `#BK-${row.booking_id.slice(0, 4).toUpperCase()} — ${row.player_name}` : ""}
+            {row
+              ? `${row.booking_code || `#BK-${row.booking_id.slice(0, 4).toUpperCase()}`} — ${row.player_name}`
+              : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -85,7 +87,7 @@ export function ReceiptReviewDialog({
             {row.receipt_proof_url && isSafeMediaUrl(row.receipt_proof_url) ? (
               // eslint-disable-next-line @next/next/no-img-element -- external/Cloudinary receipt URL, not a local asset
               <img
-                src={row.receipt_proof_url}
+                src={mediaSrc(row.receipt_proof_url)}
                 alt="Uploaded payment receipt"
                 className="max-h-96 w-full rounded-lg border border-border object-contain"
               />

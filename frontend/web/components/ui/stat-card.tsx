@@ -1,80 +1,130 @@
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
-type IconTone = "blue" | "green" | "amber" | "violet" | "red";
+export type StatCardSize = "sm" | "md" | "lg";
 
-const TONES: Record<IconTone, string> = {
-  blue: "bg-blue-50 text-blue-600",
-  green: "bg-emerald-50 text-emerald-600",
-  amber: "bg-amber-50 text-amber-600",
-  violet: "bg-violet-50 text-violet-600",
-  red: "bg-red-50 text-red-600",
+export interface StatCardDelta {
+  /** Omit direction/percent for a plain descriptive foot row with no
+   * up/down reading at all (e.g. "Most booked window"). */
+  direction?: "up" | "down";
+  percent?: string;
+  context: string;
+}
+
+export interface StatCardProps {
+  label: string;
+  /** Pre-formatted by the caller (currency, percentage, etc. already applied). */
+  value: string;
+  delta?: StatCardDelta;
+  /** Chronological series for the sparkline. Fewer than 2 points renders no
+   * sparkline at all — no empty placeholder. */
+  history?: number[];
+  size?: StatCardSize;
+  className?: string;
+}
+
+/** Builds a { direction, percent, context } delta from a raw numeric change,
+ * matching the prototype's bare "▲ 10.5%" / "▲ 4pts" convention (no "+" sign
+ * — the arrow already carries direction). Returns undefined for null/undefined
+ * input so callers can pass API fields straight through. */
+export function numericDelta(
+  value: number | null | undefined,
+  suffix: string,
+  context: string,
+): StatCardDelta | undefined {
+  if (value == null) return undefined;
+  return { direction: value >= 0 ? "up" : "down", percent: `${Math.abs(value)}${suffix}`, context };
+}
+
+const METRIC_CLASS: Record<StatCardSize, string> = {
+  sm: "metric-sm",
+  md: "metric",
+  lg: "metric-lg",
 };
 
+const SPARK_W = 200;
+const SPARK_H = 34;
+const SPARK_PAD = 2;
+
+/** Mirrors design/prototypes/*.html's series() helper exactly (same padding,
+ * same 12%-headroom max, same 0 floor) — with one addition: `|| 1` guards the
+ * range so an all-zero history (a real possibility, e.g. a new arena with no
+ * revenue yet this week) doesn't divide by zero. The prototype never handles
+ * this because it was never fed real data. */
+function buildSparkPaths(values: number[]) {
+  const max = Math.max(...values) * 1.12 || 1;
+  const min = 0;
+  const step = (SPARK_W - SPARK_PAD * 2) / (values.length - 1);
+  const pts = values.map((v, i) => {
+    const x = SPARK_PAD + i * step;
+    const y = SPARK_H - SPARK_PAD - ((v - min) / (max - min)) * (SPARK_H - SPARK_PAD * 2);
+    return [x, y] as const;
+  });
+  const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const [lastX] = pts[pts.length - 1];
+  const area = `${line} L${lastX.toFixed(1)} ${SPARK_H - SPARK_PAD} L${SPARK_PAD} ${SPARK_H - SPARK_PAD} Z`;
+  return { line, area };
+}
+
 /**
- * Metric tile used across the owner & admin dashboards. Matches the wireframe
- * (label · large value · delta) with a tinted icon tile, a hairline gradient
- * accent along the top, and a soft hover lift.
+ * KPI tile — sparkline-based composition (design/prototypes/arena-hub-owner.html
+ * & arena-hub-admin.html, ".kpi" cards). Eyebrow label, condensed metric value,
+ * optional delta/context foot row, optional sparkline.
+ *
+ * The sparkline is always rendered in the lime accent regardless of delta
+ * direction — direction is read from the delta chip alone (up = --success,
+ * down = --destructive), matching the prototype exactly. A history of fewer
+ * than 2 points omits the sparkline entirely rather than showing an empty
+ * placeholder.
  */
-export function StatCard({
-  label,
-  value,
-  delta,
-  deltaSuffix = "vs last period",
-  subtitle,
-  icon: Icon,
-  tone = "blue",
-  className,
-}: {
-  label: string;
-  value: string;
-  delta?: number | null;
-  deltaSuffix?: string;
-  subtitle?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  tone?: IconTone;
-  className?: string;
-}) {
-  const positive = (delta ?? 0) >= 0;
+export function StatCard({ label, value, delta, history, size = "md", className }: StatCardProps) {
+  const hasSpark = (history?.length ?? 0) >= 2;
+  const paths = hasSpark ? buildSparkPaths(history!) : null;
+
   return (
     <div
+      data-variant={hasSpark ? "spark" : "plain"}
       className={cn(
-        "accent-top card-elevated relative overflow-hidden rounded-xl border border-border bg-card p-5",
+        "relative overflow-hidden rounded-xl border border-border bg-card px-4.25 pt-3.75",
+        hasSpark ? "pb-3.25" : "pb-3.75",
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-sm font-medium text-muted-foreground">{label}</span>
-        {Icon && (
-          <span
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-lg",
-              TONES[tone],
-            )}
-          >
-            <Icon className="size-5" />
-          </span>
-        )}
-      </div>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
-      {delta != null && (
-        <p
-          className={cn(
-            "mt-1.5 flex items-center gap-1 text-xs font-medium",
-            positive ? "text-emerald-600" : "text-red-600",
+      <p className="eyebrow">{label}</p>
+      <p className={cn(METRIC_CLASS[size], "mt-2.25 mb-1.5 text-foreground")}>{value}</p>
+
+      {delta && (
+        <div className="flex items-center gap-1.75 text-[12px] text-muted-foreground">
+          {delta.direction && delta.percent && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.75 text-xs font-semibold",
+                delta.direction === "up" ? "text-success" : "text-destructive",
+              )}
+            >
+              {delta.direction === "up" ? "▲" : "▼"} {delta.percent}
+            </span>
           )}
-        >
-          {positive ? (
-            <ArrowUpRight className="size-3.5" />
-          ) : (
-            <ArrowDownRight className="size-3.5" />
-          )}
-          {positive ? "+" : ""}
-          {delta}% <span className="font-normal text-muted-foreground">{deltaSuffix}</span>
-        </p>
+          {delta.context}
+        </div>
       )}
-      {subtitle && <p className="mt-1.5 text-xs text-muted-foreground">{subtitle}</p>}
+
+      {hasSpark && paths && (
+        <svg
+          className="mt-2 block h-8.5 w-full"
+          viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+          preserveAspectRatio="none"
+        >
+          <path d={paths.area} fill="var(--success-muted)" />
+          <path
+            d={paths.line}
+            fill="none"
+            stroke="var(--success)"
+            strokeWidth={1.8}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
     </div>
   );
 }

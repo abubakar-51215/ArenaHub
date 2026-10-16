@@ -1,98 +1,97 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Design tokens. Source of truth: design/mobile-spec.md, generated from
+ * design/prototypes/arena-hub-player-app.html. Values are the prototype's,
+ * unadjusted. The app is light-only (see hooks/use-color-scheme.ts).
  */
 
-import { Platform } from 'react-native';
+/** 1:1 with the spec's light `:root` tokens, plus the literals the frames use. */
+export const Palette = {
+  ink: '#0F1A15',
+  inkSoft: '#1C2B23',
+  paper: '#F1F2EF',
+  card: '#FFFFFF',
+  line: '#E2E6E1',
+  lineSoft: '#EDEFEB',
+  text: '#0F1A15',
+  text2: '#46534C',
+  muted: '#656F69', // text grey: 4.5 : 1 or more on card, paper, soft line and lime wash (was #79857E, 3.4 on paper)
+  lime: '#C4F546',
+  limeInk: '#0F1A15',
+  limeDeep: '#7FA30F', // fills, borders and icons only (2.7 : 1 as text)
+  limeText: '#5B750B', // the same lime as TEXT: 4.5 : 1 or more on card, paper, soft line and lime wash
+  limeWash: '#F2FBDA',
+  amber: '#D9930B', // fills, stars and icons only (2.3 : 1 as text)
+  amberText: '#956508', // the same amber as TEXT: 4.5 : 1 or more on amber wash, paper and card
+  amberWash: '#FDF3DC',
+  red: '#CF4141', // fills, borders and icons (4.0 : 1 on red wash as text)
+  redText: '#C83333', // the same red as TEXT: 4.5 : 1 or more on red wash, paper and card
+  redWash: '#FBE9E9',
+  slotOpen: '#F6F7F4',
 
-// Matches the web owner dashboard's primary blue (bg-blue-600) so the brand
-// reads consistently across web and mobile even though there's no shared
-// design-token package yet.
-const tintColorLight = '#2563EB';
-const tintColorDark = '#60A5FA';
+  // A disabled button, in one place (components/ui/button.tsx and the assistant's send button; rule d2 in
+  // docs/MOBILE_QA_GATE.md). A flat grey with no see-through, so the text keeps 4.5 : 1 or more:
+  //   disabledInk (a dark button that cannot be pressed yet): paper text on it is 4.56 : 1 (was #808683, 3.30)
+  //   disabledText on the flat light grey (line): 5.50 : 1 (was muted, 4.13)
+  disabledInk: '#677069',
+  disabledText: '#525C56',
 
-/** Brand gradients & elevation, mirrored from the web design system. */
-export const Brand = {
-  /** Primary CTA / active surfaces — blue → deep blue. */
-  gradient: ['#3B82F6', '#2563EB'] as const,
-  /** Hero banners (profile header, matchmaking) — blue → indigo. */
-  gradientHero: ['#2563EB', '#1E40AF'] as const,
-  /** Logo mark accent — blue → emerald. */
-  gradientBrand: ['#2563EB', '#16A34A'] as const,
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
+  // Literals in the frames that are not :root tokens (spec section 1).
+  white: '#FFFFFF',
+  onInk: '#EAF0EC',
+  onInkMuted: '#8FA096',
+  inkBorder: '#26362D',
+  noteText: '#4E6B04',
+
+  // Translucent overlays on photos (spec section 1).
+  glass14: 'rgba(255,255,255,0.14)',
+  glass16: 'rgba(255,255,255,0.16)',
+  photoScrim: 'rgba(10,16,13,0.6)',
 };
 
-/** Reusable soft elevation for cards & buttons. */
+/** The prototype's only shadow: the active segmented-control option. */
 export const Shadow = {
-  card: {
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  brand: {
-    shadowColor: '#2563EB',
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
+  segmentActive: { boxShadow: '0 1px 2px rgba(15,26,21,0.05)' },
+  // The prototype's cards and buttons have no shadow. Kept as no-ops until the
+  // screens that spread them are restyled, then removed.
+  card: {},
+  brand: {},
+};
+
+const light = {
+  ...Palette,
+  // Existing keys, mapped to the prototype's roles.
+  background: Palette.paper,
+  tint: Palette.ink,
+  icon: Palette.text2,
+  tabIconDefault: Palette.muted,
+  tabIconSelected: Palette.text,
+  border: Palette.line,
+  destructive: Palette.red,
+  success: Palette.limeDeep,
+  warning: Palette.amber,
 };
 
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-    muted: '#6B7280',
-    border: '#E5E7EB',
-    card: '#F9FAFB',
-    destructive: '#DC2626',
-    success: '#16A34A',
-    warning: '#D97706',
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-    muted: '#9CA3AF',
-    border: '#2A2D2E',
-    card: '#1C1F20',
-    destructive: '#F87171',
-    success: '#4ADE80',
-    warning: '#FBBF24',
-  },
+  light,
+  // Light-only app. Kept so the Expo template helpers that index
+  // Colors[scheme] still type-check; the scheme is pinned to 'light'.
+  dark: light,
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+/**
+ * Font families, loaded in app/_layout.tsx. React Native selects a font file by
+ * family name, so each weight is its own family. Platform limits (see
+ * docs/RESTYLE_LOG.md): no Archivo width axis, and the prototype's weight 650
+ * maps to Bold 700 in both families.
+ */
+export const Font = {
+  body: 'InterTight_400Regular',
+  bodyMedium: 'InterTight_500Medium',
+  bodySemi: 'InterTight_600SemiBold',
+  bodyBold: 'InterTight_700Bold',
+  eyebrow: 'Archivo_600SemiBold',
+  display: 'Archivo_700Bold',
+};
+
+/** `body { letter-spacing: -.005em }` at 14px, inherited as an absolute length. */
+export const BodyLetterSpacing = -0.07;

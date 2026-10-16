@@ -9,14 +9,15 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:no-admin-links": "node scripts/check-no-admin-links.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.24.0",
-    "next": "15.5.20",
+    "next": "15.5.28",
     "radix-ui": "^1.6.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -33,7 +34,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.20",
+    "eslint-config-next": "15.5.28",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.5",
     "tailwindcss": "^4",

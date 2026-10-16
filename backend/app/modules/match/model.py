@@ -1,11 +1,9 @@
 """Match + MatchParticipant — the "Play" matchmaking feature.
 
-A deliberately lightweight social listing (per the FYP scope decision): a
-match describes an arena/court/date/time/sport/max-players a player wants to
-find teammates for. It does **not** reserve the court — no FK to
-``time_slots``, no payment. A player who wants the court itself guaranteed
-still books it through the normal booking flow; this is purely a
-coordination layer on top.
+A deliberately lightweight social listing: a match is played on one of the
+creator's own confirmed, upcoming bookings (``booking_group_id``), and a
+booking has at most one open match. Players join for free; **no payment
+happens in the app** (they settle the court price between themselves).
 """
 
 import uuid
@@ -19,11 +17,13 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Time,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -46,7 +46,16 @@ class MatchStatus(StrEnum):
 
 class Match(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "matches"
-    __table_args__ = (CheckConstraint("max_players > 0", name="ck_matches_max_players_positive"),)
+    __table_args__ = (
+        CheckConstraint("max_players > 0", name="ck_matches_max_players_positive"),
+        # one open (or full) match per booking
+        Index(
+            "uq_matches_one_live_match_per_booking",
+            "booking_group_id",
+            unique=True,
+            postgresql_where=text("booking_group_id IS NOT NULL AND status IN ('open', 'full')"),
+        ),
+    )
 
     creator_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
@@ -57,7 +66,11 @@ class Match(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("courts.id", ondelete="CASCADE"), nullable=False
     )
+    # the creator's confirmed booking this match is played on (NULL only for matches made before G6)
+    booking_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     sport: Mapped[str] = mapped_column(String(50), nullable=False)
+    # an optional line from the creator ("Friendly game, all levels.")
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     match_date: Mapped[date] = mapped_column(Date, nullable=False)
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)

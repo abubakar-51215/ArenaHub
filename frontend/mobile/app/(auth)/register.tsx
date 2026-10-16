@@ -1,110 +1,240 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useRef, useState } from 'react';
+import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { Colors } from '@/constants/theme';
+import { GoogleButton, useGoogleSignIn } from '@/components/auth/google-button';
+import { OrRule } from '@/components/auth/or-rule';
+import { AuthScreen } from '@/components/auth/auth-screen';
+import { FieldMessage } from '@/components/auth/field-message';
+import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-rules';
+import { Button, useButtonStatus } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
+import { Text } from '@/components/ui/text';
+import { BodyLetterSpacing, Colors, Font } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { register } from '@/services/auth';
 
+type Errors = Partial<Record<'full_name' | 'email' | 'phone' | 'password', string>>;
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Create account (arena-hub-player-app-google.html, frame 3). After a code was sent, coming back here
+// ("Wrong email? Use a different email" on the code screen, or Back) is frame 14: the details are kept,
+// only the email needs changing, and Continue sends a new code (the server replaces a sign-up that was
+// never confirmed, so the same phone is fine).
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  // set once a code went out from this form: the form is then "change your email, then continue"
+  const [codeSent, setCodeSent] = useState(false);
+  // "Sign up with Google" (frame 3); a refused account's words show in the red box (frames 10 and 11)
+  const [refused, setRefused] = useState<string | null>(null);
+  const google = useGoogleSignIn(setRefused);
+  const [btnStatus, flash] = useButtonStatus();
+  const emailRef = useRef<RNTextInput>(null);
+  const phoneRef = useRef<RNTextInput>(null);
+  const passwordRef = useRef<RNTextInput>(null);
+
+  const clear = (key: keyof Errors) => setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
   const mutation = useMutation({
     mutationFn: () =>
       register({ full_name: fullName.trim(), email: email.trim(), phone: phone.trim(), password }),
     onSuccess: (result) => {
-      router.push({
-        pathname: '/(auth)/verify-otp',
-        params: { email: result.user.email, sentTo: result.otp_sent_to },
-      });
+      flash('success');
+      setCodeSent(true);
+      // let the tick show for a moment before the code screen opens
+      setTimeout(
+        () =>
+          router.push({
+            pathname: '/(auth)/verify-otp',
+            params: { email: result.user.email, sentTo: result.otp_sent_to, codeSent: result.code_sent ? '1' : '0', from: 'signup' },
+          }),
+        500,
+      );
     },
     onError: (err) => {
-      if (err instanceof ApiError && err.fieldErrors.length) {
-        setError(err.fieldErrors.map((f) => f.message).join('\n'));
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
+      flash('error');
+      if (!(err instanceof ApiError)) {
+        setFormError('Something went wrong. Try again.');
+        return;
       }
+      // field errors from the server (422), then the 409 "already registered" ones
+      const next: Errors = {};
+      for (const f of err.fieldErrors) {
+        const key = f.field.split('.').pop() as keyof Errors;
+        if (key in { full_name: 1, email: 1, phone: 1, password: 1 }) next[key] = f.message;
+      }
+      if (err.status === 409 && /email/i.test(err.message)) next.email = err.message;
+      else if (err.status === 409 && /phone/i.test(err.message)) next.phone = err.message;
+      else if (/password/i.test(err.message)) next.password = err.message;
+      if (Object.values(next).some(Boolean)) setErrors(next);
+      else setFormError(err.message);
     },
   });
 
+  const submit = () => {
+    if (mutation.isPending || google.busy) return;
+    setFormError(null);
+    const next: Errors = {};
+    if (!fullName.trim()) next.full_name = 'Enter your full name.';
+    if (!EMAIL.test(email.trim())) next.email = 'Enter a valid email address.';
+    if (phone.replace(/\D/g, '').length < 10) next.phone = 'Enter a valid phone number.';
+    if (!passwordMeetsRules(password)) next.password = 'Your password needs every rule below.';
+    setErrors(next);
+    if (Object.keys(next).length === 0) mutation.mutate();
+    else flash('error');
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Join ArenaHub and start booking courts</Text>
-
-        <View style={styles.form}>
-          <TextField label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Ali Raza" />
-          <TextField
-            label="Email"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-          />
-          <TextField
-            label="Phone"
-            keyboardType="phone-pad"
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="03001234567"
-          />
-          <TextField
-            label="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            placeholder="At least 8 characters"
-          />
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Button
-            title="Sign Up"
-            loading={mutation.isPending}
+    <AuthScreen
+      showMark={!codeSent}
+      title="Create account"
+      subtitle={codeSent ? 'Change your email, then continue. We will send a new code.' : 'Book arenas, join matches and track your games.'}>
+      {codeSent ? null : (
+        <View style={styles.google}>
+          {refused ? (
+            <View style={styles.refused} accessibilityRole="alert">
+              <Text style={styles.refusedText}>{refused}</Text>
+            </View>
+          ) : null}
+          <GoogleButton
+            title="Sign up with Google"
+            busy={google.busy}
+            disabled={mutation.isPending}
             onPress={() => {
-              setError(null);
-              mutation.mutate();
+              setRefused(null);
+              void google.start();
             }}
           />
+          <OrRule label="or sign up with email" />
         </View>
+      )}
+      <View style={styles.form}>
+        <View style={styles.group}>
+          <Field
+            icon="user"
+            placeholder="Full name"
+            value={fullName}
+            onChangeText={(t) => {
+              setFullName(t);
+              clear('full_name');
+            }}
+            error={!!errors.full_name}
+            autoComplete="name"
+            textContentType="name"
+            autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current?.focus()}
+            accessibilityLabel="Full name"
+          />
+          {errors.full_name ? <FieldMessage>{errors.full_name}</FieldMessage> : null}
+        </View>
+        <View style={styles.group}>
+          <Field
+            ref={emailRef}
+            icon="mail"
+            placeholder="Email"
+            value={email}
+            onChangeText={(t) => {
+              setEmail(t);
+              clear('email');
+            }}
+            error={!!errors.email}
+            autoComplete="email"
+            textContentType="emailAddress"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => phoneRef.current?.focus()}
+            accessibilityLabel="Email"
+          />
+          {errors.email ? <FieldMessage>{errors.email}</FieldMessage> : null}
+        </View>
+        <View style={styles.group}>
+          <Field
+            ref={phoneRef}
+            placeholder="Phone (e.g. 03XX XXXXXXX)"
+            value={phone}
+            onChangeText={(t) => {
+              setPhone(t);
+              clear('phone');
+            }}
+            error={!!errors.phone}
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            keyboardType="phone-pad"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            accessibilityLabel="Phone"
+          />
+          {errors.phone ? <FieldMessage>{errors.phone}</FieldMessage> : null}
+        </View>
+        <View style={[styles.group, codeSent && styles.hidden]}>
+          <Field
+            ref={passwordRef}
+            icon="lock"
+            revealable
+            placeholder="Password"
+            value={password}
+            onChangeText={(t) => {
+              setPassword(t);
+              clear('password');
+            }}
+            error={!!errors.password}
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={submit}
+            accessibilityLabel="Password"
+          />
+          {errors.password ? <FieldMessage>{errors.password}</FieldMessage> : null}
+        </View>
+        {codeSent ? null : <PasswordRules password={password} />}
+        {formError ? <FieldMessage>{formError}</FieldMessage> : null}
+        <View style={styles.button}>
+          <Button title={codeSent ? 'Continue' : 'Create account'} loading={mutation.isPending} disabled={google.busy} status={btnStatus} onPress={submit} />
+        </View>
+      </View>
 
+      {codeSent ? null : (
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <Link href="/(auth)/login" style={styles.footerLink}>
-            Log In
+          <Link href="/(auth)/login" dismissTo style={styles.footerLink} accessibilityRole="link">
+            Log in
           </Link>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.light.text },
-  subtitle: { fontSize: 14, color: Colors.light.muted, marginTop: 4, marginBottom: 24 },
-  form: { gap: 14 },
-  errorText: { color: Colors.light.destructive, fontSize: 13 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  footerText: { color: Colors.light.muted, fontSize: 14 },
-  footerLink: { color: Colors.light.tint, fontSize: 14, fontWeight: '700' },
+  form: { gap: 10 },
+  google: { gap: 12, marginBottom: 12 },
+  refused: { backgroundColor: '#FBEAEA', borderColor: '#F1C9C9', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12 },
+  refusedText: { fontSize: 14, lineHeight: 20, color: '#8E2A2A' },
+  // the password stays as typed while only the email is changed (frame 14 shows the other three fields)
+  hidden: { display: 'none' },
+  group: { gap: 6 },
+  button: { marginTop: 6 },
+  // "Already have an account? Log in": 12px, centred, 18px under the button;
+  // the row is 44 tall so the link is easy to hit
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 44,
+    marginTop: 8,
+  },
+  footerText: { fontSize: 14, color: Colors.light.muted },
+  footerLink: { fontSize: 14, fontFamily: Font.bodyBold, letterSpacing: BodyLetterSpacing, color: Colors.light.text, paddingVertical: 14, paddingHorizontal: 6 },
 });

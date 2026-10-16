@@ -1,15 +1,32 @@
+/* NOTE: Turbopack's dev-server file watcher does not reliably hot-reload
+   edits to this file. Restart the dev server to verify changes to any
+   custom property here. Discovered while proving the useArenaColors hook
+   in charts.tsx (Step 5 charts pass) — a token edit that appeared to have
+   no visual effect turned out to be a watcher miss, not a hook bug. */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+/* touch screens of any width (tablets too): tap targets at least 44px, see the block at the end */
+@custom-variant coarse (@media (pointer: coarse));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --color-ink: #0f1a15;
+  --color-paper: #f1f2ef;
+  --color-lime: #c4f546;
+  --color-lime-deep: #7fa30f;
+  /* light text on the ink photo panels (auth pages) */
+  --color-on-ink: #c8d6cd;
+  --color-on-ink-muted: #b8c7be;
+  --color-on-ink-faint: #93a69a;
+  --font-sans: var(--font-body-face);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-heading-face);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -27,8 +44,15 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-rating: var(--rating);
+  --color-danger-muted: var(--danger-muted);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -51,54 +75,66 @@
 }
 
 :root {
-  --background: oklch(0.985 0.002 247);
-  --foreground: oklch(0.21 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 260);
-  /* Brand blue (#2563EB / blue-600) as the primary across the platform. */
-  --primary: oklch(0.546 0.215 262.9);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.968 0.006 247);
-  --secondary-foreground: oklch(0.28 0.02 260);
-  --muted: oklch(0.968 0.006 247);
-  --muted-foreground: oklch(0.552 0.02 257);
-  --accent: oklch(0.955 0.02 255);
-  --accent-foreground: oklch(0.42 0.14 262.9);
-  --destructive: oklch(0.577 0.245 27.325);
-  --success: oklch(0.627 0.17 149.2);
-  --warning: oklch(0.705 0.16 70);
-  --border: oklch(0.922 0.006 247);
-  --input: oklch(0.922 0.006 247);
-  --ring: oklch(0.546 0.215 262.9);
-  /* Chart palette — mirrors the wireframe donut/line/bar hues. */
-  --chart-1: oklch(0.546 0.215 262.9); /* blue   */
-  --chart-2: oklch(0.627 0.17 149.2); /* emerald */
-  --chart-3: oklch(0.769 0.16 70.08); /* amber  */
-  --chart-4: oklch(0.637 0.21 25.5); /* red    */
-  --chart-5: oklch(0.606 0.19 293.7); /* violet */
+  /* Arena palette (design/prototypes: ink, paper, line, lime, lime-deep,
+     amber, red). This is the page default, so anything rendered outside
+     [data-theme="arena"] — dialogs, overlays, toasts and other portals under
+     <body>, and pages without the dashboard shell — gets the same theme
+     instead of the old blue-grey shadcn defaults. */
+  --background: #f1f2ef;
+  --foreground: #0f1a15;
+  --card: #ffffff;
+  --card-foreground: #0f1a15;
+  --popover: #ffffff;
+  --popover-foreground: #0f1a15;
+  --primary: #0f1a15;
+  --primary-foreground: #f1f2ef;
+  --secondary: #edefeb;
+  --secondary-foreground: #0f1a15;
+  --muted: #edefeb;
+  --muted-foreground: #79857e;
+  --label-foreground: #46534c;
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+  --destructive: #cf4141;
+  --destructive-foreground: #ffffff;
+  --success: #7fa30f;
+  --success-foreground: #ffffff;
+  --success-muted: #f2fbda;
+  --warning: #d9930b;
+  --warning-foreground: #ffffff;
+  --warning-muted: #fdf3dc;
+  --danger-muted: #fbe9e9;
+  --rating: var(--warning);
+  --border: #e2e6e1;
+  --input: #e2e6e1;
+  --ring: #7fa30f;
+  /* Chart palette: one lime, then a grey ramp (same as the arena theme). */
+  --chart-1: #c4f546;
+  --chart-2: #0f1a15;
+  --chart-3: #5a6b61;
+  --chart-4: #93a29a;
+  --chart-5: #c6cfc9;
   --radius: 0.7rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.32 0.02 260);
-  --sidebar-primary: oklch(0.546 0.215 262.9);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.955 0.02 255);
-  --sidebar-accent-foreground: oklch(0.42 0.14 262.9);
-  --sidebar-border: oklch(0.922 0.006 247);
-  --sidebar-ring: oklch(0.546 0.215 262.9);
+  --sidebar: #0f1a15;
+  --sidebar-foreground: #a9b5ae;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #182620;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #22322a;
+  --sidebar-ring: #c4f546;
 
-  /* Brand gradients & elevation — reused across surfaces. */
-  --brand-gradient: linear-gradient(135deg, oklch(0.58 0.21 264) 0%, oklch(0.5 0.22 262) 100%);
-  --brand-gradient-soft: linear-gradient(
-    135deg,
-    oklch(0.97 0.02 255) 0%,
-    oklch(0.955 0.03 262) 100%
-  );
-  --shadow-brand: 0 10px 30px -12px oklch(0.546 0.215 262.9 / 0.45);
-  --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04), 0 4px 16px -8px oklch(0.21 0.02 260 / 0.08);
-  --shadow-card-hover:
-    0 4px 12px -4px oklch(0.21 0.02 260 / 0.1), 0 12px 32px -12px oklch(0.21 0.02 260 / 0.14);
+  /* Brand gradients & elevation — ink and lime, no blue. */
+  --brand-gradient: linear-gradient(135deg, #0f1a15 0%, #1c2b23 100%);
+  --brand-gradient-soft: linear-gradient(135deg, #f1f2ef 0%, #f2fbda 100%);
+  --shadow-brand: 0 10px 30px -12px rgb(15 26 21 / 0.25);
+  --shadow-card: 0 1px 2px rgb(15 26 21 / 0.04), 0 4px 16px -8px rgb(15 26 21 / 0.08);
+  --shadow-card-hover: 0 4px 12px -4px rgb(15 26 21 / 0.1), 0 12px 32px -12px rgb(15 26 21 / 0.14);
+
+  /* Typography indirection for --font-display/--font-heading. Body and heading
+     faces are Inter Tight and Archivo (next/font variables set in layout.tsx). */
+  --font-body-face: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
 }
 
 .dark {
@@ -133,17 +169,192 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --font-body-face: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
+}
+
+/* ---------------------------------------------------------------------------
+   ArenaHub dashboard theme (owner + admin consoles only).
+
+   Scoped under [data-theme="arena"] — set on the root element of
+   components/ui/dashboard-shell.tsx (both dashboard layouts) and of
+   components/auth/split-auth-shell.tsx (used by /login, /register, and the
+   retired /login1, /signup1, /admin/login1 prototypes). Everything else —
+   the marketing site, /admin/login, /forgot-password, /reset-password —
+   still renders through the old AuthShell and keeps :root's blue tokens.
+
+   Palette: ink #0F1A15 (sidebar, headings, primary), paper #F1F2EF (canvas),
+   lime #C4F546 (accent — live status / approve only), amber #D9930B
+   (pending), red #CF4141 (cancelled/destructive). Colour carries meaning,
+   never decoration.
+--------------------------------------------------------------------------- */
+[data-theme="arena"] {
+  --radius: 0.75rem;
+
+  --background: #f1f2ef;
+  --foreground: #0f1a15;
+
+  --card: #ffffff;
+  --card-foreground: #0f1a15;
+  --popover: #ffffff;
+  --popover-foreground: #0f1a15;
+
+  /* primary is ink, NOT lime — lime is the accent, and using it for every
+     button is what makes an accent stop meaning anything */
+  --primary: #0f1a15;
+  --primary-foreground: #f1f2ef;
+
+  --secondary: #edefeb;
+  --secondary-foreground: #0f1a15;
+
+  --muted: #edefeb;
+  --muted-foreground: #79857e;
+  /* Prototype's --text-2 — a secondary text weight between --foreground and
+     --muted-foreground, used only by form field labels. No existing token
+     matched this value or role (checked every dashboard form first — all
+     labels currently render at full --foreground via the one shared Label
+     component); this is a genuine gap, not a naming mismatch. Applied at
+     call sites in auth forms, not by changing Label's own default — that
+     would recolor every label in both dashboards. */
+  --label-foreground: #46534c;
+
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+
+  --destructive: #cf4141;
+  --destructive-foreground: #ffffff;
+
+  --border: #e2e6e1;
+  --input: #e2e6e1;
+  --ring: #7fa30f;
+
+  --success: #7fa30f;
+  --success-foreground: #ffffff;
+  --success-muted: #f2fbda;
+  --warning: #d9930b;
+  --warning-foreground: #ffffff;
+  --warning-muted: #fdf3dc;
+  --rating: var(--warning);
+  --danger-muted: #fbe9e9;
+
+  /* charts: one lime, then a disciplined grey ramp. Never a rainbow. */
+  --chart-1: #c4f546;
+  --chart-2: #0f1a15;
+  --chart-3: #5a6b61;
+  --chart-4: #93a29a;
+  --chart-5: #c6cfc9;
+
+  /* the rail is always ink, in both themes — it anchors the whole product */
+  --sidebar: #0f1a15;
+  --sidebar-foreground: #a9b5ae;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #182620;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #22322a;
+  --sidebar-ring: #c4f546;
+
+  --font-body-face: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  --font-heading-face: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
+
+  /* --font-display is declared once at :root inside @theme inline
+     (--font-display: var(--font-heading-face)) and its computed value is
+     fixed there, using :root's own --font-heading-face — the arena
+     override above never reaches it via inheritance alone (same class of
+     bug as the Step 4 body-font finding, one indirection hop deeper).
+     Re-declaring it here fixes .metric/.eyebrow/.heading, which all read
+     font-family from --font-display. */
+  --font-display: var(--font-archivo, ui-sans-serif, system-ui, sans-serif);
+
+  /* --font-heading is intentionally left unmapped here — no dashboard
+     element currently consumes it. If CardTitle or another shadcn
+     primitive starts needing Archivo, add: --font-heading: var(--font-archivo); */
+
+  /* Applies the token as a real property on the arena-scoped element itself.
+     <body>'s font-sans rule can't do this job: it resolves at <body>, which
+     sits outside [data-theme="arena"], so the arena override on
+     --font-body-face has nothing to attach to there (Step 4 finding).
+     Declaring it here, at the element that actually carries the scope,
+     is what makes dashboard body text become Inter Tight. */
+  font-family: var(--font-body-face);
+
+  font-feature-settings: "cv02", "cv03";
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Dark-mode companion for the dashboard theme — inert today (nothing in the
+   app toggles .dark), included for parity with the prototype so a future
+   dark-mode pass doesn't need to revisit token values. */
+[data-theme="arena"].dark {
+  --background: #0a100d;
+  --foreground: #e9efe9;
+
+  --card: #121a16;
+  --card-foreground: #e9efe9;
+  --popover: #121a16;
+  --popover-foreground: #e9efe9;
+
+  /* in dark, lime becomes the primary — ink would vanish into the canvas */
+  --primary: #c4f546;
+  --primary-foreground: #0f1a15;
+
+  --secondary: #1b2520;
+  --secondary-foreground: #e9efe9;
+
+  --muted: #1b2520;
+  --muted-foreground: #7c8981;
+
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+
+  --destructive: #e05a5a;
+  --destructive-foreground: #0a100d;
+
+  --border: #232f28;
+  --input: #232f28;
+  --ring: #c4f546;
+
+  --success: #a5d321;
+  --success-foreground: #0f1a15;
+  --success-muted: #1e2a11;
+  --warning: #e8b93f;
+  --warning-foreground: #0f1a15;
+  --warning-muted: #2a2210;
+  --rating: var(--warning);
+  --danger-muted: #2c1616;
+
+  --chart-1: #c4f546;
+  --chart-2: #8fbf16;
+  --chart-3: #6d7d73;
+  --chart-4: #46534c;
+  --chart-5: #2b3831;
+
+  --sidebar: #0d1410;
+  --sidebar-foreground: #8a968e;
+  --sidebar-primary: #1e2e26;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #16201a;
+  --sidebar-accent-foreground: #e6ede8;
+  --sidebar-border: #1e2a23;
+  --sidebar-ring: #c4f546;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  /* The Geist font variable is scoped to <body> via next/font's `.variable`
-     class in layout.tsx; custom properties don't flow up to ancestors, so
-     font-sans must be applied here (not on <html>) or it can't resolve it. */
+  /* Body text is Inter Tight everywhere. next/font exposes the variable on
+     <body> (see layout.tsx), so the family is read from that variable. */
   body {
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-inter-tight, ui-sans-serif, system-ui, sans-serif);
+  }
+  /* numbers in tables and metrics must line up */
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -162,6 +373,19 @@
   }
   .text-gradient-brand {
     background-image: linear-gradient(120deg, oklch(0.55 0.21 263) 0%, oklch(0.63 0.17 173) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Marketing-only gradient heading accent — ink→lime, app/page.tsx only.
+     Kept separate from the dashboard typographic primitives on purpose: a
+     gradient-text heading is exactly the decoration-for-its-own-sake the
+     arena system's restraint exists to prevent, if it ever reached a
+     dashboard. Hardcoded hex, not var(), so it doesn't read as an
+     arena-theme-dependent utility even though nothing physically stops it
+     being applied elsewhere. */
+  .text-gradient-marketing {
+    background-image: linear-gradient(120deg, #0f1a15 0%, #c4f546 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -286,5 +510,4363 @@
   }
   .card-elevated:hover {
     transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard typographic signature — one family at two width extremes.
+   Archivo condensed for scoreboard numerals, Archivo expanded for
+   micro-labels. Inert outside [data-theme="arena"] until applied to
+   dashboard markup (Step 5/6) — resolves through --font-display, which is
+   Archivo everywhere, so nothing else picks this up.
+--------------------------------------------------------------------------- */
+@utility metric {
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
+  font-size: 2.375rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+@utility metric-sm {
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+@utility metric-lg {
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
+  font-size: 3.5rem; /* 56px, matches design/prototypes' .metric.lg */
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+/* Heavier eyebrow treatment for hero-level / major-section-opening labels
+   on the marketing page only. Composes on top of base .eyebrow
+   (className="eyebrow eyebrow-marketing") rather than editing it — .eyebrow
+   is shared with the dashboards, and changing its base definition risks a
+   silent-bleed regression into dashboard headings. */
+@utility eyebrow-marketing {
+  color: var(--foreground);
+  font-size: 0.75rem;
+}
+@utility heading {
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 88,
+    "wght" 700;
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------------------
+   Phone type floor (below 768px only; desktop is untouched).
+   Body copy, table cells, badges and helper text are never smaller than 14px.
+   Documented exception: uppercase tracked overline labels (the .eyebrow
+   utility and any .uppercase label, including table header cells) stay small,
+   at 12px. These rules are unlayered on purpose so they win over the
+   one-off text-xs / text-[Npx] utilities spread through the components.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .text-xs,
+  [class*="text-[8"],
+  [class*="text-[10"],
+  [class*="text-[11"],
+  [class*="text-[0.8rem"] {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .eyebrow,
+  .uppercase,
+  th {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Admin shell. Values copied from the admin prototype
+   (design/prototypes/arena-hub-admin.html: .rail, .brand, .nav-*, .owner,
+   .topbar, .canvas, .page-head). Everything is scoped to [data-admin], which
+   only the admin dashboard shell sets, so owner pages are untouched.
+   --------------------------------------------------------------------------- */
+[data-admin] {
+  --ink: #0f1a15;
+  --paper: #f1f2ef;
+  --lime: #c4f546;
+  --line: #e2e6e1;
+  --text: #0f1a15;
+  --text-2: #46534c;
+  --shadow: 0 1px 2px rgba(15, 26, 21, 0.05);
+  --shadow-lg: 0 18px 40px -18px rgba(15, 26, 21, 0.28);
+  --ink-soft: #1c2b23;
+  --lime-deep: #7fa30f;
+  --lime-wash: #f2fbda;
+  --amber: #d9930b;
+  --amber-wash: #fdf3dc;
+  --red: #cf4141;
+  --red-wash: #fbe9e9;
+  --rail: #0f1a15;
+  --rail-text: #a9b5ae;
+  --rail-active: #ffffff;
+  --rail-line: #22322a;
+  --rail-hover: #182620;
+  --rail-hover-text: #e6ede8;
+  --rail-on: #1e2e26;
+  /* text colours darkened to 4.5:1 on white and paper (owner-approved); the
+     prototype value is kept beside each. Fills, dots and borders keep the
+     prototype colours (--lime-deep, --amber, --red). */
+  --rail-label: #708579; /* prototype #5d6e64 */
+  --ok-text: #5d770b; /* prototype text was --lime-deep #7fa30f */
+  --wait-text: #956508; /* prototype text was --amber #d9930b */
+  --off-text: #c83333; /* prototype text was --red #cf4141 */
+  --rail-count: #22332b;
+  --rail-count-text: #9fb0a6;
+  --rail-avatar: #2a3b32;
+  --line-soft: #edefeb;
+
+  /* Text colour as a real property: without it, admin text inherits <body>'s
+     colour, which comes from :root's blue-grey --foreground, not ink. */
+  color: var(--foreground);
+  --muted-foreground: #67716b; /* prototype --muted #79857e */
+  /* the prototype's body type: everything without its own size inherits it */
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+/* prototype: button, input, select and textarea inherit the font but keep
+   the browser's normal letter-spacing (font: inherit does not carry it) */
+[data-admin] :is(button, input, select, textarea) {
+  letter-spacing: normal;
+}
+
+[data-admin] .ah-rail {
+  /* 80% of the prototype rail (.rail): 246px wide, 18/14/14 padding */
+  width: 196.8px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14.4px 11.2px 11.2px;
+  background: var(--rail);
+  border-right: 1px solid var(--rail-line);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+[data-admin] .ah-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1.6px 6.4px 16px;
+  border-radius: 7.2px;
+  color: inherit;
+  text-decoration: none;
+}
+/* keyboard focus on the brand link: the prototype's :focus-visible ring */
+[data-admin] .ah-brand:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+[data-admin] .ah-brand-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+/* inside the rail, 80% of the prototype's 30px */
+[data-admin] .ah-rail .ah-brand-mark {
+  width: 24px;
+  height: 24px;
+}
+[data-admin] .ah-brand-name {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 700;
+  color: #ffffff;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+[data-admin] .ah-brand-name small {
+  display: block;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 500;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--rail-text);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+/* inside the rail, 80%: 15px -> 12px; 8.5px -> 6.8px, held at the 9px floor */
+[data-admin] .ah-rail .ah-brand-name {
+  font-size: 12px;
+}
+[data-admin].ah-auth .ah-brand-name small {
+  color: #697a70; /* prototype --rail-text #a9b5ae, made for the dark rail */
+}
+html[data-theme="dark"] [data-admin].ah-auth .ah-brand-name small {
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-rail .ah-brand-name small {
+  font-size: 12px;
+  margin-top: 1.6px;
+}
+[data-admin] .ah-nav-group {
+  margin-bottom: 12.8px;
+}
+[data-admin] .ah-nav-label {
+  /* the prototype leaves this <p>'s default 1em (9px) margins; x0.8 */
+  margin: 7.2px 0;
+  padding: 0 8px 5.6px;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
+  /* 9px x 0.8 = 7.2px, held at the 9px floor */
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rail-label);
+}
+[data-admin] .ah-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6.4px 8px;
+  border-radius: 7.2px;
+  color: var(--rail-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-align: left;
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+[data-admin] .ah-nav-item svg {
+  width: 13.6px;
+  height: 13.6px;
+  flex: none;
+  opacity: 0.85;
+}
+[data-admin] .ah-nav-item:hover {
+  background: var(--rail-hover);
+  color: var(--rail-hover-text);
+}
+[data-admin] .ah-nav-item.is-active {
+  background: var(--rail-on);
+  color: var(--rail-active);
+  font-weight: 600;
+}
+[data-admin] .ah-nav-item.is-active svg {
+  color: var(--lime);
+  opacity: 1;
+}
+[data-admin] .ah-nav-count {
+  margin-left: auto;
+  /* 10.5px x 0.8 = 8.4px, held at the 9px floor */
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: var(--rail-count);
+  color: var(--rail-count-text);
+  padding: 0.8px 4.8px;
+  border-radius: 16px;
+}
+[data-admin] .ah-nav-item.is-active .ah-nav-count {
+  background: var(--lime);
+  /* prototype: var(--ink), which turns light in dark mode (1.1:1 on lime);
+     the prototype's --lime-ink stays dark in both themes */
+  color: #0f1a15;
+}
+[data-admin] .ah-rail-foot {
+  margin-top: auto;
+  padding-top: 11.2px;
+  border-top: 1px solid var(--rail-line);
+}
+[data-admin] .ah-owner {
+  letter-spacing: normal;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6.4px;
+  border-radius: 8px;
+  width: 100%;
+}
+[data-admin] .ah-owner-av {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--rail-avatar);
+  color: var(--lime);
+  font-weight: 700;
+  /* 11px x 0.8 = 8.8px, held at the 9px floor */
+  font-size: 12px;
+}
+[data-admin] .ah-owner-name {
+  color: var(--rail-hover-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+[data-admin] .ah-owner-role {
+  color: var(--rail-label);
+  /* 10.5px x 0.8 = 8.4px, held at the 9px floor */
+  font-size: 12px;
+}
+[data-admin] .ah-logout {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 7.2px;
+  color: var(--rail-text);
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+[data-admin] .ah-logout svg {
+  width: 12.8px;
+  height: 12.8px;
+}
+[data-admin] .ah-logout:hover {
+  background: var(--rail-hover);
+  color: var(--rail-hover-text);
+}
+
+/* topbar: shown below 1280px only (it carries the drawer button). The
+   prototype's topbar controls (environment picker, search, broadcast, theme,
+   alerts) have no counterpart in our admin, so nothing else goes in it. */
+[data-admin] .ah-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+/* the slim bar (menu button + brand mark) is for the drawer only: below 1024px */
+@media (min-width: 1024px) {
+  [data-admin] .ah-topbar {
+    display: none;
+  }
+}
+/* slim bar (below 1024px): search, theme and alerts on the right, and every
+   button in the bar a 44px target */
+[data-admin] .ah-slim-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 1023.98px) {
+  [data-admin] .ah-topbar:not(.ah-topbar-desk) .ah-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+[data-admin] .ah-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text-2);
+  box-shadow: var(--shadow);
+}
+[data-admin] .ah-icon-btn:hover {
+  color: var(--text);
+  border-color: var(--muted-foreground);
+}
+[data-admin] .ah-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Dashboard top bar (prototype .topbar, .searchbar, .kbd, .topbar-right,
+   .icon-btn.has-dot): on the Dashboard only, from 1024px up. */
+[data-admin] .ah-topbar.ah-topbar-desk {
+  display: none;
+}
+/* prototype buttons keep the browser default (normal); preflight would make
+   them inherit the bar's -0.005em */
+[data-admin] .ah-topbar-desk button {
+  letter-spacing: normal;
+}
+@media (min-width: 1024px) {
+  [data-admin] .ah-topbar.ah-topbar-desk {
+    display: flex;
+  }
+}
+[data-admin] .ah-searchbar {
+  flex: 1;
+  max-width: 340px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+[data-admin] .ah-searchbar:hover {
+  border-color: var(--muted-foreground);
+}
+[data-admin] .ah-kbd {
+  margin-left: auto;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 600;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+[data-admin] .ah-icon-btn.has-dot {
+  position: relative;
+}
+[data-admin] .ah-icon-btn.has-dot::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 1.5px solid var(--card);
+}
+[data-admin] .ah-searchbar:focus-visible,
+[data-admin] .ah-icon-btn:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+/* Command palette (prototype .cmdk, .cmdk-box, .cmdk-input, .cmdk-list,
+   .cmdk-item). Group headings reuse the prototype's .eyebrow type. */
+[data-admin] .ah-cmdk {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(10, 16, 13, 0.42);
+  backdrop-filter: blur(3px);
+}
+[data-admin] .ah-cmdk-box {
+  position: fixed;
+  z-index: 81;
+  top: 12vh;
+  left: 50%;
+  translate: -50% 0;
+  width: min(540px, 92vw);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: ah-rise 0.18s ease-out;
+}
+@keyframes ah-rise {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-cmdk-box {
+    animation: none;
+  }
+}
+[data-admin] .ah-cmdk-input {
+  width: 100%;
+  padding: 15px 18px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  background: none;
+  font-size: 15px;
+  color: var(--text);
+}
+[data-admin] .ah-cmdk-input:focus {
+  outline: none;
+}
+[data-admin] .ah-cmdk-input::placeholder {
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-cmdk-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 7px;
+}
+[data-admin] .ah-cmdk-group {
+  margin: 0;
+  padding: 9px 11px 5px;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-cmdk-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+[data-admin] .ah-cmdk-item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-cmdk-item:hover,
+[data-admin] .ah-cmdk-item.is-sel {
+  background: var(--line-soft);
+}
+[data-admin] .ah-cmdk-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-admin] .ah-cmdk-item small {
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+/* on the selected or hovered row the hint sits on --line-soft, where --muted
+   falls below 4.5:1 (3.32 light, 4.32 dark); --text-2 reads there */
+[data-admin] .ah-cmdk-item:hover small,
+[data-admin] .ah-cmdk-item.is-sel small {
+  color: var(--text-2);
+}
+[data-admin] .ah-cmdk-note {
+  margin: 0;
+  padding: 14px 11px;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+[data-admin] .ah-cmdk-note.is-error {
+  color: var(--off-text);
+}
+[data-admin] .ah-cmdk-note button {
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-cmdk-item {
+    min-height: 44px;
+  }
+}
+/* Alerts popover: prototype card surface (border, radius, --shadow-lg) with
+   .cmdk-item rows and the .q-ico chips used by the decision queue. */
+[data-admin] .ah-pop {
+  z-index: 70;
+  width: min(320px, 92vw);
+  padding: 7px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  animation: ah-rise 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-pop {
+    animation: none;
+  }
+}
+[data-admin] .ah-pop-head {
+  margin: 0;
+  padding: 9px 11px 6px;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pop-note {
+  margin: 0;
+  padding: 14px 11px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pop-note.is-error {
+  color: var(--off-text);
+}
+[data-admin] .ah-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  color: var(--text);
+  text-decoration: none;
+}
+[data-admin] .ah-pop-item:hover,
+[data-admin] .ah-pop-item:focus-visible {
+  background: var(--line-soft);
+  outline: none;
+}
+[data-admin] .ah-pop-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+[data-admin] .ah-pop-text small {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+[data-admin] .ah-alert-ico {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+[data-admin] .ah-alert-ico svg {
+  width: 15px;
+  height: 15px;
+}
+[data-admin] .ah-alert-arena {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-admin] .ah-alert-flag {
+  background: var(--red-wash);
+  color: var(--red);
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-pop-item {
+    min-height: 44px;
+  }
+}
+/* ---------------------------------------------------------------------------
+   Admin dark theme. Values are copied from the admin prototype's
+   html[data-theme="dark"] block (design/prototypes/arena-hub-admin.html) and
+   its dark rules. The attribute is set on <html> only while an /admin route
+   is open (inline script in app/layout.tsx + AdminThemeSync), so owner and
+   public pages never see any of this. The selectors need the descendant
+   forms because [data-theme="arena"] and [data-admin] set these same tokens
+   directly on the shell root and on <body>, which would otherwise win over
+   values inherited from <html>.
+   --------------------------------------------------------------------------- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="dark"],
+html[data-theme="dark"] [data-theme="arena"],
+html[data-theme="dark"] [data-admin] {
+  /* prototype --paper, --text, --card, --line, --line-soft, --muted */
+  --background: #0a100d;
+  --foreground: #e9efe9;
+  --card: #121a16;
+  --card-foreground: #e9efe9;
+  --popover: #121a16;
+  --popover-foreground: #e9efe9;
+  --secondary: #1b2520;
+  --secondary-foreground: #e9efe9;
+  --muted: #1b2520;
+  --muted-foreground: #7c8981;
+  --label-foreground: #a9b6ae;
+  --border: #232f28;
+  --input: #232f28;
+  /* in dark the primary action is lime on ink (prototype .btn-primary) */
+  --primary: #c4f546;
+  --primary-foreground: #0f1a15;
+  --accent: #c4f546;
+  --accent-foreground: #0f1a15;
+  --ring: #c4f546;
+  --success-muted: #1e2a11;
+  --warning-muted: #2a2210;
+  --danger-muted: #2c1616;
+}
+html[data-theme="dark"] [data-admin] {
+  --rail-label: #6e8276; /* prototype #5d6e64 */
+  --ok-text: #7fa30f; /* passes in dark: the prototype value */
+  --wait-text: #d9930b; /* passes in dark: the prototype value */
+  --off-text: #d65d5d; /* prototype --red #cf4141 */
+  --ink: #e9efe9;
+  --ink-soft: #c8d3cb;
+  --paper: #0a100d;
+  --line: #232f28;
+  --line-soft: #1b2520;
+  --text: #e9efe9;
+  --text-2: #a9b6ae;
+  --rail: #0d1410;
+  --rail-text: #8a968e;
+  --rail-active: #ffffff;
+  --rail-line: #1e2a23;
+  --lime-wash: #1e2a11;
+  --amber-wash: #2a2210;
+  --red-wash: #2c1616;
+  --slot-open: #171f1a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 18px 40px -18px rgba(0, 0, 0, 0.7);
+}
+/* prototype: html[data-theme="dark"] .btn-primary / :hover */
+html[data-theme="dark"] [data-admin] [data-slot="button"][data-variant="default"] {
+  background: var(--lime);
+  color: #0f1a15;
+  border-color: var(--lime);
+}
+html[data-theme="dark"]
+  [data-admin]
+  [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
+  background: #d2ff63;
+  border-color: #d2ff63;
+}
+/* prototype: .pager button.is-on and .toast */
+html[data-theme="dark"] [data-admin] .ah-pager button.is-on {
+  background: var(--lime);
+  color: #0f1a15;
+}
+html[data-theme="dark"] [data-admin] .ah-toast {
+  background: var(--lime);
+  color: #0f1a15;
+}
+
+/* Admin Dashboard: prototype .g-32, .spark, .chart-svg, .legend-list, .bars,
+   .rank, .q-ico, .delta, plus skeleton / error / empty states. */
+[data-admin] .ah-g-32 {
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+}
+[data-admin] .ah-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+[data-admin] .ah-delta {
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+[data-admin] .ah-delta.up {
+  color: var(--ok-text);
+}
+[data-admin] .ah-delta.down {
+  color: var(--off-text);
+}
+[data-admin] .ah-spark {
+  width: 100%;
+  height: 34px;
+  display: block;
+}
+/* the prototype's KPI eyebrow is a plain <p>: it keeps the browser's 1em
+   (10px) margins, which set the card's rhythm */
+[data-admin] .ah-kpi > .ah-eyebrow {
+  margin: 10px 0;
+}
+[data-admin] .ah-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+[data-admin] .ah-legend-swatch {
+  width: 14px;
+  height: 2.5px;
+  display: inline-block;
+  border-radius: 2px;
+}
+[data-admin] .ah-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12.5px;
+  flex: 1;
+  padding: 0;
+  margin: 0;
+}
+[data-admin] .ah-legend-list li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  list-style: none;
+}
+[data-admin] .ah-legend-list i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+[data-admin] .ah-legend-list b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+[data-admin] .ah-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 132px;
+}
+[data-admin] .ah-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+[data-admin] .ah-bar {
+  width: 100%;
+  /* an hour with slots but no bookings still shows a small stub */
+  min-height: 3px;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--line);
+  transition:
+    background 0.16s,
+    transform 0.16s;
+  transform-origin: bottom;
+}
+[data-admin] .ah-bar-col:hover .ah-bar {
+  background: var(--lime-deep);
+}
+[data-admin] .ah-bar.is-peak {
+  background: var(--ink);
+}
+[data-admin] .ah-bar-lbl {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+[data-admin] .ah-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+[data-admin] .ah-rank-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+}
+[data-admin] .ah-rank-bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+[data-admin] .ah-rank-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ink);
+}
+/* "Bookings by city" on Analytics: name and count over a bar on a light
+   track, scaled against the total (the .rank-bar look, a little taller) */
+[data-admin] .ah-city-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+[data-admin] .ah-city-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+[data-admin] .ah-city-row b {
+  font-weight: 600;
+}
+[data-admin] .ah-city-count {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+[data-admin] .ah-city-track {
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+[data-admin] .ah-city-track i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--muted-foreground);
+}
+[data-admin] .ah-city-track i.is-top {
+  background: var(--ink);
+}
+html[data-theme="dark"] [data-admin] .ah-city-track i.is-top {
+  background: var(--lime);
+}
+[data-admin] .ah-queue-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+[data-admin] .ah-queue-table td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+  line-height: 1.5;
+}
+[data-admin] .ah-queue-table tr:last-child td {
+  border-bottom: 0;
+}
+[data-admin] .ah-queue-table tr:hover {
+  background: var(--line-soft);
+}
+[data-admin] .ah-q-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--line-soft);
+  color: var(--text-2);
+}
+[data-admin] .ah-q-ico svg {
+  width: 15px;
+  height: 15px;
+}
+[data-admin] .ah-q-arena {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-admin] .ah-q-flag {
+  background: var(--red-wash);
+  color: var(--red);
+}
+[data-admin] .ah-skeleton {
+  border-radius: 9px;
+  background: linear-gradient(90deg, var(--line-soft) 0%, var(--paper) 50%, var(--line-soft) 100%);
+  background-size: 200% 100%;
+  animation: ah-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ah-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-skeleton {
+    animation: none;
+  }
+}
+[data-admin] .ah-card-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--red-wash);
+  color: var(--off-text);
+  font-size: 13px;
+}
+[data-admin] .ah-empty-line {
+  margin: 0;
+  padding: 28px 0;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+@media (max-width: 1180px) {
+  [data-admin] .ah-g-32 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-queue-table td:first-child {
+    display: none;
+  }
+}
+/* prototype: html[data-theme="dark"] .bar.is-peak / .rank-bar i */
+html[data-theme="dark"] [data-admin] .ah-bar.is-peak,
+html[data-theme="dark"] [data-admin] .ah-rank-bar i {
+  background: var(--lime);
+}
+
+/* page-header filters keep the prototype's auto width (.select), side by side */
+[data-admin] .ah-page-actions [data-slot="select"] {
+  width: auto;
+}
+/* user detail in the View dialog: label / value pairs in the prototype's
+   field type (13px; labels in --muted, values in --text) */
+[data-admin] .ah-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 9px 18px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+[data-admin] .ah-detail dt {
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-detail dd {
+  margin: 0;
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* a table inside an overview card runs edge to edge, like the prototype's
+   .card > .tbl-wrap */
+[data-admin] .ah-card-flush > .ah-card-body:has([data-slot="table"]) {
+  padding: 0;
+}
+
+/* Admin system settings: prototype .setting-row, .switch, save row. */
+[data-admin] .ah-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-setting-row:last-of-type {
+  border-bottom: 0;
+}
+[data-admin] .ah-setting-row > div > p:first-child,
+[data-admin] .ah-setting-row > p:first-child {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+[data-admin] .ah-setting-row > div > p:nth-child(2) {
+  margin: 1px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] button[role="switch"] {
+  width: 38px;
+  height: 22px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--line);
+  transition: background 0.18s;
+}
+[data-admin] button[role="switch"][data-state="checked"] {
+  background: var(--lime-deep);
+}
+[data-admin] button[role="switch"] > span {
+  /* the shared Switch places its thumb with Tailwind's translate utility;
+     set that utility's variable to the prototype's positions (3px off,
+     3px + 16px on) rather than adding a second transform */
+  --tw-translate-x: 3px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: translate 0.18s;
+}
+[data-admin] button[role="switch"][data-state="checked"] > span {
+  --tw-translate-x: 19px;
+}
+[data-admin] .ah-save-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 22px;
+}
+[data-admin] .ah-saved {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ok-text);
+}
+/* Reviews: rating stars in the prototype's amber (graphic only; the number
+   beside them carries the rating in readable --text-2) */
+[data-admin] .ah-stars {
+  color: var(--wait-text); /* was the prototype --amber; the empty stars stay decorative */
+  font-size: 13px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+[data-admin] .ah-stars-off {
+  color: var(--line);
+}
+[data-admin] .ah-stars-num {
+  margin-left: 6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  letter-spacing: normal;
+  font-variant-numeric: tabular-nums;
+}
+/* Arenas directory: prototype .court-card / .court-vis / .court-badge /
+   .court-body / .court-meta / .court-foot */
+[data-admin] .ah-court-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+[data-admin] .ah-court-vis {
+  height: 118px;
+  position: relative;
+  background: var(--ink);
+  overflow: hidden;
+}
+/* --ink turns light in the dark theme: the picture area stays the dark ink, so a
+   court photo that is missing or still loading is not a pale block */
+html[data-theme="dark"] [data-admin] .ah-court-vis {
+  background: #0f1a15;
+}
+[data-admin] .ah-court-vis svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+[data-admin] .ah-court-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+[data-admin] .ah-court-body {
+  padding: 13px 15px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+}
+[data-admin] .ah-court-name {
+  font-size: 14.5px;
+}
+[data-admin] .ah-court-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+[data-admin] .ah-court-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 11px;
+  border-top: 1px solid var(--line-soft);
+  justify-content: flex-end;
+}
+/* the open drawer takes focus as a whole; it shows no ring of its own */
+[data-admin] .ah-drawer:focus {
+  outline: none;
+}
+[data-admin] .ah-canvas {
+  padding: 22px 24px 60px;
+  max-width: 1560px;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+[data-admin] .ah-page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+[data-admin] .ah-h1 {
+  margin: 0;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 88,
+    "wght" 700;
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+[data-admin] .ah-page-sub {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  margin-top: 5px;
+}
+[data-admin] .ah-page-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  [data-admin] .ah-canvas {
+    padding: 16px 14px 50px;
+  }
+  [data-admin] .ah-topbar {
+    padding: 10px 14px;
+  }
+  [data-admin] .ah-page-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+/* The static rail never scrolls; the drawer (below 1024px, where the phone
+   44px targets make the list taller) may. */
+@media (max-width: 1023.98px) {
+  [data-admin] .ah-rail {
+    overflow-y: auto;
+  }
+}
+/* phone standard: 44px targets below 768px */
+@media (max-width: 767.98px) {
+  [data-admin] .ah-icon-btn,
+  [data-admin] .ah-logout {
+    width: 44px;
+    height: 44px;
+  }
+  [data-admin] .ah-nav-item {
+    min-height: 44px;
+  }
+}
+/* Drawer (below 1024px): 44px targets everywhere in it, phone safe areas,
+   and the page behind it does not scroll while it is open. */
+@media (max-width: 1023.98px) {
+  [data-admin] .ah-rail .ah-nav-item,
+  [data-admin] .ah-rail .ah-brand {
+    min-height: 44px;
+  }
+  [data-admin] .ah-rail .ah-logout {
+    width: 44px;
+    height: 44px;
+  }
+  [data-admin] .ah-rail {
+    height: 100dvh;
+    padding-top: max(14.4px, env(safe-area-inset-top));
+    padding-bottom: max(11.2px, env(safe-area-inset-bottom));
+    padding-left: max(11.2px, env(safe-area-inset-left));
+    overscroll-behavior: contain;
+  }
+  [data-admin] .ah-topbar:not(.ah-topbar-desk) {
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+  [data-admin][data-drawer-open] main {
+    overflow: hidden;
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-topbar:not(.ah-topbar-desk) {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+}
+/* Wide but short screens (under 640px tall): tighten the rail's vertical
+   spacing with clamps, never the type, so every item stays visible. The
+   overflow is only a safety net for heights far below the tested 600px. */
+@media (min-width: 1024px) and (max-height: 639.98px) {
+  /* each value runs linearly from its normal size at 640px tall down to a
+     floor at 480px: v = normal - (640px - 100vh) * (normal - floor) / 160 */
+  [data-admin] .ah-rail {
+    overflow-y: auto;
+    padding-top: clamp(6px, calc(14.4px - (640px - 100vh) * 0.0525), 14.4px);
+    padding-bottom: clamp(6px, calc(11.2px - (640px - 100vh) * 0.0325), 11.2px);
+  }
+  [data-admin] .ah-rail .ah-brand {
+    padding-bottom: clamp(6px, calc(16px - (640px - 100vh) * 0.0625), 16px);
+  }
+  [data-admin] .ah-nav-label {
+    margin-top: clamp(2px, calc(7.2px - (640px - 100vh) * 0.0325), 7.2px);
+    margin-bottom: clamp(2px, calc(7.2px - (640px - 100vh) * 0.0325), 7.2px);
+  }
+  [data-admin] .ah-rail .ah-nav-item {
+    padding-top: clamp(3px, calc(6.4px - (640px - 100vh) * 0.02125), 6.4px);
+    padding-bottom: clamp(3px, calc(6.4px - (640px - 100vh) * 0.02125), 6.4px);
+  }
+  [data-admin] .ah-rail-foot {
+    padding-top: clamp(4px, calc(11.2px - (640px - 100vh) * 0.045), 11.2px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Admin building blocks. Values copied from the admin prototype
+   (design/prototypes/arena-hub-admin.html: .tbl, .tag, .avatar, .badge, .btn,
+   .input, .select, .tabs/.tab, .card, .kpi, .empty, .field, .tbl-foot, .pager,
+   .cmdk-box for modals). They restyle the shared components (Table, Button,
+   Input, Select, Tabs, Badge, Dialog, Label) only under [data-admin], which
+   the admin shell sets on its root and, while an admin page is open, on
+   <body> so portalled dialogs are covered too. Owner pages never carry it.
+   These rules are unlayered so they win over the components' utilities;
+   the 44px phone targets are restated at the end for the same reason.
+   --------------------------------------------------------------------------- */
+
+/* tables -------------------------------------------------------------------- */
+[data-admin] [data-slot="table"] {
+  font-size: 13px;
+  border-collapse: collapse;
+}
+[data-admin] [data-slot="table-header"] {
+  background: transparent;
+}
+[data-admin] [data-slot="table-head"] {
+  height: auto;
+  line-height: 1.5;
+  padding: 9px 18px;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 118,
+    "wght" 600;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+[data-admin] [data-slot="table-row"] {
+  border-bottom: 0;
+  transition: background 0.12s;
+}
+[data-admin] [data-slot="table-body"] [data-slot="table-row"]:hover {
+  background: var(--line-soft);
+}
+[data-admin] [data-slot="table-cell"] {
+  line-height: 1.5;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 400;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] [data-slot="table-body"] [data-slot="table-row"]:last-child [data-slot="table-cell"] {
+  border-bottom: 0;
+}
+[data-admin] .ah-r {
+  text-align: right;
+}
+[data-admin] .ah-money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+[data-admin] .ah-strong {
+  font-weight: 600;
+}
+[data-admin] .ah-sub {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin-top: 1px;
+}
+[data-admin] .ah-mute {
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-t2 {
+  color: var(--text-2);
+}
+[data-admin] .ah-tbl-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pager {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+[data-admin] .ah-pager button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+[data-admin] .ah-pager button:hover:not(:disabled) {
+  background: var(--line-soft);
+}
+[data-admin] .ah-pager button.is-on {
+  background: var(--ink);
+  color: var(--paper);
+}
+[data-admin] .ah-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* tag, avatar, badges --------------------------------------------------------- */
+[data-admin] .ah-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--line-soft);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+[data-admin] .ah-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--line-soft);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+[data-admin] .ah-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2.5px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+[data-admin] .ah-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  /* the dot keeps the prototype colour; only the text is darkened */
+  background: var(--badge-dot, currentColor);
+}
+[data-admin] .ah-b-ok {
+  --badge-dot: var(--lime-deep);
+  background: var(--lime-wash);
+  color: var(--ok-text);
+}
+[data-admin] .ah-b-wait {
+  --badge-dot: var(--amber);
+  background: var(--amber-wash);
+  color: var(--wait-text);
+}
+[data-admin] .ah-b-off {
+  --badge-dot: var(--red);
+  background: var(--red-wash);
+  color: var(--off-text);
+}
+[data-admin] .ah-b-idle {
+  background: var(--line-soft);
+  color: var(--text-2); /* prototype var(--muted): 4.4:1 on line-soft */
+}
+
+/* buttons ----------------------------------------------------------------------
+   Variant map: outline/secondary -> .btn, default -> .btn-primary,
+   ghost -> .btn-ghost, size sm/xs -> .btn-sm. */
+[data-admin] [data-slot="button"] {
+  height: auto;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: normal;
+  transition:
+    transform 0.1s,
+    background 0.14s,
+    border-color 0.14s;
+}
+[data-admin] [data-slot="button"] svg {
+  width: 15px;
+  height: 15px;
+}
+[data-admin] [data-slot="button"]:active:not(:disabled) {
+  transform: translateY(1px);
+}
+/* keyboard focus on any admin button: the same ring as the brand link and
+   the icon buttons (the Tailwind ring is a box-shadow, which the admin's own
+   button shadows override) */
+[data-admin] [data-slot="button"]:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+/* Action motion (components/ui/action-button.tsx). One plain set of rules;
+   the owner panel reuses it by adding its scope to the :is() list. A fill
+   sweeps in from the left on hover (lime for positive actions, red for
+   destructive ones), the button dips when pressed, a spinner covers the
+   label while the request runs (the label keeps its space, so the width
+   never changes), then a drawn tick or a short shake for about a second.
+   Fill and text pairs: ink on lime 14:1, ink on lime-deep 6:1, white on
+   red 4.7:1, the same in both themes. */
+:is([data-admin], [data-owner]) .ah-act {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 0.1s,
+    color 0.2s,
+    border-color 0.2s;
+}
+:is([data-admin], [data-owner]) .ah-act::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease-out;
+}
+:is([data-admin], [data-owner]) .ah-act-pos::before {
+  background: var(--lime);
+}
+/* a button that is lime already sweeps to the deeper lime */
+:is([data-admin], [data-owner]) .ah-act-pos.ah-lime::before {
+  background: var(--lime-deep);
+}
+:is([data-admin], [data-owner]) .ah-act-neg::before {
+  background: var(--red);
+}
+:is([data-admin], [data-owner]) .ah-act:hover:not(:disabled)::before {
+  transform: scaleX(1);
+}
+:is([data-admin], [data-owner]) .ah-act-pos:hover:not(:disabled) {
+  color: #0f1a15;
+}
+:is([data-admin], [data-owner]) .ah-act-neg:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: var(--red);
+}
+:is([data-admin], [data-owner]) .ah-act:active:not(:disabled) {
+  transform: scale(0.97);
+}
+/* while busy the button is disabled but stays fully visible */
+:is([data-admin], [data-owner]) .ah-act[data-act="busy"]:disabled {
+  opacity: 1;
+}
+:is([data-admin], [data-owner]) .ah-act[data-act="busy"] .ah-act-label,
+:is([data-admin], [data-owner]) .ah-act[data-act="done"] .ah-act-label {
+  visibility: hidden;
+}
+:is([data-admin], [data-owner]) .ah-act-spin {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ah-spin 0.7s linear infinite;
+}
+:is([data-admin], [data-owner]) [data-slot="button"] svg.ah-act-tick {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  animation: ah-tick 0.3s ease-out forwards;
+}
+:is([data-admin], [data-owner]) .ah-act[data-act="fail"] {
+  animation: ah-shake 0.4s ease-in-out;
+}
+@keyframes ah-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ah-tick {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ah-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+/* reduced motion: no sweep (the fill appears at once), no dip, no shake,
+   and the tick shows without drawing; the spinner stays */
+@media (prefers-reduced-motion: reduce) {
+  :is([data-admin], [data-owner]) .ah-act,
+  :is([data-admin], [data-owner]) .ah-act::before {
+    transition: none;
+  }
+  :is([data-admin], [data-owner]) .ah-act:active:not(:disabled) {
+    transform: none;
+  }
+  :is([data-admin], [data-owner]) .ah-act[data-act="fail"] {
+    animation: none;
+  }
+  :is([data-admin], [data-owner]) [data-slot="button"] svg.ah-act-tick {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+[data-admin] [data-slot="button"][data-variant="outline"],
+[data-admin] [data-slot="button"][data-variant="secondary"] {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="button"][data-variant="outline"]:hover:not(:disabled),
+[data-admin] [data-slot="button"][data-variant="secondary"]:hover:not(:disabled) {
+  border-color: var(--muted-foreground);
+  background: var(--card);
+}
+[data-admin] [data-slot="button"][data-variant="default"] {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
+}
+[data-admin] [data-slot="button"][data-variant="ghost"] {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-2);
+}
+[data-admin] [data-slot="button"][data-variant="ghost"]:hover:not(:disabled) {
+  background: var(--line-soft);
+  color: var(--text-2);
+}
+[data-admin] [data-slot="button"][data-variant="destructive"] {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--off-text);
+}
+[data-admin] [data-slot="button"][data-variant="destructive"]:hover:not(:disabled) {
+  background: var(--red-wash);
+}
+[data-admin] [data-slot="button"].ah-lime {
+  border: 1px solid var(--lime);
+  background: var(--lime);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="button"].ah-lime:hover:not(:disabled) {
+  background: #d2ff63;
+  border-color: #d2ff63;
+}
+[data-admin] [data-slot="button"][data-size="sm"],
+[data-admin] [data-slot="button"][data-size="xs"] {
+  padding: 5px 9px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+[data-admin] [data-slot="button"][data-size^="icon"] {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+/* inputs, selects, labels ------------------------------------------------------ */
+[data-admin] [data-slot="input"],
+[data-admin] [data-slot="textarea"] {
+  height: auto;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  font-size: 13.5px;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  transition:
+    border-color 0.14s,
+    box-shadow 0.14s;
+}
+[data-admin] [data-slot="input"]:focus,
+[data-admin] [data-slot="textarea"]:focus {
+  outline: none;
+  border-color: var(--lime-deep);
+  box-shadow: 0 0 0 3px var(--lime-wash);
+}
+[data-admin] [data-slot="input"]::placeholder,
+[data-admin] [data-slot="textarea"]::placeholder {
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="select"] {
+  height: auto;
+  appearance: none;
+  padding: 7px 28px 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2379857E' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: var(--shadow);
+}
+[data-admin] [data-slot="select"]:hover {
+  border-color: var(--muted-foreground);
+}
+[data-admin] [data-slot="label"] {
+  line-height: 1.5;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+[data-admin] .ah-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* tabs (underline) -------------------------------------------------------------- */
+[data-admin] [data-slot="tabs-list"],
+[data-admin] .ah-tabs {
+  display: flex;
+  width: 100%;
+  height: auto;
+  gap: 2px;
+  padding: 0 18px;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  justify-content: flex-start;
+}
+[data-admin] [data-slot="tabs-trigger"],
+[data-admin] .ah-tab {
+  line-height: 1.5;
+  flex: none;
+  height: auto;
+  padding: 11px 12px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="tabs-trigger"]::after {
+  display: none;
+}
+[data-admin] [data-slot="tabs-trigger"]:hover,
+[data-admin] .ah-tab:hover {
+  color: var(--text);
+}
+[data-admin] [data-slot="tabs-trigger"][data-state="active"],
+[data-admin] .ah-tab.is-on {
+  color: var(--text);
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: var(--lime-deep);
+}
+/* the count beside a tab label is the prototype's .tag, 5px from the label */
+[data-admin] .ah-tab-count {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--line-soft);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* cards, KPI, empty state -------------------------------------------------------- */
+[data-admin] .ah-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+[data-admin] .ah-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-h2 {
+  font-weight: 700;
+  margin: 0 auto 0 0;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 92,
+    "wght" 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+[data-admin] .ah-card-body {
+  padding: 18px;
+}
+[data-admin] .ah-kpi {
+  padding: 15px 17px 13px;
+  position: relative;
+  overflow: hidden;
+}
+[data-admin] .ah-kpi .ah-metric {
+  margin: 9px 0 6px;
+}
+[data-admin] .ah-eyebrow {
+  margin: 0;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 125,
+    "wght" 600;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-metric {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+[data-admin] .ah-kpi-foot {
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-grid {
+  display: grid;
+  gap: 14px;
+}
+[data-admin] .ah-g-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+[data-admin] .ah-g-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+[data-admin] .ah-g-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+[data-admin] .ah-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-admin] .ah-empty {
+  text-align: center;
+  padding: 44px 20px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+[data-admin] .ah-empty svg {
+  width: 34px;
+  height: 34px;
+  color: var(--muted-foreground);
+  margin: 0 auto 10px;
+}
+
+/* modal (prototype .cmdk-box) and the drawer/modal overlay ---------------------- */
+[data-admin] [data-slot="dialog-overlay"] {
+  background: rgba(10, 16, 13, 0.42);
+  backdrop-filter: blur(3px);
+}
+[data-admin] [data-slot="dialog-content"] {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  padding: 22px;
+  gap: 14px;
+}
+[data-admin] [data-slot="dialog-title"] {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 92,
+    "wght" 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+[data-admin] [data-slot="dialog-description"] {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="dialog-close"] {
+  border-radius: 7px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-drawer-overlay {
+  background: rgba(10, 16, 13, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+/* toast (prototype .toast). Our admin has no toasts today; kept here so a
+   future one uses the prototype style. */
+[data-admin] .ah-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 17px;
+  border-radius: 11px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 1180px) {
+  [data-admin] .ah-g-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1000px) {
+  [data-admin] .ah-g-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-g-4,
+  [data-admin] .ah-g-3,
+  [data-admin] .ah-g-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* phone standard below 768px, restated because the admin rules above are
+   unlayered and would otherwise beat the components' max-md utilities */
+@media (max-width: 767.98px) {
+  [data-admin] [data-slot="button"],
+  [data-admin] [data-slot="input"],
+  [data-admin] [data-slot="select"],
+  [data-admin] [data-slot="tabs-trigger"],
+  [data-admin] .ah-tab,
+  [data-admin] .ah-pager button {
+    min-height: 44px;
+  }
+  [data-admin] [data-slot="button"][data-size^="icon"],
+  [data-admin] .ah-pager button {
+    min-width: 44px;
+  }
+  [data-admin] [data-slot="input"],
+  [data-admin] [data-slot="textarea"],
+  [data-admin] [data-slot="select"],
+  [data-admin] [data-slot="table-cell"] {
+    font-size: 14px;
+  }
+  [data-admin] [data-slot="dialog-close"] {
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+  }
+}
+
+/* Admin sign-in (prototype .auth). */
+[data-admin].ah-auth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  background: var(--card);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+[data-admin] .ah-auth-form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 8vw;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+/* a half-width column on a tablet: less side room, so the six 44px code boxes fit */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  [data-admin] .ah-auth-form {
+    padding: 40px 5vw;
+  }
+}
+[data-admin] .ah-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 44px;
+}
+[data-admin] .ah-auth-title {
+  font-size: 34px;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+[data-admin] .ah-pw-wrap {
+  position: relative;
+}
+[data-admin] .ah-pw-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+  color: var(--muted-foreground);
+  display: block;
+  height: 30px;
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+[data-admin] .ah-signin {
+  justify-content: center;
+  padding: 11px;
+  font-size: 14px;
+}
+/* Arenas: suspend / reactivate / remove dialog and the card's Remove */
+[data-admin] .ah-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-admin] .ah-reason-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] [data-slot="button"].ah-danger-text {
+  color: var(--off-text);
+}
+/* a status badge with a "Pending refund" badge beside it */
+[data-admin] .ah-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+[data-admin] .ah-notice {
+  margin: 0 0 12px;
+}
+[data-admin] .ah-auth-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--red-wash);
+  color: var(--off-text);
+  font-size: 13px;
+}
+[data-admin] .ah-auth-foot {
+  font-size: 12px;
+  margin: 0;
+  margin-top: auto;
+  padding-top: 36px;
+}
+[data-admin] .ah-auth-side {
+  position: relative;
+  background: #07100b;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 38px;
+}
+[data-admin] .ah-pitch-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+[data-admin] .ah-auth-quote {
+  position: relative;
+  z-index: 2;
+  max-width: 400px;
+}
+/* prototype .auth-stats (labels in place of its counts) */
+[data-admin] .ah-auth-stats {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 30px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #1d2c24;
+}
+[data-admin] .ah-auth-stats b {
+  display: block;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 76,
+    "wght" 700;
+  font-size: 26px;
+  line-height: 1;
+  color: #ffffff;
+}
+[data-admin] .ah-auth-stats span {
+  font-size: 12px;
+  color: #6e8177;
+  letter-spacing: 0.04em;
+}
+[data-admin] .ah-auth-quote h3 {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 84,
+    "wght" 700;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  margin: 0 0 12px;
+}
+[data-admin] .ah-auth-quote h3 em {
+  font-style: normal;
+  color: var(--lime);
+}
+[data-admin] .ah-auth-quote p {
+  color: #8fa096;
+  font-size: 13.5px;
+  margin: 0;
+  max-width: 330px;
+}
+@media (max-width: 760px) {
+  [data-admin].ah-auth {
+    grid-template-columns: 1fr;
+  }
+  [data-admin] .ah-auth-side {
+    display: none;
+  }
+  [data-admin] .ah-auth-form {
+    padding: 34px 24px;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-pw-toggle {
+    width: 44px;
+    height: 44px;
+    right: 0;
+  }
+}
+
+/* Admin overview (prototype .metric at 38px on the overview KPIs, and the
+   decision-queue strip .queue/.queue-cell). */
+[data-admin] .ah-metric.is-lg {
+  font-size: 38px;
+}
+[data-admin] .ah-queue {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+[data-admin] .ah-queue-cell {
+  display: block;
+  letter-spacing: normal;
+  padding: 14px 18px;
+  text-align: left;
+  border-right: 1px solid var(--line-soft);
+  transition: background 0.14s;
+}
+[data-admin] .ah-queue-cell:last-child {
+  border-right: 0;
+}
+[data-admin] .ah-queue-cell:hover {
+  background: var(--lime-wash);
+}
+[data-admin] .ah-queue-lbl {
+  display: block;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 5px;
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-queue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  [data-admin] .ah-queue-cell:nth-child(2) {
+    border-right: 0;
+  }
+  [data-admin] .ah-queue-cell:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line-soft);
+  }
+  [data-admin] .ah-metric.is-lg {
+    font-size: 32px;
+  }
+}
+
+/* Admin approvals: the prototype's arena thumbnail (.thumb). */
+[data-admin] .ah-thumb {
+  width: 34px;
+  height: 26px;
+  border-radius: 5px;
+  flex: none;
+  background: #0f1a15;
+  position: relative;
+  overflow: hidden;
+}
+[data-admin] .ah-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid var(--c, #c4f546);
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+/* Admin players and owners: page-head search box and the prototype's
+   row actions (.row-actions: faint until the row is hovered or focused). */
+/* prototype: <input class="input" style="width:210px"> */
+[data-admin] .ah-search {
+  width: 210px;
+}
+[data-admin] .ah-row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  /* prototype .row-actions{opacity:.35} until hover: below 4.5:1 at rest,
+     so the actions now show at full strength (owner-approved) */
+  opacity: 1;
+  transition: opacity 0.14s;
+}
+[data-admin] [data-slot="table-row"]:hover .ah-row-actions,
+[data-admin] .ah-row-actions:focus-within {
+  opacity: 1;
+}
+/* no hover on touch screens: keep the actions fully visible there */
+@media (hover: none), (max-width: 767.98px) {
+  [data-admin] .ah-row-actions {
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  [data-admin] .ah-search {
+    width: 100%;
+  }
+}
+
+/* Admin payments: long gateway transaction ids stay on one line. */
+[data-admin] .ah-txid {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* ---------------------------------------------------------------------------
+   Owner console. The owner shell sets [data-admin] (the shared design
+   system: rail, top bar, cards, tables, badges, buttons, dark theme) and
+   [data-owner] for the rules below, copied from the owner prototype
+   (design/prototypes/arena-hub-owner.html: .venue-pick, .owner, .pitch-*,
+   .slot, .blk-*, .now-line, .pitch-legend).
+   --------------------------------------------------------------------------- */
+/* prototype .venue-pick / .venue-dot: the arena picker in the top bar */
+[data-admin] .ah-venue-pick {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 260px;
+  padding: 6px 11px 6px 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: normal;
+}
+[data-admin] .ah-venue-pick:hover {
+  border-color: var(--muted-foreground);
+}
+[data-admin] .ah-venue-pick:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+[data-admin] .ah-venue-pick b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-admin] .ah-venue-pick svg {
+  flex: none;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-venue-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lime-deep);
+  box-shadow: 0 0 0 3px var(--lime-wash);
+}
+/* a small menu (owner card, arena picker): the alerts popover's surface */
+[data-admin] .ah-menu {
+  z-index: 70;
+  min-width: 190px;
+  max-width: min(320px, 92vw);
+  max-height: min(380px, 70vh);
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13.5px;
+  animation: ah-rise 0.16s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-menu {
+    animation: none;
+  }
+}
+[data-admin] .ah-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+}
+[data-admin] .ah-menu-item svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-menu-item[data-highlighted] {
+  background: var(--line-soft);
+}
+[data-admin] .ah-menu-check {
+  width: 12px;
+  flex: none;
+  color: var(--lime-deep);
+  font-weight: 700;
+}
+/* the rail foot's owner card is a button that opens the account menu */
+[data-admin] .ah-owner-btn {
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+[data-admin] .ah-owner-btn:hover,
+[data-admin] .ah-owner-btn[data-state="open"] {
+  background: var(--rail-hover);
+}
+[data-admin] .ah-owner-btn:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+/* bell popover: an unread dot per notification and the "See all" link */
+[data-admin] .ah-pop-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lime-deep);
+}
+[data-admin] .ah-pop-dot.is-read {
+  background: var(--line);
+}
+[data-admin] .ah-pop-all {
+  display: block;
+  margin-top: 4px;
+  padding: 9px 11px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+[data-admin] .ah-pop-all:hover,
+[data-admin] .ah-pop-all:focus-visible {
+  background: var(--line-soft);
+  border-radius: 9px;
+  outline: none;
+}
+/* below 1024px the arena picker gets a row under the slim bar */
+[data-admin] .ah-pickrow {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+[data-admin] .ah-pickrow .ah-venue-pick {
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+}
+/* owner page heading: lined up with the owner pages' content padding */
+[data-owner] .ah-ohead {
+  padding: 16px 16px 0;
+}
+@media (min-width: 640px) {
+  [data-owner] .ah-ohead {
+    padding: 24px 24px 0;
+  }
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-ohead {
+    padding: 28px 32px 0;
+  }
+}
+[data-owner] .ah-ohead .ah-page-head {
+  margin-bottom: 0;
+}
+/* the content block right after the heading starts at the heading's gap */
+[data-owner] .ah-ohead + * {
+  padding-top: 20px;
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-menu-item {
+    min-height: 44px;
+  }
+}
+/* card sub-line under a card title (prototype .card-head small text) and
+   an inline text button */
+[data-admin] .ah-card-sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-link {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* prototype .pitch: the Live Board's courts x hours grid */
+[data-admin] .ah-pitch {
+  padding: 4px 0 0;
+}
+[data-admin] .ah-pitch-scroll {
+  overflow-x: auto;
+  padding: 26px 18px 18px;
+}
+[data-admin] .ah-pitch-scroll:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: -2px;
+}
+[data-admin] .ah-pitch-inner {
+  position: relative;
+}
+[data-admin] .ah-pitch-hours {
+  display: grid;
+  margin-bottom: 6px;
+}
+[data-admin] .ah-pitch-hours span {
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 112,
+    "wght" 600;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  text-align: center;
+  text-transform: uppercase;
+}
+[data-admin] .ah-pitch-row {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 3px;
+  align-items: stretch;
+}
+[data-admin] .ah-pitch-label {
+  padding-right: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+[data-admin] .ah-pitch-label b {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+[data-admin] .ah-pitch-label span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-slot {
+  height: 42px;
+  border-radius: 6px;
+  background: var(--slot-open);
+  border: 1px dashed var(--line);
+}
+[data-admin] .ah-blk {
+  height: 42px;
+  min-width: 0;
+  border-radius: 7px;
+  padding: 5px 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+[data-admin] .ah-blk b {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-admin] .ah-blk span {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-admin] .ah-blk-ok {
+  background: #0f1a15;
+  color: #eaf0ec;
+}
+[data-admin] .ah-blk-ok span {
+  color: #b5c2ba; /* prototype: 72% opacity of the block text */
+}
+[data-admin] .ah-blk-wait {
+  background: var(--amber-wash);
+  color: #8a5d05;
+  border: 1px solid #efd9a2;
+}
+[data-admin] .ah-blk-hold {
+  background: repeating-linear-gradient(135deg, var(--line-soft) 0 6px, transparent 6px 12px);
+  border: 1px dashed var(--line);
+  color: var(--muted-foreground);
+}
+html[data-theme="dark"] [data-admin] .ah-blk-ok {
+  background: #25352c;
+  color: #e7efe9;
+}
+html[data-theme="dark"] [data-admin] .ah-blk-wait {
+  border-color: #4a3a12;
+  color: #e8b93f;
+}
+/* the now line covers the hour columns (left = the label column) */
+[data-admin] .ah-now-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+[data-admin] .ah-now-line {
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  width: 2px;
+  background: var(--lime-deep);
+}
+/* the time pill sits in the padding above the hour row (line top 20px,
+   pill 40px above it), so it never covers an hour label */
+[data-admin] .ah-now-line::before {
+  content: attr(data-t);
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--lime);
+  color: #0f1a15;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 112,
+    "wght" 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+[data-admin] .ah-pitch-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 2px 18px 16px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-pitch-legend i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+[data-admin] .ah-pitch-note {
+  padding: 0 18px 18px;
+}
+/* prototype --slot-open (light); the dark value is in the dark token block */
+[data-admin] {
+  --slot-open: #f6f7f4;
+}
+/* owner page body under the heading (the admin canvas, with the owner
+   pages' 16/24/32px side padding) */
+[data-owner] .ah-ocanvas {
+  padding: 20px 16px 50px;
+  max-width: 1560px;
+}
+@media (min-width: 640px) {
+  [data-owner] .ah-ocanvas {
+    padding: 20px 24px 60px;
+  }
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-ocanvas {
+    padding: 20px 32px 60px;
+  }
+}
+/* KPI foot with a delta line and a sparkline under it */
+[data-admin] .ah-kpi-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+/* a short list of rows: name and detail on the left, a badge on the right */
+[data-admin] .ah-attn {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-admin] .ah-attn li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-admin] .ah-attn li:last-child {
+  border-bottom: 0;
+}
+[data-admin] .ah-attn b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+[data-admin] .ah-attn span:not(.ah-badge) {
+  display: block;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-attn .ah-badge {
+  margin-left: auto;
+  flex: none;
+}
+/* legend swatches reuse the block classes, so they match in both themes */
+[data-admin] .ah-pitch-legend i.ah-slot {
+  height: 11px;
+}
+/* owner page-header date inputs keep their own width, like the selects
+   (owner only: the admin user search input keeps its set width) */
+[data-owner] .ah-page-actions [data-slot="input"] {
+  width: auto;
+}
+/* the owner rail at the prototype's full size when the window is tall
+   enough for its 13 items (860px); shorter windows keep the admin's 0.8
+   scale so the rail never scrolls */
+@media (min-height: 860px) {
+  [data-owner] .ah-rail {
+    width: 246px;
+    padding: 18px 14px 14px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-brand {
+    gap: 10px;
+    padding: 2px 8px 20px;
+  }
+  [data-owner] .ah-rail .ah-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+  [data-owner] .ah-rail .ah-brand-name {
+    font-size: 15px;
+  }
+  [data-owner] .ah-rail .ah-brand-name small {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  [data-owner] .ah-nav-group {
+    margin-bottom: 16px;
+  }
+  [data-owner] .ah-nav-label {
+    margin: 9px 0;
+    padding: 0 10px 7px;
+  }
+  [data-owner] .ah-nav-item {
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    font-size: 13.5px;
+  }
+  [data-owner] .ah-nav-item svg {
+    width: 17px;
+    height: 17px;
+  }
+  [data-owner] .ah-nav-count {
+    font-size: 12px;
+    padding: 1px 6px;
+  }
+  [data-owner] .ah-rail-foot {
+    padding-top: 14px;
+  }
+  [data-owner] .ah-owner {
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  [data-owner] .ah-owner-av {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+  [data-owner] .ah-owner-name {
+    font-size: 12.5px;
+  }
+  [data-owner] .ah-owner-role {
+    font-size: 12px;
+  }
+}
+/* owner phone standard: reading text at least 14px below 768px. Labels that
+   are part of the design (eyebrows, badges, tags, chart and axis labels, the
+   board's hour labels and legend) keep the prototype sizes. */
+@media (max-width: 767.98px) {
+  [data-owner] .ah-card-sub,
+  [data-owner] .ah-attn b,
+  [data-owner] .ah-attn span:not(.ah-badge),
+  [data-owner] .ah-empty-line,
+  [data-owner] .ah-kpi-foot,
+  [data-owner] .ah-pitch-label b,
+  [data-owner] .ah-card-error span {
+    font-size: 14px;
+  }
+  /* the rank list sets 13px inline */
+  [data-owner] .ah-rank-item b,
+  [data-owner] .ah-rank-item .ah-sub,
+  [data-owner] .ah-rank-item .ah-money {
+    font-size: 14px !important;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-pickrow .ah-venue-pick {
+    font-size: 14px;
+  }
+}
+
+/* owner Arenas: the admin's note under the name, and the occupancy bar
+   (prototype: a 60px rank bar with the percentage beside it) */
+[data-owner] .ah-note {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-note-off {
+  color: var(--off-text);
+}
+[data-owner] .ah-occ {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+[data-owner] .ah-occ .ah-rank-bar {
+  width: 60px;
+}
+
+/* the From and To date boxes: part of the header row on wide screens, one
+   shared row of two half-width boxes on phones */
+[data-owner] .ah-daterow {
+  display: contents;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-daterow {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  [data-owner] .ah-daterow [data-slot="input"] {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+}
+
+/* owner list pages (Bookings, Arenas): the table from 768px up; below that
+   each row becomes a card, so the page never scrolls sideways */
+[data-owner] .ah-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-only-wide {
+    display: none;
+  }
+  [data-owner] .ah-cards {
+    display: block;
+  }
+  [data-owner] .ah-cards > li {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 14px;
+  }
+  [data-owner] .ah-cards > li:first-child {
+    border-top: 0;
+  }
+  [data-owner] .ah-cards .ah-sub,
+  [data-owner] .ah-cards .ah-strong,
+  [data-owner] .ah-cards .ah-note,
+  [data-owner] .ah-cards .ah-occ,
+  [data-owner] .ah-ocanvas [data-slot="button"],
+  [data-owner] .ah-ohead [data-slot="button"],
+  [data-owner] .ah-pager button,
+  [data-owner] .ah-tbl-foot,
+  [data-owner] .ah-page-sub {
+    font-size: 14px;
+  }
+  [data-owner] .ah-card-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    min-width: 0;
+  }
+  [data-owner] .ah-cards .ah-row-actions {
+    flex-wrap: wrap;
+  }
+  [data-owner] .ah-card-error .ah-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* owner Courts: the court photo fills the card image when there is one
+   (the prototype drawing otherwise); price and the bookable switch share
+   a row over the actions */
+[data-owner] .ah-court-photo {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+[data-owner] .ah-court-price {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+[data-owner] .ah-court-price .ah-metric {
+  font-size: 19px;
+}
+[data-owner] .ah-court-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+[data-owner] .ah-courts .ah-court-foot {
+  flex-wrap: wrap;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-courts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-owner] .ah-court-switch,
+  [data-owner] .ah-courts .ah-sub,
+  [data-owner] .ah-court-name {
+    font-size: 14px;
+  }
+  [data-owner] .ah-court-switch {
+    min-height: 44px;
+  }
+}
+
+/* owner Schedule (prototype .cal): the Day / Week / Month toggle, the
+   hourly grid (52px an hour, 6 AM to midnight), event cards coloured by
+   sport, and the month grid. The grid scrolls inside its own box. */
+[data-owner] .ah-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+}
+[data-owner] .ah-cal-head-row {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+[data-owner] .ah-cal-title {
+  margin-left: 8px;
+}
+[data-owner] .ah-cal-legend {
+  display: flex;
+  gap: 14px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+[data-owner] .ah-cal-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 0;
+}
+[data-owner] .ah-cal-legend i.ah-ev-a {
+  background: var(--lime-deep);
+}
+[data-owner] .ah-cal-legend i.ah-ev-b {
+  background: var(--text-2);
+}
+[data-owner] .ah-cal-legend i.ah-ev-c {
+  background: var(--amber);
+}
+[data-owner] .ah-cal-headrow,
+[data-owner] .ah-cal-body {
+  display: grid;
+  grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr));
+}
+[data-owner] .ah-cal-headrow {
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 2;
+}
+[data-owner] .ah-cal-headrow > div + div {
+  border-left: 1px solid var(--line-soft);
+}
+[data-owner] .ah-cal-day {
+  display: block;
+  width: 100%;
+  padding: 10px 8px;
+  text-align: center;
+  background: none;
+  border: 0;
+  color: var(--foreground);
+}
+[data-owner] button.ah-cal-day:hover {
+  background: var(--line-soft);
+}
+[data-owner] .ah-cal-day b {
+  display: block;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 80,
+    "wght" 700;
+  font-size: 19px;
+  line-height: 1;
+}
+[data-owner] .ah-cal-day span {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-cal-day.is-today b {
+  /* was var(--lime-deep): 2.94:1 on white in light, under the 3:1 large-text minimum */
+  color: var(--ok-text);
+}
+[data-owner] .ah-cal-court b {
+  font-family: inherit;
+  font-variation-settings: normal;
+  font-weight: 650;
+  font-size: 13.5px;
+  margin-bottom: 3px;
+}
+[data-owner] .ah-cal-court span {
+  display: block;
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-owner] .ah-cal {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  min-width: var(--cal-min, 860px);
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-cal {
+    min-width: var(--cal-min-lg, 640px);
+  }
+}
+/* the body grows to the box; its hour rows are 52px (below 1024px) or an
+   equal share of the box with a floor (--row-min) from 1024px up */
+[data-owner] .ah-cal-body {
+  flex: 1;
+}
+[data-owner] .ah-cal-times,
+[data-owner] .ah-cal-col {
+  display: grid;
+  grid-template-rows: repeat(var(--hours, 18), 52px);
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-cal-times,
+  [data-owner] .ah-cal-col {
+    grid-template-rows: repeat(var(--hours, 18), minmax(var(--row-min, 26px), 1fr));
+  }
+}
+[data-owner] .ah-cal-time {
+  min-height: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  text-align: right;
+  padding-right: 8px;
+  transform: translateY(-6px);
+  font-variant-numeric: tabular-nums;
+}
+/* each label is lifted onto its hour line; the first (6 AM) would then
+   cross the header, so it sits just under the header line instead */
+[data-owner] .ah-cal-time:first-child {
+  transform: translateY(2px);
+}
+[data-owner] .ah-cal-col {
+  border-left: 1px solid var(--line-soft);
+  position: relative;
+}
+[data-owner] .ah-cal-hr {
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-owner] .ah-ev {
+  position: absolute;
+  border-radius: 7px;
+  padding: 5px 7px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+  border-left: 3px solid;
+  transition: transform 0.12s;
+}
+[data-owner] .ah-ev:hover {
+  transform: scale(1.02);
+  z-index: 4;
+}
+[data-owner] .ah-ev b {
+  display: block;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-owner] .ah-ev-a {
+  background: var(--lime-wash);
+  border-color: var(--lime-deep);
+  color: #4e6b04;
+}
+[data-owner] .ah-ev-b {
+  background: var(--line-soft);
+  border-color: var(--text-2);
+  color: var(--foreground);
+}
+[data-owner] .ah-ev-c {
+  background: var(--amber-wash);
+  border-color: var(--amber);
+  color: #8a5d05;
+}
+html[data-theme="dark"] [data-owner] .ah-ev-a {
+  color: #c4f546;
+}
+html[data-theme="dark"] [data-owner] .ah-ev-c {
+  color: #e8b93f;
+}
+/* cancelled and rejected bookings stay visible, greyed and struck. Was
+   opacity: 0.6 over the sport colour (2.55:1); then muted text on the grey
+   wash (4.37:1 in light); now --text-2 on the grey wash */
+[data-owner] .ah-ev.ah-ev-off {
+  background: var(--line-soft);
+  border-color: var(--line);
+  color: var(--text-2);
+  text-decoration: line-through;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-owner] .ah-ev {
+    transition: none;
+  }
+  [data-owner] .ah-ev:hover {
+    transform: none;
+  }
+}
+/* month grid */
+[data-owner] .ah-cal-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 700px;
+}
+[data-owner] .ah-cal-mhead {
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--line);
+}
+[data-owner] .ah-cal-mcell {
+  min-height: 108px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 1px solid var(--line-soft);
+}
+[data-owner] .ah-cal-mcell:nth-child(7n + 1) {
+  border-left: 0;
+}
+[data-owner] .ah-cal-mcell.is-out {
+  background: var(--line-soft);
+}
+[data-owner] .ah-cal-mcell.is-out .ah-cal-mdate {
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-cal-mdate {
+  align-self: flex-start;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 0;
+  background: none;
+  font-family: var(--font-archivo), sans-serif;
+  font-variation-settings:
+    "wdth" 80,
+    "wght" 700;
+  font-size: 15px;
+  color: var(--foreground);
+}
+[data-owner] .ah-cal-mdate:hover {
+  background: var(--line-soft);
+}
+[data-owner] .ah-cal-mdate.is-today {
+  background: var(--lime);
+  color: #0f1a15;
+}
+[data-owner] .ah-ev-chip {
+  position: static;
+  padding: 3px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-owner] .ah-ev-chip b {
+  display: inline;
+}
+[data-owner] .ah-cal-more {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+[data-owner] .ah-cal-more:hover {
+  text-decoration: underline;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-cal-legend {
+    width: 100%;
+    margin-left: 0;
+    font-size: 14px;
+  }
+  [data-owner] .ah-cal-title {
+    width: 100%;
+    margin-left: 0;
+  }
+  [data-owner] .ah-cal-mdate {
+    min-width: 44px;
+    height: 44px;
+  }
+  [data-owner] .ah-cal-head-row [data-slot="button"] {
+    min-width: 44px;
+  }
+  [data-owner] .ah-cal-more {
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* owner Earnings: the by-arena table sits flush in its card */
+[data-owner] .ah-earn-table {
+  margin: -18px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-earn-table .ah-occ,
+  [data-owner] .ah-legend-list li,
+  [data-owner] .ah-legend-list b {
+    font-size: 14px;
+  }
+}
+
+/* owner Reports: each download row keeps its CSV and PDF buttons on the
+   right; on phones they drop under the description */
+[data-owner] .ah-reports .ah-row-actions {
+  flex: none;
+  margin-left: auto;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-reports li {
+    flex-wrap: wrap;
+  }
+  [data-owner] .ah-reports .ah-row-actions {
+    margin-left: 0;
+  }
+}
+
+/* owner Reviews (prototype .g-23, .stars, .score-*, .review) */
+[data-owner] .ah-g-23 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.62fr);
+  align-items: start;
+}
+@media (max-width: 1180px) {
+  [data-owner] .ah-g-23 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+[data-owner] .ah-stars {
+  display: inline-flex;
+  gap: 1.5px;
+  color: var(--amber);
+}
+[data-owner] .ah-stars .off {
+  color: var(--line);
+}
+[data-owner] .ah-score-big {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+[data-owner] .ah-score-note {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin: 0 0 16px;
+}
+[data-owner] .ah-score-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+[data-owner] .ah-score-row {
+  display: grid;
+  grid-template-columns: 22px 1fr 38px;
+  gap: 9px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-score-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+[data-owner] .ah-score-track i {
+  display: block;
+  height: 100%;
+  background: var(--amber);
+  border-radius: 3px;
+}
+[data-owner] .ah-review {
+  display: flex;
+  gap: 13px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-owner] .ah-review:last-of-type {
+  border-bottom: 0;
+}
+[data-owner] .ah-review-b {
+  flex: 1;
+  min-width: 0;
+}
+[data-owner] .ah-review-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-owner] .ah-review-top b {
+  font-size: 13.5px;
+}
+[data-owner] .ah-review-meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-review-badge {
+  margin-left: auto;
+}
+[data-owner] .ah-review-text {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+[data-owner] .ah-review-reply {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-review-btn {
+  margin-top: 9px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-score-note,
+  [data-owner] .ah-score-row,
+  [data-owner] .ah-review-top b,
+  [data-owner] .ah-review-meta,
+  [data-owner] .ah-review-text,
+  [data-owner] .ah-review-reply {
+    font-size: 14px;
+  }
+  [data-owner] .ah-review {
+    padding: 14px 16px;
+  }
+}
+
+/* owner Settings (prototype Settings: tabs, the owner card on paper, the
+   fields beside it). Tabs scroll inside their own row on phones. */
+[data-owner] .ah-tabs-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+[data-owner] .ah-settings {
+  gap: 26px;
+}
+[data-owner] .ah-owner-card {
+  align-self: start;
+  padding: 22px 18px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--line-soft);
+  text-align: center;
+}
+[data-owner] .ah-owner-avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #0f1a15;
+  color: var(--lime);
+  font-family: var(--font-archivo), sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+[data-owner] .ah-owner-card b {
+  display: block;
+  font-size: 15px;
+}
+[data-owner] .ah-owner-card p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+[data-owner] .ah-owner-card .ah-tag {
+  display: inline-block;
+  margin-top: 12px;
+}
+[data-owner] .ah-field-row {
+  display: flex;
+  gap: 8px;
+}
+[data-owner] .ah-field-row [data-slot="input"] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+[data-owner] .ah-field-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-settings-narrow {
+  max-width: 560px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-field-row {
+    flex-direction: column;
+  }
+  [data-owner] .ah-field-hint,
+  [data-owner] .ah-owner-card p,
+  [data-owner] .ah-tab {
+    font-size: 14px;
+  }
+  [data-owner] .ah-tab {
+    min-height: 44px;
+  }
+}
+
+/* owner Equipment: the stock stepper (− n of m free +) */
+[data-owner] .ah-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+[data-owner] .ah-stepper b {
+  color: var(--foreground);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-stepper {
+    font-size: 14px;
+  }
+}
+
+/* owner Payments: bank accounts per arena (list rows, the add/edit form on
+   paper) and the discount codes table */
+[data-owner] .ah-mono {
+  font-family: var(--font-mono, ui-monospace), monospace;
+  font-variant-numeric: tabular-nums;
+}
+[data-owner] .ah-h3 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+[data-owner] .ah-bank-group + .ah-bank-group {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-soft);
+}
+[data-owner] .ah-bank-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+[data-owner] .ah-bank-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+[data-owner] .ah-bank-list li:first-child {
+  border-top: 0;
+}
+[data-owner] .ah-bank-name b {
+  font-size: 13.5px;
+}
+[data-owner] .ah-bank-acct {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+[data-owner] .ah-bank-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--line-soft);
+}
+[data-owner] .ah-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+[data-owner] .ah-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--lime-deep);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-bank-list li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-bank-list .ah-row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  [data-owner] .ah-bank-name b,
+  [data-owner] .ah-h3,
+  [data-owner] .ah-check {
+    font-size: 14px;
+  }
+  [data-owner] .ah-check {
+    min-height: 44px;
+  }
+  [data-owner] .ah-check input {
+    width: 20px;
+    height: 20px;
+  }
+}
+@media (min-width: 761px) {
+  [data-owner] .ah-span-2 {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-empty {
+    font-size: 14px;
+  }
+}
+[data-owner] .ah-bank-none {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-bank-none {
+    font-size: 14px;
+  }
+}
+
+/* owner Notifications: the bell popover's rows at full width (icon tile,
+   title, body, time, unread dot) */
+[data-owner] .ah-notes {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 8px;
+}
+[data-owner] .ah-note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  color: var(--text);
+}
+[data-owner] .ah-note-row:hover {
+  background: var(--line-soft);
+}
+[data-owner] .ah-note-row:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: -2px;
+}
+/* unread: the dot and a heavier title, as in the bell popover */
+[data-owner] .ah-note-row.is-unread .ah-note-text b {
+  font-weight: 750;
+}
+[data-owner] .ah-note-row .ah-pop-dot {
+  margin-top: 6px;
+}
+[data-owner] .ah-note-ico {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+[data-owner] .ah-note-ok {
+  background: var(--lime-wash);
+  color: var(--lime-deep);
+}
+[data-owner] .ah-note-off {
+  background: var(--red-wash);
+  color: var(--off-text);
+}
+[data-owner] .ah-note-wait {
+  background: var(--amber-wash);
+  color: var(--wait-text);
+}
+[data-owner] .ah-note-idle {
+  background: var(--line-soft);
+  color: var(--text-2);
+}
+[data-owner] .ah-note-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+[data-owner] .ah-note-text b {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+[data-owner] .ah-note-text span {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.45;
+}
+[data-owner] .ah-note-text small {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-notes {
+    padding: 4px;
+  }
+  [data-owner] .ah-note-text b,
+  [data-owner] .ah-note-text span,
+  [data-owner] .ah-note-text small {
+    font-size: 14px;
+  }
+}
+
+/* the small link in a card head (Live Board "Needs your attention") */
+[data-owner] .ah-head-link {
+  margin-left: auto;
+  font-size: 13px;
+}
+@media (max-width: 767.98px) {
+  [data-owner] .ah-head-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-bank-list .ah-sub {
+    font-size: 14px;
+  }
+}
+
+/* admin sign-in, step 2 (the emailed code): info line, Resend / Back */
+[data-admin] .ah-auth-info {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--line-soft);
+  color: var(--text);
+  font-size: 13px;
+}
+[data-admin] .ah-auth-code-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+[data-admin] .ah-auth-link {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--muted-foreground);
+  cursor: pointer;
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-auth-error,
+  [data-admin] .ah-auth-info,
+  [data-admin] .ah-auth-code-links {
+    font-size: 14px;
+  }
+}
+
+/* owner pages without the top bar: the arena filter lives in the page's own
+   header row from 1024px up (below that it is the row under the slim bar) */
+[data-owner] .ah-hdr-picker {
+  display: none;
+}
+@media (min-width: 1024px) {
+  [data-owner] .ah-hdr-picker {
+    display: block;
+  }
+}
+
+/* owner Bookings rows (the style guide's rows): about 84px tall, a muted
+   spaced header, the phone small under the name, payment in plain text,
+   the amount bold at the column's right edge */
+[data-owner] .ah-bk td {
+  height: 84px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  vertical-align: middle;
+}
+[data-owner] .ah-bk td .ah-sub {
+  font-size: 12px;
+}
+[data-owner] .ah-bk .ah-money {
+  font-weight: 700;
+  white-space: nowrap;
+}
+[data-owner] .ah-bk .ah-strong {
+  font-weight: 700;
+}
+[data-owner] .ah-bk .ah-row-actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+@media (max-width: 1279.98px) {
+  [data-owner] .ah-bk th,
+  [data-owner] .ah-bk td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  [data-owner] .ah-bk td {
+    font-size: 13px;
+  }
+  /* nothing is cut with an ellipsis: the booking id and the time range stay
+     on one line, the court's arena name, the customer's name and the payment
+     state wrap onto their own lines */
+  [data-owner] .ah-bk td:nth-child(1),
+  [data-owner] .ah-bk .ah-slot-time,
+  [data-owner] .ah-bk .ah-pay-method,
+  [data-owner] .ah-bk .ah-money {
+    white-space: nowrap;
+  }
+  [data-owner] .ah-bk td:nth-child(3) {
+    max-width: 112px;
+  }
+  /* two buttons (Remind and View, Approve and Reject) stack instead of
+     widening the table */
+  [data-owner] .ah-bk .ah-row-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* Schedule fits one screen from 1024px up: the page is a column the height of
+   the window; the card takes what the heading leaves and the grid inside it
+   shares that height between the 18 hours (never under --row-min, 26px; only
+   then does the grid scroll). Below 1024px the grid keeps its 52px rows and
+   scrolls. */
+@media (min-width: 1024px) {
+  [data-owner] .ah-sched {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  [data-owner] .ah-sched > .ah-ohead {
+    flex: none;
+  }
+  [data-owner] .ah-sched > .ah-ohead + * {
+    padding-top: 16px;
+  }
+  [data-owner] .ah-sched-canvas {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+  }
+  [data-owner] .ah-sched-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-owner] .ah-sched-card > .ah-card-head {
+    flex: none;
+  }
+  [data-owner] .ah-sched-cue {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-owner] .ah-sched-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* a tight event on a short row: small padding, and the second line gives
+     way when the card is too short to show it whole */
+  [data-owner] .ah-ev {
+    padding: 3px 7px;
+    container-type: size;
+  }
+  [data-owner] .ah-ev-sub {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @container (max-height: 33px) {
+    [data-owner] .ah-ev-sub {
+      display: none;
+    }
+  }
+  /* month cells share the height too */
+  [data-owner] .ah-cal-month {
+    min-height: 100%;
+    grid-template-rows: auto;
+    grid-auto-rows: minmax(64px, 1fr);
+  }
+  [data-owner] .ah-cal-mcell {
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+/* Live Board date control: label, previous / next day, Today, calendar */
+[data-owner] .ah-lb-head {
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+[data-owner] .ah-lb-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+[data-owner] .ah-lb-arenas {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+[data-owner] .ah-lb-date {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* a fixed slot for the Today button and a fixed-width label, so a longer
+   or shorter date never moves the arrows */
+[data-owner] .ah-lb-today {
+  display: inline-flex;
+  justify-content: flex-end;
+  min-width: 76px;
+}
+[data-owner] .ah-lb-label {
+  width: 26ch; /* room for the longest label, "Yesterday · Wed 30 Sept 2026" */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+[data-owner] .ah-datepop {
+  width: min(300px, 94vw);
+}
+[data-owner] .ah-datepop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 8px;
+}
+[data-owner] .ah-datepop-head b {
+  font-size: 13.5px;
+}
+[data-owner] .ah-datepop-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+[data-owner] .ah-datepop-dow {
+  padding: 4px 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-datepop-day {
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+[data-owner] .ah-datepop-day:hover {
+  background: var(--line-soft);
+}
+[data-owner] .ah-datepop-day:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 1px;
+}
+[data-owner] .ah-datepop-day.is-out {
+  color: var(--muted-foreground);
+}
+[data-owner] .ah-datepop-day.is-today {
+  border-color: var(--lime-deep);
+}
+[data-owner] .ah-datepop-day.is-on {
+  background: var(--ink);
+  color: var(--lime);
+  font-weight: 700;
+}
+html[data-theme="dark"] [data-owner] .ah-datepop-day.is-on {
+  background: var(--lime);
+  color: #0f1a15;
+}
+@media (max-width: 767.98px) {
+  /* one row: previous, the label, next, calendar; "Today" gets a row of its
+     own below, only when shown, so the arrows never move sideways */
+  [data-owner] .ah-lb-date {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
+    gap: 8px;
+  }
+  [data-owner] .ah-lb-today {
+    order: 10;
+    grid-column: 1 / -1;
+    min-width: 0;
+    justify-content: stretch;
+  }
+  [data-owner] .ah-lb-today:empty {
+    display: none;
+  }
+  [data-owner] .ah-lb-today button {
+    width: 100%;
+  }
+  [data-owner] .ah-lb-label {
+    width: auto;
+    min-width: 0;
+    font-size: 14px;
+    /* a long label wraps to two centred lines instead of being cut */
+    white-space: normal;
+    line-height: 1.25;
+    overflow: visible;
+  }
+  [data-owner] .ah-lb-date {
+    align-items: center;
+  }
+  [data-owner] .ah-lb-arenas {
+    font-size: 14px;
+  }
+  [data-owner] .ah-datepop-day {
+    height: 44px;
+    font-size: 14px;
+  }
+  [data-owner] .ah-datepop-head b {
+    font-size: 14px;
+  }
+}
+
+/* owner rail: the menu part takes the space between the brand and the owner
+   card and scrolls by itself when the window is too short (the card stays in
+   view). A flex column like the rail, so the groups' spacing is unchanged. */
+[data-owner] .ah-rail-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rail-line) transparent;
+}
+[data-owner] .ah-rail-foot {
+  flex: none;
+}
+
+/* a short message at the bottom of the page (Remind: "Reminder sent to Hamza") */
+.ah-toast-host {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 80;
+}
+[data-admin] .ah-toast {
+  max-width: min(440px, 92vw);
+  padding: 11px 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--lime);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  animation: ah-rise 0.18s ease-out;
+}
+html[data-theme="dark"] [data-admin] .ah-toast {
+  background: var(--lime);
+  color: #0f1a15;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-admin] .ah-toast {
+    animation: none;
+  }
+}
+@media (max-width: 767.98px) {
+  [data-admin] .ah-toast {
+    font-size: 14px;
+  }
+}
+
+/* ---- ArenaHub mark (components/brand/arena-mark.tsx): one drawing per tone, CSS picks one ---- */
+.am {
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+  width: 28px;
+  height: 28px;
+}
+.am svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.am .am-d {
+  display: none;
+}
+.am-dark .am-l {
+  display: none;
+}
+.am-dark .am-d {
+  display: block;
+}
+html[data-theme="dark"] .am-theme .am-l {
+  display: none;
+}
+html[data-theme="dark"] .am-theme .am-d {
+  display: block;
+}
+@media (prefers-color-scheme: dark) {
+  .am-system .am-l {
+    display: none;
+  }
+  .am-system .am-d {
+    display: block;
+  }
+}
+
+/* ---- first page load: the 72px loader over the page ---- */
+.am-firstload {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: #f1f2ef;
+  transition: opacity 200ms ease-out;
+}
+.am-firstload[data-phase="fade"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.am-firstload .am-fl-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  .am-firstload {
+    background: #0f1a15;
+  }
+  .am-firstload .am-fl-light {
+    display: none;
+  }
+  .am-firstload .am-fl-dark {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .am-firstload .bm-lrun,
+  .am-firstload .bm-lball,
+  .am-firstload .bm-lsp,
+  .am-firstload .bm-lf {
+    animation: none !important;
+  }
+  .am-firstload .bm-lrun {
+    opacity: 0;
+  }
+  .am-firstload .bm-lf.bm-k0 {
+    opacity: 1;
+  }
+  .am-firstload .bm-lball {
+    offset-distance: 62%;
+  }
+}
+
+/* owner Payments > Refunds tab (design/prototypes/arena-hub-owner-refunds.html): the filter row, the note, the table that
+   scrolls inside its own box (never the page), the empty / error states and the rows of the confirm dialog. */
+[data-owner] .ah-tab-wait {
+  background: var(--amber-wash, #fdf3dc);
+  color: var(--wait-text, #956508); /* text colour: 4.5 : 1 on the amber wash */
+  border-color: transparent;
+}
+[data-owner] .ah-rf-panel {
+  padding: 14px 18px 4px;
+  outline: none;
+}
+[data-owner] .ah-rf-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+[data-owner] .ah-rf-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--lime-wash);
+  border: 1px solid var(--lime-deep);
+  font-size: 13px;
+  color: var(--foreground);
+}
+[data-owner] .ah-rf-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+[data-owner] .ah-rf-scroll:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+[data-owner] .ah-rf-table {
+  min-width: 780px;
+}
+[data-owner] .ah-rf-skeleton {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0 18px;
+}
+[data-owner] .ah-sk-line {
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--line-soft, var(--muted));
+}
+[data-owner] .ah-rf-empty {
+  text-align: center;
+  padding: 34px 10px 38px;
+}
+[data-owner] .ah-rf-empty h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+[data-owner] .ah-rf-empty p {
+  margin: 0 0 14px;
+  color: var(--muted-foreground);
+}
+.ah-rf-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.ah-rf-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.ah-rf-rows dt {
+  color: var(--muted-foreground);
+}
+.ah-rf-rows dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* the arena choice on the Refunds tab (the prototype's .select) */
+[data-owner] .ah-select {
+  min-height: 36px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+}
+[data-owner] .ah-select:focus-visible {
+  outline: 2px solid var(--lime-deep);
+  outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  [data-owner] .ah-select {
+    min-height: 44px;
+  }
+}
+
+/* Touch screens of any width (tablets in particular, 768px and up, which get the desktop layout):
+   every tap target is at least 44px. Sizes only; the phone-width layout changes stay below 768px.
+   Mirrors the 44px rules of the max-width: 767.98px blocks above. */
+@media (pointer: coarse) {
+  :is([data-admin], [data-owner])
+    :is(
+      .ah-cmdk-item,
+      .ah-pop-item,
+      .ah-nav-item,
+      .ah-menu-item,
+      .ah-tab,
+      .ah-check,
+      .ah-head-link,
+      .ah-court-switch,
+      .ah-cal-more,
+      .ah-pager button,
+      .ah-card-error .ah-link,
+      .ah-venue-pick,
+      .ah-searchbar,
+      .ah-brand,
+      [data-slot="button"],
+      [data-slot="input"],
+      [data-slot="select"],
+      [data-slot="tabs-trigger"],
+      [data-slot="dialog-close"]
+    ) {
+    /* restated here because the console rules above are unlayered and beat the utilities */
+    min-height: 44px;
+  }
+  :is([data-admin], [data-owner]) :is(.ah-icon-btn, .ah-logout, .ah-pw-toggle, .ah-cal-mdate) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  :is([data-admin], [data-owner])
+    :is([data-slot="button"], .ah-pager button, [data-slot="dialog-close"]) {
+    min-width: 44px;
+  }
+}
+
+/* the six code boxes shake once on a wrong code (owner and admin pages alike); not with reduced motion */
+.ah-code-shake {
+  animation: ah-shake 0.4s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-code-shake {
+    animation: none;
   }
 }

@@ -1,152 +1,267 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Minus, Pencil, Plus, Trash2 } from "lucide-react";
+/**
+ * Owner Equipment. The prototype has no Equipment screen, so it uses the
+ * same shared parts as the other owner pages: page head, a table card (cards
+ * on phones), badges, buttons and the icon-and-text empty state. Each item
+ * shows its price per day, its stock with the − / + adjusters, whether it
+ * is offered, and Edit and Delete. The arena comes from the top bar picker;
+ * "All arenas" lists every arena's items and Add item waits for one arena.
+ */
+import { Suspense, useMemo, useState } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
+import { AdminBadge, AdminCard, AdminEmpty, AdminTag } from "@/components/admin/ui";
 import { EquipmentForm } from "@/components/owner/equipment-form";
 import { PageHeader } from "@/components/owner/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
-import { useAdjustQuantity, useDeleteEquipment, useEquipment } from "@/hooks/useEquipment";
+import { useFormDialog } from "@/hooks/useFormDialog";
+import { useArenaParam } from "@/hooks/useArenaParam";
+import { formatRs, plural } from "@/lib/format";
+import { ApiError } from "@/services/api";
+import { adjustQuantity, deleteEquipment, listEquipment } from "@/services/equipment";
 import type { Equipment } from "@/types";
 
 function EquipmentInner() {
-  const searchParams = useSearchParams();
-  const { data: arenaPage } = useMyArenas();
+  const qc = useQueryClient();
+  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
+  const [pickedId] = useArenaParam();
+  const picked = arenas.find((a) => a.id === pickedId);
+  const scope = picked ? [picked] : arenas;
+  const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
-  const [arenaId, setArenaId] = useState<string>("");
-  useEffect(() => {
-    const fromUrl = searchParams.get("arena");
-    if (fromUrl && arenas.some((a) => a.id === fromUrl)) setArenaId(fromUrl);
-    else if (!arenaId && arenas.length) setArenaId(arenas[0].id);
-  }, [arenas, searchParams, arenaId]);
+  const queries = useQueries({
+    queries: scope.map((a) => ({
+      queryKey: ["equipment", a.id],
+      queryFn: () => listEquipment(a.id),
+    })),
+  });
+  const loading = arenasLoading || queries.some((q) => q.isLoading);
+  const failed = queries.some((q) => q.isError);
+  const items = queries.flatMap((q) => q.data ?? []);
 
-  const { data: equipment, isLoading } = useEquipment(arenaId || null);
-  const adjustQuantity = useAdjustQuantity(arenaId);
-  const removeEquipment = useDeleteEquipment(arenaId);
-
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<Equipment | undefined>(undefined);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // stock and delete act on the item's own arena, so they work under "All arenas"
+  async function run(item: Equipment, action: () => Promise<unknown>) {
+    setBusy(item.id);
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not update ${item.name}.`);
+    } finally {
+      await qc.invalidateQueries({ queryKey: ["equipment", item.arena_id] });
+      setBusy(null);
+    }
+  }
+
+  const formArenaId = editing?.arena_id ?? picked?.id;
+  const offered = items.filter((i) => i.is_active).length;
+
+  const status = (i: Equipment) => (
+    <AdminBadge tone={i.is_active ? "ok" : "idle"}>{i.is_active ? "Offered" : "Hidden"}</AdminBadge>
+  );
+  const stock = (i: Equipment) => (
+    <div className="ah-stepper">
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label={`One fewer ${i.name}`}
+        disabled={i.quantity_total <= 1 || busy === i.id}
+        onClick={() => run(i, () => adjustQuantity(i.id, -1))}
+      >
+        −
+      </Button>
+      <span className="tabular-nums">
+        <b>{i.quantity_available}</b> of {i.quantity_total} free
+      </span>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label={`One more ${i.name}`}
+        disabled={busy === i.id}
+        onClick={() => run(i, () => adjustQuantity(i.id, 1))}
+      >
+        +
+      </Button>
+    </div>
+  );
+  const actions = (i: Equipment) => (
+    <div className="ah-row-actions">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          setEditing(i);
+          setFormOpen(true);
+        }}
+      >
+        Edit
+      </Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={busy === i.id}
+        onClick={() => {
+          if (confirm(`Delete “${i.name}”?`)) void run(i, () => deleteEquipment(i.id));
+        }}
+      >
+        Delete
+      </Button>
+    </div>
+  );
 
   return (
     <>
-      <PageHeader title="Manage Equipment">
+      <PageHeader
+        title="Equipment"
+        subtitle={
+          loading
+            ? undefined
+            : `${plural(items.length, "item")} · ${offered} offered${picked ? "" : " · choose an arena above to add an item"}`
+        }
+      >
         <Button
+          className="ah-lime"
+          disabled={!picked}
+          title={picked ? undefined : "Choose an arena above first"}
           onClick={() => {
             setEditing(undefined);
             setFormOpen(true);
           }}
-          disabled={!arenaId}
-          className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
         >
-          <Plus className="size-4" /> Add Equipment
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Add item
         </Button>
       </PageHeader>
 
-      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-foreground">Arena</label>
-          <Select value={arenaId} onChange={(e) => setArenaId(e.target.value)} className="w-64">
-            {arenas.length === 0 && <option value="">No arenas yet</option>}
-            {arenas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {!arenaId && (
-          <p className="text-sm text-muted-foreground">
-            Register an arena first, then add rentable equipment here.
-          </p>
+      <div className="ah-ocanvas animate-fade-in ah-stack">
+        {error && (
+          <div className="ah-card-error" role="alert">
+            <span>{error}</span>
+          </div>
         )}
-
-        {arenaId && isLoading && (
-          <p className="text-sm text-muted-foreground">Loading equipment…</p>
-        )}
-
-        {arenaId && !isLoading && (equipment?.length ?? 0) === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No equipment yet for this arena. Click “Add Equipment” to create one.
-          </p>
-        )}
-
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {equipment?.map((item) => (
-            <div key={item.id} className="space-y-2 rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-semibold text-foreground">{item.name}</p>
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                  )}
-                </div>
-                <StatusBadge status={item.is_active ? "active" : "inactive"} />
-              </div>
-              <p className="text-sm font-medium text-foreground">Rs. {item.rental_price} / day</p>
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    title="Decrease stock"
-                    disabled={item.quantity_total <= 1}
-                    onClick={() => adjustQuantity.mutate({ equipmentId: item.id, delta: -1 })}
-                  >
-                    <Minus className="size-3.5" />
-                  </Button>
-                  <span>
-                    {item.quantity_available} / {item.quantity_total} available
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    title="Increase stock"
-                    onClick={() => adjustQuantity.mutate({ equipmentId: item.id, delta: 1 })}
-                  >
-                    <Plus className="size-3.5" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Edit"
-                    onClick={() => {
-                      setEditing(item);
-                      setFormOpen(true);
-                    }}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Delete"
-                    onClick={() => {
-                      if (confirm(`Delete “${item.name}”?`)) removeEquipment.mutate(item.id);
-                    }}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                </div>
+        <AdminCard
+          title="Rental items"
+          actions={
+            items.length > 0 ? <AdminTag>{plural(items.length, "item")}</AdminTag> : undefined
+          }
+        >
+          {loading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
+          {!loading && failed && (
+            <div className="ah-card-body">
+              <div className="ah-card-error" role="alert">
+                <span>Could not load the equipment.</span>
+                <button
+                  type="button"
+                  className="ah-link"
+                  onClick={() => queries.forEach((q) => void q.refetch())}
+                >
+                  Try again
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+          {!loading && !failed && items.length === 0 && (
+            <AdminEmpty>
+              {arenas.length === 0
+                ? "Register an arena first, then add rentable equipment here."
+                : picked
+                  ? "No equipment yet for this arena. Click “Add item” to create one."
+                  : "No equipment yet."}
+            </AdminEmpty>
+          )}
+          {!loading && items.length > 0 && (
+            <>
+              <div className="ah-only-wide">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      {!picked && <TableHead>Arena</TableHead>}
+                      <TableHead className="ah-r">Price / day</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="ah-r">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((i) => (
+                      <TableRow key={i.id}>
+                        <TableCell>
+                          <div className="ah-strong">{i.name}</div>
+                          {i.description && <div className="ah-sub">{i.description}</div>}
+                        </TableCell>
+                        {!picked && (
+                          <TableCell className="ah-t2">{arenaName.get(i.arena_id) ?? ""}</TableCell>
+                        )}
+                        <TableCell className="ah-r ah-money">{formatRs(i.rental_price)}</TableCell>
+                        <TableCell>{stock(i)}</TableCell>
+                        <TableCell>{status(i)}</TableCell>
+                        <TableCell className="ah-r">{actions(i)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <ul className="ah-cards">
+                {items.map((i) => (
+                  <li key={i.id}>
+                    <div className="ah-card-line">
+                      <span className="ah-strong">{i.name}</span>
+                      {status(i)}
+                    </div>
+                    {(i.description || !picked) && (
+                      <div className="ah-sub">
+                        {[i.description, picked ? null : arenaName.get(i.arena_id)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
+                    )}
+                    <div className="ah-card-line">
+                      <span className="ah-money">
+                        {formatRs(i.rental_price)} <span className="ah-sub">/ day</span>
+                      </span>
+                      {stock(i)}
+                    </div>
+                    {actions(i)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </AdminCard>
       </div>
 
-      {formOpen && arenaId && (
+      {formOpen && formArenaId && (
         <EquipmentForm
           key={editing?.id ?? "new"}
           open={formOpen}
           onOpenChange={setFormOpen}
-          arenaId={arenaId}
+          arenaId={formArenaId}
           equipment={editing}
         />
       )}
@@ -156,7 +271,7 @@ function EquipmentInner() {
 
 export default function EquipmentPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense fallback={null}>
       <EquipmentInner />
     </Suspense>
   );

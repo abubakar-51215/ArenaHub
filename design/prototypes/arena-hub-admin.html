@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Hub — Platform Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ARENA HUB — design tokens
+   Palette: night pitch ink, chalk paper, floodlight lime.
+   Colour is reserved for meaning: lime = live/primary action,
+   amber = pending, red = cancelled. Nothing else is coloured.
+   Type: one family at two width extremes — Archivo condensed for
+   scoreboard numerals, Archivo expanded for micro labels.
+   ============================================================ */
+:root{
+  --ink:#0F1A15;
+  --ink-soft:#1C2B23;
+  --paper:#F1F2EF;
+  --card:#FFFFFF;
+  --line:#E2E6E1;
+  --line-soft:#EDEFEB;
+  --text:#0F1A15;
+  --text-2:#46534C;
+  --muted:#79857E;
+  --rail:#0F1A15;
+  --rail-text:#A9B5AE;
+  --rail-active:#FFFFFF;
+  --rail-line:#22322A;
+  --lime:#C4F546;
+  --lime-ink:#0F1A15;
+  --lime-deep:#7FA30F;
+  --lime-wash:#F2FBDA;
+  --amber:#D9930B;
+  --amber-wash:#FDF3DC;
+  --red:#CF4141;
+  --red-wash:#FBE9E9;
+  --slot-open:#F6F7F4;
+  --r-sm:8px; --r:12px; --r-lg:18px;
+  --shadow:0 1px 2px rgba(15,26,21,.05);
+  --shadow-lg:0 18px 40px -18px rgba(15,26,21,.28);
+}
+html[data-theme="dark"]{
+  --ink:#E9EFE9;
+  --ink-soft:#C8D3CB;
+  --paper:#0A100D;
+  --card:#121A16;
+  --line:#232F28;
+  --line-soft:#1B2520;
+  --text:#E9EFE9;
+  --text-2:#A9B6AE;
+  --muted:#7C8981;
+  --rail:#0D1410;
+  --rail-text:#8A968E;
+  --rail-active:#FFFFFF;
+  --rail-line:#1E2A23;
+  --lime-wash:#1E2A11;
+  --amber-wash:#2A2210;
+  --red-wash:#2C1616;
+  --slot-open:#171F1A;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  --shadow-lg:0 18px 40px -18px rgba(0,0,0,.7);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--text);
+  font-family:'Inter Tight',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  letter-spacing:-.005em;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--lime-deep);outline-offset:2px;border-radius:4px}
+::selection{background:var(--lime);color:var(--ink)}
+
+/* ---- typographic signature ---------------------------------- */
+.eyebrow{
+  font-family:'Archivo',sans-serif;
+  font-variation-settings:'wdth' 125,'wght' 600;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);
+}
+.metric{
+  font-family:'Archivo',sans-serif;
+  font-variation-settings:'wdth' 76,'wght' 700;
+  font-size:38px;line-height:1;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;
+}
+.metric.sm{font-size:26px}
+.metric.lg{font-size:56px}
+.h1{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 88,'wght' 700;font-size:24px;line-height:1.15;letter-spacing:-.02em;margin:0}
+.h2{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 92,'wght' 650;font-size:15px;letter-spacing:-.01em;margin:0}
+.num{font-variant-numeric:tabular-nums}
+.mute{color:var(--muted)}
+.t2{color:var(--text-2)}
+
+/* ---- app shell ---------------------------------------------- */
+.app{display:grid;grid-template-columns:246px 1fr;min-height:100vh}
+.app.is-hidden{display:none}
+
+.rail{
+  background:var(--rail);
+  border-right:1px solid var(--rail-line);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  padding:18px 14px 14px;
+  scrollbar-width:thin;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 20px}
+.brand-mark{width:30px;height:30px;flex:none}
+.brand-name{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 100,'wght' 700;color:#fff;font-size:15px;letter-spacing:-.01em;line-height:1.05}
+.brand-name small{display:block;font-variation-settings:'wdth' 125,'wght' 500;font-size:8.5px;letter-spacing:.2em;color:var(--rail-text);text-transform:uppercase;margin-top:2px}
+
+.nav-group{margin-bottom:16px}
+.nav-group-label{
+  font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 125,'wght' 600;
+  font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#5D6E64;
+  padding:0 10px 7px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:8px 10px;border-radius:9px;color:var(--rail-text);
+  font-size:13.5px;font-weight:500;transition:background .14s,color .14s;
+  text-align:left;
+}
+.nav-item svg{width:17px;height:17px;flex:none;opacity:.85}
+.nav-item:hover{background:#182620;color:#E6EDE8}
+.nav-item.is-active{background:#1E2E26;color:var(--rail-active);font-weight:600}
+.nav-item.is-active svg{color:var(--lime);opacity:1}
+.nav-count{margin-left:auto;font-size:10.5px;font-variant-numeric:tabular-nums;background:#22332B;color:#9FB0A6;padding:1px 6px;border-radius:20px}
+.nav-item.is-active .nav-count{background:var(--lime);color:var(--ink)}
+
+.rail-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--rail-line)}
+.owner{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;width:100%}
+.owner:hover{background:#182620}
+.owner-av{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;background:#2A3B32}
+.owner-name{color:#E6EDE8;font-size:12.5px;font-weight:600;line-height:1.2}
+.owner-role{color:#5D6E64;font-size:10.5px}
+
+/* ---- topbar -------------------------------------------------- */
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;gap:10px;
+  padding:12px 24px;background:var(--paper);background:color-mix(in srgb,var(--paper) 82%,transparent);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+}
+.venue-pick{
+  display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
+}
+.venue-pick:hover{border-color:var(--muted)}
+.venue-dot{width:7px;height:7px;border-radius:50%;background:var(--lime-deep);box-shadow:0 0 0 3px var(--lime-wash)}
+.venue-pick b{font-weight:600;font-size:13px}
+.searchbar{
+  flex:1;max-width:340px;display:flex;align-items:center;gap:8px;
+  padding:7px 11px;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;color:var(--muted);font-size:13px;box-shadow:var(--shadow);
+}
+.searchbar:hover{border-color:var(--muted)}
+.kbd{margin-left:auto;font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 100,'wght' 600;
+  font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--muted)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.icon-btn{
+  width:34px;height:34px;display:grid;place-items:center;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);color:var(--text-2);box-shadow:var(--shadow);
+}
+.icon-btn:hover{color:var(--text);border-color:var(--muted)}
+.icon-btn svg{width:16px;height:16px}
+.icon-btn.has-dot{position:relative}
+.icon-btn.has-dot::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--card)}
+
+/* ---- canvas & views ------------------------------------------ */
+.canvas{padding:22px 24px 60px;max-width:1560px;width:100%}
+.view{display:none}
+.view.is-active{display:block;animation:rise .32s cubic-bezier(.22,.7,.3,1)}
+@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+.page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.page-head .h1{font-size:26px}
+.page-sub{color:var(--muted);font-size:13px;margin-top:5px}
+.page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ---- buttons -------------------------------------------------- */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;
+  font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card);
+  color:var(--text);box-shadow:var(--shadow);transition:transform .1s,background .14s,border-color .14s;
+}
+.btn svg{width:15px;height:15px}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+html[data-theme="dark"] .btn-primary{background:var(--lime);color:#0F1A15;border-color:var(--lime)}
+.btn-primary:hover{background:var(--ink-soft);border-color:var(--ink-soft)}
+html[data-theme="dark"] .btn-primary:hover{background:#D2FF63;border-color:#D2FF63}
+.btn-lime{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.btn-lime:hover{background:#D2FF63;border-color:#D2FF63}
+.btn-sm{padding:5px 9px;font-size:12px;border-radius:7px}
+.btn-ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--text-2)}
+.btn-ghost:hover{background:var(--line-soft);border-color:transparent}
+
+.select{
+  appearance:none;padding:7px 28px 7px 11px;border:1px solid var(--line);border-radius:9px;
+  background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2379857E' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
+  font-size:13px;font-weight:500;box-shadow:var(--shadow);
+}
+.select:hover{border-color:var(--muted)}
+
+/* ---- cards & layout ------------------------------------------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line-soft)}
+.card-head .h2{margin-right:auto}
+.card-body{padding:18px}
+.grid{display:grid;gap:14px}
+.g-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-32{grid-template-columns:minmax(0,1.62fr) minmax(0,1fr)}
+.g-23{grid-template-columns:minmax(0,1fr) minmax(0,1.62fr)}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:10px}
+.mt{margin-top:14px}
+
+/* ---- badges & status ------------------------------------------ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;padding:2.5px 8px;border-radius:20px;
+  font-size:11.5px;font-weight:600;line-height:1.45;
+}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.b-ok{background:var(--lime-wash);color:var(--lime-deep)}
+.b-wait{background:var(--amber-wash);color:var(--amber)}
+.b-off{background:var(--red-wash);color:var(--red)}
+.b-idle{background:var(--line-soft);color:var(--muted)}
+.tag{display:inline-block;padding:2px 7px;border-radius:6px;background:var(--line-soft);color:var(--text-2);font-size:11px;font-weight:600}
+.delta{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+.delta.up{color:var(--lime-deep)}
+.delta.down{color:var(--red)}
+
+/* ---- tables ---------------------------------------------------- */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{
+  font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 118,'wght' 600;
+  font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  text-align:left;padding:9px 18px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+.tbl td{padding:12px 18px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr{transition:background .12s}
+.tbl tbody tr:hover{background:var(--line-soft)}
+.tbl .r{text-align:right}
+.tbl .money{font-variant-numeric:tabular-nums;font-weight:600}
+.cell-strong{font-weight:600}
+.cell-sub{color:var(--muted);font-size:11.5px;margin-top:1px}
+.row-actions{display:flex;gap:4px;justify-content:flex-end;opacity:.35;transition:opacity .14s}
+tr:hover .row-actions{opacity:1}
+.tbl-foot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--muted)}
+.pager{margin-left:auto;display:flex;gap:4px}
+.pager button{min-width:28px;height:28px;border-radius:7px;border:1px solid transparent;font-size:12.5px;font-weight:600;color:var(--text-2)}
+.pager button:hover{background:var(--line-soft)}
+.pager button.is-on{background:var(--ink);color:var(--paper)}
+html[data-theme="dark"] .pager button.is-on{background:var(--lime);color:#0F1A15}
+
+.avatar{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--line-soft);color:var(--text-2);font-size:11px;font-weight:700;letter-spacing:-.02em}
+
+/* ============================================================
+   SIGNATURE: the pitch grid — courts x hours, the whole business
+   in one glance. A live lime "now" line sweeps across it.
+   ============================================================ */
+.pitch{padding:4px 0 0}
+.pitch-scroll{overflow-x:auto;padding:0 18px 18px}
+.pitch-inner{min-width:940px;position:relative}
+.pitch-hours{display:grid;grid-template-columns:118px repeat(18,minmax(0,1fr));margin-bottom:6px}
+.pitch-hours span{
+  font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 112,'wght' 600;
+  font-size:9.5px;letter-spacing:.06em;color:var(--muted);text-align:center;
+}
+.pitch-row{display:grid;grid-template-columns:118px repeat(18,minmax(0,1fr));gap:3px;margin-bottom:3px;align-items:stretch}
+.pitch-label{padding-right:10px;display:flex;flex-direction:column;justify-content:center}
+.pitch-label b{font-size:12.5px;font-weight:600;line-height:1.2}
+.pitch-label span{font-size:10.5px;color:var(--muted)}
+.slot{height:42px;border-radius:6px;background:var(--slot-open);border:1px dashed var(--line);transition:background .14s,border-color .14s}
+.slot:hover{background:var(--lime-wash);border-color:var(--lime-deep)}
+.blk{
+  height:42px;border-radius:7px;padding:5px 8px;overflow:hidden;text-align:left;
+  display:flex;flex-direction:column;justify-content:center;transition:transform .12s,filter .14s;
+}
+.blk:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.blk b{font-size:11.5px;font-weight:650;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.blk span{font-size:10px;opacity:.72;font-variant-numeric:tabular-nums}
+.blk-ok{background:var(--ink);color:#EAF0EC}
+html[data-theme="dark"] .blk-ok{background:#25352C;color:#E7EFE9}
+.blk-wait{background:var(--amber-wash);color:#8A5D05;border:1px solid #EFD9A2}
+html[data-theme="dark"] .blk-wait{border-color:#4A3A12;color:#E8B93F}
+.blk-hold{background:repeating-linear-gradient(135deg,var(--line-soft) 0 6px,transparent 6px 12px);
+  border:1px dashed var(--line);color:var(--muted)}
+.now-line{position:absolute;top:20px;bottom:0;width:2px;background:var(--lime-deep);pointer-events:none;z-index:3}
+.now-line::before{
+  content:attr(data-t);position:absolute;top:-19px;left:50%;transform:translateX(-50%);
+  background:var(--lime);color:var(--ink);font-family:'Archivo',sans-serif;
+  font-variation-settings:'wdth' 112,'wght' 700;font-size:9.5px;letter-spacing:.08em;
+  padding:2px 6px;border-radius:5px;white-space:nowrap;
+}
+.now-line::after{content:"";position:absolute;inset:0;background:var(--lime-deep);filter:blur(4px);opacity:.5;animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:.7}}
+.pitch-legend{display:flex;gap:16px;flex-wrap:wrap;padding:2px 18px 16px;font-size:11.5px;color:var(--muted)}
+.pitch-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+/* ---- charts ---------------------------------------------------- */
+.chart-svg{width:100%;height:auto;display:block;overflow:visible}
+.bars{display:flex;align-items:flex-end;gap:5px;height:132px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bar{width:100%;border-radius:4px 4px 2px 2px;background:var(--line);transition:background .16s,transform .16s;transform-origin:bottom}
+.bar-col:hover .bar{background:var(--lime-deep)}
+.bar.is-peak{background:var(--ink)}
+html[data-theme="dark"] .bar.is-peak{background:var(--lime)}
+.bar-lbl{font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.spark{width:100%;height:34px;display:block}
+
+.legend-list{display:flex;flex-direction:column;gap:9px;font-size:12.5px}
+.legend-list li{display:flex;align-items:center;gap:9px;list-style:none}
+.legend-list i{width:9px;height:9px;border-radius:3px;flex:none}
+.legend-list b{margin-left:auto;font-variant-numeric:tabular-nums}
+.rank{display:flex;flex-direction:column;gap:12px}
+.rank-item{display:grid;grid-template-columns:1fr auto;gap:4px 10px}
+.rank-bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--line-soft);overflow:hidden}
+.rank-bar i{display:block;height:100%;border-radius:3px;background:var(--ink)}
+html[data-theme="dark"] .rank-bar i{background:var(--lime)}
+
+/* ---- KPI strip -------------------------------------------------- */
+.kpi{padding:15px 17px 13px;position:relative;overflow:hidden}
+.kpi .metric{margin:9px 0 6px}
+.kpi-foot{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
+
+/* ---- venue / court cards ---------------------------------------- */
+.court-card{overflow:hidden;display:flex;flex-direction:column}
+.court-vis{height:118px;position:relative;background:var(--ink);overflow:hidden}
+.court-vis svg{position:absolute;inset:0;width:100%;height:100%}
+.court-badge{position:absolute;top:10px;right:10px;z-index:2}
+.court-body{padding:13px 15px 15px;display:flex;flex-direction:column;gap:9px;flex:1}
+.court-meta{display:flex;gap:6px;flex-wrap:wrap}
+.court-foot{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:11px;border-top:1px solid var(--line-soft)}
+
+/* ---- forms ------------------------------------------------------- */
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:600;color:var(--text-2)}
+.input{
+  padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);
+  font-size:13.5px;width:100%;transition:border-color .14s,box-shadow .14s;
+}
+.input:focus{outline:none;border-color:var(--lime-deep);box-shadow:0 0 0 3px var(--lime-wash)}
+.input::placeholder{color:var(--muted)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 18px}
+.tab{padding:11px 12px;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.is-on{color:var(--text);border-bottom-color:var(--lime-deep)}
+.switch{width:38px;height:22px;border-radius:20px;background:var(--line);position:relative;transition:background .18s;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s}
+.switch.is-on{background:var(--lime-deep)}
+.switch.is-on::after{transform:translateX(16px)}
+.setting-row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line-soft)}
+.setting-row:last-child{border-bottom:0}
+
+/* ---- calendar week ---------------------------------------------- */
+.cal-scroll{overflow-x:auto}
+.cal{min-width:860px}
+.cal-head{display:grid;grid-template-columns:56px repeat(7,minmax(0,1fr));border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:2}
+.cal-day{padding:10px 8px;text-align:center;border-left:1px solid var(--line-soft)}
+.cal-day b{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 80,'wght' 700;font-size:19px;display:block;line-height:1}
+.cal-day span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.cal-day.is-today b{color:var(--lime-deep)}
+.cal-body{display:grid;grid-template-columns:56px repeat(7,minmax(0,1fr));position:relative}
+.cal-times{display:flex;flex-direction:column}
+.cal-time{height:52px;font-size:10px;color:var(--muted);text-align:right;padding-right:8px;transform:translateY(-6px);font-variant-numeric:tabular-nums}
+.cal-col{border-left:1px solid var(--line-soft);position:relative}
+.cal-col .hr{height:52px;border-bottom:1px solid var(--line-soft)}
+.cal-ev{
+  position:absolute;left:3px;right:3px;border-radius:7px;padding:5px 7px;overflow:hidden;
+  font-size:10.5px;line-height:1.25;text-align:left;border-left:3px solid;transition:transform .12s;
+}
+.cal-ev:hover{transform:scale(1.02);z-index:4}
+.cal-ev b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-a{background:var(--lime-wash);border-color:var(--lime-deep);color:#4E6B04}
+.ev-b{background:var(--line-soft);border-color:var(--text-2);color:var(--text)}
+.ev-c{background:var(--amber-wash);border-color:var(--amber);color:#8A5D05}
+html[data-theme="dark"] .ev-a{color:#C4F546}
+html[data-theme="dark"] .ev-c{color:#E8B93F}
+
+/* ---- reviews ------------------------------------------------------ */
+.stars{display:inline-flex;gap:1.5px;color:var(--amber)}
+.stars svg{width:13px;height:13px}
+.stars .off{color:var(--line)}
+.review{display:flex;gap:13px;padding:15px 18px;border-bottom:1px solid var(--line-soft)}
+.review:last-child{border-bottom:0}
+.review-b{flex:1;min-width:0}
+.score-big{display:flex;align-items:baseline;gap:8px}
+.score-row{display:grid;grid-template-columns:14px 1fr 34px;gap:9px;align-items:center;font-size:11.5px;color:var(--muted)}
+.score-track{height:5px;border-radius:3px;background:var(--line-soft);overflow:hidden}
+.score-track i{display:block;height:100%;background:var(--amber);border-radius:3px}
+
+/* ---- sign in ------------------------------------------------------- */
+.auth{display:grid;grid-template-columns:1fr 1fr;min-height:100vh;background:var(--card)}
+.auth.is-hidden{display:none}
+.auth-form{display:flex;flex-direction:column;justify-content:center;padding:40px 8vw;max-width:640px;width:100%;margin:0 auto}
+.auth-form .h1{font-size:34px;letter-spacing:-.03em;margin-bottom:6px}
+.auth-side{position:relative;background:#07100B;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:38px}
+.auth-side svg.pitch-art{position:absolute;inset:0;width:100%;height:100%}
+.auth-quote{position:relative;z-index:2;max-width:400px}
+.auth-quote h3{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 84,'wght' 700;
+  font-size:38px;line-height:1.02;letter-spacing:-.025em;color:#fff;margin:0 0 12px}
+.auth-quote h3 em{font-style:normal;color:var(--lime)}
+.auth-quote p{color:#8FA096;font-size:13.5px;margin:0;max-width:330px}
+.auth-stats{position:relative;z-index:2;display:flex;gap:30px;margin-top:28px;padding-top:22px;border-top:1px solid #1D2C24}
+.auth-stats div b{display:block;font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 76,'wght' 700;font-size:26px;color:#fff;line-height:1}
+.auth-stats div span{font-size:10.5px;color:#6E8177;letter-spacing:.04em}
+.pw-wrap{position:relative}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);padding:4px}
+
+/* ---- command palette ------------------------------------------------ */
+.cmdk{position:fixed;inset:0;z-index:80;display:none;background:rgba(10,16,13,.42);backdrop-filter:blur(3px);padding-top:12vh}
+.cmdk.is-open{display:block}
+.cmdk-box{width:min(540px,92vw);margin:0 auto;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden;animation:rise .18s ease-out}
+.cmdk-input{width:100%;padding:15px 18px;border:0;border-bottom:1px solid var(--line-soft);background:none;font-size:15px}
+.cmdk-input:focus{outline:none}
+.cmdk-list{max-height:320px;overflow-y:auto;padding:7px}
+.cmdk-item{display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;border-radius:9px;font-size:13.5px;text-align:left}
+.cmdk-item svg{width:16px;height:16px;color:var(--muted)}
+.cmdk-item:hover,.cmdk-item.is-sel{background:var(--line-soft)}
+.cmdk-item small{margin-left:auto;color:var(--muted);font-size:11px}
+
+/* ---- toast ----------------------------------------------------------- */
+.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,80px);z-index:90;
+  background:var(--ink);color:var(--paper);padding:11px 17px;border-radius:11px;font-size:13px;font-weight:500;
+  box-shadow:var(--shadow-lg);opacity:0;transition:transform .3s cubic-bezier(.22,.7,.3,1),opacity .3s;display:flex;align-items:center;gap:9px}
+html[data-theme="dark"] .toast{background:var(--lime);color:#0F1A15}
+.toast.is-up{transform:translate(-50%,0);opacity:1}
+
+/* ---- empty state ------------------------------------------------------ */
+.empty{text-align:center;padding:44px 20px}
+.empty svg{width:34px;height:34px;color:var(--muted);margin-bottom:10px}
+
+/* ---- responsive -------------------------------------------------------- */
+@media (max-width:1180px){
+  .g-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g-32,.g-23{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:1000px){
+  .app{grid-template-columns:66px 1fr}
+  .rail{padding:16px 10px 12px}
+  .brand-name,.nav-item span,.nav-group-label,.owner div,.nav-count{display:none}
+  .nav-item{justify-content:center;padding:10px}
+  .brand{justify-content:center;padding-bottom:16px}
+  .owner{justify-content:center}
+  .g-3{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .auth{grid-template-columns:1fr}
+  .auth-side{display:none}
+  .auth-form{padding:34px 24px}
+  .canvas{padding:16px 14px 50px}
+  .topbar{padding:10px 14px}
+  .searchbar{display:none}
+  .g-4,.g-3,.g-2{grid-template-columns:minmax(0,1fr)}
+  .page-actions{width:100%;margin-left:0}
+  .metric{font-size:32px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+
+/* ---- admin: decision queue ------------------------------------------ */
+.queue{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line-soft)}
+.queue-cell{padding:14px 18px;text-align:left;border-right:1px solid var(--line-soft);transition:background .14s}
+.queue-cell:last-child{border-right:0}
+.queue-cell:hover{background:var(--lime-wash)}
+.queue-lbl{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+.q-ico{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--line-soft);color:var(--text-2)}
+.q-ico svg{width:15px;height:15px}
+.q-arena{background:var(--lime-wash);color:var(--lime-deep)}
+.q-pay{background:var(--amber-wash);color:var(--amber)}
+.q-flag{background:var(--red-wash);color:var(--red)}
+.thumb{width:34px;height:26px;border-radius:5px;flex:none;background:#0F1A15;position:relative;overflow:hidden}
+.thumb::after{content:"";position:absolute;inset:4px;border:1.5px solid var(--c,#C4F546);border-radius:2px;opacity:.7}
+@media (max-width:760px){ .queue{grid-template-columns:repeat(2,minmax(0,1fr))} }
+</style>
+</head>
+<body>
+
+<!-- ============================== ADMIN SIGN IN ============================== -->
+<div class="auth" id="auth">
+  <div class="auth-form">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:44px">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="#C4F546"/>
+        <path d="M9 22.5 16 8l7 14.5" stroke="#0F1A15" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M12.4 19h7.2" stroke="#0F1A15" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="1.9" fill="#0F1A15"/>
+      </svg>
+      <div class="brand-name" style="color:var(--text)">Arena Hub<small>Platform admin</small></div>
+    </div>
+    <p class="eyebrow" style="margin:0 0 10px">Restricted access</p>
+    <h1 class="h1">Control tower.</h1>
+    <p class="mute" style="margin:0 0 28px;font-size:14px">Approvals, payouts and disputes across every arena on the network.</p>
+    <div class="stack" style="gap:16px;max-width:410px">
+      <div class="field"><label for="email">Work email</label><input class="input" id="email" type="email" value="admin@arenahub.pk"></div>
+      <div class="field"><label for="pw">Password</label>
+        <div class="pw-wrap"><input class="input" id="pw" type="password" value="controltower26">
+          <button class="pw-toggle" id="pwToggle" aria-label="Show password"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <div class="field"><label for="otp">Authenticator code</label><input class="input" id="otp" inputmode="numeric" placeholder="6 digits" value="418 902"></div>
+      <button class="btn btn-primary" id="signIn" style="justify-content:center;padding:11px;font-size:14px">Sign in</button>
+      <p class="mute" style="font-size:12.5px;text-align:center;margin:2px 0 0">Admin accounts require two-factor authentication.</p>
+    </div>
+    <p class="mute" style="font-size:11.5px;margin-top:auto;padding-top:36px">© 2026 Arena Hub · Internal use only</p>
+  </div>
+  <div class="auth-side">
+    <svg class="pitch-art" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <radialGradient id="l1" cx="50%" cy="50%"><stop offset="0%" stop-color="#C4F546" stop-opacity=".3"/><stop offset="100%" stop-color="#C4F546" stop-opacity="0"/></radialGradient>
+        <linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0C1F16"/><stop offset="100%" stop-color="#050B08"/></linearGradient>
+      </defs>
+      <rect width="600" height="800" fill="url(#tf)"/>
+      <ellipse cx="300" cy="300" rx="340" ry="300" fill="url(#l1)"/>
+      <g id="netlines" stroke="#C4F546" stroke-opacity=".22" stroke-width="1"></g>
+      <g id="netdots"></g>
+    </svg>
+    <div class="auth-quote">
+      <p class="eyebrow" style="color:#7FA30F;margin:0 0 14px">328 arenas · 4 cities · 12,458 players</p>
+      <h3>One network. <em>One set of rules.</em></h3>
+      <p>Every arena that joins is verified here before a single slot goes on sale.</p>
+    </div>
+    <div class="auth-stats">
+      <div><b>18</b><span>Awaiting approval</span></div>
+      <div><b>23</b><span>Payments to settle</span></div>
+      <div><b>31</b><span>Open complaints</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== SHELL ============================== -->
+<div class="app is-hidden" id="app">
+  <aside class="rail">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="#C4F546"/>
+        <path d="M9 22.5 16 8l7 14.5" stroke="#0F1A15" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M12.4 19h7.2" stroke="#0F1A15" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="1.9" fill="#0F1A15"/>
+      </svg>
+      <div class="brand-name">Arena Hub<small>Platform admin</small></div>
+    </div>
+
+    <nav class="nav-group">
+      <p class="nav-group-label">Oversight</p>
+      <button class="nav-item is-active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Overview</span></button>
+      <button class="nav-item" data-view="approvals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11.5 14l4.5-5"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg><span>Approvals</span><i class="nav-count">18</i></button>
+      <button class="nav-item" data-view="bookings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>Bookings</span></button>
+      <button class="nav-item" data-view="payments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19M6.5 15h4"/></svg><span>Payments</span><i class="nav-count">23</i></button>
+    </nav>
+
+    <nav class="nav-group">
+      <p class="nav-group-label">Directory</p>
+      <button class="nav-item" data-view="users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11.5a3 3 0 1 0-1.6-5.5M18 20a5.6 5.6 0 0 0-2-4.2"/></svg><span>Players</span></button>
+      <button class="nav-item" data-view="owners"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg><span>Arena owners</span></button>
+      <button class="nav-item" data-view="arenas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14M3 10h3v4H3M21 10h-3v4h3"/></svg><span>Arenas</span></button>
+    </nav>
+
+    <nav class="nav-group">
+      <p class="nav-group-label">Health</p>
+      <button class="nav-item" data-view="complaints"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M12 8v4M12 14.5v.01"/></svg><span>Complaints</span><i class="nav-count">31</i></button>
+      <button class="nav-item" data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 20V10M12 20V4M18 20v-7"/></svg><span>Analytics</span></button>
+      <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.2A1.6 1.6 0 0 0 4.3 6.1L4.2 6a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V2a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1A2 2 0 1 1 19.4 6l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.1 1.1Z"/></svg><span>System settings</span></button>
+    </nav>
+
+    <div class="rail-foot">
+      <button class="owner" data-view="settings">
+        <span class="owner-av" style="display:grid;place-items:center;color:#C4F546;font-weight:700;font-size:11px">AD</span>
+        <div><div class="owner-name">Nida Farooq</div><div class="owner-role">Super admin</div></div>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="venue-pick" onclick="toast('Environment: production')"><span class="venue-dot"></span><b>Production</b>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="color:var(--muted)"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button class="searchbar" id="openCmd"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search players, owners, bookings, tickets<span class="kbd">⌘K</span></button>
+      <div class="topbar-right">
+        <button class="btn btn-sm" onclick="toast('Broadcast composer opened')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 11 18-8-8 18-2-8Z"/></svg>Broadcast</button>
+        <button class="icon-btn" id="themeBtn" aria-label="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+        <button class="icon-btn has-dot" onclick="toast('12 system alerts')" aria-label="Alerts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </div>
+    </header>
+    <main class="canvas">
+
+<!-- ============================== OVERVIEW ============================== -->
+<section class="view is-active" id="view-dashboard">
+  <div class="page-head">
+    <div><p class="eyebrow">Tuesday, 18 August · all cities</p><h1 class="h1" style="margin-top:5px">Platform overview</h1></div>
+    <div class="page-actions">
+      <select class="select"><option>All cities</option><option>Lahore</option><option>Karachi</option><option>Islamabad</option><option>Rawalpindi</option></select>
+      <select class="select"><option>Last 30 days</option><option>This quarter</option></select>
+      <button class="btn" onclick="toast('Overview exported')">Export</button>
+    </div>
+  </div>
+
+  <!-- SIGNATURE: the decision queue — what needs a human right now -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <div><h2 class="h2">Decision queue</h2><p class="mute" style="font-size:12px;margin:2px 0 0">72 items are waiting on an admin. Oldest has been open 4 days.</p></div>
+      <button class="btn btn-sm btn-primary" data-view="approvals">Open queue</button>
+    </div>
+    <div class="queue" id="queueStrip"></div>
+    <div class="tbl-wrap"><table class="tbl"><tbody id="queueRows"></tbody></table></div>
+    <div class="tbl-foot">Showing the 5 oldest items <button class="btn btn-sm btn-ghost" style="margin-left:auto" data-view="approvals">See all 72</button></div>
+  </div>
+
+  <div class="grid g-4" style="margin-bottom:14px">
+    <div class="card kpi"><p class="eyebrow">Registered players</p><div class="metric">12,458</div><div class="kpi-foot"><span class="delta up">▲ 12.8%</span> vs last month</div><svg class="spark" id="sparkA" viewBox="0 0 200 34" preserveAspectRatio="none"></svg></div>
+    <div class="card kpi"><p class="eyebrow">Bookings</p><div class="metric">5,342</div><div class="kpi-foot"><span class="delta up">▲ 8.7%</span> · 156 today</div><svg class="spark" id="sparkB" viewBox="0 0 200 34" preserveAspectRatio="none"></svg></div>
+    <div class="card kpi"><p class="eyebrow">Gross bookings value</p><div class="metric">Rs. 7.84M</div><div class="kpi-foot"><span class="delta up">▲ 15.3%</span> · Rs. 784k platform fee</div><svg class="spark" id="sparkC" viewBox="0 0 200 34" preserveAspectRatio="none"></svg></div>
+    <div class="card kpi"><p class="eyebrow">Live arenas</p><div class="metric">328</div><div class="kpi-foot"><span class="delta up">▲ 6.1%</span> · 18 pending review</div><svg class="spark" id="sparkD" viewBox="0 0 200 34" preserveAspectRatio="none"></svg></div>
+  </div>
+
+  <div class="grid g-32" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-head"><h2 class="h2">Bookings across the network</h2>
+        <div class="row" style="gap:14px;font-size:11.5px;color:var(--muted)">
+          <span class="row" style="gap:5px"><i style="width:14px;height:2.5px;background:var(--ink);display:inline-block;border-radius:2px"></i>This month</span>
+          <span class="row" style="gap:5px"><i style="width:14px;height:2.5px;background:var(--line);display:inline-block;border-radius:2px"></i>Last month</span>
+        </div></div>
+      <div class="card-body"><svg class="chart-svg" id="bookChart" viewBox="0 0 720 220"></svg></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2 class="h2">Bookings by city</h2></div>
+      <div class="card-body">
+        <div class="row" style="gap:22px;align-items:center">
+          <svg width="132" height="132" viewBox="0 0 132 132" id="donut" style="flex:none"></svg>
+          <ul class="legend-list" id="donutLegend" style="flex:1;padding:0;margin:0"></ul>
+        </div>
+        <p class="mute" style="font-size:12px;margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line-soft)">Rawalpindi grew fastest this month at <b style="color:var(--text)">+31%</b>, off a small base.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g-2">
+    <div class="card">
+      <div class="card-head"><h2 class="h2">Network utilisation by hour</h2><span class="tag">Peak 7–10 PM</span></div>
+      <div class="card-body"><div class="bars" id="hourBars"></div>
+        <p class="mute" style="font-size:12px;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line-soft)">Off-peak capacity across the network is worth roughly <b style="color:var(--text)">Rs. 2.1M</b> a month if filled.</p></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2 class="h2">Top arenas this month</h2><button class="btn btn-sm btn-ghost" data-view="arenas">View all</button></div>
+      <div class="card-body"><div class="rank" id="topArenas"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== APPROVALS ============================== -->
+<section class="view" id="view-approvals">
+  <div class="page-head">
+    <div><h1 class="h1">Arena approvals</h1><p class="page-sub">Verify documents and photos before an arena can sell slots</p></div>
+    <div class="page-actions">
+      <select class="select"><option>All cities</option><option>Lahore</option><option>Karachi</option></select>
+      <button class="btn" onclick="toast('Verification checklist opened')">Checklist</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab is-on" data-atab="pending">Pending <span class="tag" style="margin-left:5px">18</span></button>
+      <button class="tab" data-atab="approved">Approved</button>
+      <button class="tab" data-atab="rejected">Rejected</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Arena</th><th>Owner</th><th>City</th><th>Documents</th><th>Submitted</th><th class="r">Decision</th></tr></thead>
+      <tbody id="approvalRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Showing 1–6 of 18<div class="pager"><button>‹</button><button class="is-on">1</button><button>2</button><button>3</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- ============================== PLAYERS ============================== -->
+<section class="view" id="view-users">
+  <div class="page-head">
+    <div><h1 class="h1">Players</h1><p class="page-sub">12,458 registered accounts</p></div>
+    <div class="page-actions">
+      <input class="input" style="width:210px" placeholder="Search name, email, phone">
+      <select class="select"><option>All roles</option><option>Player</option><option>Arena owner</option><option>Admin</option></select>
+      <select class="select"><option>Any status</option><option>Active</option><option>Suspended</option></select>
+      <button class="btn" onclick="toast('12,458 rows exported')">Export</button>
+      <button class="btn btn-primary" onclick="toast('New user form opened')">Add user</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Name</th><th>Contact</th><th>Role</th><th>City</th><th class="r">Bookings</th><th class="r">Lifetime value</th><th>Status</th><th class="r">Actions</th></tr></thead>
+      <tbody id="userRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Showing 1–8 of 12,458<div class="pager"><button>‹</button><button class="is-on">1</button><button>2</button><button>3</button><button>…</button><button>1558</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- ============================== OWNERS ============================== -->
+<section class="view" id="view-owners">
+  <div class="page-head">
+    <div><h1 class="h1">Arena owners</h1><p class="page-sub">236 owners running 328 arenas</p></div>
+    <div class="page-actions">
+      <input class="input" style="width:210px" placeholder="Search owners">
+      <select class="select"><option>Any status</option><option>Verified</option><option>Unverified</option></select>
+      <button class="btn btn-primary" onclick="toast('Owner onboarding started')">Add owner</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Owner</th><th>Contact</th><th>City</th><th class="r">Arenas</th><th class="r">Revenue · Aug</th><th>Payout status</th><th>Status</th><th class="r">Actions</th></tr></thead>
+      <tbody id="ownerRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Showing 1–6 of 236<div class="pager"><button>‹</button><button class="is-on">1</button><button>2</button><button>…</button><button>40</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- ============================== ARENAS ============================== -->
+<section class="view" id="view-arenas">
+  <div class="page-head">
+    <div><h1 class="h1">Arenas</h1><p class="page-sub">328 live · 18 pending · 6 suspended</p></div>
+    <div class="page-actions">
+      <select class="select"><option>All cities</option></select>
+      <select class="select"><option>All sports</option><option>Football</option><option>Cricket</option><option>Padel</option><option>Badminton</option></select>
+      <button class="btn" onclick="toast('Map view')">Map view</button>
+    </div>
+  </div>
+  <div class="grid g-3" id="arenaCards"></div>
+</section>
+
+<!-- ============================== BOOKINGS ============================== -->
+<section class="view" id="view-bookings">
+  <div class="page-head">
+    <div><h1 class="h1">Booking monitoring</h1><p class="page-sub">Every booking on the network, live</p></div>
+    <div class="page-actions">
+      <select class="select"><option>Last 7 days</option><option>Today</option></select>
+      <select class="select"><option>Any status</option><option>Confirmed</option><option>Pending</option><option>Cancelled</option></select>
+      <input class="input" style="width:190px" placeholder="Booking ID or player">
+      <button class="btn" onclick="toast('5,342 bookings exported')">Export</button>
+    </div>
+  </div>
+  <div class="grid g-4" style="margin-bottom:14px">
+    <div class="card kpi"><p class="eyebrow">Confirmed</p><div class="metric sm">4,861</div><div class="kpi-foot">91% of all bookings</div></div>
+    <div class="card kpi"><p class="eyebrow">Pending</p><div class="metric sm" style="color:var(--amber)">287</div><div class="kpi-foot">Rs. 712,400 unsettled</div></div>
+    <div class="card kpi"><p class="eyebrow">Cancelled</p><div class="metric sm">194</div><div class="kpi-foot">3.6% · flat vs July</div></div>
+    <div class="card kpi"><p class="eyebrow">Disputed</p><div class="metric sm" style="color:var(--red)">12</div><div class="kpi-foot">Linked to 9 complaints</div></div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Booking</th><th>Player</th><th>Arena</th><th>City</th><th>Slot</th><th class="r">Amount</th><th>Status</th><th class="r">Actions</th></tr></thead>
+      <tbody id="adminBookingRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Showing 1–6 of 5,342<div class="pager"><button>‹</button><button class="is-on">1</button><button>2</button><button>3</button><button>…</button><button>891</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- ============================== PAYMENTS ============================== -->
+<section class="view" id="view-payments">
+  <div class="page-head">
+    <div><h1 class="h1">Payments</h1><p class="page-sub">Transactions, settlements and refunds</p></div>
+    <div class="page-actions">
+      <select class="select"><option>This month</option><option>Last month</option></select>
+      <select class="select"><option>All methods</option><option>Card</option><option>JazzCash</option><option>EasyPaisa</option><option>Bank transfer</option></select>
+      <button class="btn btn-primary" onclick="toast('Settlement run started for 23 owners')">Run settlement</button>
+    </div>
+  </div>
+  <div class="grid g-4" style="margin-bottom:14px">
+    <div class="card kpi"><p class="eyebrow">Processed</p><div class="metric">Rs. 7,845,230</div><div class="kpi-foot"><span class="delta up">▲ 15.3%</span> vs last month</div></div>
+    <div class="card kpi"><p class="eyebrow">Settled to owners</p><div class="metric">Rs. 7,112,450</div><div class="kpi-foot"><span class="delta up">▲ 13.6%</span> · 213 owners paid</div></div>
+    <div class="card kpi" style="border-color:var(--amber)"><p class="eyebrow" style="color:var(--amber)">Awaiting settlement</p><div class="metric">Rs. 432,780</div><div class="kpi-foot">23 owners · due Friday</div></div>
+    <div class="card kpi"><p class="eyebrow">Refunded</p><div class="metric">Rs. 300,000</div><div class="kpi-foot">3.8% of processed volume</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2 class="h2">Transactions</h2><span class="tag">8,456 this month</span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="toast('Ledger exported')">Export ledger</button></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Transaction</th><th>Booking</th><th>Player</th><th>Method</th><th class="r">Amount</th><th class="r">Fee</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody id="txRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Showing 1–6 of 8,456<div class="pager"><button>‹</button><button class="is-on">1</button><button>2</button><button>…</button><button>1692</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- ============================== COMPLAINTS ============================== -->
+<section class="view" id="view-complaints">
+  <div class="page-head">
+    <div><h1 class="h1">Complaints</h1><p class="page-sub">31 open · median first reply 3h 20m</p></div>
+    <div class="page-actions">
+      <select class="select"><option>Any status</option><option>Open</option><option>In progress</option><option>Resolved</option></select>
+      <select class="select"><option>All categories</option><option>Booking</option><option>Payment</option><option>Facility</option><option>Technical</option></select>
+      <button class="btn" onclick="toast('312 tickets exported')">Export</button>
+    </div>
+  </div>
+  <div class="grid g-4" style="margin-bottom:14px">
+    <div class="card kpi"><p class="eyebrow">Open</p><div class="metric sm" style="color:var(--red)">31</div><div class="kpi-foot">9 breached the 24h target</div></div>
+    <div class="card kpi"><p class="eyebrow">In progress</p><div class="metric sm" style="color:var(--amber)">44</div><div class="kpi-foot">Assigned across 6 agents</div></div>
+    <div class="card kpi"><p class="eyebrow">Resolved this month</p><div class="metric sm">237</div><div class="kpi-foot"><span class="delta up">▲ 18%</span> throughput</div></div>
+    <div class="card kpi"><p class="eyebrow">Median resolution</p><div class="metric sm">1d 4h</div><div class="kpi-foot">Target is 2 days</div></div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Ticket</th><th>Raised by</th><th>Category</th><th>Subject</th><th>Priority</th><th>Age</th><th>Status</th><th class="r">Actions</th></tr></thead>
+      <tbody id="ticketRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Showing 1–6 of 312<div class="pager"><button>‹</button><button class="is-on">1</button><button>2</button><button>3</button><button>…</button><button>52</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- ============================== ANALYTICS ============================== -->
+<section class="view" id="view-reports">
+  <div class="page-head">
+    <div><h1 class="h1">Analytics</h1><p class="page-sub">1 – 31 August 2026 · all cities</p></div>
+    <div class="page-actions">
+      <select class="select"><option>This month</option><option>Last quarter</option><option>Year to date</option></select>
+      <button class="btn" onclick="toast('Monthly report scheduled')">Schedule</button>
+      <button class="btn btn-primary" onclick="toast('Report downloaded')">Download PDF</button>
+    </div>
+  </div>
+  <div class="grid g-4" style="margin-bottom:14px">
+    <div class="card kpi"><p class="eyebrow">Top city</p><div class="metric sm">Lahore</div><div class="kpi-foot">2,405 bookings · 45%</div></div>
+    <div class="card kpi"><p class="eyebrow">Top sport</p><div class="metric sm">Football</div><div class="kpi-foot">2,912 bookings · 55%</div></div>
+    <div class="card kpi"><p class="eyebrow">Busiest day</p><div class="metric sm">Saturday</div><div class="kpi-foot">1,250 bookings</div></div>
+    <div class="card kpi"><p class="eyebrow">Repeat booking rate</p><div class="metric sm">57%</div><div class="kpi-foot"><span class="delta up">▲ 4pts</span> vs July</div></div>
+  </div>
+  <div class="grid g-2" style="margin-bottom:14px">
+    <div class="card"><div class="card-head"><h2 class="h2">Revenue over time</h2><span class="tag">Rs. 7.84M</span></div>
+      <div class="card-body"><svg class="chart-svg" id="revChart" viewBox="0 0 720 220"></svg></div></div>
+    <div class="card"><div class="card-head"><h2 class="h2">Bookings by sport</h2></div>
+      <div class="card-body"><div class="bars" id="sportBars"></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2 class="h2">City comparison</h2><span class="tag">August 2026</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>City</th><th class="r">Arenas</th><th class="r">Players</th><th class="r">Bookings</th><th class="r">Revenue</th><th class="r">Avg. slot</th><th class="r">Occupancy</th></tr></thead>
+      <tbody id="cityRows"></tbody>
+    </table></div>
+    <div class="tbl-foot">Islamabad has the highest revenue per arena but the fewest arenas — the clearest place to recruit owners.</div>
+  </div>
+</section>
+
+<!-- ============================== SYSTEM SETTINGS ============================== -->
+<section class="view" id="view-settings">
+  <div class="page-head"><div><h1 class="h1">System settings</h1><p class="page-sub">Platform-wide configuration</p></div></div>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab is-on">General</button>
+      <button class="tab" onclick="toast('Email templates')">Email</button>
+      <button class="tab" onclick="toast('SMS &amp; WhatsApp')">SMS</button>
+      <button class="tab" onclick="toast('Payment gateways')">Payment gateways</button>
+      <button class="tab" onclick="toast('Booking rules')">Booking rules</button>
+      <button class="tab" onclick="toast('Notifications')">Notifications</button>
+      <button class="tab" onclick="toast('Security')">Security</button>
+    </div>
+    <div class="card-body">
+      <div class="grid g-23" style="gap:26px">
+        <div>
+          <div class="card" style="box-shadow:none;background:var(--paper)">
+            <div class="card-body" style="text-align:center">
+              <div style="height:80px;display:grid;place-items:center;margin-bottom:12px">
+                <svg width="42" height="42" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="9" fill="#C4F546"/><path d="M9 22.5 16 8l7 14.5" stroke="#0F1A15" stroke-width="2.4" stroke-linejoin="round"/><path d="M12.4 19h7.2" stroke="#0F1A15" stroke-width="2.4" stroke-linecap="round"/></svg>
+              </div>
+              <b style="font-size:14px">Platform logo</b>
+              <p class="mute" style="font-size:11.5px;margin:4px 0 12px">PNG or SVG, up to 2 MB</p>
+              <button class="btn btn-sm" style="margin:0 auto" onclick="toast('Choose a logo')">Replace</button>
+            </div>
+          </div>
+          <div class="card mt" style="box-shadow:none;background:var(--paper)">
+            <div class="card-body">
+              <p class="eyebrow">Platform fee</p>
+              <div class="metric sm" style="margin:8px 0 4px">10%</div>
+              <p class="mute" style="font-size:12px;margin:0 0 12px">Applied to every confirmed booking</p>
+              <button class="btn btn-sm" onclick="toast('Fee change needs two approvals')">Change fee</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="grid g-2" style="gap:16px">
+            <div class="field"><label for="sn">Platform name</label><input class="input" id="sn" value="Arena Hub"></div>
+            <div class="field"><label for="se">Support email</label><input class="input" id="se" value="support@arenahub.pk"></div>
+            <div class="field"><label for="sp">Support phone</label><input class="input" id="sp" value="0300-1234567"></div>
+            <div class="field"><label for="sc">Default currency</label><select class="select" id="sc" style="width:100%"><option>PKR (Rs.)</option><option>USD ($)</option></select></div>
+            <div class="field"><label for="stz">Timezone</label><select class="select" id="stz" style="width:100%"><option>Asia/Karachi (UTC+05:00)</option></select></div>
+            <div class="field"><label for="sl">Default language</label><select class="select" id="sl" style="width:100%"><option>English</option><option>اردو</option></select></div>
+            <div class="field" style="grid-column:1/-1"><label for="sd">Platform description</label><input class="input" id="sd" value="Book sports arenas across Pakistan — futsal, cricket, padel and badminton."></div>
+            <div class="field" style="grid-column:1/-1"><label for="sa">Registered address</label><input class="input" id="sa" value="123 Sports Complex, Gulberg III, Lahore, Pakistan"></div>
+          </div>
+          <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--line-soft)">
+            <p class="eyebrow">Platform rules</p>
+            <div class="setting-row"><div><b style="font-size:13px">Manual arena verification</b><div class="cell-sub">Every new arena is reviewed by an admin before going live</div></div><span class="switch is-on" onclick="this.classList.toggle('is-on')"></span></div>
+            <div class="setting-row"><div><b style="font-size:13px">Instant booking</b><div class="cell-sub">Players skip owner approval on verified arenas</div></div><span class="switch is-on" onclick="this.classList.toggle('is-on')"></span></div>
+            <div class="setting-row"><div><b style="font-size:13px">Automatic refunds</b><div class="cell-sub">Cancellations more than 12 hours out refund without an agent</div></div><span class="switch is-on" onclick="this.classList.toggle('is-on')"></span></div>
+            <div class="setting-row"><div><b style="font-size:13px">Maintenance mode</b><div class="cell-sub">Takes the player app offline. Use with care.</div></div><span class="switch" onclick="this.classList.toggle('is-on')"></span></div>
+          </div>
+          <div class="row" style="gap:9px;margin-top:22px">
+            <button class="btn btn-primary" onclick="toast('Changes saved')">Save changes</button>
+            <button class="btn btn-ghost" onclick="toast('Changes discarded')">Discard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+    </main>
+  </div>
+</div>
+
+<div class="cmdk" id="cmdk"><div class="cmdk-box">
+  <input class="cmdk-input" id="cmdInput" placeholder="Jump to a page, player, owner or ticket…" autocomplete="off">
+  <div class="cmdk-list" id="cmdList"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ================= shared helpers (same system as the owner console) ================= */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const money = n => 'Rs. ' + n.toLocaleString('en-PK');
+let toastTimer;
+function toast(msg){
+  const t = $('#toast');
+  t.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 12.5 9.5 18 20 7"/></svg>' + msg;
+  t.classList.add('is-up'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('is-up'), 2400);
+}
+function initials(name){
+  const w = name.replace(/\b(Pvt|Ltd|Co\.?)\b/g,'').trim().split(' ').filter(Boolean);
+  return ((w[0]||'')[0] + ((w[1]||'')[0]||'')).toUpperCase();
+}
+function series(vals, w, h, pad){
+  const max = Math.max(...vals) * 1.12;
+  const step = (w - pad*2) / (vals.length - 1);
+  const pts = vals.map((v,i)=>[pad + i*step, h - pad - (v/max)*(h - pad*2)]);
+  const line = pts.map((p,i)=>(i?'L':'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  return {line, area: line + ' L' + pts[pts.length-1][0].toFixed(1) + ' ' + (h-pad) + ' L' + pad + ' ' + (h-pad) + ' Z', pts};
+}
+function bars(el, data, peakIdx){
+  const max = Math.max(...data.map(d=>d.v));
+  el.innerHTML = data.map((d,i)=>
+    '<div class="bar-col" title="' + d.l + ': ' + d.v + '"><div class="bar ' + (i===peakIdx?'is-peak':'') +
+    '" style="height:' + (d.v/max*100) + '%"></div><div class="bar-lbl">' + d.l + '</div></div>').join('');
+}
+
+/* ================= data ================= */
+const queue = [
+  {k:'arena', t:'Sports Galaxy Arena, Lahore', s:'Sports Zone (Pvt) Ltd · 3 courts · submitted 20 May', age:'4d', act:'Review'},
+  {k:'pay',   t:'Settlement held — Karachi Sports Co.', s:'Rs. 118,400 · bank details failed verification', age:'3d', act:'Resolve'},
+  {k:'flag',  t:'Refund dispute · BK-10005', s:'Hamza Tariq vs Rapid Sports Arena · Rs. 3,300', age:'2d', act:'Open'},
+  {k:'arena', t:'Green Field Arena, Islamabad', s:'Play Arena Solutions · 2 courts · submitted 19 May', age:'2d', act:'Review'},
+  {k:'ticket',t:'CMP-20001 · Payment not reflected', s:'Ali Raza · high priority · breached 24h target', age:'1d', act:'Assign'}
+];
+const approvals = [
+  {a:'Sports Galaxy Arena', o:'Sports Zone (Pvt) Ltd', c:'Lahore',     docs:'All 4 received', d:'20 May 2026', sport:'Football'},
+  {a:'Karachi Play Ground', o:'Karachi Sports Co.',    c:'Karachi',    docs:'NTN missing',    d:'19 May 2026', sport:'Cricket'},
+  {a:'Green Field Arena',   o:'Play Arena Solutions',  c:'Islamabad',  docs:'All 4 received', d:'19 May 2026', sport:'Football'},
+  {a:'The Football Hub',    o:'YouPlay Pakistan',      c:'Lahore',     docs:'Photos blurred', d:'18 May 2026', sport:'Football'},
+  {a:'Rapid Sports Arena',  o:'Game On Arenas',        c:'Rawalpindi', docs:'All 4 received', d:'17 May 2026', sport:'Padel'},
+  {a:'Victory Badminton',   o:'The Arena Hub',         c:'Multan',     docs:'Lease expired',  d:'17 May 2026', sport:'Badminton'}
+];
+const users = [
+  {n:'Ali Raza',      e:'ali.raza@email.com',     r:'Player', c:'Lahore',     b:34, v:78400, st:'ok'},
+  {n:'Sara Khan',     e:'sara.khan@email.com',    r:'Player', c:'Karachi',    b:28, v:64200, st:'ok'},
+  {n:'Usman Ahmed',   e:'usman.ahmed@email.com',  r:'Player', c:'Islamabad',  b:22, v:51800, st:'ok'},
+  {n:'Muhammad Bilal',e:'bilal@email.com',        r:'Player', c:'Lahore',     b:5,  v:11200, st:'off'},
+  {n:'Ayesha Malik',  e:'ayesha.malik@email.com', r:'Owner',  c:'Lahore',     b:0,  v:0,     st:'ok'},
+  {n:'Hamza Tariq',   e:'hamza.tariq@email.com',  r:'Player', c:'Faisalabad', b:19, v:44100, st:'ok'},
+  {n:'Zainab Batool', e:'zainab.b@email.com',     r:'Player', c:'Karachi',    b:16, v:38900, st:'ok'},
+  {n:'Danish Ejaz',   e:'danish.ejaz@email.com',  r:'Player', c:'Multan',     b:3,  v:7400,  st:'off'}
+];
+const owners = [
+  {n:'Sports Zone (Pvt) Ltd', e:'owner@sportszone.pk',   p:'0321-1234567', c:'Lahore',     a:4, rev:842300, pay:'ok',   st:'ok'},
+  {n:'Karachi Sports Co.',    e:'info@karachisports.pk', p:'0333-8766432', c:'Karachi',    a:3, rev:614900, pay:'held', st:'ok'},
+  {n:'Play Arena Solutions',  e:'contact@playarena.pk',  p:'0311-5566677', c:'Islamabad',  a:2, rev:398400, pay:'ok',   st:'ok'},
+  {n:'YouPlay Pakistan',      e:'hello@youplay.pk',      p:'0300-1122334', c:'Lahore',     a:5, rev:961700, pay:'ok',   st:'off'},
+  {n:'Game On Arenas',        e:'info@gameon.pk',        p:'0322-3344556', c:'Rawalpindi', a:2, rev:271500, pay:'ok',   st:'ok'},
+  {n:'The Arena Hub',         e:'admin@thearenahub.pk',  p:'0312-9988776', c:'Multan',     a:1, rev:128900, pay:'ok',   st:'ok'}
+];
+const adminBookings = [
+  {id:'BK-10001', u:'Ali Raza',    ini:'AR', a:'Sports Galaxy Arena', c:'Lahore',     s:'20 May · 6–7 PM',  amt:2300, st:'ok'},
+  {id:'BK-10002', u:'Sara Khan',   ini:'SK', a:'Karachi Play Ground', c:'Karachi',    s:'20 May · 8–9 PM',  amt:3200, st:'ok'},
+  {id:'BK-10003', u:'Usman Ahmed', ini:'UA', a:'Green Field Arena',   c:'Islamabad',  s:'21 May · 7–8 PM',  amt:2800, st:'wait'},
+  {id:'BK-10004', u:'Ayesha Malik',ini:'AM', a:'The Football Hub',    c:'Lahore',     s:'21 May · 9–10 PM', amt:2900, st:'ok'},
+  {id:'BK-10005', u:'Hamza Tariq', ini:'HT', a:'Rapid Sports Arena',  c:'Rawalpindi', s:'22 May · 5–6 PM',  amt:3300, st:'off'},
+  {id:'BK-10006', u:'Danish Ejaz', ini:'DE', a:'Victory Arena',       c:'Karachi',    s:'22 May · 7–8 PM',  amt:3500, st:'ok'}
+];
+const txs = [
+  {id:'TRX-30001', b:'BK-10001', u:'Ali Raza',     m:'JazzCash',      amt:2300, st:'ok',   d:'20 May · 06:43 PM'},
+  {id:'TRX-30002', b:'BK-10002', u:'Sara Khan',    m:'EasyPaisa',     amt:3200, st:'ok',   d:'20 May · 06:15 PM'},
+  {id:'TRX-30003', b:'BK-10003', u:'Usman Ahmed',  m:'Bank transfer', amt:2800, st:'wait', d:'21 May · 04:30 PM'},
+  {id:'TRX-30004', b:'BK-10004', u:'Ayesha Malik', m:'JazzCash',      amt:2900, st:'ok',   d:'21 May · 07:58 PM'},
+  {id:'TRX-30005', b:'BK-10005', u:'Hamza Tariq',  m:'Card · Visa',   amt:3300, st:'off',  d:'22 May · 08:10 AM'},
+  {id:'TRX-30006', b:'BK-10006', u:'Danish Ejaz',  m:'EasyPaisa',     amt:3500, st:'ok',   d:'22 May · 07:22 PM'}
+];
+const tickets = [
+  {id:'CMP-20001', u:'Ali Raza',     cat:'Booking',   s:'Payment not reflected after JazzCash debit', p:'High',   age:'26h', st:'open'},
+  {id:'CMP-20002', u:'Sara Khan',    cat:'Facility',  s:'Poor facility management at Karachi Play Ground', p:'Medium', age:'2d',  st:'prog'},
+  {id:'CMP-20003', u:'Usman Ahmed',  cat:'Payment',   s:'Refund not received for cancelled slot', p:'High',   age:'3d',  st:'open'},
+  {id:'CMP-20004', u:'Ayesha Malik', cat:'General',   s:'How do I cancel a booking within 2 hours?', p:'Low',    age:'4h',  st:'done'},
+  {id:'CMP-20005', u:'Hamza Tariq',  cat:'Technical', s:'App will not load slot times on Android 13', p:'Medium', age:'1d',  st:'prog'},
+  {id:'CMP-20006', u:'Danish Ejaz',  cat:'Payment',   s:'Charged twice for a single booking', p:'High',   age:'5h',  st:'open'}
+];
+const cities = [
+  {c:'Lahore',     ar:142, pl:5602, bk:2405, rev:3530300, occ:71},
+  {c:'Karachi',    ar:96,  pl:3738, bk:1603, rev:2353500, occ:66},
+  {c:'Islamabad',  ar:52,  pl:1869, bk:801,  rev:1176800, occ:74},
+  {c:'Rawalpindi', ar:38,  pl:1249, bk:533,  rev:784630,  occ:58}
+];
+
+/* ================= sign in ================= */
+$('#signIn').addEventListener('click', ()=>{ $('#auth').classList.add('is-hidden'); $('#app').classList.remove('is-hidden'); render(); });
+$('#pwToggle').addEventListener('click', ()=>{ const p=$('#pw'); p.type = p.type==='password'?'text':'password'; });
+$('#otp').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#signIn').click(); });
+
+/* network illustration on the sign-in panel */
+(function(){
+  const dots=[[150,210],[420,170],[300,330],[190,470],[470,430],[330,600],[120,660],[500,640]];
+  const L=document.getElementById('netlines'), D=document.getElementById('netdots');
+  if(!L) return;
+  let l='',d='';
+  dots.forEach((p,i)=>{ dots.slice(i+1).forEach(q=>{ if(Math.hypot(p[0]-q[0],p[1]-q[1])<260) l+='<line x1="'+p[0]+'" y1="'+p[1]+'" x2="'+q[0]+'" y2="'+q[1]+'"/>'; }); });
+  dots.forEach((p,i)=>{ const r=i%3===0?6:3.5; d+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+r+'" fill="#C4F546" fill-opacity="'+(i%3===0?'.9':'.45')+'"/>'; });
+  L.innerHTML=l; D.innerHTML=d;
+})();
+
+/* ================= nav, theme, palette ================= */
+function go(view){
+  $$('.view').forEach(v=>v.classList.toggle('is-active', v.id==='view-'+view));
+  $$('.nav-item').forEach(n=>n.classList.toggle('is-active', n.dataset.view===view));
+  window.scrollTo({top:0});
+}
+document.addEventListener('click', e=>{ const el=e.target.closest('[data-view]'); if(el) go(el.dataset.view); });
+$('#themeBtn').addEventListener('click', ()=>{
+  const next = document.documentElement.dataset.theme==='dark'?'light':'dark';
+  document.documentElement.dataset.theme = next; render();
+  toast(next==='dark'?'Dark theme on':'Light theme on');
+});
+const cmds=[
+  {t:'Overview',v:'dashboard',s:'Today'},{t:'Approvals',v:'approvals',s:'18 pending'},
+  {t:'Players',v:'users',s:'12,458'},{t:'Arena owners',v:'owners',s:'236'},
+  {t:'Arenas',v:'arenas',s:'328 live'},{t:'Bookings',v:'bookings',s:'5,342'},
+  {t:'Payments',v:'payments',s:'23 to settle'},{t:'Complaints',v:'complaints',s:'31 open'},
+  {t:'Analytics',v:'reports',s:'August'},{t:'System settings',v:'settings',s:'Platform'}
+];
+function drawCmds(q=''){
+  const list=cmds.filter(c=>c.t.toLowerCase().includes(q.toLowerCase()));
+  $('#cmdList').innerHTML = list.length ? list.map((c,i)=>
+    '<button class="cmdk-item '+(i===0?'is-sel':'')+'" data-cmd="'+c.v+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'+c.t+'<small>'+c.s+'</small></button>').join('')
+    : '<div class="empty"><p class="mute" style="font-size:13px;margin:0">Nothing matches. Try a ticket ID or an owner name.</p></div>';
+}
+function openCmd(o){ $('#cmdk').classList.toggle('is-open',o); if(o){ $('#cmdInput').value=''; drawCmds(); $('#cmdInput').focus(); } }
+$('#openCmd').addEventListener('click',()=>openCmd(true));
+$('#cmdInput').addEventListener('input',e=>drawCmds(e.target.value));
+$('#cmdk').addEventListener('click',e=>{ if(e.target.id==='cmdk') openCmd(false); const b=e.target.closest('[data-cmd]'); if(b){ go(b.dataset.cmd); openCmd(false);} });
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); openCmd(true); }
+  if(e.key==='Escape') openCmd(false);
+  if(e.key==='Enter'&&$('#cmdk').classList.contains('is-open')){ const s=$('.cmdk-item'); if(s){ go(s.dataset.cmd); openCmd(false);} }
+});
+
+/* ================= renderers ================= */
+const qIcon = {
+  arena:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/></svg>',
+  pay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21V4h13l-2 4 2 4H4"/></svg>',
+  ticket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'
+};
+function renderQueue(){
+  const strip=[
+    {n:18,l:'Arenas to verify',v:'approvals'},
+    {n:23,l:'Payments to settle',v:'payments'},
+    {n:31,l:'Complaints open',v:'complaints'},
+    {n:12,l:'Bookings disputed',v:'bookings'}
+  ];
+  $('#queueStrip').innerHTML = strip.map(s=>
+    '<button class="queue-cell" data-view="'+s.v+'"><span class="metric sm">'+s.n+'</span><span class="queue-lbl">'+s.l+'</span></button>').join('');
+  $('#queueRows').innerHTML = queue.map(q=>
+    '<tr><td style="width:40px"><span class="q-ico q-'+q.k+'">'+qIcon[q.k]+'</span></td>'+
+    '<td><div class="cell-strong">'+q.t+'</div><div class="cell-sub">'+q.s+'</div></td>'+
+    '<td class="r"><span class="badge '+(parseInt(q.age)>2&&q.age.includes('d')?'b-off':'b-wait')+'">open '+q.age+'</span></td>'+
+    '<td class="r" style="width:200px"><div class="row" style="gap:6px;justify-content:flex-end">'+
+      (q.k==='arena'
+        ? '<button class="btn btn-sm btn-lime" onclick="toast(\'Approved — the arena is now live\')">Approve</button><button class="btn btn-sm" onclick="toast(\'Sent back to the owner with notes\')">Send back</button>'
+        : '<button class="btn btn-sm btn-primary" onclick="toast(\''+q.act+' opened\')">'+q.act+'</button>')+
+    '</div></td></tr>').join('');
+}
+function renderSparks(){
+  const sets={sparkA:[52,58,61,66,72,79,88],sparkB:[38,44,41,52,49,57,63],sparkC:[41,48,52,58,63,71,79],sparkD:[24,26,27,29,30,31,33]};
+  Object.entries(sets).forEach(([id,v])=>{
+    const s=series(v,200,34,2);
+    document.getElementById(id).innerHTML='<path d="'+s.area+'" fill="var(--lime-wash)"/><path d="'+s.line+'" fill="none" stroke="var(--lime-deep)" stroke-width="1.8" stroke-linejoin="round"/>';
+  });
+}
+function lineChart(id, now, prev, labels, tip){
+  const W=720,H=220,P=26;
+  const a=series(now,W,H,P), b=prev?series(prev,W,H,P):null;
+  let g='';
+  for(let i=0;i<=4;i++){ const y=P+i*(H-P*2)/4; g+='<line x1="'+P+'" x2="'+(W-P)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line-soft)"/>'; }
+  const last=a.pts[a.pts.length-1];
+  document.getElementById(id).innerHTML = g
+    + '<path d="'+a.area+'" fill="var(--lime-wash)" opacity=".8"/>'
+    + (b?'<path d="'+b.line+'" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 4"/>':'')
+    + '<path d="'+a.line+'" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>'
+    + a.pts.map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="2.8" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>').join('')
+    + '<circle cx="'+last[0]+'" cy="'+last[1]+'" r="5.5" fill="var(--lime)" stroke="var(--ink)" stroke-width="2"/>'
+    + '<text x="'+(last[0]-8)+'" y="'+(last[1]-14)+'" text-anchor="end" font-size="11" font-weight="700" fill="var(--text)">'+tip+'</text>'
+    + labels.map((l,i)=>'<text x="'+a.pts[i][0]+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="var(--muted)">'+l+'</text>').join('');
+}
+function renderDonut(){
+  const shares=[{n:'Lahore',p:45,c:'var(--lime)'},{n:'Karachi',p:30,c:'var(--ink)'},{n:'Islamabad',p:15,c:'#5A6B61'},{n:'Rawalpindi',p:10,c:'#AAB6AF'}];
+  const R=52,C=2*Math.PI*R; let off=0;
+  $('#donut').innerHTML = shares.map(s=>{
+    const len=C*s.p/100;
+    const seg='<circle cx="66" cy="66" r="'+R+'" fill="none" stroke="'+s.c+'" stroke-width="20" stroke-dasharray="'+(len-2)+' '+(C-len+2)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 66 66)"/>';
+    off+=len; return seg;
+  }).join('')
+  + '<text x="66" y="63" text-anchor="middle" font-family="Archivo" font-size="20" font-weight="700" fill="var(--text)">5,342</text>'
+  + '<text x="66" y="78" text-anchor="middle" font-size="9.5" fill="var(--muted)" letter-spacing="1">BOOKINGS</text>';
+  $('#donutLegend').innerHTML = shares.map(s=>'<li><i style="background:'+s.c+'"></i>'+s.n+'<b>'+s.p+'%</b></li>').join('');
+}
+function renderTopArenas(){
+  const list=[{n:'Sports Galaxy Arena',c:'Lahore',b:431,r:986300},{n:'Kickoff Arena',c:'Lahore',b:388,r:874100},
+    {n:'Karachi Play Ground',c:'Karachi',b:342,r:762400},{n:'Green Field Arena',c:'Islamabad',b:281,r:658900},
+    {n:'Rapid Sports Arena',c:'Rawalpindi',b:214,r:471200}];
+  const max=Math.max(...list.map(a=>a.r));
+  $('#topArenas').innerHTML=list.map(a=>
+    '<div class="rank-item"><div><b style="font-size:13px">'+a.n+'</b><div class="cell-sub">'+a.c+' · '+a.b+' bookings</div></div>'+
+    '<div class="money" style="font-size:13px">'+money(a.r)+'</div>'+
+    '<div class="rank-bar"><i style="width:'+(a.r/max*100)+'%"></i></div></div>').join('');
+}
+function renderApprovals(){
+  const art={Football:'#C4F546',Cricket:'#8FBF16',Padel:'#5A6B61',Badminton:'#AAB6AF'};
+  $('#approvalRows').innerHTML = approvals.map(a=>{
+    const clean = a.docs === 'All 4 received';
+    return '<tr><td><div class="row"><span class="thumb" style="--c:'+art[a.sport]+'"></span>'+
+      '<div><div class="cell-strong">'+a.a+'</div><div class="cell-sub">'+a.sport+'</div></div></div></td>'+
+      '<td>'+a.o+'</td><td>'+a.c+'</td>'+
+      '<td><span class="badge '+(clean?'b-ok':'b-wait')+'">'+a.docs+'</span></td>'+
+      '<td class="num t2">'+a.d+'</td>'+
+      '<td class="r"><div class="row" style="gap:6px;justify-content:flex-end">'+
+        '<button class="btn btn-sm btn-ghost" onclick="toast(\'Opened '+a.a+'\')">View</button>'+
+        (clean ? '<button class="btn btn-sm btn-lime" onclick="toast(\''+a.a+' approved\')">Approve</button>'
+               : '<button class="btn btn-sm" onclick="toast(\'Sent back to '+a.o+'\')">Request docs</button>')+
+        '<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="toast(\''+a.a+' rejected\')">Reject</button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+function renderUsers(){
+  $('#userRows').innerHTML = users.map(u=>
+    '<tr><td><div class="row"><span class="avatar">'+initials(u.n)+'</span><div class="cell-strong">'+u.n+'</div></div></td>'+
+    '<td class="t2">'+u.e+'</td><td><span class="tag">'+u.r+'</span></td><td>'+u.c+'</td>'+
+    '<td class="r num">'+(u.b||'—')+'</td><td class="r money">'+(u.v?money(u.v):'—')+'</td>'+
+    '<td><span class="badge '+(u.st==='ok'?'b-ok':'b-off')+'">'+(u.st==='ok'?'Active':'Suspended')+'</span></td>'+
+    '<td class="r"><div class="row-actions"><button class="btn btn-sm btn-ghost" onclick="toast(\'Opened '+u.n+'\')">View</button>'+
+    '<button class="btn btn-sm btn-ghost" onclick="toast(\''+(u.st==='ok'?'Suspended ':'Reinstated ')+u.n+'\')">'+(u.st==='ok'?'Suspend':'Reinstate')+'</button></div></td></tr>').join('');
+}
+function renderOwners(){
+  $('#ownerRows').innerHTML = owners.map(o=>
+    '<tr><td><div class="row"><span class="avatar">'+initials(o.n)+'</span><div class="cell-strong">'+o.n+'</div></div></td>'+
+    '<td><div class="t2">'+o.e+'</div><div class="cell-sub num">'+o.p+'</div></td><td>'+o.c+'</td>'+
+    '<td class="r num">'+o.a+'</td><td class="r money">'+money(o.rev)+'</td>'+
+    '<td><span class="badge '+(o.pay==='ok'?'b-ok':'b-wait')+'">'+(o.pay==='ok'?'On schedule':'Held')+'</span></td>'+
+    '<td><span class="badge '+(o.st==='ok'?'b-ok':'b-idle')+'">'+(o.st==='ok'?'Verified':'Unverified')+'</span></td>'+
+    '<td class="r"><div class="row-actions"><button class="btn btn-sm btn-ghost" onclick="toast(\'Opened '+o.n+'\')">View</button>'+
+    '<button class="btn btn-sm btn-ghost" onclick="toast(\'Messaged '+o.n+'\')">Message</button></div></td></tr>').join('');
+}
+function renderArenaCards(){
+  const list=[
+    {n:'Sports Galaxy Arena',o:'Sports Zone (Pvt) Ltd',c:'Lahore',sport:'Football',courts:3,occ:84,st:'live'},
+    {n:'Kickoff Arena',o:'YouPlay Pakistan',c:'Lahore',sport:'Football',courts:4,occ:79,st:'live'},
+    {n:'Karachi Play Ground',o:'Karachi Sports Co.',c:'Karachi',sport:'Cricket',courts:2,occ:71,st:'live'},
+    {n:'Green Field Arena',o:'Play Arena Solutions',c:'Islamabad',sport:'Football',courts:2,occ:0,st:'pending'},
+    {n:'Ace Badminton Court',o:'Game On Arenas',c:'Rawalpindi',sport:'Badminton',courts:6,occ:63,st:'live'},
+    {n:'The Football Hub',o:'YouPlay Pakistan',c:'Lahore',sport:'Padel',courts:2,occ:0,st:'suspended'}
+  ];
+  const badge={live:['b-ok','Live'],pending:['b-wait','Pending review'],suspended:['b-off','Suspended']};
+  $('#arenaCards').innerHTML = list.map(a=>
+    '<article class="card court-card"><div class="court-vis">'+courtArt(a.sport)+
+      '<span class="court-badge badge '+badge[a.st][0]+'">'+badge[a.st][1]+'</span></div>'+
+    '<div class="court-body"><div><b style="font-size:14.5px">'+a.n+'</b><div class="cell-sub">'+a.o+' · '+a.c+'</div></div>'+
+    '<div class="court-meta"><span class="tag">'+a.sport+'</span><span class="tag">'+a.courts+' courts</span><span class="tag">'+(a.occ?a.occ+'% full':'Not selling')+'</span></div>'+
+    '<div class="court-foot"><div class="rank-bar" style="width:70px"><i style="width:'+a.occ+'%"></i></div>'+
+    '<div class="row" style="gap:6px;margin-left:auto">'+
+      '<button class="btn btn-sm" onclick="toast(\'Opened '+a.n+'\')">Open</button>'+
+      (a.st==='pending'?'<button class="btn btn-sm btn-lime" data-view="approvals">Review</button>':'<button class="btn btn-sm btn-ghost" onclick="toast(\'Audit log for '+a.n+'\')">Audit</button>')+
+    '</div></div></div></article>').join('');
+}
+function courtArt(sport){
+  if(sport==='Cricket') return '<svg viewBox="0 0 300 120" preserveAspectRatio="none"><rect width="300" height="120" fill="#0F1A15"/><ellipse cx="150" cy="60" rx="180" ry="110" fill="none" stroke="#C4F546" stroke-opacity=".2" stroke-width="2"/><rect x="120" y="18" width="60" height="84" fill="none" stroke="#EAF6D8" stroke-opacity=".3" stroke-width="2"/><g stroke="#C4F546" stroke-opacity=".8" stroke-width="2.5"><path d="M141 92v-16M150 92v-16M159 92v-16"/></g></svg>';
+  if(sport==='Padel')   return '<svg viewBox="0 0 300 120" preserveAspectRatio="none"><rect width="300" height="120" fill="#0F1A15"/><rect x="34" y="16" width="232" height="88" fill="none" stroke="#EAF6D8" stroke-opacity=".3" stroke-width="2" rx="2"/><path d="M150 16v88" stroke="#C4F546" stroke-opacity=".6" stroke-width="2"/><path d="M34 60h232M82 16v88M218 16v88" stroke="#EAF6D8" stroke-opacity=".18" stroke-width="1.5"/></svg>';
+  if(sport==='Badminton') return '<svg viewBox="0 0 300 120" preserveAspectRatio="none"><rect width="300" height="120" fill="#0F1A15"/><rect x="60" y="14" width="180" height="92" fill="none" stroke="#EAF6D8" stroke-opacity=".3" stroke-width="2"/><path d="M150 14v92" stroke="#C4F546" stroke-opacity=".6" stroke-width="2"/><path d="M60 40h180M60 80h180M105 14v92M195 14v92" stroke="#EAF6D8" stroke-opacity=".18" stroke-width="1.5"/></svg>';
+  return '<svg viewBox="0 0 300 120" preserveAspectRatio="none"><rect width="300" height="120" fill="#0F1A15"/><rect x="26" y="14" width="248" height="92" fill="none" stroke="#EAF6D8" stroke-opacity=".3" stroke-width="2" rx="2"/><path d="M150 14v92" stroke="#EAF6D8" stroke-opacity=".3" stroke-width="2"/><circle cx="150" cy="60" r="24" fill="none" stroke="#C4F546" stroke-opacity=".55" stroke-width="2"/><circle cx="150" cy="60" r="3" fill="#C4F546"/><path d="M26 40h26v40H26M274 40h-26v40h26" fill="none" stroke="#EAF6D8" stroke-opacity=".3" stroke-width="2"/></svg>';
+}
+function renderAdminBookings(){
+  const L={ok:['b-ok','Confirmed'],wait:['b-wait','Pending'],off:['b-off','Cancelled']};
+  $('#adminBookingRows').innerHTML = adminBookings.map(b=>
+    '<tr><td class="cell-strong num">'+b.id+'</td>'+
+    '<td><div class="row"><span class="avatar">'+b.ini+'</span>'+b.u+'</div></td>'+
+    '<td>'+b.a+'</td><td class="t2">'+b.c+'</td><td class="num">'+b.s+'</td>'+
+    '<td class="r money">'+money(b.amt)+'</td>'+
+    '<td><span class="badge '+L[b.st][0]+'">'+L[b.st][1]+'</span></td>'+
+    '<td class="r"><div class="row-actions"><button class="btn btn-sm btn-ghost" onclick="toast(\'Opened '+b.id+'\')">View</button>'+
+    (b.st==='off'?'<button class="btn btn-sm btn-ghost" onclick="toast(\'Refund reviewed\')">Refund</button>':'')+'</div></td></tr>').join('');
+}
+function renderTx(){
+  const L={ok:['b-ok','Completed'],wait:['b-wait','Pending'],off:['b-off','Refunded']};
+  $('#txRows').innerHTML = txs.map(t=>
+    '<tr><td class="cell-strong num">'+t.id+'</td><td class="num t2">'+t.b+'</td><td>'+t.u+'</td><td>'+t.m+'</td>'+
+    '<td class="r money">'+money(t.amt)+'</td><td class="r money t2">'+money(Math.round(t.amt*0.1))+'</td>'+
+    '<td><span class="badge '+L[t.st][0]+'">'+L[t.st][1]+'</span></td><td class="num t2">'+t.d+'</td></tr>').join('');
+}
+function renderTickets(){
+  const S={open:['b-off','Open'],prog:['b-wait','In progress'],done:['b-ok','Resolved']};
+  const P={High:'b-off',Medium:'b-wait',Low:'b-idle'};
+  $('#ticketRows').innerHTML = tickets.map(t=>
+    '<tr><td class="cell-strong num">'+t.id+'</td><td>'+t.u+'</td><td><span class="tag">'+t.cat+'</span></td>'+
+    '<td style="max-width:280px">'+t.s+'</td>'+
+    '<td><span class="badge '+P[t.p]+'">'+t.p+'</span></td><td class="num t2">'+t.age+'</td>'+
+    '<td><span class="badge '+S[t.st][0]+'">'+S[t.st][1]+'</span></td>'+
+    '<td class="r"><div class="row-actions"><button class="btn btn-sm btn-ghost" onclick="toast(\'Opened '+t.id+'\')">Open</button>'+
+    (t.st!=='done'?'<button class="btn btn-sm" onclick="toast(\''+t.id+' assigned to you\')">Assign</button>':'')+'</div></td></tr>').join('');
+}
+function renderCities(){
+  $('#cityRows').innerHTML = cities.map(c=>
+    '<tr><td class="cell-strong">'+c.c+'</td><td class="r num">'+c.ar+'</td><td class="r num">'+c.pl.toLocaleString()+'</td>'+
+    '<td class="r num">'+c.bk.toLocaleString()+'</td><td class="r money">'+money(c.rev)+'</td>'+
+    '<td class="r money">'+money(Math.round(c.rev/c.bk))+'</td>'+
+    '<td class="r"><span class="badge '+(c.occ>=65?'b-ok':'b-wait')+'">'+c.occ+'%</span></td></tr>').join('');
+}
+
+/* ================= boot ================= */
+function render(){
+  renderQueue(); renderSparks();
+  lineChart('bookChart',[142,168,155,198,186,231,265,244,219,258,289,312],[130,141,149,161,158,183,204,196,188,207,221,238],
+    ['1 Aug','4','7','10','13','16','19','22','25','28','30','31'],'312');
+  lineChart('revChart',[312,368,341,428,404,512,588,542,489,566,634,712],null,
+    ['1 Aug','4','7','10','13','16','19','22','25','28','30','31'],'Rs. 712k');
+  renderDonut(); renderTopArenas();
+  bars($('#hourBars'),[{l:'6a',v:9},{l:'8a',v:14},{l:'10a',v:19},{l:'12p',v:24},{l:'2p',v:29},{l:'4p',v:46},
+    {l:'6p',v:71},{l:'7p',v:89},{l:'8p',v:96},{l:'9p',v:84},{l:'10p',v:58},{l:'11p',v:31}],8);
+  bars($('#sportBars'),[{l:'Football',v:2912},{l:'Cricket',v:1204},{l:'Padel',v:641},{l:'Badminton',v:585}],0);
+  renderApprovals(); renderUsers(); renderOwners(); renderArenaCards();
+  renderAdminBookings(); renderTx(); renderTickets(); renderCities();
+}
+$$('[data-atab]').forEach(t=>t.addEventListener('click',()=>{
+  $$('[data-atab]').forEach(x=>x.classList.remove('is-on')); t.classList.add('is-on');
+  toast('Showing ' + t.dataset.atab + ' arenas');
+}));
+render();
+</script>
+</body>
+</html>

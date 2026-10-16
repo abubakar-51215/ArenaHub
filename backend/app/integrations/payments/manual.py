@@ -19,7 +19,9 @@ class ManualProvider:
     def verify_webhook(self, payload: bytes, headers: dict[str, str]) -> WebhookEvent:
         raise ValidationError("bank_transfer has no webhook; approval is manual.")
 
-    async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:
+    async def refund(
+        self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key: str | None = None
+    ) -> RefundResult:
         # No gateway to call back — the owner/admin transfers the refund
         # themselves and marks it processed via the refund-approval endpoint.
         return RefundResult(provider_reference=gateway_transaction_id, status="pending")

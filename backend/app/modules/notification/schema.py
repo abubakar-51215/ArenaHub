@@ -5,8 +5,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.shared.request_model import RequestModel
 
-class DeviceTokenRegister(BaseModel):
+
+class DeviceTokenRegister(RequestModel):
     token: str = Field(min_length=1, max_length=255)
     platform: str = Field(pattern="^(android|ios)$")
 

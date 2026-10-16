@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +25,9 @@ export function TextInputDialog({
   confirmLabel,
   destructive = false,
   pending = false,
+  motion = false,
   error,
+  maxLength,
   onSubmit,
 }: {
   open: boolean;
@@ -35,7 +38,12 @@ export function TextInputDialog({
   confirmLabel: string;
   destructive?: boolean;
   pending?: boolean;
+  /** the confirm button gets the action motion
+   *  (sweep, spinner, tick or shake) */
+  motion?: boolean;
   error?: string | null;
+  /** the longest text the server takes (admin reasons: 500) */
+  maxLength?: number;
   onSubmit: (value: string) => void;
 }) {
   const [value, setValue] = useState("");
@@ -59,8 +67,17 @@ export function TextInputDialog({
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
           rows={4}
+          maxLength={maxLength}
           autoFocus
         />
+        {maxLength ? (
+          <div className="ah-reason-hint">
+            <span />
+            <span className="tabular-nums" aria-live="polite">
+              {value.length} / {maxLength}
+            </span>
+          </div>
+        ) : null}
 
         {error && (
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
@@ -75,19 +92,33 @@ export function TextInputDialog({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant={destructive ? "destructive" : "default"}
-            onClick={() => onSubmit(value)}
-            disabled={pending || !value.trim()}
-            className={
-              destructive
-                ? ""
-                : "bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
-            }
-          >
-            {pending ? "Saving…" : confirmLabel}
-          </Button>
+          {motion ? (
+            <ActionButton
+              type="button"
+              tone={destructive ? "negative" : "positive"}
+              variant={destructive ? "destructive" : "default"}
+              onClick={() => onSubmit(value)}
+              disabled={pending || !value.trim()}
+              busy={pending}
+              failed={!!error}
+            >
+              {confirmLabel}
+            </ActionButton>
+          ) : (
+            <Button
+              type="button"
+              variant={destructive ? "destructive" : "default"}
+              onClick={() => onSubmit(value)}
+              disabled={pending || !value.trim()}
+              className={
+                destructive
+                  ? ""
+                  : "bg-primary text-primary-foreground transition-all hover:opacity-95"
+              }
+            >
+              {pending ? "Saving…" : confirmLabel}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

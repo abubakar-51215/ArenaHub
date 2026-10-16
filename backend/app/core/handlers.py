@@ -13,7 +13,10 @@ log = structlog.get_logger()
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return JSONResponse(status_code=exc.status_code, content=error(exc.message))
+    body = error(exc.message)
+    if getattr(exc, "data", None) is not None:
+        body["data"] = exc.data
+    return JSONResponse(status_code=exc.status_code, content=body)
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

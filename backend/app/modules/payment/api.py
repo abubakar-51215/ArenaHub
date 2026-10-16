@@ -14,20 +14,28 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.modules.payment import service
+from app.modules.payment import methods, service
 from app.modules.payment.schema import PaymentInitiateRequest, ReceiptUploadRequest, RejectRequest
 from app.modules.user.model import User
+from app.shared import abuse, idempotency
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 owner_router = APIRouter(prefix="/owner/payments", tags=["payments-owner"])
+owner_refund_router = APIRouter(prefix="/owner/refunds", tags=["refunds-owner"])
+admin_refund_router = APIRouter(prefix="/admin/refunds", tags=["refunds-admin"])
 admin_router = APIRouter(prefix="/admin/bookings", tags=["payments-admin"])
 webhook_router = APIRouter(prefix="/webhooks", tags=["payments-webhooks"])
 
 _owner = require_role("owner")
 _admin = require_role("admin")
+
+
+@router.get("/methods", summary="The four ways to pay and whether each works yet")
+async def list_payment_methods(_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    return success(data=methods.list_methods(), message="Payment methods retrieved.")
 
 
 @router.get("/my", summary="My payment history")
@@ -50,14 +58,22 @@ async def get_payment_by_group(
     return success(data=payment, message="Payment retrieved.")
 
 
-@router.post("/initiate", summary="Start paying for a booking group")
+@router.post(
+    "/initiate",
+    summary="Start paying for a booking group",
+    dependencies=[Depends(abuse.per_user("payment", 30, 3600))],
+)
 async def initiate_payment(
+    request: Request,
     data: PaymentInitiateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    result = await service.initiate_payment(db, user, data)
-    return success(data=result, message="Payment initiated.")
+    async def action() -> dict[str, Any]:
+        result = await service.initiate_payment(db, user, data)
+        return success(data=result, message="Payment initiated.")
+
+    return await idempotency.run_once(request, user.id, "payment", data, action)
 
 
 @router.post("/initiate-balance", summary="Pay an outstanding balance online")
@@ -70,15 +86,23 @@ async def initiate_balance_payment(
     return success(data=result, message="Balance payment initiated.")
 
 
-@router.post("/{payment_id}/receipt", summary="Upload a bank transfer receipt")
+@router.post(
+    "/{payment_id}/receipt",
+    summary="Upload a bank transfer receipt",
+    dependencies=[Depends(abuse.per_user("payment", 30, 3600))],
+)
 async def upload_receipt(
     payment_id: uuid.UUID,
+    request: Request,
     data: ReceiptUploadRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    payment = await service.upload_receipt(db, user, payment_id, data.receipt_proof_url)
-    return success(data=payment, message="Receipt uploaded, awaiting owner approval.")
+    async def action() -> dict[str, Any]:
+        payment = await service.upload_receipt(db, user, payment_id, data.receipt_proof_url)
+        return success(data=payment, message="Receipt uploaded, awaiting owner approval.")
+
+    return await idempotency.run_once(request, user.id, f"receipt:{payment_id}", data, action)
 
 
 @router.post(
@@ -134,6 +158,53 @@ async def reject_bank_transfer(
 ) -> dict[str, Any]:
     payment = await service.reject_bank_transfer(db, user, payment_id, data.reason)
     return success(data=payment, message="Payment rejected.")
+
+
+@owner_refund_router.get("", summary="Refunds on my arenas (pending, processed or all)")
+async def list_owner_refunds(
+    status: str = Query("pending", pattern="^(pending|processed|all)$"),
+    arena_id: uuid.UUID | None = None,
+    params: PaginationParams = Depends(pagination_params),
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_owner_refunds(db, user, status, params, arena_id)
+    return success(data=data, message="Refunds retrieved.")
+
+
+@owner_refund_router.post("/{refund_id}/mark-paid", summary="Mark a bank-transfer refund as paid")
+async def mark_refund_paid(
+    refund_id: uuid.UUID,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    result = await service.mark_refund_paid(db, user, refund_id)
+    message = "Already marked as paid." if result.already_processed else "Refund marked as paid."
+    return success(data=result, message=message)
+
+
+@admin_refund_router.get("", summary="Refunds across every arena (pending, processed or all)")
+async def list_admin_refunds(
+    status: str = Query("pending", pattern="^(pending|processed|all)$"),
+    params: PaginationParams = Depends(pagination_params),
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.list_admin_refunds(db, status, params)
+    return success(data=data, message="Refunds retrieved.")
+
+
+@admin_refund_router.post(
+    "/{refund_id}/mark-paid", summary="Mark a bank-transfer refund as paid (admin)"
+)
+async def admin_mark_refund_paid(
+    refund_id: uuid.UUID,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    result = await service.admin_mark_refund_paid(db, user, refund_id)
+    message = "Already marked as paid." if result.already_processed else "Refund marked as paid."
+    return success(data=result, message=message)
 
 
 @admin_router.post("/{booking_id}/force-refund", summary="Force a 100% refund (force majeure)")

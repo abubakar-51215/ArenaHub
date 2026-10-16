@@ -29,6 +29,17 @@ async def add_review(db: AsyncSession, review: Review) -> Review:
     return review
 
 
+async def count_unanswered_for_owner(db: AsyncSession, owner_id: uuid.UUID) -> int:
+    """Reviews on any of the owner's arenas that have no reply yet (the owner's Reviews badge)."""
+    total = await db.scalar(
+        select(func.count())
+        .select_from(Review)
+        .join(Arena, Arena.id == Review.arena_id)
+        .where(Arena.owner_id == owner_id, Review.owner_response.is_(None))
+    )
+    return int(total or 0)
+
+
 async def list_arena_reviews(
     db: AsyncSession, arena_id: uuid.UUID, *, offset: int, limit: int
 ) -> tuple[list[tuple[Review, str]], int]:
@@ -69,10 +80,39 @@ async def list_flagged_reviews(
     return [(r, reviewer, arena, rep) for r, reviewer, arena, rep in result.all()], total
 
 
+async def list_my_reviews(
+    db: AsyncSession, player_id: uuid.UUID, *, offset: int, limit: int
+) -> tuple[list[tuple[Review, str]], int]:
+    """The player's own reviews with the arena name, newest first."""
+    total = await db.scalar(select(func.count(Review.id)).where(Review.player_id == player_id)) or 0
+    result = await db.execute(
+        select(Review, Arena.name)
+        .join(Arena, Arena.id == Review.arena_id)
+        .where(Review.player_id == player_id)
+        .order_by(Review.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return [(review, name) for review, name in result.all()], total
+
+
+async def get_rating_breakdown(db: AsyncSession, arena_id: uuid.UUID) -> list[int]:
+    """Counts of 1 to 5 star reviews for an arena (flagged ones left out, like the average)."""
+    result = await db.execute(
+        select(Review.rating, func.count(Review.id))
+        .where(Review.arena_id == arena_id, Review.is_flagged.is_(False))
+        .group_by(Review.rating)
+    )
+    counts: dict[int, int] = {int(r[0]): int(r[1]) for r in result.all()}
+    return [counts.get(star, 0) for star in range(1, 6)]
+
+
 async def get_rating_summary(db: AsyncSession, arena_id: uuid.UUID) -> tuple[float | None, int]:
     """Live-computed ``(average_rating, review_count)`` for an arena."""
     result = await db.execute(
-        select(func.avg(Review.rating), func.count(Review.id)).where(Review.arena_id == arena_id)
+        select(func.avg(Review.rating), func.count(Review.id)).where(
+            Review.arena_id == arena_id, Review.is_flagged.is_(False)
+        )
     )
     average, count = result.one()
     return (float(average) if average is not None else None), count

@@ -3,8 +3,16 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
+import {
+  AdminBadge,
+  AdminEmpty,
+  AdminTableFoot,
+  AdminTag,
+  statusLabel,
+} from "@/components/admin/ui";
+import { ActionButton } from "@/components/ui/action-button";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useComplaintActions, useComplaints } from "@/hooks/useAdmin";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import type { Complaint, ComplaintCategory, ComplaintStatus } from "@/types";
 
@@ -36,6 +44,17 @@ const CATEGORIES: ComplaintCategory[] = [
   "other",
 ];
 const STATUSES: ComplaintStatus[] = ["open", "under_review", "resolved"];
+
+/** Short ticket reference, in the same style as the booking reference (#BK-…). */
+function ticketRef(id: string): string {
+  return `CMP-${id.slice(0, 4).toUpperCase()}`;
+}
+
+/** The prototype's age column: hours under a day, then days. */
+function age(iso: string): string {
+  const hours = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000));
+  return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
+}
 
 export default function AdminComplaintsPage() {
   const [status, setStatus] = useState<ComplaintStatus | "">("");
@@ -80,19 +99,18 @@ export default function AdminComplaintsPage() {
 
   return (
     <>
-      <PageHeader title="Complaints" subtitle="Manage user complaints and support tickets">
+      <PageHeader title="Complaints" subtitle={data ? plural(data.total, "complaint") : undefined}>
         <Select
           value={status}
           onChange={(e) => {
             setStatus(e.target.value as ComplaintStatus | "");
             setPage(1);
           }}
-          className="w-36"
         >
-          <option value="">All Status</option>
+          <option value="">Any status</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s.replace(/_/g, " ")}
+              {statusLabel(s)}
             </option>
           ))}
         </Select>
@@ -102,73 +120,75 @@ export default function AdminComplaintsPage() {
             setCategory(e.target.value as ComplaintCategory | "");
             setPage(1);
           }}
-          className="w-40"
         >
-          <option value="">All Categories</option>
+          <option value="">All categories</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
-              {c.replace(/_/g, " ")}
+              {statusLabel(c)}
             </option>
           ))}
         </Select>
       </PageHeader>
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <section className="ah-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Player</TableHead>
+                <TableHead>Ticket</TableHead>
+                <TableHead>Raised by</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="w-2/5">Description</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Created On</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Assigned to</TableHead>
+                <TableHead>Age</TableHead>
+                <TableHead className="ah-r">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
+                  <TableCell className="ah-mute" colSpan={8}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && complaints.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>
-                    No complaints found.
+                  <TableCell colSpan={8} className="p-0">
+                    <AdminEmpty>No complaints found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {complaints.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell className="font-medium text-foreground">{c.player_name}</TableCell>
-                  <TableCell className="text-muted-foreground capitalize">
-                    {c.category.replace(/_/g, " ")}
-                  </TableCell>
+                  <TableCell className="ah-strong tabular-nums">{ticketRef(c.id)}</TableCell>
+                  <TableCell>{c.player_name}</TableCell>
                   <TableCell>
-                    <p className="text-sm text-foreground">{c.description}</p>
+                    <AdminTag>{statusLabel(c.category)}</AdminTag>
+                  </TableCell>
+                  <TableCell style={{ maxWidth: 280 }}>
+                    <div>{c.description}</div>
                     {c.admin_response && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        <span className="font-medium">Response:</span> {c.admin_response}
-                      </p>
+                      <div className="ah-sub">
+                        <span className="ah-strong">Response:</span> {c.admin_response}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={c.status} />
+                    <AdminBadge status={c.status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {c.assigned_to_name ?? "Unassigned"}
+                  <TableCell className="ah-t2">{c.assigned_to_name ?? "Unassigned"}</TableCell>
+                  <TableCell
+                    className="ah-t2 tabular-nums"
+                    title={formatDate(c.created_at.slice(0, 10))}
+                  >
+                    {age(c.created_at)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(c.created_at.slice(0, 10))}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
+                  <TableCell className="ah-r">
+                    <div className="ah-row-actions">
                       <Button variant="ghost" size="sm" onClick={() => openRespond(c)}>
-                        {c.status === "resolved" ? "View" : "Respond"}
+                        Open
                       </Button>
                     </div>
                   </TableCell>
@@ -176,58 +196,47 @@ export default function AdminComplaintsPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
 
       <Dialog open={!!responding} onOpenChange={(v) => !v && setResponding(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Complaint from {responding?.player_name}</DialogTitle>
+            <DialogTitle>
+              {responding ? `${ticketRef(responding.id)} · ${responding.player_name}` : ""}
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">{responding?.description}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="ah-t2" style={{ margin: 0, fontSize: 13 }}>
+            {responding?.description}
+          </p>
+          <p className="ah-sub" style={{ margin: 0 }}>
             Assigned to:{" "}
-            <span className="font-medium">
+            <span className="ah-strong">
               {responding?.assigned_to_name ?? "Unassigned — will assign to you on save"}
             </span>
           </p>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">Status</label>
+          <div className="ah-field">
+            <Label htmlFor="complaint-status">Status</Label>
             <Select
+              id="complaint-status"
               value={nextStatus}
               onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s.replace(/_/g, " ")}
+                  {statusLabel(s)}
                 </option>
               ))}
             </Select>
@@ -241,7 +250,7 @@ export default function AdminComplaintsPage() {
           />
 
           {error && (
-            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p role="alert" className="ah-auth-error">
               {error}
             </p>
           )}
@@ -254,13 +263,15 @@ export default function AdminComplaintsPage() {
             >
               Cancel
             </Button>
-            <Button
-              className="bg-brand-gradient text-white shadow-brand transition-all hover:opacity-95"
+            <ActionButton
+              tone="positive"
+              busy={respond.isPending}
+              failed={!!error}
               disabled={respond.isPending || !response.trim()}
               onClick={onRespond}
             >
-              {respond.isPending ? "Saving…" : "Save"}
-            </Button>
+              Save
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

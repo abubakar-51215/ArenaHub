@@ -1,9 +1,13 @@
 /** Player-facing review API calls. */
 import { api } from '../lib/api';
-import type { Page, RatingSummary, Review } from '../types';
+import type { MyReview, Page, RatingSummary, Review } from '../types';
 
 export function listArenaReviews(arenaId: string): Promise<Page<Review>> {
   return api.get<Page<Review>>(`/arenas/${arenaId}/reviews?page_size=50`);
+}
+
+export function listMyReviews(): Promise<Page<MyReview>> {
+  return api.get<Page<MyReview>>('/reviews/my?page_size=50');
 }
 
 export function getRatingSummary(arenaId: string): Promise<RatingSummary> {

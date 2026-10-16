@@ -4,6 +4,7 @@ Given an arena's configurable refund policy and how many hours remain before
 a booking's start time, resolve the refund percentage that applies.
 """
 
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 # System default when an arena hasn't configured its own tiers (doc 11:
@@ -24,3 +25,38 @@ def resolve_refund_percentage(policy: list[dict], hours_before_start: Decimal) -
     if not eligible:
         return 0
     return max(eligible, key=lambda t: t["hours_before"])["refund_percentage"]
+
+
+def _when(moment: datetime) -> str:
+    hour = moment.hour % 12 or 12
+    suffix = "AM" if moment.hour < 12 else "PM"
+    return f"{hour}:{moment.minute:02d} {suffix} on {moment.day} {moment.strftime('%b')}"
+
+
+def describe_refund_policy(policy: list[dict], start: datetime) -> str:
+    """The arena's refund rules as one plain sentence group for a booking that
+    starts at ``start`` (for example "Free cancellation until 6:00 AM on
+    22 May. After that, no refund.")."""
+    tiers = sorted(policy or DEFAULT_REFUND_POLICY, key=lambda t: -t["hours_before"])
+    parts: list[str] = []
+    for i, tier in enumerate(tiers):
+        hours, pct = tier["hours_before"], tier["refund_percentage"]
+        cutoff = _when(start - timedelta(hours=hours))
+        if i == 0 and pct == 100:
+            parts.append(f"Free cancellation until {cutoff}.")
+        elif i == 0:
+            parts.append(f"Cancel before {cutoff} and {pct}% is refunded.")
+        else:
+            parts.append(f"Before {cutoff}, {pct}% is refunded.")
+    parts.append("After that, nothing is refunded.")
+    return " ".join(parts)
+
+
+def free_cancel_cutoff(policy: list[dict], start: datetime) -> datetime:
+    """The last moment a booking can still be cancelled (or moved) on the arena's
+    best terms: the start minus the largest threshold that refunds in full, or
+    the largest threshold when no tier refunds in full."""
+    tiers = policy or DEFAULT_REFUND_POLICY
+    full = [t for t in tiers if t["refund_percentage"] >= 100]
+    hours = max((t["hours_before"] for t in (full or tiers)), default=0)
+    return start - timedelta(hours=hours)

@@ -6,7 +6,7 @@ report is built fresh from the same repositories the dashboards already query.
 
 import uuid
 from datetime import date, datetime, time
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,15 +15,49 @@ from app.modules.admin import repository as admin_repo
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
+from app.modules.booking.service import booking_code_for
+from app.modules.court import repository as court_repo
 from app.modules.report.builders import rows_to_csv, rows_to_pdf
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User, UserRole
+from app.shared.display import (
+    PAYMENT_METHOD_NAMES,
+    karachi_date,
+    phone_status,
+    rupees,
+    time_12h,
+    time_range_12h,
+    web_date,
+    web_rupees,
+    web_status,
+)
 
 ReportFormat = Literal["csv", "pdf"]
 AdminReportType = Literal["users", "bookings", "revenue", "arenas", "system"]
 OwnerReportType = Literal["bookings", "occupancy"]
 
 _LIMIT = 5000  # a report is a bulk export, not a paginated view
+# a payment status in words ("completed" reads "Paid" on every screen)
+_PAID = {"completed": "paid"}
+
+
+def _owner_payment(booking: Any, payment: Any) -> str:
+    """The payment as the owner Bookings screen writes it ("Bank transfer · paid")."""
+    if payment is None:
+        return "Not paid yet" if booking.status.value == "pending_payment" else "-"
+    method = PAYMENT_METHOD_NAMES.get(payment.payment_method.value, payment.payment_method.value)
+    lifecycle = getattr(getattr(payment, "lifecycle_status", None), "value", None)
+    if payment.status.value == "refunded" or lifecycle == "refunded":
+        state = "refunded"
+    elif payment.status.value == "completed":
+        state = "paid"
+    elif payment.status.value == "failed":
+        state = "failed"
+    elif booking.status.value == "pending_approval":
+        state = "receipt to review"
+    else:
+        state = "pending"
+    return f"{method} · {state}"
 
 
 def _render(title: str, headers: list[str], rows: list[list[str]], fmt: ReportFormat) -> bytes:
@@ -56,14 +90,27 @@ async def player_bookings_report(
     if date_to is not None:
         bookings = [b for b in bookings if b.booking_date <= date_to]
 
-    headers = ["Date", "Time", "Status", "Payment Status", "Amount (PKR)"]
+    names: dict[tuple[str, uuid.UUID], str] = {}
+    for b in bookings:
+        if ("a", b.arena_id) not in names:
+            arena = await arena_repo.get_arena(db, b.arena_id)
+            names[("a", b.arena_id)] = arena.name if arena else ""
+        if ("c", b.court_id) not in names:
+            court = await court_repo.get_court(db, b.court_id)
+            names[("c", b.court_id)] = court.name if court else ""
+
+    # the phone's words: its status tags, its dates ("Wed 14 Oct 2026") and ₨
+    headers = ["Booking", "Date", "Time", "Arena", "Court", "Status", "Payment", "Amount"]
     rows = [
         [
-            b.booking_date.isoformat(),
-            f"{b.start_time.strftime('%H:%M')}-{b.end_time.strftime('%H:%M')}",
-            b.status.value,
-            b.payment_status.value,
-            str(b.total_amount),
+            booking_code_for(b.booking_group_id),
+            f"{karachi_date(b.booking_date)} {b.booking_date.year}",
+            time_range_12h(b.start_time, b.end_time),
+            names[("a", b.arena_id)],
+            names[("c", b.court_id)],
+            phone_status(b.status),
+            web_status(_PAID.get(b.payment_status.value, b.payment_status.value)),
+            rupees(b.total_amount),
         ]
         for b in bookings
     ]
@@ -89,7 +136,7 @@ async def owner_report(
         if arena is None:
             raise NotFoundError("Arena not found.")
         if arena.owner_id != user.id:
-            raise ForbiddenError("You do not own this arena.")
+            raise NotFoundError("Arena not found.")
         arena_ids = [arena_id]
     else:
         arena_ids = await arena_repo.list_owner_arena_ids(db, user.id)
@@ -112,16 +159,28 @@ async def owner_report(
         limit=_LIMIT,
     )
 
-    headers = ["Date", "Arena", "Court", "Player", "Status", "Payment Status", "Amount (PKR)"]
+    # the words, money, dates and times of the owner Bookings screen; the booking code lets an owner
+    # match a row to a bank transfer and to the phone
+    from app.modules.payment import repository as payment_repo
+
+    payments: dict[uuid.UUID, object] = {}
+    for booking, *_ in rows_raw:
+        if booking.booking_group_id not in payments:
+            payments[booking.booking_group_id] = await payment_repo.get_payment_by_group(
+                db, booking.booking_group_id
+            )
+    headers = ["Booking", "Date", "Time", "Arena", "Court", "Player", "Status", "Payment", "Amount"]
     rows = [
         [
-            booking.booking_date.isoformat(),
+            booking_code_for(booking.booking_group_id),
+            web_date(booking.booking_date),
+            time_range_12h(booking.start_time, booking.end_time),
             arena_name,
             court_name,
             player_name,
-            booking.status.value,
-            booking.payment_status.value,
-            str(booking.total_amount),
+            web_status(booking.status),
+            _owner_payment(booking, payments[booking.booking_group_id]),
+            web_rupees(booking.total_amount),
         ]
         for booking, court_name, arena_name, player_name in rows_raw
     ]
@@ -147,7 +206,11 @@ async def _owner_occupancy_rows(
     for court_id, arena_name, court_name, sellable, booked in per_court:
         pct = f"{(booked / sellable * 100):.1f}%" if sellable else "n/a"
         peak = peaks.get(court_id)
-        peak_label = f"{peak[0]:02d}:00 ({peak[1]} bookings)" if peak else "-"
+        peak_label = (
+            f"{time_12h(f'{peak[0]:02d}:00')} ({peak[1]} booking{'' if peak[1] == 1 else 's'})"
+            if peak
+            else "-"
+        )
         rows.append([arena_name, court_name, str(sellable), str(booked), pct, peak_label])
     return headers, rows
 
@@ -161,10 +224,10 @@ async def _admin_users_rows(db: AsyncSession) -> tuple[list[str], list[list[str]
         [
             u.full_name,
             u.email,
-            u.role.value,
+            web_status(u.role),
             "Yes" if u.is_active else "No",
             "Yes" if u.is_verified else "No",
-            u.created_at.date().isoformat(),
+            web_date(u.created_at),
         ]
         for u in users
     ]
@@ -184,15 +247,17 @@ async def _admin_bookings_rows(
         offset=0,
         limit=_LIMIT,
     )
-    headers = ["Date", "Arena", "Court", "Player", "Status", "Amount (PKR)"]
+    headers = ["Booking", "Date", "Time", "Arena", "Court", "Player", "Status", "Amount"]
     rows = [
         [
-            booking.booking_date.isoformat(),
+            booking_code_for(booking.booking_group_id),
+            web_date(booking.booking_date),
+            time_range_12h(booking.start_time, booking.end_time),
             arena_name,
             court_name,
             player_name,
-            booking.status.value,
-            str(booking.total_amount),
+            web_status(booking.status),
+            web_rupees(booking.total_amount),
         ]
         for booking, arena_name, court_name, player_name in rows_raw
     ]
@@ -214,17 +279,17 @@ async def _admin_revenue_rows(
         offset=0,
         limit=_LIMIT,
     )
-    headers = ["Date", "Arena", "Player", "Method", "Status", "Amount (PKR)"]
+    headers = ["Date", "Arena", "Player", "Method", "Status", "Amount"]
     rows = [
         [
-            payment.created_at.date().isoformat(),
+            web_date(payment.created_at),
             # Plain hyphen: the PDF builder's core Helvetica is latin-1 — an
             # em dash here would crash rendering on the first orphan payment.
             arena_name or "-",
             player_name,
-            payment.payment_method.value,
-            payment.status.value,
-            str(payment.amount),
+            PAYMENT_METHOD_NAMES.get(payment.payment_method.value, payment.payment_method.value),
+            web_status(_PAID.get(payment.status.value, payment.status.value)),
+            web_rupees(payment.amount),
         ]
         for payment, arena_name, player_name in payments_raw
     ]
@@ -236,15 +301,15 @@ async def _admin_arenas_rows(db: AsyncSession) -> tuple[list[str], list[list[str
     for status in ArenaStatus:
         arenas, _ = await arena_repo.list_arenas_by_status(db, status, offset=0, limit=_LIMIT)
         all_rows.extend(
-            [a.name, a.city.value, a.status.value, a.created_at.date().isoformat()] for a in arenas
+            [a.name, a.city.value, web_status(a.status), web_date(a.created_at)] for a in arenas
         )
     headers = ["Name", "City", "Status", "Registered"]
     return headers, all_rows
 
 
 def _hour_label(hour: int) -> str:
-    # Plain hyphen: the PDF builder's core Helvetica is latin-1, no en dash.
-    return f"{hour:02d}:00-{(hour + 1) % 24:02d}:00"
+    """7:00 PM – 8:00 PM (the PDF writes the dash as "-")."""
+    return f"{time_12h(f'{hour:02d}:00')} – {time_12h(f'{(hour + 1) % 24:02d}:00')}"
 
 
 async def _admin_system_rows(db: AsyncSession) -> tuple[list[str], list[list[str]]]:
@@ -261,7 +326,7 @@ async def _admin_system_rows(db: AsyncSession) -> tuple[list[str], list[list[str
     by_hour = await admin_repo.platform_bookings_by_hour(db)
     peak_hours = sorted(by_hour.items(), key=lambda pair: pair[1], reverse=True)[:3]
     peak_label = (
-        ", ".join(f"{_hour_label(h)} ({n} bookings)" for h, n in peak_hours)
+        ", ".join(f"{_hour_label(h)} ({n} booking{'' if n == 1 else 's'})" for h, n in peak_hours)
         if peak_hours
         else "No confirmed bookings yet"
     )
@@ -281,7 +346,7 @@ async def _admin_system_rows(db: AsyncSession) -> tuple[list[str], list[list[str
         ["Active users", str(active_users)],
         ["Approved arenas", str(approved_arenas)],
         ["Bookings (all time)", str(total_bookings)],
-        ["Platform revenue (PKR)", f"{revenue:.2f}"],
+        ["Platform revenue", web_rupees(revenue)],
         ["Peak booking hours", peak_label],
         ["Popular sports (by bookings)", sports_label],
     ]

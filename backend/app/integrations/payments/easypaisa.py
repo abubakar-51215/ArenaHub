@@ -54,6 +54,8 @@ class EasyPaisaProvider:
             currency=str(data["currency"]),
         )
 
-    async def refund(self, *, gateway_transaction_id: str, amount: Decimal) -> RefundResult:
+    async def refund(
+        self, *, gateway_transaction_id: str, amount: Decimal, idempotency_key: str | None = None
+    ) -> RefundResult:
         log.info("easypaisa_simulated_refund", gateway_transaction_id=gateway_transaction_id)
         return RefundResult(provider_reference=f"epr_{uuid.uuid4().hex}", status="processed")

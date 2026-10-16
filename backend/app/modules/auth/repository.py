@@ -6,23 +6,56 @@ populated on the returned instance.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.model import OtpVerification, PasswordHistory, PasswordResetToken
 from app.modules.user.model import User, UserRole
+from app.shared.otp import OtpPurpose
+from app.shared.phone import stored_digit_forms
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-    result = await db.execute(select(User).where(User.email == email))
+    """Email is matched without regard to case (Ali@x.com signs in as ali@x.com).
+    The oldest account wins if old data holds two that differ only in case."""
+    result = await db.execute(
+        select(User)
+        .where(func.lower(User.email) == email.strip().lower())
+        .order_by(User.created_at)
+        .limit(1)
+    )
     return result.scalar_one_or_none()
+
+
+async def get_user_by_google_sub(db: AsyncSession, sub: str) -> User | None:
+    result = await db.execute(select(User).where(User.google_sub == sub).limit(1))
+    return result.scalar_one_or_none()
+
+
+def _phone_matches(phone: str) -> Any:
+    """Rows whose stored phone is this number, whatever its spelling (see
+    app.shared.phone). Deleted accounts hold an anonymised value and never match."""
+    return (
+        func.regexp_replace(User.phone, "[^0-9]", "", "g").in_(stored_digit_forms(phone)),
+        User.deleted_at.is_(None),
+    )
 
 
 async def get_user_by_phone(db: AsyncSession, phone: str) -> User | None:
-    result = await db.execute(select(User).where(User.phone == phone))
+    result = await db.execute(select(User).where(*_phone_matches(phone)).limit(1))
     return result.scalar_one_or_none()
+
+
+async def get_users_by_phone(db: AsyncSession, phone: str, limit: int = 2) -> list[User]:
+    """Up to ``limit`` accounts holding this phone, so a caller can tell one from
+    several. Admins are left out: they sign in by email only."""
+    result = await db.execute(
+        select(User).where(*_phone_matches(phone), User.role != UserRole.admin).limit(limit)
+    )
+    return list(result.scalars().all())
 
 
 async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
@@ -54,24 +87,89 @@ async def create_otp(
     db: AsyncSession,
     *,
     user_id: uuid.UUID,
-    code: str,
+    code_hash: str,
     channel: str,
+    purpose: OtpPurpose,
     expires_at: datetime,
 ) -> OtpVerification:
-    otp = OtpVerification(user_id=user_id, code=code, channel=channel, expires_at=expires_at)
+    otp = OtpVerification(
+        user_id=user_id,
+        code_hash=code_hash,
+        channel=channel,
+        purpose=purpose.value,
+        expires_at=expires_at,
+    )
     db.add(otp)
     await db.flush()
     return otp
 
 
-async def get_latest_otp(db: AsyncSession, user_id: uuid.UUID) -> OtpVerification | None:
-    """Most recently issued, still-unused OTP for a user."""
-    result = await db.execute(
+async def count_recent_otps(
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, within: timedelta
+) -> int:
+    """How many codes of one purpose went out to a user in the last ``within`` (a code whose
+    email could not be sent does not count)."""
+    total = await db.scalar(
+        select(func.count())
+        .select_from(OtpVerification)
+        .where(
+            OtpVerification.user_id == user_id,
+            OtpVerification.purpose == purpose.value,
+            OtpVerification.created_at >= func.now() - within,
+            OtpVerification.delivery_failed.is_(False),
+        )
+    )
+    return int(total or 0)
+
+
+async def end_all_otps(db: AsyncSession, user_id: uuid.UUID, now: datetime) -> None:
+    """Every code of a user that is still waiting, whatever its purpose, stops working."""
+    await db.execute(
+        update(OtpVerification)
+        .where(OtpVerification.user_id == user_id, OtpVerification.used_at.is_(None))
+        .values(used_at=now)
+    )
+
+
+async def clear_password_history(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Forget an account's earlier passwords (a never-confirmed sign-up taken over by a new one)."""
+    await db.execute(delete(PasswordHistory).where(PasswordHistory.user_id == user_id))
+
+
+async def end_active_otps(
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, now: datetime
+) -> None:
+    """A new code ends every older code of the same purpose (one active code at a time)."""
+    await db.execute(
+        update(OtpVerification)
+        .where(
+            OtpVerification.user_id == user_id,
+            OtpVerification.purpose == purpose.value,
+            OtpVerification.used_at.is_(None),
+        )
+        .values(used_at=now)
+    )
+
+
+async def get_latest_otp(
+    db: AsyncSession, user_id: uuid.UUID, purpose: OtpPurpose, *, for_update: bool = False
+) -> OtpVerification | None:
+    """Most recently issued, still-unused OTP of one purpose for a user.
+    ``for_update`` locks the row (SELECT ... FOR UPDATE) until the transaction
+    ends, so concurrent checks of one code are counted one after the other."""
+    stmt = (
         select(OtpVerification)
-        .where(OtpVerification.user_id == user_id, OtpVerification.is_used.is_(False))
-        .order_by(OtpVerification.created_at.desc())
+        .where(
+            OtpVerification.user_id == user_id,
+            OtpVerification.purpose == purpose.value,
+            OtpVerification.used_at.is_(None),
+        )
+        .order_by(OtpVerification.expires_at.desc())
         .limit(1)
     )
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 

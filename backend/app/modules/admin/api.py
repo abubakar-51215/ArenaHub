@@ -8,19 +8,22 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.modules.admin import service
+from app.modules.admin import phone, service
+from app.modules.admin.overview import build_overview
 from app.modules.admin.schema import (
+    ArenaModerationRequest,
     PlatformSettingsRequest,
+    ReactivateArenaRequest,
     RejectArenaRequest,
     SuspendUserRequest,
 )
-from app.modules.arena.model import ArenaStatus
+from app.modules.arena.model import ArenaCity, ArenaStatus
 from app.modules.booking.model import BookingStatus
 from app.modules.payment.model import PaymentMethod
 from app.modules.payment.model import PaymentStatus as PayStatus
@@ -49,14 +52,59 @@ async def get_dashboard(
 # ---- arena verification --------------------------------------------------
 
 
-@router.get("/arenas", summary="Arena verification queue")
-async def list_queue(
-    status: ArenaStatus = ArenaStatus.pending,
+@router.get("/dashboard/overview", summary="Dashboard overview: KPIs, charts and queue")
+async def get_dashboard_overview(
+    city: ArenaCity | None = None,
+    range: Literal["30d", "quarter"] = "30d",  # noqa: A002 - public query name
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Read-only. Every card on the admin Dashboard, for one city (or all) over
+    the last 30 days or the current quarter, compared with the period before."""
+    data = await build_overview(db, city=city, range_=range)
+    return success(data=data, message="Dashboard overview retrieved.")
+
+
+@router.get("/phone/overview", summary="Overview numbers for the admin phone app")
+async def get_phone_overview(
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    return success(data=await phone.overview(db), message="Overview retrieved.")
+
+
+@router.get("/arena-cards", summary="Arenas with their owner, by scope (phone lists)")
+async def get_arena_cards(
+    scope: phone.ArenaScope = "waiting",
+    search: str | None = Query(None, max_length=100),
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    data = await service.list_queue(db, status, params)
+    data = await phone.arena_cards(db, scope, search, params)
+    return success(data=data, message="Arenas retrieved.")
+
+
+@router.get("/arenas/{arena_id}/summary", summary="One arena for the phone detail screen")
+async def get_arena_summary(
+    arena_id: uuid.UUID,
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    return success(data=await phone.arena_summary(db, arena_id), message="Arena retrieved.")
+
+
+@router.get("/arenas", summary="Arena verification queue")
+async def list_queue(
+    status: ArenaStatus = ArenaStatus.pending,
+    suspended: bool | None = None,
+    params: PaginationParams = Depends(pagination_params),
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """``suspended=true`` lists only suspended arenas, ``false`` leaves them
+    out; omitted lists both. Removed arenas are never listed."""
+    data = await service.list_queue(db, status, params, suspended)
     return success(data=data, message="Verification queue retrieved.")
 
 
@@ -91,6 +139,39 @@ async def reject_arena(
     return success(data=arena, message="Arena rejected.")
 
 
+@router.post("/arenas/{arena_id}/suspend", summary="Suspend an approved arena")
+async def suspend_arena(
+    arena_id: uuid.UUID,
+    data: ArenaModerationRequest,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    arena = await service.suspend_arena(db, user, arena_id, data.reason)
+    return success(data=arena, message="Arena suspended.")
+
+
+@router.post("/arenas/{arena_id}/reactivate", summary="Lift an arena's suspension")
+async def reactivate_arena(
+    arena_id: uuid.UUID,
+    data: ReactivateArenaRequest | None = None,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    arena = await service.reactivate_arena(db, user, arena_id, data.reason if data else None)
+    return success(data=arena, message="Arena reactivated.")
+
+
+@router.delete("/arenas/{arena_id}", summary="Remove an arena (soft delete)")
+async def delete_arena(
+    arena_id: uuid.UUID,
+    data: ArenaModerationRequest,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    arena = await service.delete_arena(db, user, arena_id, data.reason)
+    return success(data=arena, message="Arena removed.")
+
+
 # ---- user management --------------------------------------------------
 
 
@@ -98,7 +179,7 @@ async def reject_arena(
 async def list_users(
     role: UserRole | None = None,
     is_active: bool | None = None,
-    search: str | None = None,
+    search: str | None = Query(None, max_length=100),
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
@@ -204,7 +285,7 @@ async def list_payments(
 
 @router.get("/audit-logs", summary="Browse the admin action audit log")
 async def list_audit_logs(
-    action: str | None = None,
+    action: str | None = Query(None, max_length=100),
     params: PaginationParams = Depends(pagination_params),
     _user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),

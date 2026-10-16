@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Hub — Register Your Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ARENA HUB — design tokens (identical to arena-hub-owner.html)
+   ============================================================ */
+:root{
+  --ink:#0F1A15; --ink-soft:#1C2B23; --paper:#F1F2EF; --card:#FFFFFF;
+  --line:#E2E6E1; --line-soft:#EDEFEB; --text:#0F1A15; --text-2:#46534C; --muted:#79857E;
+  --lime:#C4F546; --lime-ink:#0F1A15; --lime-deep:#7FA30F; --lime-wash:#F2FBDA;
+  --amber:#D9930B; --amber-wash:#FDF3DC; --red:#CF4141; --red-wash:#FBE9E9;
+  --r-sm:8px; --r:12px; --r-lg:18px;
+  --shadow:0 1px 2px rgba(15,26,21,.05);
+  --shadow-lg:0 18px 40px -18px rgba(15,26,21,.28);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--text);font-family:'Inter Tight',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--lime-deep);outline-offset:2px;border-radius:4px}
+::selection{background:var(--lime);color:var(--ink)}
+
+.eyebrow{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 125,'wght' 600;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.h1{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 88,'wght' 700;font-size:24px;line-height:1.15;letter-spacing:-.02em;margin:0}
+.mute{color:var(--muted)}
+.brand-mark{width:30px;height:30px;flex:none}
+.brand-name{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 100,'wght' 700;color:#fff;font-size:15px;letter-spacing:-.01em;line-height:1.05}
+.brand-name small{display:block;font-variation-settings:'wdth' 125,'wght' 500;font-size:8.5px;letter-spacing:.2em;color:#A9B5AE;text-transform:uppercase;margin-top:2px}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--text);box-shadow:var(--shadow);transition:transform .1s,background .14s,border-color .14s}
+.btn svg{width:15px;height:15px}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn-primary:hover{background:var(--ink-soft);border-color:var(--ink-soft)}
+.btn-primary:disabled{opacity:.45;cursor:default;pointer-events:none}
+
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:600;color:var(--text-2)}
+.input{padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:13.5px;width:100%;transition:border-color .14s,box-shadow .14s}
+.input:focus{outline:none;border-color:var(--lime-deep);box-shadow:0 0 0 3px var(--lime-wash)}
+.input::placeholder{color:var(--muted)}
+.input.otp{letter-spacing:.5em;font-weight:700;text-align:center;font-family:'Archivo',sans-serif}
+.pw-wrap{position:relative}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);padding:4px}
+.field-err{font-size:12px;color:var(--red)}
+
+/* ---- two-column auth grid (identical structure to sign-in) ---- */
+.auth{display:grid;grid-template-columns:1fr 1fr;min-height:100vh;background:var(--card)}
+.auth-form{display:flex;flex-direction:column;justify-content:center;padding:40px 8vw;max-width:640px;width:100%;margin:0 auto}
+.auth-form .h1{font-size:32px;letter-spacing:-.03em;margin-bottom:6px}
+.auth-side{
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:38px;
+  /* fallback turf gradient — visible only if the photo fails to load,
+     so a broken image degrades to something intentional */
+  background:linear-gradient(160deg,#0C1F16 0%,#050B08 100%);
+}
+.auth-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.72) brightness(.62) contrast(1.05)}
+/* two stacked scrims: vertical (guarantees contrast where the text sits)
+   + flat ink wash (ties any photo back to the brand palette) */
+.auth-scrim{position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(to top,rgba(7,16,11,.97) 0%,rgba(7,16,11,.86) 26%,rgba(7,16,11,.46) 58%,rgba(7,16,11,.24) 100%),
+    linear-gradient(150deg,rgba(15,26,21,.55) 0%,rgba(5,11,8,.35) 100%)}
+.auth-glow{position:absolute;pointer-events:none;width:70%;aspect-ratio:1;top:-14%;left:-12%;
+  background:radial-gradient(circle,rgba(196,245,70,.20) 0%,rgba(196,245,70,0) 68%)}
+.auth-glow.two{top:auto;left:auto;bottom:-18%;right:-16%;width:62%;
+  background:radial-gradient(circle,rgba(159,216,255,.12) 0%,rgba(159,216,255,0) 70%)}
+.auth-side::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;z-index:3;
+  background:linear-gradient(to right,var(--lime) 0%,rgba(196,245,70,.15) 42%,transparent 100%)}
+.auth-credit{position:absolute;top:26px;right:30px;z-index:3;display:flex;align-items:center;gap:7px;
+  padding:6px 11px;border-radius:999px;background:rgba(7,16,11,.55);
+  border:1px solid rgba(234,246,216,.14);backdrop-filter:blur(6px)}
+.auth-credit .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px rgba(196,245,70,.2)}
+.auth-credit span{font-size:10.5px;color:#C8D6CD;letter-spacing:.02em}
+.auth-quote{position:relative;z-index:2;max-width:400px}
+.auth-quote h3{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 84,'wght' 700;font-size:27px;line-height:1.18;letter-spacing:-.02em;color:#fff;margin:0 0 10px;text-shadow:0 1px 20px rgba(0,0,0,.45)}
+.auth-quote h3 em{font-style:normal;color:var(--lime)}
+.auth-quote p{color:#B8C7BE;font-size:13.5px;margin:0;max-width:330px;text-shadow:0 1px 12px rgba(0,0,0,.4)}
+.auth-stats{position:relative;z-index:2;display:flex;gap:30px;margin-top:28px;padding-top:22px;border-top:1px solid rgba(234,246,216,.16)}
+.auth-stats div b{display:block;font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 76,'wght' 700;font-size:26px;color:#fff;line-height:1}
+.auth-stats div span{font-size:10.5px;color:#93A69A;letter-spacing:.04em}
+
+/* ---- step progress ---- */
+.steps{display:flex;align-items:center;gap:8px;margin-bottom:28px}
+.steps .dot{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.steps .dot.is-done,.steps .dot.is-on{background:var(--lime-deep)}
+.steps .bar{width:26px;height:1.5px;background:var(--line)}
+.steps .bar.is-done{background:var(--lime-deep)}
+.steps span{font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+
+.view-step{display:none}
+.view-step.is-active{display:block;animation:rise .28s cubic-bezier(.22,.7,.3,1)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+@media (max-width:1023px){
+  .auth{grid-template-columns:1fr}
+  .auth-side{display:none}
+  .auth-form{padding:34px 24px}
+}
+</style>
+</head>
+<body>
+
+<div class="auth" id="auth">
+  <div class="auth-form">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="#0F1A15"/>
+        <path d="M9 22.5 16 8l7 14.5" stroke="#C4F546" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M12.4 19h7.2" stroke="#C4F546" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="1.9" fill="#C4F546"/>
+      </svg>
+      <div class="brand-name" style="color:var(--text)">Arena Hub<small>Owner console</small></div>
+    </div>
+
+    <div class="steps">
+      <div class="dot" id="dot1"></div><span id="lbl1">Your details</span>
+      <div class="bar" id="bar1"></div>
+      <div class="dot" id="dot2"></div><span id="lbl2">Verify email</span>
+    </div>
+
+    <!-- ============ STEP 1 — details ============ -->
+    <div class="view-step is-active" id="step-form">
+      <p class="eyebrow" style="margin:0 0 10px">List your business</p>
+      <h1 class="h1">Put your courts on the map.</h1>
+      <p class="mute" style="margin:0 0 26px;font-size:14px">Create your owner account — it takes about two minutes.</p>
+
+      <form class="stack" style="gap:15px;max-width:410px" id="formStep">
+        <div class="field">
+          <label for="full_name">Full name</label>
+          <input class="input" id="full_name" placeholder="Jane Doe" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input class="input" id="email" type="email" placeholder="owner@arenahub.pk" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="phone">Phone number</label>
+          <input class="input" id="phone" type="tel" placeholder="03001234567" autocomplete="tel" required>
+        </div>
+        <div class="row" style="gap:12px;align-items:flex-start">
+          <div class="field" style="flex:1">
+            <label for="pw">Password</label>
+            <div class="pw-wrap">
+              <input class="input" id="pw" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required>
+              <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field" style="flex:1">
+            <label for="pw2">Confirm password</label>
+            <input class="input" id="pw2" type="password" placeholder="••••••••••" autocomplete="new-password" minlength="8" required>
+          </div>
+        </div>
+        <p class="field-err" id="formErr" style="display:none">Passwords do not match.</p>
+        <button class="btn btn-primary" id="toStep2" type="submit" style="justify-content:center;padding:11px;font-size:14px;margin-top:4px">Create account</button>
+        <p class="mute" style="font-size:13px;text-align:center;margin:2px 0 0">
+          Already have an account? <a href="#" style="font-weight:600;color:var(--text)">Sign in</a>
+        </p>
+      </form>
+    </div>
+
+    <!-- ============ STEP 2 — OTP ============ -->
+    <div class="view-step" id="step-otp">
+      <p class="eyebrow" style="margin:0 0 10px">One last step</p>
+      <h1 class="h1">Verify your email.</h1>
+      <p class="mute" style="margin:0 0 26px;font-size:14px">We sent a 6-digit code to <b id="otpEmail" style="color:var(--text)">owner@arenahub.pk</b>.</p>
+
+      <form class="stack" style="gap:16px;max-width:410px" id="otpStep">
+        <div class="field">
+          <label for="code">Verification code</label>
+          <input class="input otp" id="code" inputmode="numeric" placeholder="······" maxlength="6" required>
+        </div>
+        <button class="btn btn-primary" id="verifyBtn" type="submit" disabled style="justify-content:center;padding:11px;font-size:14px">Verify &amp; continue</button>
+        <button type="button" id="backStep" class="mute" style="text-align:center;font-size:13px;font-weight:600;background:none;border:0">
+          Wrong email? Go back
+        </button>
+      </form>
+    </div>
+
+    <p class="mute" style="font-size:11.5px;margin-top:auto;padding-top:36px">© 2026 Arena Hub · Lahore, Pakistan</p>
+  </div>
+
+  <div class="auth-side">
+    <img class="auth-photo" src="../../frontend/web/public/images/court-signup.jpg" alt="">
+    <div class="auth-scrim"></div>
+    <div class="auth-glow"></div>
+    <div class="auth-glow two"></div>
+    <div class="auth-credit">
+      <span class="dot"></span>
+      <span>328 arenas already listed</span>
+    </div>
+    <div class="auth-quote">
+      <p class="eyebrow" style="color:var(--lime);margin:0 0 14px">Join the network</p>
+      <h3>Get seen by players <em>the moment</em> you go live.</h3>
+      <p>List your courts, set your prices, and start taking real-time bookings the same day you sign up.</p>
+    </div>
+    <div class="auth-stats">
+      <div><b>2 min</b><span>Average setup time</span></div>
+      <div><b>0%</b><span>Setup fees</span></div>
+      <div><b>24/7</b><span>Booking availability</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+function showStep(n){
+  $('#step-form').classList.toggle('is-active', n===1);
+  $('#step-otp').classList.toggle('is-active', n===2);
+  $('#dot1').classList.toggle('is-on', n===1);
+  $('#dot1').classList.toggle('is-done', n===2);
+  $('#dot2').classList.toggle('is-on', n===2);
+  $('#bar1').classList.toggle('is-done', n===2);
+}
+showStep(1);
+
+$('#pwToggle').addEventListener('click', ()=>{
+  const p = $('#pw'); p.type = p.type === 'password' ? 'text' : 'password';
+});
+
+$('#formStep').addEventListener('submit', e=>{
+  e.preventDefault();
+  const pw = $('#pw').value, pw2 = $('#pw2').value;
+  if(pw !== pw2){ $('#formErr').style.display='block'; return; }
+  $('#formErr').style.display='none';
+  $('#otpEmail').textContent = $('#email').value || 'owner@arenahub.pk';
+  showStep(2);
+});
+
+$('#code').addEventListener('input', e=>{
+  e.target.value = e.target.value.replace(/\D/g,'').slice(0,6);
+  $('#verifyBtn').disabled = e.target.value.length !== 6;
+});
+
+$('#otpStep').addEventListener('submit', e=>{
+  e.preventDefault();
+  // → real app: verifyOtp(email, code), then redirect to /owner
+});
+
+$('#backStep').addEventListener('click', ()=> showStep(1));
+</script>
+</body>
+</html>
