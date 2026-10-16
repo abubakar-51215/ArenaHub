@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from httpx import AsyncClient
 from sqlalchemy import event, text
@@ -12,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.booking.model import Booking, BookingStatus, PaymentPlan, PaymentStatus
 from app.modules.slot.model import SlotStatus, TimeSlot
-from app.shared.timezone import platform_today
+from app.shared.timezone import PLATFORM_TZ, platform_today
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
 
 URL = "/api/v1/admin/dashboard/overview"
@@ -76,10 +77,19 @@ async def _booking(
             payment_type=PaymentPlan.full,
             status=status,
             payment_status=PaymentStatus.completed,
-            created_at=created_at or datetime.combine(on, time(hour)),
+            created_at=created_at or await _made_at(db, on, hour),
         )
     )
     await db.flush()
+
+
+async def _made_at(db: AsyncSession, on: date, hour: int) -> datetime:
+    """The booking was made on that Karachi day at that hour. created_at is a plain clock time in
+    the database session's zone (as func.now() writes it), so the Karachi moment is turned into
+    that zone: the same rows whether the database runs in UTC (CI) or in Karachi time."""
+    zone = str(await db.scalar(text("SHOW TimeZone")))
+    moment = datetime.combine(on, time(hour), tzinfo=PLATFORM_TZ)
+    return moment.astimezone(ZoneInfo(zone)).replace(tzinfo=None)
 
 
 async def test_only_admins_can_read_the_overview(
