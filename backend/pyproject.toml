@@ -26,6 +26,7 @@ dependencies = [
     "google-auth>=2.30",
     "requests>=2.31",
     "argon2-cffi>=25.1.0",
+    "cloudinary>=1.46.3",
 ]
 
 [dependency-groups]

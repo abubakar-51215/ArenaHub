@@ -40,6 +40,7 @@ from app.modules.arena.schema import (
 from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_admins
 from app.shared.pagination import PaginationParams, paginated
+from app.shared.storage import delete_image
 
 # Fields that map 1:1 from the update schema onto the model.
 _SCALAR_UPDATE_FIELDS = (
@@ -144,6 +145,8 @@ async def update_arena(
     if data.sports_offered is not None:
         arena.sports_offered = data.sports_offered
     if data.images is not None:
+        for removed in set(arena.images or []) - set(data.images):
+            delete_image(removed)  # drop pictures the owner took off the arena
         arena.images = data.images
     if data.refund_policy is not None:
         arena.refund_policy = [t.model_dump() for t in data.refund_policy]

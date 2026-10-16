@@ -201,6 +201,10 @@ class Settings(BaseSettings):
             problems.append("DEBUG must be off")
         if self.payment_mode == PaymentMode.mock:
             problems.append("PAYMENT_MODE=mock is for development and tests only")
+        if not self.cloudinary_url:
+            # Without it, uploads fall back to this server's own disk, which most
+            # hosts wipe on restart (see docs/BEFORE_GOING_LIVE.md).
+            problems.append("CLOUDINARY_URL is required outside development (image storage)")
         for origin in (o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()):
             if "*" in origin:
                 problems.append("CORS_ALLOWED_ORIGINS must list exact origins, no wildcard")
