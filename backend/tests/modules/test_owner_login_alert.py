@@ -23,7 +23,9 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     """A fake email sender: records every call instead of sending."""
     calls: list[dict] = []
 
-    async def fake(to, subject, body, html=None, *, timeout=8, kind="email"):  # noqa: ANN001, ANN202
+    async def fake(
+        to, subject, body, html=None, *, timeout=8, kind="email"
+    ):  # noqa: ANN001, ANN202
         calls.append({"to": to, "subject": subject, "body": body, "html": html, "kind": kind})
         return True
 

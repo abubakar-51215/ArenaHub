@@ -83,17 +83,17 @@ async def test_today_returns_only_hours_that_have_not_started(
     today = date.today()
     await _hours(db_session, court_id, today)
     noon = datetime.combine(today, time(12, 30))
-    rows = await slot_service.list_public_slots(db_session, court_id, today, now=noon)
+    rows = await slot_service.list_public_slots(db_session, uuid.UUID(court_id), today, now=noon)
     starts = [r.start_time for r in rows]
     assert starts[0] == time(13, 0) and starts[-1] == time(23, 0) and len(starts) == 11
     # a slot that starts exactly now has started
     exact = await slot_service.list_public_slots(
-        db_session, court_id, today, now=datetime.combine(today, time(13, 0))
+        db_session, uuid.UUID(court_id), today, now=datetime.combine(today, time(13, 0))
     )
     assert exact[0].start_time == time(14, 0)
     # the very start of the day lists everything after midnight
     early = await slot_service.list_public_slots(
-        db_session, court_id, today, now=datetime.combine(today, time(0, 0))
+        db_session, uuid.UUID(court_id), today, now=datetime.combine(today, time(0, 0))
     )
     assert len(early) == 23
 

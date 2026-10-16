@@ -228,7 +228,7 @@ async def test_days_and_today_are_karachi_days(client, db_session):
 
 
 async def _court(
-    client: AsyncClient, owner_token: str, arena_id: uuid.UUID, name: str
+    client: AsyncClient, owner_token: dict, arena_id: uuid.UUID, name: str
 ) -> uuid.UUID:
     res = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/courts",

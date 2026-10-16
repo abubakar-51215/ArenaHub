@@ -96,7 +96,9 @@ async def test_the_same_phone_in_any_spelling_shares_one_count(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     _, user = await make_user(client, db_session, "ss-phone@example.com")
-    spellings = [user.phone, "+92 " + user.phone[1:], user.phone.replace("03", "03 ", 1)]
+    phone = user.phone
+    assert phone is not None
+    spellings = [phone, "+92 " + phone[1:], phone.replace("03", "03 ", 1)]
     for n in range(5):
         await _login(client, spellings[n % 3], BAD)
     assert (await _login(client, spellings[0])).status_code == 429

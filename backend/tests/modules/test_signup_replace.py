@@ -85,7 +85,7 @@ async def test_a_confirmed_account_still_refuses_with_the_usual_words(
     by_email = await client.post(REGISTER, json=_body("taken@x.pk", "03111000031"))
     assert by_email.status_code == 409
     assert by_email.json()["message"] == "Email is already registered."
-    by_phone = await client.post(REGISTER, json=_body("free@x.pk", user.phone))
+    by_phone = await client.post(REGISTER, json=_body("free@x.pk", user.phone or ""))
     assert by_phone.status_code == 409
     assert by_phone.json()["message"] == "Phone number is already registered."
     await db_session.refresh(user)
@@ -97,6 +97,7 @@ async def test_old_codes_die_when_the_sign_up_is_replaced(
 ) -> None:
     assert (await client.post(REGISTER, json=_body("old@x.pk", "03111000041"))).status_code == 201
     user = await repo.get_user_by_email(db_session, "old@x.pk")
+    assert user is not None
     old_code = last_code(user.id, OtpPurpose.registration)
     assert (await client.post(REGISTER, json=_body("new@x.pk", "03111000041"))).status_code == 201
     waiting = await db_session.scalar(
@@ -152,6 +153,7 @@ async def test_resend_answers_the_same_even_when_the_email_cannot_go_out(
 ) -> None:
     assert (await client.post(REGISTER, json=_body("out@x.pk", "03111000071"))).status_code == 201
     user = await repo.get_user_by_email(db_session, "out@x.pk")
+    assert user is not None
     # pretend the 60 s since the sign-up code have passed
     rows = (
         await db_session.scalars(select(OtpVerification).where(OtpVerification.user_id == user.id))

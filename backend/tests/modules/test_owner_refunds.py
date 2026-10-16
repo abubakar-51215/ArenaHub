@@ -162,6 +162,7 @@ async def _first_booking_id(db: AsyncSession, payment_id: str):
     from app.modules.booking.model import Booking
 
     pay = await db.get(Payment, payment_id)
+    assert pay is not None
     return (
         (
             await db.execute(
@@ -202,6 +203,7 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
     from app.modules.booking.model import Booking
 
     pay = await db_session.get(Payment, payment["id"])
+    assert pay is not None
     ids = (
         (
             await db_session.execute(
@@ -234,7 +236,7 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
     total = await db_session.scalar(
         select(func.sum(Refund.amount)).where(Refund.payment_id == payment["id"])
     )
-    assert total <= pay.amount
+    assert total is not None and total <= pay.amount
 
 
 async def test_owner_can_filter_refunds_by_arena(

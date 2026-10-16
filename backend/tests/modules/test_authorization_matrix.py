@@ -577,9 +577,9 @@ async def test_a_suspended_owner_is_blocked_and_a_suspended_arena_cannot_be_book
         json={"reason": "Test"},
     )
     assert sus.status_code == 200
-    for method, path, body in _owner_attacks(world)[:6]:
+    for method, path, attack_body in _owner_attacks(world)[:6]:
         res = await client.request(
-            method, "/api/v1" + path, headers=auth_header(world.owner_a), json=body
+            method, "/api/v1" + path, headers=auth_header(world.owner_a), json=attack_body
         )
         assert res.status_code == 401, (method, path)
 
