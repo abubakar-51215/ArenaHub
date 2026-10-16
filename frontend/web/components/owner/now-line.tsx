@@ -14,7 +14,13 @@ import { karachiMinutes } from "@/lib/karachi-date";
  * parent at render time, so the line correctly appears/disappears right at
  * opening/closing without needing a second timer anywhere else.
  */
-export function NowLine({ openMinutes, closeMinutes }: { openMinutes: number; closeMinutes: number }) {
+export function NowLine({
+  openMinutes,
+  closeMinutes,
+}: {
+  openMinutes: number;
+  closeMinutes: number;
+}) {
   const [now, setNow] = useState(karachiMinutes);
 
   useEffect(() => {
@@ -29,5 +35,13 @@ export function NowLine({ openMinutes, closeMinutes }: { openMinutes: number; cl
   const label = `NOW ${h % 12 || 12}:${String(now % 60).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 
   // prototype .now-line: a lime-deep line with its time label on top
-  return <div className="ah-now-line" style={{ left: `${pct}%` }} data-t={label} aria-label={label} role="img" />;
+  return (
+    <div
+      className="ah-now-line"
+      style={{ left: `${pct}%` }}
+      data-t={label}
+      aria-label={label}
+      role="img"
+    />
+  );
 }

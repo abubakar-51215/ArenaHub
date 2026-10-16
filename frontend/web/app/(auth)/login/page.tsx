@@ -12,7 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/services/api";
-import { fetchMe, isAdminChallenge, loginWithIdentifier, type VerifyEmailData } from "@/services/auth";
+import {
+  fetchMe,
+  isAdminChallenge,
+  loginWithIdentifier,
+  type VerifyEmailData,
+} from "@/services/auth";
 import { useAuthStore } from "@/store/auth";
 
 export default function LoginPage() {
@@ -54,9 +59,15 @@ export default function LoginPage() {
       router.replace(afterLogin("/owner"));
     } catch (err) {
       // the email is not confirmed yet: the server sent a fresh code (or says why it could not); the code step opens
-      const verify = err instanceof ApiError && err.status === 403 ? (err.data as VerifyEmailData | null) : null;
+      const verify =
+        err instanceof ApiError && err.status === 403 ? (err.data as VerifyEmailData | null) : null;
       if (verify?.email) {
-        saveStep({ email: verify.email, sentTo: verify.sent_to, codeSent: verify.code_sent, at: Date.now() });
+        saveStep({
+          email: verify.email,
+          sentTo: verify.sent_to,
+          codeSent: verify.code_sent,
+          at: Date.now(),
+        });
         router.push("/register");
         return;
       }
@@ -143,12 +154,7 @@ export default function LoginPage() {
           <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
 
-        <Button
-          type="submit"
-          size="lg"
-          disabled={submitting}
-          className="h-11 w-full"
-        >
+        <Button type="submit" size="lg" disabled={submitting} className="h-11 w-full">
           {submitting ? "Signing in…" : "Sign In"}
         </Button>
       </form>

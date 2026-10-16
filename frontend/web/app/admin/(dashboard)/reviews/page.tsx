@@ -76,9 +76,7 @@ export default function AdminReviewsPage() {
       <PageHeader
         title="Reviews"
         subtitle={
-          data
-            ? plural(data.total, "reported review")
-            : "Reported reviews waiting for a decision"
+          data ? plural(data.total, "reported review") : "Reported reviews waiting for a decision"
         }
       />
 

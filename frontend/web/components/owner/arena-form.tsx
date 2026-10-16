@@ -240,7 +240,10 @@ export function ArenaForm({
             <div className="space-y-1.5">
               {WEEKDAY_NAMES.map((day) => (
                 // on a phone the day name takes its own line, so the two time boxes share the width below it
-                <div key={day} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-sm:mb-2">
+                <div
+                  key={day}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-sm:mb-2"
+                >
                   <label className="flex w-full items-center gap-2 text-sm capitalize sm:w-32">
                     <Switch
                       checked={days[day].open}

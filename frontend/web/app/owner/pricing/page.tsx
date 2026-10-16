@@ -70,15 +70,19 @@ function Pricing() {
 
   const [error, setError] = useState<string | null>(null);
   const del = useMutation({
-    mutationFn: ({ courtId, ruleId }: { courtId: string; ruleId: string }) => deletePricingRule(courtId, ruleId),
+    mutationFn: ({ courtId, ruleId }: { courtId: string; ruleId: string }) =>
+      deletePricingRule(courtId, ruleId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pricing"] }),
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Could not delete this rule."),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Could not delete this rule."),
   });
 
   const [formOpen, setFormOpen] = useFormDialog();
   const [editing, setEditing] = useState<PricingRule | undefined>(undefined);
   // under "All arenas" the form's court list names the arena too
-  const formCourts = picked ? courts : courts.map((c) => ({ ...c, name: `${c.name} · ${arenaName.get(c.arena_id) ?? ""}` }));
+  const formCourts = picked
+    ? courts
+    : courts.map((c) => ({ ...c, name: `${c.name} · ${arenaName.get(c.arena_id) ?? ""}` }));
 
   const active = rows.filter((r) => r.rule.is_active).length;
   const courtsWithRules = new Set(rows.map((r) => r.court.id)).size;
@@ -88,9 +92,13 @@ function Pricing() {
   const rate = (row: Row) => {
     const base = Number(row.court.base_price);
     const mult = Number(row.rule.price_multiplier);
-    return Number.isFinite(base) && Number.isFinite(mult) && base > 0 ? formatRs(Math.round(base * mult)) : null;
+    return Number.isFinite(base) && Number.isFinite(mult) && base > 0
+      ? formatRs(Math.round(base * mult))
+      : null;
   };
-  const status = (r: PricingRule) => <AdminBadge tone={r.is_active ? "ok" : "idle"}>{r.is_active ? "Active" : "Paused"}</AdminBadge>;
+  const status = (r: PricingRule) => (
+    <AdminBadge tone={r.is_active ? "ok" : "idle"}>{r.is_active ? "Active" : "Paused"}</AdminBadge>
+  );
   const actions = (row: Row) => (
     <div className="ah-row-actions">
       <Button
@@ -120,7 +128,10 @@ function Pricing() {
 
   return (
     <>
-      <PageHeader title="Pricing Rules" subtitle="A rule multiplies the court's base price in its hours">
+      <PageHeader
+        title="Pricing Rules"
+        subtitle="A rule multiplies the court's base price in its hours"
+      >
         <Button
           className="ah-lime"
           disabled={courts.length === 0}
@@ -130,7 +141,14 @@ function Pricing() {
             setFormOpen(true);
           }}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           Add rule
@@ -145,13 +163,24 @@ function Pricing() {
         )}
         {!loading && !failed && rows.length > 0 && (
           <div className="ah-grid ah-g-3">
-            <AdminKpi label="Active rules" value={active} foot={`of ${plural(rows.length, "rule")}`} />
+            <AdminKpi
+              label="Active rules"
+              value={active}
+              foot={`of ${plural(rows.length, "rule")}`}
+            />
             <AdminKpi label="Paused rules" value={rows.length - active} foot="Kept, not charging" />
-            <AdminKpi label="Courts with rules" value={courtsWithRules} foot={`of ${plural(courts.length, "court")}`} />
+            <AdminKpi
+              label="Courts with rules"
+              value={courtsWithRules}
+              foot={`of ${plural(courts.length, "court")}`}
+            />
           </div>
         )}
 
-        <AdminCard title="Rules" actions={rows.length > 0 ? <AdminTag>{plural(rows.length, "rule")}</AdminTag> : undefined}>
+        <AdminCard
+          title="Rules"
+          actions={rows.length > 0 ? <AdminTag>{plural(rows.length, "rule")}</AdminTag> : undefined}
+        >
           {loading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
           {!loading && failed && (
             <div className="ah-card-body">
@@ -195,12 +224,16 @@ function Pricing() {
                       <TableRow key={row.rule.id}>
                         <TableCell>
                           <div className="ah-strong">{row.court.name}</div>
-                          <div className="ah-sub">{picked ? `Base ${formatRs(row.court.base_price)}` : row.arenaName}</div>
+                          <div className="ah-sub">
+                            {picked ? `Base ${formatRs(row.court.base_price)}` : row.arenaName}
+                          </div>
                         </TableCell>
                         <TableCell>{row.rule.name}</TableCell>
                         <TableCell>{days(row.rule)}</TableCell>
                         <TableCell className="tabular-nums">{hours(row.rule)}</TableCell>
-                        <TableCell className="ah-r tabular-nums">×{row.rule.price_multiplier}</TableCell>
+                        <TableCell className="ah-r tabular-nums">
+                          ×{row.rule.price_multiplier}
+                        </TableCell>
                         <TableCell className="ah-r ah-money">{rate(row) ?? "—"}</TableCell>
                         <TableCell>{status(row.rule)}</TableCell>
                         <TableCell className="ah-r">{actions(row)}</TableCell>

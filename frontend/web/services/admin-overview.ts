@@ -14,7 +14,13 @@ export interface OverviewKpi {
 }
 
 export interface DashboardOverview {
-  period: { start: string; end: string; previous_start: string; previous_end: string; range: OverviewRange };
+  period: {
+    start: string;
+    end: string;
+    previous_start: string;
+    previous_end: string;
+    range: OverviewRange;
+  };
   city: string | null;
   kpis: {
     players: OverviewKpi;

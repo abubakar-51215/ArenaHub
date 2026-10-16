@@ -9,7 +9,17 @@
  * latest 50, as before. Empty state: the prototype's icon-and-text block.
  */
 import { useRouter } from "next/navigation";
-import { AlertCircle, Bell, CalendarCheck, CalendarX, Clock, ShieldAlert, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  CalendarCheck,
+  CalendarX,
+  Clock,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 
 import { AdminCard, AdminEmpty, AdminTag } from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
@@ -21,7 +31,10 @@ import type { AppNotification } from "@/services/notifications";
 
 type Tone = "ok" | "off" | "wait" | "idle";
 
-const EVENT_ICON: Record<string, { icon: React.ComponentType<{ className?: string }>; tone: Tone }> = {
+const EVENT_ICON: Record<
+  string,
+  { icon: React.ComponentType<{ className?: string }>; tone: Tone }
+> = {
   new_confirmed_booking: { icon: CalendarCheck, tone: "ok" },
   booking_confirmed: { icon: CalendarCheck, tone: "ok" },
   booking_cancelled: { icon: CalendarX, tone: "off" },
@@ -42,8 +55,9 @@ const DEFAULT_ICON = { icon: Bell, tone: "idle" as Tone };
 
 /** The backend writes "1 new confirmed booking(s)"; show the right plural. */
 function bodyText(n: AppNotification): string {
-  return n.body.replace(/(\d+) new confirmed booking\(s\)/, (_m, c: string) =>
-    `${c} new confirmed ${c === "1" ? "booking" : "bookings"}`,
+  return n.body.replace(
+    /(\d+) new confirmed booking\(s\)/,
+    (_m, c: string) => `${c} new confirmed ${c === "1" ? "booking" : "bookings"}`,
   );
 }
 
@@ -90,7 +104,10 @@ export default function OwnerNotificationsPage() {
       </PageHeader>
 
       <div className="ah-ocanvas animate-fade-in">
-        <AdminCard title="All notifications" actions={unread ? <AdminTag>{unread} unread</AdminTag> : undefined}>
+        <AdminCard
+          title="All notifications"
+          actions={unread ? <AdminTag>{unread} unread</AdminTag> : undefined}
+        >
           {isLoading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
           {isError && !data && (
             <div className="ah-card-body">
@@ -103,7 +120,9 @@ export default function OwnerNotificationsPage() {
             </div>
           )}
           {data && notifications.length === 0 && (
-            <AdminEmpty>No notifications yet. New bookings, cancellations and payments will show up here.</AdminEmpty>
+            <AdminEmpty>
+              No notifications yet. New bookings, cancellations and payments will show up here.
+            </AdminEmpty>
           )}
           {notifications.length > 0 && (
             <ul className="ah-notes">
@@ -125,7 +144,10 @@ export default function OwnerNotificationsPage() {
                         <span>{bodyText(n)}</span>
                         <small>{timeAgo(n.created_at)}</small>
                       </span>
-                      <span className={n.read_at ? "ah-pop-dot is-read" : "ah-pop-dot"} aria-hidden="true" />
+                      <span
+                        className={n.read_at ? "ah-pop-dot is-read" : "ah-pop-dot"}
+                        aria-hidden="true"
+                      />
                     </button>
                   </li>
                 );

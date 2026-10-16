@@ -21,7 +21,14 @@ import { PageHeader } from "@/components/owner/page-header";
 import { RefundsTab } from "@/components/owner/refunds-tab";
 import { Toast, useToast } from "@/components/owner/toast";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
 import { usePendingRefundCount } from "@/hooks/useOwnerRefunds";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -34,7 +41,9 @@ import type { Arena, DiscountCode } from "@/types";
 type Tab = "bank" | "discounts" | "refunds";
 
 function discountText(d: DiscountCode): string {
-  return d.discount_type === "percentage" ? `${Number(d.discount_value)}% off` : `${formatRs(d.discount_value)} off`;
+  return d.discount_type === "percentage"
+    ? `${Number(d.discount_value)}% off`
+    : `${formatRs(d.discount_value)} off`;
 }
 function validity(d: DiscountCode): string {
   if (d.valid_from && d.valid_until)
@@ -49,8 +58,12 @@ function Policy({ arena }: { arena: Arena }) {
     <div className="ah-grid ah-g-3">
       <div className="ah-card ah-kpi">
         <p className="ah-eyebrow">Advance payment</p>
-        <div className="ah-metric">{arena.require_full_payment ? "100%" : `${arena.advance_percentage}%`}</div>
-        <div className="ah-kpi-foot">{arena.require_full_payment ? "Full payment required" : "Balance paid at the arena"}</div>
+        <div className="ah-metric">
+          {arena.require_full_payment ? "100%" : `${arena.advance_percentage}%`}
+        </div>
+        <div className="ah-kpi-foot">
+          {arena.require_full_payment ? "Full payment required" : "Balance paid at the arena"}
+        </div>
       </div>
       <div className="ah-card ah-kpi ah-span-2">
         <p className="ah-eyebrow">Refunds</p>
@@ -86,12 +99,17 @@ function PaymentsInner() {
   const arenaName = new Map(arenas.map((a) => [a.id, a.name]));
 
   const asked = useSearchParams().get("tab");
-  const [tab, setTab] = useState<Tab>(asked === "refunds" || asked === "discounts" ? asked : "bank");
+  const [tab, setTab] = useState<Tab>(
+    asked === "refunds" || asked === "discounts" ? asked : "bank",
+  );
   const [toast, showToast] = useToast();
   const { data: waitingRefunds } = usePendingRefundCount();
 
   const discountQueries = useQueries({
-    queries: scope.map((a) => ({ queryKey: ["discounts", a.id], queryFn: () => listDiscounts(a.id) })),
+    queries: scope.map((a) => ({
+      queryKey: ["discounts", a.id],
+      queryFn: () => listDiscounts(a.id),
+    })),
   });
   const discounts = discountQueries.flatMap((q) => q.data ?? []);
   const discountsLoading = discountQueries.some((q) => q.isLoading);
@@ -113,7 +131,9 @@ function PaymentsInner() {
     }
   }
 
-  const status = (d: DiscountCode) => <AdminBadge tone={d.is_active ? "ok" : "idle"}>{d.is_active ? "Active" : "Paused"}</AdminBadge>;
+  const status = (d: DiscountCode) => (
+    <AdminBadge tone={d.is_active ? "ok" : "idle"}>{d.is_active ? "Active" : "Paused"}</AdminBadge>
+  );
   const used = (d: DiscountCode) => `${d.used_count}${d.max_uses ? ` of ${d.max_uses}` : ""} used`;
   const actions = (d: DiscountCode) => (
     <div className="ah-row-actions">
@@ -141,13 +161,20 @@ function PaymentsInner() {
 
   const tabs: { key: Tab; label: string; count?: number; wait?: boolean }[] = [
     { key: "bank", label: "Bank accounts" },
-    { key: "discounts", label: "Discount codes", count: discountsLoading ? undefined : discounts.length },
+    {
+      key: "discounts",
+      label: "Discount codes",
+      count: discountsLoading ? undefined : discounts.length,
+    },
     { key: "refunds", label: "Refunds", count: waitingRefunds, wait: true },
   ];
 
   return (
     <>
-      <PageHeader title="Payments" subtitle={`Bank accounts, discount codes and refunds you owe players · ${picked ? picked.name : "All arenas"}`}>
+      <PageHeader
+        title="Payments"
+        subtitle={`Bank accounts, discount codes and refunds you owe players · ${picked ? picked.name : "All arenas"}`}
+      >
         {tab === "discounts" && (
           <Button
             className="ah-lime"
@@ -158,7 +185,14 @@ function PaymentsInner() {
               setFormOpen(true);
             }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
               <path d="M12 5v14M5 12h14" />
             </svg>
             Add code
@@ -188,15 +222,16 @@ function PaymentsInner() {
                 onClick={() => setTab(t.key)}
               >
                 {t.label}
-                {t.wait ? (
-                  !!t.count && (
-                    <span className="ah-tab-count ah-tag ah-tab-wait" aria-label={`${t.count} waiting`}>
-                      {t.count}
-                    </span>
-                  )
-                ) : (
-                  t.count != null && <span className="ah-tab-count ah-tag">{t.count}</span>
-                )}
+                {t.wait
+                  ? !!t.count && (
+                      <span
+                        className="ah-tab-count ah-tag ah-tab-wait"
+                        aria-label={`${t.count} waiting`}
+                      >
+                        {t.count}
+                      </span>
+                    )
+                  : t.count != null && <span className="ah-tab-count ah-tag">{t.count}</span>}
               </button>
             ))}
           </div>
@@ -207,10 +242,15 @@ function PaymentsInner() {
           )}
 
           {tab === "bank" && arenas.length > 0 && (
-            <div id="panel-bank" role="tabpanel" aria-labelledby="tab-bank" className="ah-card-body">
+            <div
+              id="panel-bank"
+              role="tabpanel"
+              aria-labelledby="tab-bank"
+              className="ah-card-body"
+            >
               <p className="ah-field-hint" style={{ marginBottom: 14 }}>
-                Players see these when they pay by Bank transfer. The default account is listed first;
-                inactive accounts are hidden from players.
+                Players see these when they pay by Bank transfer. The default account is listed
+                first; inactive accounts are hidden from players.
               </p>
               {scope.map((a) => (
                 <div key={a.id} className="ah-bank-group">
@@ -221,7 +261,14 @@ function PaymentsInner() {
             </div>
           )}
 
-          {tab === "refunds" && arenas.length > 0 && <RefundsTab arenas={arenas} arenaId={pickedId} onArena={setPickedId} onToast={showToast} />}
+          {tab === "refunds" && arenas.length > 0 && (
+            <RefundsTab
+              arenas={arenas}
+              arenaId={pickedId}
+              onArena={setPickedId}
+              onToast={showToast}
+            />
+          )}
 
           {tab === "discounts" && arenas.length > 0 && (
             <div id="panel-discounts" role="tabpanel" aria-labelledby="tab-discounts">
@@ -230,7 +277,11 @@ function PaymentsInner() {
                 <div className="ah-card-body">
                   <div className="ah-card-error" role="alert">
                     <span>Could not load the discount codes.</span>
-                    <button type="button" className="ah-link" onClick={() => discountQueries.forEach((q) => void q.refetch())}>
+                    <button
+                      type="button"
+                      className="ah-link"
+                      onClick={() => discountQueries.forEach((q) => void q.refetch())}
+                    >
                       Try again
                     </button>
                   </div>
@@ -238,7 +289,9 @@ function PaymentsInner() {
               )}
               {!discountsLoading && !discountsFailed && discounts.length === 0 && (
                 <AdminEmpty>
-                  {picked ? "No discount codes yet. Click “Add code” to create one." : "No discount codes yet. Choose an arena above to add one."}
+                  {picked
+                    ? "No discount codes yet. Click “Add code” to create one."
+                    : "No discount codes yet. Choose an arena above to add one."}
                 </AdminEmpty>
               )}
               {!discountsLoading && discounts.length > 0 && (
@@ -263,11 +316,17 @@ function PaymentsInner() {
                               <div className="ah-strong ah-mono">{d.code}</div>
                               {d.description && <div className="ah-sub">{d.description}</div>}
                             </TableCell>
-                            {!picked && <TableCell className="ah-t2">{arenaName.get(d.arena_id) ?? ""}</TableCell>}
+                            {!picked && (
+                              <TableCell className="ah-t2">
+                                {arenaName.get(d.arena_id) ?? ""}
+                              </TableCell>
+                            )}
                             <TableCell>
                               <div>{discountText(d)}</div>
                               {Number(d.min_booking_amount) > 0 && (
-                                <div className="ah-sub">On {formatRs(d.min_booking_amount)} or more</div>
+                                <div className="ah-sub">
+                                  On {formatRs(d.min_booking_amount)} or more
+                                </div>
                               )}
                             </TableCell>
                             <TableCell className="ah-t2 tabular-nums">{validity(d)}</TableCell>
@@ -288,7 +347,9 @@ function PaymentsInner() {
                         </div>
                         {(d.description || !picked) && (
                           <div className="ah-sub">
-                            {[d.description, picked ? null : arenaName.get(d.arena_id)].filter(Boolean).join(" · ")}
+                            {[d.description, picked ? null : arenaName.get(d.arena_id)]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </div>
                         )}
                         <div className="ah-card-line">

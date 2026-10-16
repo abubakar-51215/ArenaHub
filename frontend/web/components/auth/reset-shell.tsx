@@ -42,7 +42,13 @@ export function StepLabel({ step, of }: { step: number; of: number }) {
 }
 
 /** A server or form message inside the page, in the sign-in pages' style. */
-export function FormMessage({ children, tone = "error" }: { children: ReactNode; tone?: "error" | "info" }) {
+export function FormMessage({
+  children,
+  tone = "error",
+}: {
+  children: ReactNode;
+  tone?: "error" | "info";
+}) {
   return (
     <p
       role={tone === "error" ? "alert" : "status"}
@@ -62,7 +68,8 @@ export const SENT_MESSAGE = "If this email is registered, we have sent a 6-digit
 /** A failed call in plain words: the server's own message, or what to do. */
 export function plainError(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 429) return "Too many requests from this device. Wait a minute and try again.";
+    if (err.status === 429)
+      return "Too many requests from this device. Wait a minute and try again.";
     return err.message;
   }
   return "We could not reach Arena Hub. Check your connection and try again.";

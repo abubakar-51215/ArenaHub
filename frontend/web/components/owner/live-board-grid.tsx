@@ -43,7 +43,11 @@ function shortTime(hms: string): string {
 
 export function LiveBoardGrid({ arena, date }: { arena: Arena; date: string }) {
   const { data: courts, isLoading: courtsLoading, isError: courtsError } = useCourts(arena.id);
-  const { data: bookings, isLoading: bookingsLoading, isError: bookingsError } = useCalendar(arena.id, date, date);
+  const {
+    data: bookings,
+    isLoading: bookingsLoading,
+    isError: bookingsError,
+  } = useCalendar(arena.id, date, date);
   // the NOW line belongs to today (Karachi) only
   const isToday = date === karachiToday();
 
@@ -64,7 +68,13 @@ export function LiveBoardGrid({ arena, date }: { arena: Arena; date: string }) {
   }, [bookings]);
 
   if (courtsLoading || bookingsLoading) {
-    return <div className="ah-skeleton" style={{ height: 160, margin: "0 18px 18px" }} aria-label="Loading" />;
+    return (
+      <div
+        className="ah-skeleton"
+        style={{ height: 160, margin: "0 18px 18px" }}
+        aria-label="Loading"
+      />
+    );
   }
   if (courtsError || bookingsError) {
     return <p className="ah-empty-line ah-pitch-note">Could not load this day&apos;s board.</p>;
@@ -105,16 +115,26 @@ export function LiveBoardGrid({ arena, date }: { arena: Arena; date: string }) {
             const cells: React.ReactNode[] = [];
             if (!court.is_available) {
               cells.push(
-                <div key="off" className="ah-blk ah-blk-hold" style={{ gridColumn: `2 / span ${hourCount}` }}>
+                <div
+                  key="off"
+                  className="ah-blk ah-blk-hold"
+                  style={{ gridColumn: `2 / span ${hourCount}` }}
+                >
                   <b>Not bookable</b>
                   <span>Switched off</span>
                 </div>,
               );
             } else {
-              for (let h = 0; h < hourCount; ) {
+              for (let h = 0; h < hourCount;) {
                 const b = covered.get(h);
                 if (!b) {
-                  cells.push(<div key={`o${h}`} className="ah-slot" title={`${formatHour(startHour + h)} · open`} />);
+                  cells.push(
+                    <div
+                      key={`o${h}`}
+                      className="ah-slot"
+                      title={`${formatHour(startHour + h)} · open`}
+                    />,
+                  );
                   h += 1;
                   continue;
                 }
@@ -142,7 +162,11 @@ export function LiveBoardGrid({ arena, date }: { arena: Arena; date: string }) {
                 <div className="ah-pitch-label">
                   <b>{court.name}</b>
                   {court.sport_types.length > 0 && (
-                    <span>{court.sport_types.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" · ")}</span>
+                    <span>
+                      {court.sport_types
+                        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                        .join(" · ")}
+                    </span>
                   )}
                 </div>
                 {cells}

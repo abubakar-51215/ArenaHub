@@ -13,7 +13,14 @@ import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { LineChart, HourBars, RankList, Sparkline } from "@/components/admin/charts";
-import { Delta, OverviewCard, dayLabels, hourLabel, hourRange, money } from "@/components/admin/overview-parts";
+import {
+  Delta,
+  OverviewCard,
+  dayLabels,
+  hourLabel,
+  hourRange,
+  money,
+} from "@/components/admin/overview-parts";
 import { AdminBadge, AdminKpi } from "@/components/admin/ui";
 import { LiveBoard } from "@/components/owner/live-board";
 import { PageHeader } from "@/components/owner/page-header";
@@ -77,8 +84,18 @@ function Board() {
           ))}
         </Select>
         <div className="ah-daterow">
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From" />
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To" />
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            aria-label="From"
+          />
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            aria-label="To"
+          />
         </div>
       </PageHeader>
 
@@ -132,7 +149,8 @@ function Board() {
                 data && data.occupancy_change_pts != null ? (
                   <>
                     <span className={`ah-delta ${data.occupancy_change_pts >= 0 ? "up" : "down"}`}>
-                      {data.occupancy_change_pts >= 0 ? "▲" : "▼"} {Math.abs(data.occupancy_change_pts)} pts
+                      {data.occupancy_change_pts >= 0 ? "▲" : "▼"}{" "}
+                      {Math.abs(data.occupancy_change_pts)} pts
                     </span>{" "}
                     vs previous period
                   </>
@@ -143,7 +161,9 @@ function Board() {
               label="Peak hours"
               value={
                 dash ??
-                (data?.peak_hours ? hourRange(data.peak_hours.start_hour, data.peak_hours.end_hour) : "—")
+                (data?.peak_hours
+                  ? hourRange(data.peak_hours.start_hour, data.peak_hours.end_hour)
+                  : "—")
               }
               foot={data?.peak_hours ? "Most booked window" : undefined}
             />
@@ -157,7 +177,11 @@ function Board() {
             onRetry={retry}
             empty="No revenue in this period."
           >
-            <LineChart now={revenue} labels={dayLabels(trend)} tip={money(revenue[revenue.length - 1] ?? 0)} />
+            <LineChart
+              now={revenue}
+              labels={dayLabels(trend)}
+              tip={money(revenue[revenue.length - 1] ?? 0)}
+            />
           </OverviewCard>
           <OverviewCard
             title="When people play"
@@ -203,7 +227,13 @@ function Board() {
           <OverviewCard
             title="Needs your attention"
             state={
-              approvals.isLoading ? "loading" : approvals.isError ? "error" : pending.length ? "ready" : "empty"
+              approvals.isLoading
+                ? "loading"
+                : approvals.isError
+                  ? "error"
+                  : pending.length
+                    ? "ready"
+                    : "empty"
             }
             onRetry={() => void approvals.refetch()}
             empty="Nothing is waiting for you."
@@ -219,7 +249,8 @@ function Board() {
                   <div className="min-w-0">
                     <b className="truncate">{p.player_name}</b>
                     <span>
-                      {formatDateShort(p.booking_date)} · {formatTime(p.start_time)} · {p.arena_name}
+                      {formatDateShort(p.booking_date)} · {formatTime(p.start_time)} ·{" "}
+                      {p.arena_name}
                     </span>
                   </div>
                   <AdminBadge tone="wait">Receipt to review</AdminBadge>

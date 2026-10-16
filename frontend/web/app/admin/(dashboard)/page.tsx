@@ -269,7 +269,9 @@ function DecisionQueue({ overview, city }: { overview?: DashboardOverview; city:
         </Link>
         <Link href="/admin/complaints" className="ah-queue-cell">
           <span className="ah-metric">{openComplaints.toLocaleString("en-US")}</span>
-          <span className="ah-queue-lbl">{openComplaints === 1 ? "Complaint" : "Complaints"} open</span>
+          <span className="ah-queue-lbl">
+            {openComplaints === 1 ? "Complaint" : "Complaints"} open
+          </span>
         </Link>
       </div>
       {loading && (

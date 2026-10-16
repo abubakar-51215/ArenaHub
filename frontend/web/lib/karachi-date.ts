@@ -49,7 +49,9 @@ export function addMonthsIso(iso: string, months: number): string {
 export function shiftMonth(iso: string, months: number): string {
   const [y, m, d] = parts(iso);
   const target = Date.UTC(y, m - 1 + months, 1);
-  const last = new Date(Date.UTC(new Date(target).getUTCFullYear(), new Date(target).getUTCMonth() + 1, 0)).getUTCDate();
+  const last = new Date(
+    Date.UTC(new Date(target).getUTCFullYear(), new Date(target).getUTCMonth() + 1, 0),
+  ).getUTCDate();
   return fromUtc(target + (Math.min(d, last) - 1) * 86400000);
 }
 
@@ -60,11 +62,16 @@ export function weekdayIndex(iso: string): number {
 }
 
 const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(new Date(`${iso}T00:00:00Z`));
+  new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(
+    new Date(`${iso}T00:00:00Z`),
+  );
 
 /** "Fri 9 Oct 2026". */
 export function longDay(iso: string): string {
-  return fmt(iso, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).replace(",", "");
+  return fmt(iso, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).replace(
+    ",",
+    "",
+  );
 }
 
 /** "Mon 5 Oct". */

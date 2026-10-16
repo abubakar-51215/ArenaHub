@@ -99,10 +99,7 @@ export default function AdminComplaintsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Complaints"
-        subtitle={data ? plural(data.total, "complaint") : undefined}
-      >
+      <PageHeader title="Complaints" subtitle={data ? plural(data.total, "complaint") : undefined}>
         <Select
           value={status}
           onChange={(e) => {

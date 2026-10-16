@@ -4,7 +4,10 @@ import type { OwnerRefund, Page } from "@/types";
 
 export type RefundFilter = "pending" | "processed" | "all";
 
-export function listOwnerRefunds(status: RefundFilter, arenaId?: string): Promise<Page<OwnerRefund>> {
+export function listOwnerRefunds(
+  status: RefundFilter,
+  arenaId?: string,
+): Promise<Page<OwnerRefund>> {
   const q = new URLSearchParams({ status, page_size: "100" });
   if (arenaId) q.set("arena_id", arenaId);
   return api.get<Page<OwnerRefund>>(`/owner/refunds?${q.toString()}`);

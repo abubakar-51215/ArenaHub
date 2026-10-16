@@ -18,7 +18,14 @@ import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { useDashboardAnalytics, useRevenue } from "@/hooks/useDashboard";
@@ -35,7 +42,9 @@ function Earnings() {
   const picked = arenas.find((a) => a.id === arenaId);
 
   const today = useMemo(() => new Date(), []);
-  const [dateFrom, setDateFrom] = useState(toDateInput(new Date(today.getFullYear(), today.getMonth(), 1)));
+  const [dateFrom, setDateFrom] = useState(
+    toDateInput(new Date(today.getFullYear(), today.getMonth(), 1)),
+  );
   const [dateTo, setDateTo] = useState(toDateInput(today));
   const [reportType, setReportType] = useState<OwnerReportType>("bookings");
 
@@ -48,7 +57,8 @@ function Earnings() {
   const trend = a?.revenue_trend ?? [];
   const daily = trend.map((p) => Number(p.amount));
   const best = trend.reduce<{ date: string; amount: number } | null>(
-    (top, p) => (Number(p.amount) > (top?.amount ?? 0) ? { date: p.date, amount: Number(p.amount) } : top),
+    (top, p) =>
+      Number(p.amount) > (top?.amount ?? 0) ? { date: p.date, amount: Number(p.amount) } : top,
     null,
   );
 
@@ -64,7 +74,13 @@ function Earnings() {
     q.isLoading ? "loading" : q.isError ? "error" : has ? "ready" : "empty";
 
   const exportAs = (format: "csv" | "pdf") =>
-    downloadOwnerReport({ format, type: reportType, arenaId: arenaId || undefined, dateFrom, dateTo });
+    downloadOwnerReport({
+      format,
+      type: reportType,
+      arenaId: arenaId || undefined,
+      dateFrom,
+      dateTo,
+    });
 
   return (
     <>
@@ -73,10 +89,24 @@ function Earnings() {
         subtitle={`${dateFrom ? formatDateShort(dateFrom) : "Start"} – ${dateTo ? formatDateShort(dateTo) : "today"} · ${picked ? picked.name : "All arenas"}`}
       >
         <div className="ah-daterow">
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From" />
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To" />
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            aria-label="From"
+          />
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            aria-label="To"
+          />
         </div>
-        <Select value={reportType} onChange={(e) => setReportType(e.target.value as OwnerReportType)} aria-label="Report">
+        <Select
+          value={reportType}
+          onChange={(e) => setReportType(e.target.value as OwnerReportType)}
+          aria-label="Report"
+        >
           <option value="bookings">Bookings &amp; revenue</option>
           <option value="occupancy">Occupancy &amp; peak usage</option>
         </Select>
@@ -143,7 +173,10 @@ function Earnings() {
         <div className="ah-grid ah-g-32">
           <OverviewCard
             title="Daily earnings"
-            state={state(analytics, daily.some((v) => v > 0))}
+            state={state(
+              analytics,
+              daily.some((v) => v > 0),
+            )}
             onRetry={() => void analytics.refetch()}
             empty="No earnings in this period."
             actions={
@@ -154,7 +187,11 @@ function Earnings() {
               ) : undefined
             }
           >
-            <LineChart now={daily} labels={dayLabels(trend)} tip={money(daily[daily.length - 1] ?? 0)} />
+            <LineChart
+              now={daily}
+              labels={dayLabels(trend)}
+              tip={money(daily[daily.length - 1] ?? 0)}
+            />
           </OverviewCard>
           <OverviewCard
             title="Share by arena"
@@ -178,7 +215,11 @@ function Earnings() {
           state={state(revenue, byArena.length > 0)}
           onRetry={() => void revenue.refetch()}
           empty="No earnings in this period."
-          actions={byArena.length > 0 ? <span className="ah-tag">{plural(byArena.length, "arena")}</span> : undefined}
+          actions={
+            byArena.length > 0 ? (
+              <span className="ah-tag">{plural(byArena.length, "arena")}</span>
+            ) : undefined
+          }
         >
           <div className="ah-earn-table">
             <Table>

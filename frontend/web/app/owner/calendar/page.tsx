@@ -65,11 +65,15 @@ function minutes(hms: string): number {
 const longDate = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-GB", opts);
 
 function rangeTitle(view: View, anchor: Date): string {
-  if (view === "day") return longDate(anchor, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  if (view === "day")
+    return longDate(anchor, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   if (view === "month") return longDate(anchor, { month: "long", year: "numeric" });
   const start = startOfWeek(anchor);
   const end = addDays(start, 6);
-  const from = start.getMonth() === end.getMonth() ? `${start.getDate()}` : longDate(start, { day: "numeric", month: "long" });
+  const from =
+    start.getMonth() === end.getMonth()
+      ? `${start.getDate()}`
+      : longDate(start, { day: "numeric", month: "long" });
   return `${from} – ${longDate(end, { day: "numeric", month: "long", year: "numeric" })}`;
 }
 
@@ -114,7 +118,10 @@ function Schedule() {
     queries: scope.map((a) => ({
       queryKey: ["calendar", a.id, toDateInput(from), toDateInput(to)],
       queryFn: async (): Promise<Booking[]> =>
-        (await getCalendar(a.id, toDateInput(from), toDateInput(to))).map((r) => ({ ...r, arena_name: a.name })),
+        (await getCalendar(a.id, toDateInput(from), toDateInput(to))).map((r) => ({
+          ...r,
+          arena_name: a.name,
+        })),
     })),
   });
   const courtQueries = useQueries({
@@ -179,7 +186,9 @@ function Schedule() {
         title={`${court?.name ?? "Court"} · ${b.arena_name} · ${time} · ${statusLabel(b.status)}`}
       >
         <b>{showArena ? (court?.name ?? "Court") : time}</b>
-        <span className="ah-ev-sub">{showArena ? `${b.arena_name} · ${time}` : statusLabel(b.status)}</span>
+        <span className="ah-ev-sub">
+          {showArena ? `${b.arena_name} · ${time}` : statusLabel(b.status)}
+        </span>
       </div>
     );
   };
@@ -192,7 +201,11 @@ function Schedule() {
           head: (
             <div className="ah-cal-day ah-cal-court">
               <b>{c.name}</b>
-              <span>{picked ? (c.sport_types[0] ?? "") : (arenas.find((a) => a.id === c.arena_id)?.name ?? "")}</span>
+              <span>
+                {picked
+                  ? (c.sport_types[0] ?? "")
+                  : (arenas.find((a) => a.id === c.arena_id)?.name ?? "")}
+              </span>
             </div>
           ),
           list: (byDate.get(toDateInput(anchor)) ?? []).filter((b) => b.court_id === c.id),
@@ -276,13 +289,19 @@ function Schedule() {
             <div className="ah-card-body">
               <div className="ah-card-error" role="alert">
                 <span>Could not load the schedule.</span>
-                <button type="button" className="ah-link" onClick={() => calendarQueries.forEach((q) => void q.refetch())}>
+                <button
+                  type="button"
+                  className="ah-link"
+                  onClick={() => calendarQueries.forEach((q) => void q.refetch())}
+                >
                   Try again
                 </button>
               </div>
             </div>
           )}
-          {loading && <div className="ah-skeleton" style={{ height: 320, margin: 18 }} aria-label="Loading" />}
+          {loading && (
+            <div className="ah-skeleton" style={{ height: 320, margin: 18 }} aria-label="Loading" />
+          )}
 
           {!loading && !failed && view !== "month" && (
             <ScrollCue className="ah-sched-cue" scrollClassName="ah-sched-scroll">
@@ -320,7 +339,9 @@ function Schedule() {
                           {Array.from({ length: HOURS }, (_, i) => (
                             <div key={i} className="ah-cal-hr" />
                           ))}
-                          {c.list.map((b) => event(b, place.get(b.id) ?? { lane: 0, of: 1 }, c.showArena))}
+                          {c.list.map((b) =>
+                            event(b, place.get(b.id) ?? { lane: 0, of: 1 }, c.showArena),
+                          )}
                         </div>
                       );
                     })}
@@ -340,7 +361,9 @@ function Schedule() {
                 ))}
                 {monthCells.map((d) => {
                   const iso = toDateInput(d);
-                  const list = [...(byDate.get(iso) ?? [])].sort((a, b) => a.start_time.localeCompare(b.start_time));
+                  const list = [...(byDate.get(iso) ?? [])].sort((a, b) =>
+                    a.start_time.localeCompare(b.start_time),
+                  );
                   const inMonth = d.getMonth() === anchor.getMonth();
                   return (
                     <div key={iso} className={cn("ah-cal-mcell", !inMonth && "is-out")}>
@@ -357,7 +380,11 @@ function Schedule() {
                         return (
                           <div
                             key={b.id}
-                            className={cn("ah-ev ah-ev-chip", sportClass(court?.sport_types[0]), OFF.has(b.status) && "ah-ev-off")}
+                            className={cn(
+                              "ah-ev ah-ev-chip",
+                              sportClass(court?.sport_types[0]),
+                              OFF.has(b.status) && "ah-ev-off",
+                            )}
                             title={`${court?.name ?? "Court"} · ${b.arena_name} · ${formatTime(b.start_time)} · ${statusLabel(b.status)}`}
                           >
                             <b>{formatTime(b.start_time)}</b> {court?.name ?? "Court"}

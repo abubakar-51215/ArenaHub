@@ -78,7 +78,9 @@ function OtpDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {open && <OtpEntry onVerify={onVerify} onResend={onResend} onCancel={() => onOpenChange(false)} />}
+        {open && (
+          <OtpEntry onVerify={onVerify} onResend={onResend} onCancel={() => onOpenChange(false)} />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -228,7 +230,12 @@ export default function OwnerProfilePage() {
           </div>
           <div className="ah-card-body">
             {tab === "profile" && (
-              <div id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" className="ah-grid ah-g-23 ah-settings">
+              <div
+                id="panel-profile"
+                role="tabpanel"
+                aria-labelledby="tab-profile"
+                className="ah-grid ah-g-23 ah-settings"
+              >
                 <div className="ah-owner-card">
                   <span className="ah-owner-avatar" aria-hidden="true">
                     {initials(user.full_name)}
@@ -243,21 +250,33 @@ export default function OwnerProfilePage() {
                   <div className="ah-field">
                     <Label htmlFor="full-name">Full name</Label>
                     <div className="ah-field-row">
-                      <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                      <Input
+                        id="full-name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                      />
                       <Button
-                        disabled={nameMutation.isPending || !fullName.trim() || fullName.trim() === user.full_name}
+                        disabled={
+                          nameMutation.isPending ||
+                          !fullName.trim() ||
+                          fullName.trim() === user.full_name
+                        }
                         onClick={() => nameMutation.mutate()}
                       >
                         {nameMutation.isPending ? "Saving…" : "Save"}
                       </Button>
                     </div>
                     {nameMutation.isSuccess && <span className="ah-saved">Saved.</span>}
-                    <ErrorText message={nameMutation.isError ? errMessage(nameMutation.error) : null} />
+                    <ErrorText
+                      message={nameMutation.isError ? errMessage(nameMutation.error) : null}
+                    />
                   </div>
 
                   <div className="ah-field">
                     <Label htmlFor="new-email">Email address</Label>
-                    <p className="ah-field-hint">Now {user.email}. We send a code to the new address to confirm it.</p>
+                    <p className="ah-field-hint">
+                      Now {user.email}. We send a code to the new address to confirm it.
+                    </p>
                     <div className="ah-field-row">
                       <Input
                         id="new-email"
@@ -277,7 +296,9 @@ export default function OwnerProfilePage() {
                       />
                       <Button
                         variant="outline"
-                        disabled={requestEmailMutation.isPending || !newEmail.trim() || !emailPassword}
+                        disabled={
+                          requestEmailMutation.isPending || !newEmail.trim() || !emailPassword
+                        }
                         onClick={() => requestEmailMutation.mutate()}
                       >
                         {requestEmailMutation.isPending ? "Sending…" : "Change email"}
@@ -289,7 +310,8 @@ export default function OwnerProfilePage() {
                   <div className="ah-field">
                     <Label htmlFor="new-phone">Phone number</Label>
                     <p className="ah-field-hint">
-                      {user.phone ? `Now ${user.phone}. ` : ""}We send a code to the new number to confirm it.
+                      {user.phone ? `Now ${user.phone}. ` : ""}We send a code to the new number to
+                      confirm it.
                     </p>
                     <div className="ah-field-row">
                       <Input
@@ -314,10 +336,16 @@ export default function OwnerProfilePage() {
             )}
 
             {tab === "security" && (
-              <div id="panel-security" role="tabpanel" aria-labelledby="tab-security" className="ah-settings-narrow">
+              <div
+                id="panel-security"
+                role="tabpanel"
+                aria-labelledby="tab-security"
+                className="ah-settings-narrow"
+              >
                 <p className="ah-eyebrow">Change password</p>
                 <p className="ah-field-hint" style={{ margin: "8px 0 18px" }}>
-                  You&apos;ll confirm with a code emailed to {user.email}. Every device is signed out afterwards.
+                  You&apos;ll confirm with a code emailed to {user.email}. Every device is signed
+                  out afterwards.
                 </p>
                 <div className="ah-stack" style={{ gap: 16 }}>
                   <div className="ah-field">
@@ -356,7 +384,9 @@ export default function OwnerProfilePage() {
                 </div>
                 <div className="ah-save-row">
                   <Button
-                    disabled={requestPasswordMutation.isPending || !currentPassword || !passwordsMatch}
+                    disabled={
+                      requestPasswordMutation.isPending || !currentPassword || !passwordsMatch
+                    }
                     onClick={() => requestPasswordMutation.mutate()}
                   >
                     {requestPasswordMutation.isPending ? "Sending…" : "Send verification code"}

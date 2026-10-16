@@ -99,7 +99,11 @@ export function useCodeEntry({
       if (!onError?.(err)) {
         shake();
         setCodeState(EMPTY_CODE); // the boxes empty for the next try (the message stays)
-        setError(err instanceof ApiError ? err.message : "Could not reach the server. Check your connection and try again.");
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Could not reach the server. Check your connection and try again.",
+        );
       }
     } finally {
       busy.current = false;
@@ -150,18 +154,32 @@ export function useCodeEntry({
   const boxes = (
     <>
       <div className={cn(shaking && "ah-code-shake")} onAnimationEnd={() => setShaking(false)}>
-        <CodeBoxes value={code} onChange={setCode} invalid={!!error && error !== NOT_SENT_MESSAGE} autoFocus={autoFocus} />
+        <CodeBoxes
+          value={code}
+          onChange={setCode}
+          invalid={!!error && error !== NOT_SENT_MESSAGE}
+          autoFocus={autoFocus}
+        />
       </div>
       {error && (
         <p
           role="alert"
-          className={admin ? "ah-auth-error" : "rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"}
+          className={
+            admin
+              ? "ah-auth-error"
+              : "rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          }
         >
           {error}
         </p>
       )}
       {info && (
-        <p role="status" className={admin ? "ah-auth-info" : "rounded-lg bg-muted px-3 py-2 text-sm text-foreground"}>
+        <p
+          role="status"
+          className={
+            admin ? "ah-auth-info" : "rounded-lg bg-muted px-3 py-2 text-sm text-foreground"
+          }
+        >
           {info}
         </p>
       )}

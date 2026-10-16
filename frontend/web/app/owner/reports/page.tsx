@@ -21,7 +21,14 @@ import { AdminAvatar } from "@/components/admin/ui";
 import { PageHeader } from "@/components/owner/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useMyArenas } from "@/hooks/useArenas";
 import { useArenaParam } from "@/hooks/useArenaParam";
 import { formatDateShort, formatRs, plural, toDateInput } from "@/lib/format";
@@ -63,7 +70,9 @@ function Reports() {
   const scope = picked ? [picked] : arenas;
 
   const today = useMemo(() => new Date(), []);
-  const [dateFrom, setDateFrom] = useState(toDateInput(new Date(today.getFullYear(), today.getMonth(), 1)));
+  const [dateFrom, setDateFrom] = useState(
+    toDateInput(new Date(today.getFullYear(), today.getMonth(), 1)),
+  );
   const [dateTo, setDateTo] = useState(toDateInput(today));
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -77,7 +86,10 @@ function Reports() {
       await downloadOwnerReport({ type, format, arenaId: arenaId || undefined, dateFrom, dateTo });
       setStatus({ kind: "idle" });
     } catch (err) {
-      setStatus({ kind: "error", message: err instanceof ApiError ? err.message : "Could not download the report." });
+      setStatus({
+        kind: "error",
+        message: err instanceof ApiError ? err.message : "Could not download the report.",
+      });
     }
   }
 
@@ -96,7 +108,8 @@ function Reports() {
       enabled: ready,
     })),
   });
-  const loading = arenasLoading || [...analyticsQueries, ...calendarQueries].some((q) => q.isLoading);
+  const loading =
+    arenasLoading || [...analyticsQueries, ...calendarQueries].some((q) => q.isLoading);
   const failed = [...analyticsQueries, ...calendarQueries].some((q) => q.isError);
   const retry = () => [...analyticsQueries, ...calendarQueries].forEach((q) => void q.refetch());
 
@@ -104,7 +117,10 @@ function Reports() {
     const an = analyticsQueries[i]?.data;
     // bookings and hours from the same calendar rows, so they agree
     const held = (calendarQueries[i]?.data ?? []).filter((b) => !OFF.has(b.status));
-    const hours = held.reduce((n, b) => n + ((minutes(b.end_time) || 24 * 60) - minutes(b.start_time)) / 60, 0);
+    const hours = held.reduce(
+      (n, b) => n + ((minutes(b.end_time) || 24 * 60) - minutes(b.start_time)) / 60,
+      0,
+    );
     const revenue = Number(an?.total_revenue ?? 0);
     return {
       id: a.id,
@@ -123,7 +139,10 @@ function Reports() {
 
   return (
     <>
-      <PageHeader title="Reports" subtitle={`Compare arenas across the same period · ${picked ? picked.name : "All arenas"}`}>
+      <PageHeader
+        title="Reports"
+        subtitle={`Compare arenas across the same period · ${picked ? picked.name : "All arenas"}`}
+      >
         <div className="ah-daterow">
           <Input
             type="date"
@@ -195,7 +214,9 @@ function Reports() {
               </p>
             )}
             {noArenas && (
-              <p className="ah-empty-line ah-pitch-note">You have no arenas yet, so a report would be empty.</p>
+              <p className="ah-empty-line ah-pitch-note">
+                You have no arenas yet, so a report would be empty.
+              </p>
             )}
           </section>
 
@@ -246,11 +267,17 @@ function Reports() {
                         <span className="ah-strong">{r.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="ah-r tabular-nums">{r.bookings.toLocaleString("en-US")}</TableCell>
+                    <TableCell className="ah-r tabular-nums">
+                      {r.bookings.toLocaleString("en-US")}
+                    </TableCell>
                     <TableCell className="ah-r tabular-nums">{hoursText(r.hours)}</TableCell>
                     <TableCell className="ah-r ah-money">{formatRs(r.revenue)}</TableCell>
-                    <TableCell className="ah-r ah-money">{r.rate != null ? `${formatRs(Math.round(r.rate))} / hr` : "—"}</TableCell>
-                    <TableCell className="ah-r tabular-nums">{r.occupancy != null ? `${r.occupancy}%` : "—"}</TableCell>
+                    <TableCell className="ah-r ah-money">
+                      {r.rate != null ? `${formatRs(Math.round(r.rate))} / hr` : "—"}
+                    </TableCell>
+                    <TableCell className="ah-r tabular-nums">
+                      {r.occupancy != null ? `${r.occupancy}%` : "—"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

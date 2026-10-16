@@ -27,7 +27,10 @@ export function isAdminChallenge(r: Tokens | AdminChallenge): r is AdminChalleng
 }
 
 /** Sign in with an email or a phone number (the player and owner pages). */
-export function loginWithIdentifier(identifier: string, password: string): Promise<Tokens | AdminChallenge> {
+export function loginWithIdentifier(
+  identifier: string,
+  password: string,
+): Promise<Tokens | AdminChallenge> {
   return api.post<Tokens | AdminChallenge>("/auth/login", { identifier, password });
 }
 
@@ -112,7 +115,10 @@ export function verifyPhoneChange(code: string): Promise<User> {
 
 /** The password is checked again before a code goes to the new address; the old address stays until it is used. */
 export function requestEmailChange(newEmail: string, currentPassword: string): Promise<null> {
-  return api.post<null>("/users/me/email", { new_email: newEmail, current_password: currentPassword });
+  return api.post<null>("/users/me/email", {
+    new_email: newEmail,
+    current_password: currentPassword,
+  });
 }
 
 export function verifyEmailChange(code: string): Promise<User> {

@@ -32,10 +32,23 @@ export function ArenaPicker() {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button type="button" className="ah-venue-pick" aria-label={`Arena: ${current?.name ?? "All arenas"}`}>
+        <button
+          type="button"
+          className="ah-venue-pick"
+          aria-label={`Arena: ${current?.name ?? "All arenas"}`}
+        >
           <span className="ah-venue-dot" aria-hidden="true" />
           <b>{current?.name ?? "All arenas"}</b>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="m6 9 6 6 6-6" />
           </svg>
         </button>
@@ -44,12 +57,16 @@ export function ArenaPicker() {
         <DropdownMenu.Content className="ah-menu ah-menu-pick" align="start" sideOffset={6}>
           <DropdownMenu.RadioGroup value={current ? current.id : ""} onValueChange={setArenaId}>
             <DropdownMenu.RadioItem value="" className="ah-menu-item">
-              <span className="ah-menu-check" aria-hidden="true">{!current ? "✓" : ""}</span>
+              <span className="ah-menu-check" aria-hidden="true">
+                {!current ? "✓" : ""}
+              </span>
               All arenas
             </DropdownMenu.RadioItem>
             {arenas.map((a) => (
               <DropdownMenu.RadioItem key={a.id} value={a.id} className="ah-menu-item">
-                <span className="ah-menu-check" aria-hidden="true">{current?.id === a.id ? "✓" : ""}</span>
+                <span className="ah-menu-check" aria-hidden="true">
+                  {current?.id === a.id ? "✓" : ""}
+                </span>
                 <span className="min-w-0 truncate">{a.name}</span>
               </DropdownMenu.RadioItem>
             ))}
@@ -62,7 +79,15 @@ export function ArenaPicker() {
 
 function SearchIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
     </svg>
@@ -94,7 +119,13 @@ export function OwnerSlimActions({ onSearch }: { onSearch: () => void }) {
   return (
     <div className="ah-slim-actions">
       <button type="button" className="ah-icon-btn" aria-label="Search" onClick={onSearch}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          aria-hidden="true"
+        >
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
         </svg>

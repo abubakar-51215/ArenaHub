@@ -87,7 +87,10 @@ function ReviewsInner() {
     })),
   });
   const summaryQueries = useQueries({
-    queries: scope.map((a) => ({ queryKey: ["rating-summary", a.id], queryFn: () => getRatingSummary(a.id) })),
+    queries: scope.map((a) => ({
+      queryKey: ["rating-summary", a.id],
+      queryFn: () => getRatingSummary(a.id),
+    })),
   });
 
   const loading = arenasLoading || reviewQueries.some((q) => q.isLoading);
@@ -96,7 +99,9 @@ function ReviewsInner() {
     .flatMap((q) => q.data?.items ?? [])
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   // across several arenas the cap applies to the whole list: the latest CAP
-  const capped = merged.length > CAP || reviewQueries.some((q) => (q.data?.total ?? 0) > (q.data?.items.length ?? 0));
+  const capped =
+    merged.length > CAP ||
+    reviewQueries.some((q) => (q.data?.total ?? 0) > (q.data?.items.length ?? 0));
   const reviews = merged.slice(0, CAP);
 
   // average and count: the summaries, combined by review count
@@ -153,10 +158,14 @@ function ReviewsInner() {
               : "Every review has a reply"
         }
       >
-        <Select value={filter} onChange={(e) => {
+        <Select
+          value={filter}
+          onChange={(e) => {
             setFilter(e.target.value as Filter);
             setShowCount(SHOW_STEP);
-          }} aria-label="Show">
+          }}
+          aria-label="Show"
+        >
           <option value="">All reviews</option>
           <option value="reply">Needs reply</option>
           <option value="low">1–2 stars</option>
@@ -174,7 +183,9 @@ function ReviewsInner() {
             <div className="ah-card-body">
               <p className="ah-eyebrow">Average rating</p>
               <div className="ah-score-big">
-                <span className="ah-metric is-lg">{summaryLoading ? "—" : average != null ? average.toFixed(1) : "—"}</span>
+                <span className="ah-metric is-lg">
+                  {summaryLoading ? "—" : average != null ? average.toFixed(1) : "—"}
+                </span>
                 {average != null && <Stars rating={average} size={16} />}
               </div>
               <p className="ah-score-note">
@@ -220,7 +231,12 @@ function ReviewsInner() {
             <div className="ah-card-head">
               <h2 className="ah-h2">Recent reviews</h2>
               {waiting > 0 && filter !== "reply" && (
-                <Button variant="ghost" size="sm" style={{ marginLeft: "auto" }} onClick={() => setFilter("reply")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  style={{ marginLeft: "auto" }}
+                  onClick={() => setFilter("reply")}
+                >
                   Needs reply ({waiting})
                 </Button>
               )}
@@ -230,7 +246,11 @@ function ReviewsInner() {
               <div className="ah-card-body">
                 <div className="ah-card-error" role="alert">
                   <span>Could not load the reviews.</span>
-                  <button type="button" className="ah-link" onClick={() => reviewQueries.forEach((q) => void q.refetch())}>
+                  <button
+                    type="button"
+                    className="ah-link"
+                    onClick={() => reviewQueries.forEach((q) => void q.refetch())}
+                  >
                     Try again
                   </button>
                 </div>
@@ -253,7 +273,11 @@ function ReviewsInner() {
                     </span>
                     {r.is_flagged && <AdminBadge tone="off">Reported</AdminBadge>}
                     <span className="ah-review-badge">
-                      {r.owner_response ? <AdminBadge tone="idle">Replied</AdminBadge> : <AdminBadge tone="wait">Needs reply</AdminBadge>}
+                      {r.owner_response ? (
+                        <AdminBadge tone="idle">Replied</AdminBadge>
+                      ) : (
+                        <AdminBadge tone="wait">Needs reply</AdminBadge>
+                      )}
                     </span>
                   </div>
                   <p className="ah-review-text">{r.review_text ?? "No written review."}</p>
@@ -263,7 +287,12 @@ function ReviewsInner() {
                     </p>
                   )}
                   {!r.owner_response && (
-                    <Button variant="outline" size="sm" className="ah-review-btn" onClick={() => setResponding(r)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ah-review-btn"
+                      onClick={() => setResponding(r)}
+                    >
                       Write a reply
                     </Button>
                   )}
@@ -275,7 +304,11 @@ function ReviewsInner() {
                 <span>
                   Showing {shown.length} of {matching.length}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => setShowCount((n) => n + SHOW_STEP)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCount((n) => n + SHOW_STEP)}
+                >
                   Show more
                 </Button>
               </div>
@@ -289,7 +322,9 @@ function ReviewsInner() {
         onOpenChange={(v) => !v && setResponding(null)}
         title="Reply to this review"
         description={
-          responding ? `Shown publicly under ${responding.reviewer_name}'s review of ${responding.arena_name}.` : undefined
+          responding
+            ? `Shown publicly under ${responding.reviewer_name}'s review of ${responding.arena_name}.`
+            : undefined
         }
         placeholder="Thanks for the feedback! We're always working to improve…"
         confirmLabel="Post reply"

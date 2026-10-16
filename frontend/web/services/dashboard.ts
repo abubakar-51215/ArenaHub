@@ -83,7 +83,9 @@ export function getRevenue(params: RevenueParams = {}): Promise<RevenueSummary> 
   return api.get<RevenueSummary>(`/owner/dashboard/revenue${qs ? `?${qs}` : ""}`);
 }
 
-export function remindBooking(bookingId: string): Promise<{ player_name: string; next_reminder_in_minutes: number }> {
+export function remindBooking(
+  bookingId: string,
+): Promise<{ player_name: string; next_reminder_in_minutes: number }> {
   return api.post(`/owner/dashboard/bookings/${bookingId}/remind`);
 }
 
