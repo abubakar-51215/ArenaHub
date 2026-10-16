@@ -40,12 +40,14 @@ _ORDER = (
 
 
 def method_state(method: PaymentMethod) -> str:
+    settings = get_settings()
     if method == PaymentMethod.bank_transfer:
         return AVAILABLE
     if method == PaymentMethod.card:
-        return AVAILABLE if get_settings().stripe_configured else UNAVAILABLE
-    # The two wallets have no real gateway yet (real gateway work comes last).
-    return COMING_SOON
+        # development has a built-in test card page when there is no Stripe key
+        return AVAILABLE if settings.stripe_configured or settings.is_dev else UNAVAILABLE
+    # The two wallets have no merchant account yet: a simulator in development only.
+    return AVAILABLE if settings.is_dev else COMING_SOON
 
 
 def list_methods() -> list[dict[str, str | None]]:

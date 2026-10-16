@@ -306,7 +306,11 @@ async def test_jazzcash_webhook_confirms_booking(
     initiated = await client.post(
         "/api/v1/payments/initiate",
         headers=auth_header(player),
-        json={"booking_group_id": group_id, "payment_method": "jazzcash"},
+        json={
+            "booking_group_id": group_id,
+            "payment_method": "jazzcash",
+            "wallet_number": "03001234567",
+        },
     )
     payment = initiated.json()["data"]["payment"]
     txn_id = payment["gateway_transaction_id"]
@@ -351,7 +355,11 @@ async def test_webhook_rejects_amount_mismatch(
     initiated = await client.post(
         "/api/v1/payments/initiate",
         headers=auth_header(player),
-        json={"booking_group_id": group_id, "payment_method": "easypaisa"},
+        json={
+            "booking_group_id": group_id,
+            "payment_method": "easypaisa",
+            "wallet_number": "03001234567",
+        },
     )
     payment = initiated.json()["data"]["payment"]
     txn_id = payment["gateway_transaction_id"]
@@ -389,7 +397,11 @@ async def test_jazzcash_webhook_rejects_unsigned_payload(
     initiated = await client.post(
         "/api/v1/payments/initiate",
         headers=auth_header(player),
-        json={"booking_group_id": group_id, "payment_method": "jazzcash"},
+        json={
+            "booking_group_id": group_id,
+            "payment_method": "jazzcash",
+            "wallet_number": "03001234567",
+        },
     )
     payment = initiated.json()["data"]["payment"]
     txn_id = payment["gateway_transaction_id"]
@@ -428,7 +440,11 @@ async def test_webhook_rejects_provider_mismatch(
     initiated = await client.post(
         "/api/v1/payments/initiate",
         headers=auth_header(player),
-        json={"booking_group_id": group_id, "payment_method": "easypaisa"},
+        json={
+            "booking_group_id": group_id,
+            "payment_method": "easypaisa",
+            "wallet_number": "03001234567",
+        },
     )
     payment = initiated.json()["data"]["payment"]
     txn_id = payment["gateway_transaction_id"]

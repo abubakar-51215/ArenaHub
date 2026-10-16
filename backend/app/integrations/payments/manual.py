@@ -13,7 +13,15 @@ from app.integrations.payments.base import InitiateResult, RefundResult, Webhook
 
 
 class ManualProvider:
-    async def initiate(self, *, amount: Decimal, currency: str, reference: str) -> InitiateResult:
+    async def initiate(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        reference: str,
+        wallet_number: str | None = None,
+        return_url: str | None = None,
+    ) -> InitiateResult:
         return InitiateResult(gateway_transaction_id=f"manual_{uuid.uuid4().hex}")
 
     def verify_webhook(self, payload: bytes, headers: dict[str, str]) -> WebhookEvent:

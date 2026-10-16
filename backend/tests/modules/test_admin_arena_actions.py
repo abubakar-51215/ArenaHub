@@ -86,7 +86,11 @@ async def _paid_booking(client: AsyncClient, player: dict, court_id: str, slot_i
     started = await client.post(
         f"{API}/payments/initiate",
         headers=auth_header(player),
-        json={"booking_group_id": group_id, "payment_method": "jazzcash"},
+        json={
+            "booking_group_id": group_id,
+            "payment_method": "jazzcash",
+            "wallet_number": "03001234567",
+        },
     )
     payment_id = started.json()["data"]["payment"]["id"]
     done = await client.post(
