@@ -16,9 +16,11 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
 from app.core.config import get_settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.integrations.payments import get_provider
+from app.integrations.payments.base import mask_wallet
 from app.modules.arena import repository as arena_repo
 from app.modules.booking import repository as booking_repo
 from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
@@ -52,10 +54,11 @@ from app.modules.payment.schema import (
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
-from app.shared import receipt_links
+from app.shared import payment_return, receipt_links
 from app.shared.audit import audit
 from app.shared.notify import booking_when, notify_user
 from app.shared.pagination import PaginationParams, paginated
+from app.shared.phone import phone_key
 from app.shared.qr import generate_booking_qr
 from app.websocket.manager import broadcast_slot_status
 
@@ -115,9 +118,15 @@ _PROVIDER_NAME = {
 
 
 async def _group_bookings_for_player(
-    db: AsyncSession, user: User, booking_group_id: uuid.UUID
+    db: AsyncSession, user: User, booking_group_id: uuid.UUID, *, lock: bool = False
 ) -> list[Booking]:
-    bookings = await booking_repo.list_group(db, booking_group_id)
+    """The player's bookings in a group. ``lock`` holds the rows until the transaction ends, so
+    two requests for the same group (a double tap, a retry) run one after the other: the second
+    then sees the first one's payment instead of making another."""
+    if lock:
+        bookings = await booking_repo.list_group_for_update(db, booking_group_id)
+    else:
+        bookings = await booking_repo.list_group(db, booking_group_id)
     if not bookings:
         raise NotFoundError("Booking group not found.")
     if any(b.player_id != user.id for b in bookings):
@@ -157,13 +166,37 @@ async def get_payment_by_group(
     return PaymentResponse.model_validate(payment)
 
 
+_WALLETS = {PaymentMethod.jazzcash: "JazzCash", PaymentMethod.easypaisa: "EasyPaisa"}
+
+
+def _gateway_details(data: PaymentInitiateRequest) -> tuple[str | None, str | None]:
+    """(wallet number in local form 03XXXXXXXXX, return address) for a gateway payment.
+
+    A wallet payment needs the player's Pakistani mobile number (the request goes to that
+    wallet). A card payment may name the app address to come back to; only app addresses are
+    accepted (app/shared/payment_return.py)."""
+    wallet = None
+    if data.payment_method in _WALLETS:
+        if not data.wallet_number or not data.wallet_number.strip():
+            raise ValidationError(
+                messages.WALLET_NUMBER_NEEDED.format(wallet=_WALLETS[data.payment_method])
+            )
+        key = phone_key(data.wallet_number)
+        if not (len(key) == 12 and key.startswith("923")):
+            raise ValidationError(messages.WALLET_NUMBER_INVALID)
+        wallet = "0" + key[2:]
+    if data.return_url is not None and not payment_return.is_allowed(data.return_url):
+        raise ValidationError(messages.RETURN_ADDRESS_REFUSED)
+    return wallet, data.return_url
+
+
 async def initiate_payment(
     db: AsyncSession, user: User, data: PaymentInitiateRequest
 ) -> PaymentInitiateResponse:
     if user.role != UserRole.player:
         raise ForbiddenError("Only players can pay for bookings.")
 
-    bookings = await _group_bookings_for_player(db, user, data.booking_group_id)
+    bookings = await _group_bookings_for_player(db, user, data.booking_group_id, lock=True)
     if any(b.status != BookingStatus.pending_payment for b in bookings):
         raise ValidationError("This booking group is not awaiting payment.")
 
@@ -172,10 +205,15 @@ async def initiate_payment(
         raise ConflictError("A payment for this booking already exists.")
 
     methods.ensure_usable(data.payment_method)
+    wallet, return_url = _gateway_details(data)
     amount = sum((b.advance_amount for b in bookings), Decimal("0"))
     provider = get_provider(data.payment_method.value)
     result = await provider.initiate(
-        amount=amount, currency="PKR", reference=str(data.booking_group_id)
+        amount=amount,
+        currency="PKR",
+        reference=str(data.booking_group_id),
+        wallet_number=wallet,
+        return_url=return_url,
     )
 
     payment = Payment(
@@ -192,9 +230,12 @@ async def initiate_payment(
     await repo.add_payment(db, payment)
     await state_machine.record_created(db, payment)
     if data.payment_method != PaymentMethod.bank_transfer:
-        await state_machine.advance(
-            db, payment, Lifecycle.initiated, note="Charge initiated with gateway."
+        note = (
+            f"Payment request sent to {mask_wallet(wallet)}."
+            if wallet
+            else "Charge initiated with gateway."
         )
+        await state_machine.advance(db, payment, Lifecycle.initiated, note=note)
     await db.commit()
 
     return PaymentInitiateResponse(
@@ -215,7 +256,7 @@ async def initiate_balance_payment(
     if data.payment_method == PaymentMethod.bank_transfer:
         raise ValidationError("Pay the remaining balance online, or in person at the venue.")
 
-    bookings = await _group_bookings_for_player(db, user, data.booking_group_id)
+    bookings = await _group_bookings_for_player(db, user, data.booking_group_id, lock=True)
     if any(b.status != BookingStatus.confirmed for b in bookings):
         raise ValidationError("Only a confirmed booking can have its balance paid online.")
     methods.ensure_usable(data.payment_method)
@@ -225,9 +266,14 @@ async def initiate_balance_payment(
     if await repo.get_pending_balance_payment(db, data.booking_group_id) is not None:
         raise ConflictError("A balance payment is already in progress for this booking.")
 
+    wallet, return_url = _gateway_details(data)
     provider = get_provider(data.payment_method.value)
     result = await provider.initiate(
-        amount=outstanding, currency="PKR", reference=str(data.booking_group_id)
+        amount=outstanding,
+        currency="PKR",
+        reference=str(data.booking_group_id),
+        wallet_number=wallet,
+        return_url=return_url,
     )
     payment = Payment(
         booking_group_id=data.booking_group_id,
@@ -350,6 +396,8 @@ async def handle_webhook(
 ) -> None:
     provider = get_provider(payment_method)
     event = provider.verify_webhook(payload, headers)
+    if event.status == "ignored":
+        return  # a gateway event that changes nothing here (Stripe sends many kinds)
     payment = await repo.get_payment_by_gateway_transaction_id_for_update(
         db, event.gateway_transaction_id
     )
@@ -416,6 +464,35 @@ async def dev_simulate_confirm(
         await _fail_group(db, payment, rejected=False)
     await db.commit()
     return PaymentResponse.model_validate(payment)
+
+
+async def dev_checkout_payment(db: AsyncSession, txn: str) -> Payment:
+    """The pending card payment behind a development test card page (development only)."""
+    if not get_settings().is_dev or not txn.startswith("cs_sim_"):
+        raise NotFoundError("Not found.")
+    payment = await repo.get_payment_by_gateway_transaction_id_for_update(db, txn)
+    if payment is None or payment.payment_method != PaymentMethod.card:
+        raise NotFoundError("Not found.")
+    return payment
+
+
+async def dev_finish_checkout(db: AsyncSession, txn: str, paid: bool) -> None:
+    """The development test card page's Pay or Cancel: the same outcome Stripe's webhook brings
+    (paid: the booking is confirmed at once; cancelled: the attempt fails)."""
+    payment = await dev_checkout_payment(db, txn)
+    if payment.status != PaymentStatus.pending:
+        return  # pressed twice, or already settled
+    if payment.purpose == PaymentPurpose.balance:
+        await (_settle_balance(db, payment) if paid else _fail_balance(db, payment))
+    else:
+        bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
+        if any(b.status != BookingStatus.pending_payment for b in bookings):
+            return
+        if paid:
+            await _confirm_group(db, payment)
+        else:
+            await _fail_group(db, payment, rejected=False, bookings=bookings)
+    await db.commit()
 
 
 def _is_our_receipt_url(url: str) -> bool:
