@@ -9,12 +9,16 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.arenahub.app",
+      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.arenahub.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0F1A15",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
