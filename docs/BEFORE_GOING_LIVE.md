@@ -125,4 +125,13 @@ None of these chooses a deferred value; they are the work to do when a server ex
 8. **Recovery procedure:** who can restore the database, how to revoke all sessions (change `JWT_SECRET`, or run "log out everywhere" per account), how to rotate a leaked secret.
 9. Run `scripts/security-check.py` and fix what it reports; keep dependency updates flowing (`.github/dependabot.yml`).
 10. **Arrange an independent security review and penetration test before processing real payments.**
-11. Decisions waiting for the owner: where web sign-in tokens live (httpOnly cookies need the final web address) and private serving of receipt pictures (see `docs/SECURITY.md`).
+11. Decision waiting for the owner: where web sign-in tokens live (httpOnly cookies need the final web address; see `docs/SECURITY.md`). Receipts are private since 2026-10-16 (signed links).
+
+## Go-live blockers found in review (2026-10-16)
+
+1. **Picture storage outside development is not built.** With `ENVIRONMENT` other than `dev` and `CLOUDINARY_URL` set, `save_image` (`backend/app/shared/storage.py`) refuses every upload with "Remote image upload is not configured." Without `CLOUDINARY_URL` it writes to the server's own disk. Nothing is chosen yet; options to decide between:
+   - a. **Public CDN for arena photos and avatars** (for example Cloudinary or an object store behind a CDN): these pictures are public anyway.
+   - b. **Private storage with signed links for receipts** (an object store bucket that is not public, handing out short-lived signed links, the same idea as today's `/api/v1/media/receipts/...` route).
+   - c. Keep everything on the server's disk only if that disk is persistent and backed up.
+   - Warning: many hosts give a server a disk that is wiped on every restart or deploy. Such a disk cannot hold uploads: photos and receipts would silently disappear.
+2. **Set `ENVIRONMENT` explicitly on every server** (`prod` or `staging`). The default is `dev`, which turns on the development behaviour (codes written to the log, interactive docs, mock helpers, plain-http origins). `scripts/security-check.py` warns when it is not set.
