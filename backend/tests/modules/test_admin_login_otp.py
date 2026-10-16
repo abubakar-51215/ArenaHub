@@ -8,6 +8,7 @@ players sign in exactly as before.
 
 import re
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import text
@@ -34,9 +35,9 @@ async def _admin_with_challenge(client: AsyncClient, db: AsyncSession, email: st
     assert res.status_code == 200
     user = await repo.get_user_by_email(db, email)
     assert user is not None
-    otp = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login)
+    otp: Any = await repo.get_latest_otp(db, user.id, OtpPurpose.admin_login)
     assert otp is not None
-    otp.plain_code = last_code(user.id, OtpPurpose.admin_login)  # the database holds only the hash
+    otp.plain_code = last_code(user.id, OtpPurpose.admin_login)
     return res.json()["data"], user, otp
 
 

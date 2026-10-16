@@ -139,10 +139,10 @@ def _record_route_hits() -> Iterator[None]:
     worked: set[str] = set()
     original = APIRoute.handle
 
-    async def handle(self, scope, receive, send):  # type: ignore[no-untyped-def]
+    async def handle(self, scope, receive, send):
         status: dict[str, int] = {}
 
-        async def send_wrapper(message):  # type: ignore[no-untyped-def]
+        async def send_wrapper(message):
             if message["type"] == "http.response.start":
                 status["code"] = message["status"]
             await send(message)

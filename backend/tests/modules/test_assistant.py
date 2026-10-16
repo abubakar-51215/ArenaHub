@@ -13,6 +13,7 @@ from app.modules.assistant import intents
 from app.modules.assistant.service import FALLBACK
 from app.modules.booking.service import booking_code_for
 from app.modules.payment.model import Refund, RefundStatus
+from app.modules.user.model import User
 from tests.helpers import auth_header, make_user
 from tests.modules.test_review import _make_bookable_court, _slots
 
@@ -131,7 +132,7 @@ async def test_answers_without_bookings_or_refunds(
     assert count["answer"].startswith("You have 0 upcoming bookings, 0 past bookings")
 
 
-async def _booking(client: AsyncClient, db: AsyncSession, tag: str) -> tuple[dict, dict, dict]:
+async def _booking(client: AsyncClient, db: AsyncSession, tag: str) -> tuple[dict, User, dict]:
     owner, _ = await make_user(client, db, f"as-owner-{tag}@example.com", "owner")
     player, user = await make_user(client, db, f"as-player-{tag}@example.com")
     _, court_id, day = await _make_bookable_court(client, db, owner, f"as-owner-{tag}")

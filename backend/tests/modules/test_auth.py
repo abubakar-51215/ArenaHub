@@ -296,7 +296,7 @@ async def test_admin_still_gets_the_code_step_and_not_by_phone(
     assert by_email.status_code == 200
     assert by_email.json()["data"]["mfa_required"] is True
     admin = await repo.get_user_by_email(db_session, "adm-who@example.com")
-    by_phone = await _phone_login(client, admin.phone)
+    by_phone = await _phone_login(client, admin.phone or "")
     assert by_phone.status_code == 401
     # the older field still works
     old = await client.post(

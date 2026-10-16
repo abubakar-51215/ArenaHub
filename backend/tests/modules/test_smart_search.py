@@ -94,8 +94,8 @@ async def test_sport_area_price_and_free_slots_tomorrow_evening(
 
     # the time chip removed: free slots no longer matter, the slot words go
     data = await _search(client, "futsal in gulberg tomorrow evening under 3000", drop="time")
-    names = {i["name"] for i in data["items"]}
-    assert {"SS Goal Line", "SS Booked Up"} <= names and "SS Too Dear" not in names
+    name_set = {i["name"] for i in data["items"]}
+    assert {"SS Goal Line", "SS Booked Up"} <= name_set and "SS Too Dear" not in name_set
     assert all(i["free_slots_text"] is None for i in data["items"])
     assert "time" not in [c["kind"] for c in data["parsed"]["chips"]]
 
