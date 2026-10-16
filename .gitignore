@@ -34,6 +34,9 @@ backend/alembic/*.db
 # ---- Dev seed data manifest (local runtime artifact, not source) ----
 backend/scripts/.seed_manifest.json
 
+# ---- Email preview output (generated HTML/PNGs, not source) ----
+backend/scripts/.email_preview/
+
 # ---- Node / web ----
 node_modules/
 .next/
