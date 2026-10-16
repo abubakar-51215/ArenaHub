@@ -6,14 +6,15 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.complaint.model import ComplaintCategory, ComplaintStatus
+from app.shared.request_model import RequestModel
 
 
-class ComplaintCreate(BaseModel):
+class ComplaintCreate(RequestModel):
     category: ComplaintCategory
     description: str = Field(min_length=1, max_length=2000)
 
 
-class ComplaintRespondRequest(BaseModel):
+class ComplaintRespondRequest(RequestModel):
     admin_response: str = Field(min_length=1, max_length=2000)
     status: ComplaintStatus
 
@@ -32,3 +33,5 @@ class ComplaintResponse(BaseModel):
     assigned_to_name: str | None
     resolved_at: datetime | None
     created_at: datetime
+    # when the complaint last changed: the time of the admin's latest reply
+    updated_at: datetime | None = None

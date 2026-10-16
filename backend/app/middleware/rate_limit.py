@@ -9,40 +9,69 @@ Fails OPEN: if Redis is unreachable the request is allowed through rather than
 taking the whole API down with the cache (risk register — graceful fallback).
 """
 
+from ipaddress import IPv4Address, IPv6Address, ip_address
+
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from app.cache import redis as redis_cache
+from app.core.config import get_settings
 from app.shared.response import error
 
 log = structlog.get_logger()
 
 WINDOW_SECONDS = 60
-DEFAULT_LIMIT = 100
-AUTH_LIMIT = 20
 
 _AUTH_PREFIX = "/api/v1/auth"
 _API_PREFIX = "/api/v1"
 _EXEMPT_PATHS = frozenset({"/api/v1/health"})
 
 
+def _parse_ip(value: str) -> IPv4Address | IPv6Address | None:
+    try:
+        return ip_address(value.strip())
+    except ValueError:
+        return None
+
+
 def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """The address the limit is counted against.
+
+    The connection address, unless the connection comes from a trusted proxy
+    (``TRUSTED_PROXIES``). Then X-Forwarded-For is read from the right, skipping
+    the trusted proxies' own hops: the first address that is not a trusted proxy
+    is the client. Anything to the left of it was written by the client and is
+    not believed. A malformed entry stops the walk and the last trusted hop is
+    used, so a bad header can neither crash the limiter nor pick a fresh bucket.
+    """
+    peer = request.client.host if request.client else "unknown"
+    trusted = get_settings().trusted_proxy_networks
+    peer_ip = _parse_ip(peer)
+    if not trusted or peer_ip is None or not any(peer_ip in net for net in trusted):
+        return peer
+    hops = [h for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    client = peer
+    for hop in reversed(hops):
+        hop_ip = _parse_ip(hop)
+        if hop_ip is None:
+            break
+        client = str(hop_ip)
+        if not any(hop_ip in net for net in trusted):
+            break
+    return client
 
 
 def _limit_for(path: str) -> int | None:
     """Return the request budget for a path, or None if it isn't rate-limited."""
     if request_is_exempt(path):
         return None
+    settings = get_settings()
     if path.startswith(_AUTH_PREFIX):
-        return AUTH_LIMIT
+        return settings.rate_limit_auth_per_minute
     if path.startswith(_API_PREFIX):
-        return DEFAULT_LIMIT
+        return settings.rate_limit_api_per_minute
     return None
 
 

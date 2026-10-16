@@ -24,3 +24,13 @@ export function isSafeMediaUrl(url: string): boolean {
     return false;
   }
 }
+
+/**
+ * The address to put in an `<img src>` for a backend-supplied media URL. In dev
+ * the backend returns a relative path (`/uploads/receipts/x.jpg`) that it serves
+ * itself, so it needs the API address in front; on the web address it would 404.
+ * Full links (Cloudinary in production) are returned as they are.
+ */
+export function mediaSrc(url: string): string {
+  return url.startsWith("/") && API_URL ? `${API_URL}${url}` : url;
+}

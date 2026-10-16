@@ -1,5 +1,5 @@
 """Match ("Play") endpoints — all authenticated. Lightweight social listing,
-not integrated with slot locking or payment (see modules/match/model.py).
+played on the creator's own confirmed booking, no payment (see modules/match/model.py).
 """
 
 import uuid
@@ -14,6 +14,7 @@ from app.modules.arena.model import ArenaCity
 from app.modules.match import service
 from app.modules.match.schema import MatchCreate
 from app.modules.user.model import User
+from app.shared import abuse
 from app.shared.auth import get_current_user
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -21,7 +22,12 @@ from app.shared.response import success
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, summary="Create a match")
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a match",
+    dependencies=[Depends(abuse.per_user("match", 20, 3600))],
+)
 async def create_match(
     data: MatchCreate,
     user: User = Depends(get_current_user),
@@ -34,14 +40,14 @@ async def create_match(
 @router.get("", summary="List open matches")
 async def list_open_matches(
     city: ArenaCity | None = None,
-    sport: str | None = None,
+    sport: str | None = Query(None, max_length=50),
     match_date: date | None = Query(default=None, alias="date"),
     params: PaginationParams = Depends(pagination_params),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     data = await service.list_open_matches(
-        db, city=city, sport=sport, match_date=match_date, params=params
+        db, user, city=city, sport=sport, match_date=match_date, params=params
     )
     return success(data=data, message="Matches retrieved.")
 
@@ -58,10 +64,10 @@ async def list_my_matches(
 @router.get("/{match_id}", summary="Get a match's detail incl. participants")
 async def get_match(
     match_id: uuid.UUID,
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    match = await service.get_match_detail(db, match_id)
+    match = await service.get_match_detail(db, user, match_id)
     return success(data=match, message="Match retrieved.")
 
 

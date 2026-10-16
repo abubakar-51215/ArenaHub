@@ -52,6 +52,24 @@ async def list_pricing_rules(db: AsyncSession, court_id: uuid.UUID) -> list[Cour
     return list(result.scalars().all())
 
 
+async def list_pricing_rules_for_owner(
+    db: AsyncSession, owner_id: uuid.UUID, arena_id: uuid.UUID | None = None
+) -> list[CourtPricingRule]:
+    """Every pricing rule on the owner's courts (or one arena's), in one query."""
+    from app.modules.arena.model import Arena
+
+    stmt = (
+        select(CourtPricingRule)
+        .join(Court, Court.id == CourtPricingRule.court_id)
+        .join(Arena, Arena.id == Court.arena_id)
+        .where(Arena.owner_id == owner_id)
+        .order_by(CourtPricingRule.created_at.asc())
+    )
+    if arena_id is not None:
+        stmt = stmt.where(Arena.id == arena_id)
+    return list((await db.execute(stmt)).scalars().all())
+
+
 async def add_pricing_rule(db: AsyncSession, rule: CourtPricingRule) -> CourtPricingRule:
     db.add(rule)
     await db.flush()

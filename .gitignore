@@ -77,3 +77,9 @@ logs/
 # ---- Pre-commit ----
 .pre-commit-cache/
 backups/
+
+# Mobile capture debug output. The 23 numbered baselines (01-*.png .. 23-*.png)
+# stay tracked; everything else in this folder is local scratch.
+design/baselines/mobile/*/
+design/baselines/mobile/*.png
+!design/baselines/mobile/[0-2][0-9]-*.png

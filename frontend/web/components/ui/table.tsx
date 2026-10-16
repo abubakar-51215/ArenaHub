@@ -1,27 +1,35 @@
 import * as React from "react";
 
+import { ScrollCue } from "@/components/ui/scroll-cue";
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="relative w-full overflow-x-auto">
-      <table className={cn("w-full caption-bottom text-sm", className)} {...props} />
-    </div>
+    <ScrollCue>
+      <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
+    </ScrollCue>
   );
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return <thead className={cn("bg-muted/50 [&_tr]:border-b", className)} {...props} />;
+  return <thead data-slot="table-header" className={cn("bg-muted/50 [&_tr]:border-b", className)} {...props} />;
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
-  return <tbody className={cn("[&_tr:last-child]:border-0", className)} {...props} />;
+  return <tbody data-slot="table-body" className={cn("[&_tr:last-child]:border-0", className)} {...props} />;
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
-      className={cn("border-b transition-colors hover:bg-muted/40", className)}
+      data-slot="table-row"
+      // `group` enables the row-actions-fade pattern on descendant cells:
+      // opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
+      // Callers with primary-action rows (approve/reject queues, where the
+      // action must be visible at rest — e.g. admin/arenas, owner/bookings'
+      // pending-approval actions) should omit the fade classes and let
+      // those actions render always-visible instead.
+      className={cn("group border-b transition-colors hover:bg-muted/40", className)}
       {...props}
     />
   );
@@ -30,8 +38,9 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
+      data-slot="table-head"
       className={cn(
-        "h-10 px-4 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground uppercase",
+        "h-10 px-4 max-lg:px-3 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground uppercase",
         className,
       )}
       {...props}
@@ -40,7 +49,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return <td className={cn("px-4 py-3 align-middle", className)} {...props} />;
+  return <td data-slot="table-cell" className={cn("px-[18px] py-3 align-middle max-lg:px-3", className)} {...props} />;
 }
 
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };

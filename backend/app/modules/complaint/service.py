@@ -10,6 +10,7 @@ from app.modules.complaint import repository as repo
 from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintStatus
 from app.modules.complaint.schema import ComplaintCreate, ComplaintResponse
 from app.modules.user.model import User
+from app.shared.notify import notify_admins, notify_user
 from app.shared.pagination import PaginationParams, paginated
 
 
@@ -26,6 +27,7 @@ def _to_response(complaint: Complaint) -> ComplaintResponse:
         assigned_to_name=complaint.assigned_admin.full_name if complaint.assigned_admin else None,
         resolved_at=complaint.resolved_at,
         created_at=complaint.created_at,
+        updated_at=complaint.updated_at,
     )
 
 
@@ -39,6 +41,9 @@ async def submit_complaint(
         status=ComplaintStatus.open,
     )
     await repo.add_complaint(db, complaint)
+    await notify_admins(
+        db, "complaint_new", complaint_id=str(complaint.id), player_name=user.full_name
+    )
     await db.commit()
     saved = await repo.get_complaint(db, complaint.id)
     assert saved is not None
@@ -82,6 +87,7 @@ async def respond_to_complaint(
     complaint = await repo.get_complaint(db, complaint_id)
     if complaint is None:
         raise NotFoundError("Complaint not found.")
+    first_reply = not complaint.admin_response
     complaint.admin_response = admin_response
     complaint.status = status
     complaint.resolved_at = datetime.now() if status == ComplaintStatus.resolved else None
@@ -92,10 +98,25 @@ async def respond_to_complaint(
     if complaint.assigned_to is None:
         complaint.assigned_admin = admin
         complaint.assigned_to = admin.id
+    # tell the player once, on the first reply (the notice opens the complaint);
+    # editing the reply later sends nothing (the frames have no "reply updated" notice)
+    if first_reply:
+        await notify_user(
+            db, complaint.player_id, "complaint_reply", complaint_id=str(complaint.id)
+        )
     await db.commit()
     saved = await repo.get_complaint(db, complaint_id)
     assert saved is not None
     return _to_response(saved)
+
+
+async def get_my_complaint(
+    db: AsyncSession, user: User, complaint_id: uuid.UUID
+) -> ComplaintResponse:
+    complaint = await repo.get_complaint(db, complaint_id)
+    if complaint is None or complaint.player_id != user.id:
+        raise NotFoundError("Complaint not found.")
+    return _to_response(complaint)
 
 
 async def count_open(db: AsyncSession) -> int:

@@ -1,115 +1,211 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router, type Href } from 'expo-router';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors } from "@/constants/theme";
-import {
-  listMyNotifications,
-  markAllNotificationsRead,
-  markNotificationRead,
-  type AppNotification,
-} from "@/services/notifications";
+import { IconExtra } from '@/components/ui/icon-extra';
+import { Icon } from '@/components/ui/icon';
+import { ScreenHead } from '@/components/ui/screen-head';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, ErrorState } from '@/components/ui/state-view';
+import { Text } from '@/components/ui/text';
+import { showToast } from '@/components/ui/toast';
+import { Colors } from '@/constants/theme';
+import { tapHaptic } from '@/lib/haptics';
+import { dayGroup, shortAgo } from '@/lib/karachi';
+import { noticeLook, noticeTarget, type NoticeIcon, type NoticeTone } from '@/lib/notification-target';
+import { getBooking } from '@/services/bookings';
+import { listMyNotifications, markAllNotificationsRead, markNotificationRead, type AppNotification } from '@/services/notifications';
 
-const EVENT_ICON: Record<
-  string,
-  { icon: keyof typeof Ionicons.glyphMap; color: string }
-> = {
-  booking_confirmed: { icon: "checkmark-circle", color: Colors.light.success },
-  booking_cancelled: {
-    icon: "close-circle-outline",
-    color: Colors.light.destructive,
-  },
-  booking_payment_failed: {
-    icon: "alert-circle-outline",
-    color: Colors.light.destructive,
-  },
-  booking_reminder_24h: { icon: "alarm-outline", color: Colors.light.warning },
-  booking_reminder_1h: { icon: "alarm-outline", color: Colors.light.warning },
-  new_confirmed_booking: {
-    icon: "checkmark-circle",
-    color: Colors.light.success,
-  },
-  refund_initiated: { icon: "card-outline", color: Colors.light.tint },
+// Notifications, from arena-hub-player-app-account.html (frames 01 to 04): Today / Yesterday / Earlier, a lime dot on
+// what is unread, "Mark all read", and a tap opens what the notice is about (a booking, a match, the reviews screen for
+// "Rate your last game", a complaint). No delete and no swipe.
+const TONE: Record<NoticeTone, { bg: string; fg: string }> = {
+  ok: { bg: Colors.light.limeWash, fg: Colors.light.limeText },
+  wait: { bg: Colors.light.amberWash, fg: Colors.light.amberText },
+  off: { bg: Colors.light.redWash, fg: Colors.light.redText },
+  idle: { bg: Colors.light.lineSoft, fg: Colors.light.muted },
 };
-const DEFAULT_ICON = {
-  icon: "notifications-outline" as const,
-  color: Colors.light.tint,
-};
+
+function NoticeIconView({ icon, color }: { icon: NoticeIcon; color: string }) {
+  switch (icon) {
+    case 'tick':
+      return <Icon name="tick" size={18} color={color} strokeWidth={2.4} />;
+    case 'star':
+      return <Icon name="star" size={18} color={color} fill={color} />;
+    case 'bell':
+      return <Icon name="bell" size={18} color={color} />;
+    case 'clock':
+      return <IconExtra name="clock" color={color} />;
+    case 'receipt':
+      return <IconExtra name="receipt" color={color} />;
+    case 'close':
+      return <IconExtra name="close" color={color} />;
+    case 'people':
+      return <IconExtra name="people" color={color} />;
+    case 'lifebuoy':
+      return <IconExtra name="lifebuoy" color={color} />;
+  }
+}
+
+type Row = { type: 'head'; key: string; label: string } | { type: 'row'; key: string; n: AppNotification };
+
+function NoticeRow({ n, onPress }: { n: AppNotification; onPress: (n: AppNotification) => void }) {
+  const look = noticeLook(n.event);
+  const tone = TONE[look.tone];
+  const unread = !n.read_at;
+  return (
+    <Pressable
+      onPress={() => onPress(n)}
+      accessibilityRole="button"
+      accessibilityLabel={`${n.title}. ${n.body}${unread ? ' Unread.' : ''}`}
+      style={styles.row}>
+      <View style={[styles.tile, { backgroundColor: tone.bg }]}>
+        <NoticeIconView icon={look.icon} color={tone.fg} />
+      </View>
+      <View style={styles.rowBody}>
+        <Text style={[styles.rowTitle, unread && styles.rowTitleUnread]} numberOfLines={2}>
+          {n.title}
+        </Text>
+        <Text style={styles.rowText} numberOfLines={3}>
+          {n.body}
+        </Text>
+      </View>
+      <View style={styles.rowSide}>
+        <Text style={styles.time}>{shortAgo(n.created_at)}</Text>
+        {unread ? <View style={styles.dot} /> : <View style={styles.dotSpace} />}
+      </View>
+    </Pressable>
+  );
+}
+
+function SkeletonRows() {
+  return (
+    <View style={styles.list}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i} style={styles.row}>
+          <Skeleton width={40} height={40} radius={12} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Skeleton height={14} width="55%" radius={7} />
+            <Skeleton height={14} width="85%" radius={7} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function NotificationsScreen() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["my-notifications"],
-    queryFn: () => listMyNotifications(),
+  const q = useQuery({ queryKey: ['my-notifications'], queryFn: () => listMyNotifications(), retry: 1 });
+  const [refreshing, setRefreshing] = useState(false);
+  const opening = useRef(false);
+
+  const items = useMemo(() => q.data?.items ?? [], [q.data]);
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    let last = '';
+    for (const n of items) {
+      const g = dayGroup(n.created_at);
+      if (g !== last) {
+        out.push({ type: 'head', key: `h-${g}`, label: g });
+        last = g;
+      }
+      out.push({ type: 'row', key: n.id, n });
+    }
+    return out;
+  }, [items]);
+
+  const refreshCounts = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['my-notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+  }, [queryClient]);
+
+  const markAll = useMutation({
+    mutationFn: markAllNotificationsRead,
+    onSuccess: refreshCounts,
+    onError: () => showToast('Could not mark them as read. Please try again.'),
   });
 
-  const notifications = data?.items ?? [];
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await q.refetch();
+    setRefreshing(false);
+  }, [q]);
 
-  async function handlePress(item: AppNotification) {
-    if (item.read_at) return;
-    await markNotificationRead(item.id);
-    queryClient.invalidateQueries({ queryKey: ["my-notifications"] });
-  }
+  const open = useCallback(
+    async (n: AppNotification) => {
+      if (opening.current) return;
+      opening.current = true;
+      tapHaptic();
+      try {
+        if (!n.read_at) {
+          markNotificationRead(n.id).then(refreshCounts, () => {});
+        }
+        const target = noticeTarget(n);
+        if (target.kind === 'booking') {
+          const booking = await getBooking(target.bookingId);
+          router.push({ pathname: '/booking/detail/[groupId]', params: { groupId: booking.booking_group_id } } as unknown as Href);
+        } else if (target.kind === 'match') {
+          router.push({ pathname: '/play/[matchId]', params: { matchId: target.matchId } } as unknown as Href);
+        } else if (target.kind === 'review') {
+          router.push({ pathname: '/arena/[id]/reviews', params: { id: target.arenaId, bookingId: target.bookingId } } as unknown as Href);
+        } else if (target.kind === 'complaint') {
+          router.push({ pathname: '/support/[id]', params: { id: target.complaintId } } as unknown as Href);
+        }
+      } catch {
+        showToast('Could not open that. Please try again.');
+      } finally {
+        opening.current = false;
+      }
+    },
+    [refreshCounts],
+  );
 
-  async function handleMarkAll() {
-    await markAllNotificationsRead();
-    queryClient.invalidateQueries({ queryKey: ["my-notifications"] });
-  }
+  const unread = q.data?.unread_count ?? 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={Colors.light.text} />
-        </Pressable>
-        <Text style={styles.title}>Notifications</Text>
-        <Pressable onPress={handleMarkAll} disabled={!data?.unread_count}>
-          <Text
-            style={[styles.markAll, { opacity: data?.unread_count ? 1 : 0.3 }]}
-          >
-            Mark all read
-          </Text>
-        </Pressable>
-      </View>
-
-      {isLoading ? (
-        <ActivityIndicator
-          color={Colors.light.tint}
-          style={{ marginTop: 32 }}
-        />
+    <SafeAreaView style={styles.page} edges={['bottom']}>
+      <ScreenHead
+        title="Notifications"
+        right={
+          <Pressable
+            onPress={() => !markAll.isPending && markAll.mutate()}
+            disabled={!unread || markAll.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Mark all read"
+            accessibilityState={{ disabled: !unread }}
+            style={styles.markAll}>
+            <Text style={[styles.markAllText, !unread && { opacity: 0.35 }]}>Mark all read</Text>
+          </Pressable>
+        }
+      />
+      {q.isLoading ? (
+        <SkeletonRows />
+      ) : q.isError && !q.data ? (
+        <ErrorState title="Could not load notifications." onRetry={() => q.refetch()} />
       ) : (
         <FlatList
-          data={notifications}
-          keyExtractor={(n) => n.id}
+          data={rows}
+          keyExtractor={(r) => r.key}
+          renderItem={({ item }) =>
+            item.type === 'head' ? (
+              <Text style={styles.head} accessibilityRole="header">
+                {item.label}
+              </Text>
+            ) : (
+              <NoticeRow n={item.n} onPress={open} />
+            )
+          }
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
-            const { icon, color } = EVENT_ICON[item.event] ?? DEFAULT_ICON;
-            return (
-              <Pressable style={styles.row} onPress={() => handlePress(item)}>
-                <View
-                  style={[styles.iconWrap, { backgroundColor: `${color}22` }]}
-                >
-                  <Ionicons name={icon} size={18} color={color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{item.title}</Text>
-                  <Text style={styles.rowSubtitle}>{item.body}</Text>
-                </View>
-                {!item.read_at && <View style={styles.unreadDot} />}
-              </Pressable>
-            );
-          }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.ink} colors={[Colors.light.ink]} />}
           ListEmptyComponent={
-            <Text style={styles.empty}>No notifications yet.</Text>
+            <EmptyState
+              icon={<Icon name="bell" size={30} color={Colors.light.limeDeep} />}
+              title="Nothing yet."
+              text="Booking updates, reminders and refunds will show up here."
+            />
           }
         />
       )}
@@ -118,39 +214,19 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: { fontSize: 16, fontWeight: "700", color: Colors.light.text },
-  markAll: { fontSize: 12, fontWeight: "600", color: Colors.light.tint },
-  list: { paddingHorizontal: 20, paddingBottom: 24 },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowTitle: { fontSize: 14, fontWeight: "700", color: Colors.light.text },
-  rowSubtitle: { fontSize: 12, color: Colors.light.muted, marginTop: 2 },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.light.tint,
-  },
-  empty: { textAlign: "center", color: Colors.light.muted, marginTop: 32 },
+  page: { flex: 1, backgroundColor: Colors.light.paper },
+  markAll: { minHeight: 44, justifyContent: 'center' },
+  markAllText: { fontSize: 14, fontWeight: '700', color: Colors.light.limeText },
+  list: { paddingHorizontal: 18, paddingBottom: 24, flexGrow: 1 },
+  head: { fontSize: 12, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.light.muted, marginTop: 16, marginBottom: 4 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12, minHeight: 64 },
+  tile: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1, gap: 2 },
+  rowTitle: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
+  rowTitleUnread: { fontWeight: '700' },
+  rowText: { fontSize: 14, lineHeight: 20, color: Colors.light.muted },
+  rowSide: { alignItems: 'flex-end', gap: 6, minWidth: 32 },
+  time: { fontSize: 14, color: Colors.light.muted },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.light.limeDeep },
+  dotSpace: { width: 8, height: 8 },
 });

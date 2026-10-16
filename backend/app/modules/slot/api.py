@@ -38,6 +38,31 @@ async def list_public_slots(
     return success(data=rows, message="Slots retrieved.")
 
 
+@router.get(
+    "/courts/{court_id}/availability",
+    summary="Open slot count per date for a court (the 7-day strip)",
+)
+async def court_availability(
+    court_id: uuid.UUID,
+    start: date = Query(alias="from"),
+    end: date = Query(alias="to"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows = await service.court_availability(db, court_id, start, end)
+    return success(data=rows, message="Availability retrieved.")
+
+
+@router.get(
+    "/arenas/{arena_id}/slots-today",
+    summary="Per court: open slots left today and the lowest price",
+)
+async def arena_slots_today(
+    arena_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    rows = await service.arena_slots_today(db, arena_id)
+    return success(data=rows, message="Today's slots retrieved.")
+
+
 # ---- owner ----------------------------------------------------------------
 
 

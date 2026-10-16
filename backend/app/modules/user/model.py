@@ -31,8 +31,14 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    # Empty only for an account made by Continue with Google until "One more step" saves it; such an
+    # account cannot book until then.
+    phone: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
+    # A Google-only account holds an unusable random hash (no password works) until
+    # "Forgot password".
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # The Google account ("sub") linked by Continue with Google; it never changes for that person.
+    google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
 
     profile_picture: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -61,5 +67,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Arenas owned by this user (only meaningful for role=owner).
     arenas: Mapped[list["Arena"]] = relationship(
         back_populates="owner",
+        # arenas also point at users through suspended_by / deleted_by
+        foreign_keys="Arena.owner_id",
         cascade="all, delete-orphan",
     )

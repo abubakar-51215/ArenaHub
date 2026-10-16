@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Hub — Player App — Auth (G1 proposal)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ARENA HUB — design tokens
+   Palette: night pitch ink, chalk paper, floodlight lime.
+   Colour is reserved for meaning: lime = live/primary action,
+   amber = pending, red = cancelled. Nothing else is coloured.
+   ============================================================ */
+:root{
+  --ink:#0F1A15;
+  --ink-soft:#1C2B23;
+  --paper:#F1F2EF;
+  --card:#FFFFFF;
+  --line:#E2E6E1;
+  --line-soft:#EDEFEB;
+  --text:#0F1A15;
+  --text-2:#46534C;
+  --muted:#79857E;
+  --lime:#C4F546;
+  --lime-ink:#0F1A15;
+  --lime-deep:#7FA30F;
+  --lime-wash:#F2FBDA;
+  --amber:#D9930B;
+  --amber-wash:#FDF3DC;
+  --red:#CF4141;
+  --red-wash:#FBE9E9;
+  --slot-open:#F6F7F4;
+  --shadow:0 1px 2px rgba(15,26,21,.05);
+  --shadow-lg:0 18px 40px -18px rgba(15,26,21,.28);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--paper);color:var(--text);
+  font-family:'Inter Tight',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;letter-spacing:-.005em;
+}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:inherit;text-decoration:none}
+
+.sheet-head{max-width:1500px;margin:0 auto;padding:40px 32px 8px}
+.sheet-head .h1{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 88,'wght' 700;font-size:26px;letter-spacing:-.02em;margin:0}
+.sheet-head p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:640px}
+.gallery{max-width:1500px;margin:0 auto;padding:24px 32px 80px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:38px 26px;justify-items:start}
+.frame-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:12px;width:300px}
+.frame-cap{display:flex;align-items:baseline;gap:8px}
+.frame-cap b{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 92,'wght' 650;font-size:13px}
+.frame-cap span{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 118,'wght' 600;
+  font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+
+.phone{
+  width:300px;height:628px;border-radius:36px;background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--shadow-lg);
+  overflow:hidden;display:flex;flex-direction:column;position:relative;flex:none;
+}
+.phone::after{content:"";position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  width:104px;height:4px;border-radius:3px;background:var(--text);opacity:.18;z-index:9;pointer-events:none}
+.m-status{display:flex;align-items:center;justify-content:space-between;padding:11px 18px 5px;
+  font-size:11px;font-weight:650;font-variant-numeric:tabular-nums;background:var(--paper)}
+.m-status i{display:flex;gap:3px;align-items:flex-end}
+.m-status i b{display:block;width:2.5px;border-radius:1px;background:currentColor}
+.m-screen{flex:1;overflow-y:auto;overflow-x:hidden;background:var(--paper);
+  font-size:13px;padding-bottom:8px;scrollbar-width:none}
+.m-screen::-webkit-scrollbar{display:none}
+.m-pad{padding:0 18px}
+.m-head{display:flex;align-items:center;gap:11px;padding:8px 18px 12px}
+.m-back{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;flex:none;color:var(--text)}
+.m-back svg{width:15px;height:15px}
+.m-title-xl{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 84,'wght' 700;
+  font-size:25px;line-height:1.08;letter-spacing:-.03em;margin:0 0 3px}
+
+/* .m-search deliberately has no icon-size rule — the oversized mail/lock
+   glyphs this produces on the Log in frame are kept exactly as drawn
+   (owner-approved correction), not a bug to fix. */
+.m-search{display:flex;align-items:center;gap:8px;padding:10px 13px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12.5px}
+.m-search.is-focused{border-color:var(--ink);border-width:1.5px;padding:9.5px 12.5px}
+.m-search.is-error{border-color:var(--red);border-width:1.5px;padding:9.5px 12.5px}
+.m-search.is-valid{border-color:var(--lime-deep);border-width:1.5px;padding:9.5px 12.5px}
+.field-err{font-size:11px;color:var(--red);margin:-4px 0 0;padding:0 2px}
+.field-hint{font-size:11px;color:var(--muted);margin:-4px 0 0;padding:0 2px}
+
+.m-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;
+  border-radius:12px;font-size:13.5px;font-weight:650;background:var(--ink);color:var(--paper);border:1px solid var(--ink)}
+.m-btn.ghost{background:var(--card);color:var(--text);border-color:var(--line)}
+.m-btn.lime{background:var(--lime);color:#0F1A15;border-color:var(--lime)}
+.m-btn.is-loading{opacity:.7}
+.spin{width:15px;height:15px;border-radius:50%;border:2px solid rgba(241,242,239,.35);
+  border-top-color:#F1F2EF;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+
+.chk-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
+.chk-row.is-met{color:var(--lime-deep)}
+.chk-dot{width:14px;height:14px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--line-soft);color:var(--muted)}
+.chk-row.is-met .chk-dot{background:var(--lime-wash);color:var(--lime-deep)}
+.chk-dot svg{width:9px;height:9px}
+
+.otp-row{display:flex;gap:8px;justify-content:space-between}
+.otp-box{width:38px;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 80,'wght' 700;
+  font-size:19px}
+.otp-box.is-focused{border-color:var(--ink);border-width:1.5px}
+.otp-box.is-filled{border-color:var(--line);background:var(--line-soft)}
+.otp-box.is-error{border-color:var(--red)}
+
+.states-strip{width:300px;display:flex;flex-direction:column;gap:8px;padding:14px;
+  background:var(--card);border:1px solid var(--line);border-radius:15px}
+.states-strip b{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 118,'wght' 600}
+</style>
+</head>
+<body>
+<div class="sheet-head">
+  <h1 class="h1">Auth screens — G1 proposal frames</h1>
+  <p>Same tokens and components as arena-hub-player-app.html's Log in frame (.m-search, .m-btn, brand mark) — nothing new invented. Sign up, OTP and Forgot password didn't have a prototype frame before this; these are new, for review before anything gets built. Google/Apple sign-in and the "or continue with" divider are intentionally not reproduced here (no backend support).</p>
+</div>
+<div class="gallery">
+
+<div class="frame-wrap">
+  <div class="frame-cap"><b>Sign up</b><span>default</span></div>
+  <div class="phone"><div class="m-status"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b><b style="height:10px;margin-left:5px;width:16px;border-radius:2px"></b></i></div>
+  <div class="m-screen"><div class="m-pad" style="padding-top:20px">
+    <div class="m-head" style="padding:0 0 14px">
+      <button class="m-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+    </div>
+    <h1 class="m-title-xl">Create your account</h1>
+    <p class="mute" style="font-size:12.5px;color:var(--muted);margin:0 0 18px">Join 328 arenas across Pakistan.</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="m-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg><span>Full name</span></div>
+      <div class="m-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span>Email</span></div>
+      <div class="m-search"><span>Phone (e.g. 03XX XXXXXXX)</span></div>
+      <div class="m-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span style="letter-spacing:2px">••••••••</span></div>
+      <div style="display:flex;flex-direction:column;gap:5px;padding:2px 2px 0">
+        <div class="chk-row"><span class="chk-dot">•</span>At least 8 characters</div>
+        <div class="chk-row is-met"><span class="chk-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12.5 9.5 18 20 7"/></svg></span>One uppercase letter</div>
+        <div class="chk-row"><span class="chk-dot">•</span>One number</div>
+        <div class="chk-row"><span class="chk-dot">•</span>One special character</div>
+      </div>
+      <button class="m-btn" style="margin-top:6px">Create account</button>
+    </div>
+    <p class="mute" style="font-size:12px;text-align:center;margin:18px 0 0;color:var(--muted)">Already have an account? <b style="color:var(--text)">Log in</b></p>
+  </div></div></div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-cap"><b>OTP verify</b><span>default</span></div>
+  <div class="phone"><div class="m-status"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b><b style="height:10px;margin-left:5px;width:16px;border-radius:2px"></b></i></div>
+  <div class="m-screen"><div class="m-pad" style="padding-top:20px">
+    <div class="m-head" style="padding:0 0 14px">
+      <button class="m-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+    </div>
+    <h1 class="m-title-xl">Check your email</h1>
+    <p class="mute" style="font-size:12.5px;color:var(--muted);margin:0 0 22px">We sent a 6-digit code to <b style="color:var(--text)">s***@example.com</b>.</p>
+    <div class="otp-row">
+      <div class="otp-box is-filled">4</div>
+      <div class="otp-box is-filled">8</div>
+      <div class="otp-box is-focused">2</div>
+      <div class="otp-box">&nbsp;</div>
+      <div class="otp-box">&nbsp;</div>
+      <div class="otp-box">&nbsp;</div>
+    </div>
+    <button class="m-btn" style="margin-top:22px">Verify</button>
+    <p class="mute" style="font-size:12px;text-align:center;margin:16px 0 0;color:var(--muted)">Resend code in <b style="color:var(--text)">0:47</b></p>
+  </div></div></div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-cap"><b>Forgot password</b><span>default</span></div>
+  <div class="phone"><div class="m-status"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b><b style="height:10px;margin-left:5px;width:16px;border-radius:2px"></b></i></div>
+  <div class="m-screen"><div class="m-pad" style="padding-top:20px">
+    <div class="m-head" style="padding:0 0 14px">
+      <button class="m-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+    </div>
+    <h1 class="m-title-xl">Reset your password</h1>
+    <p class="mute" style="font-size:12.5px;color:var(--muted);margin:0 0 18px">We'll email you a reset code to enter in the app.</p>
+    <div class="m-search is-valid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span style="color:var(--text)">sara.khan@example.com</span></div>
+    <p class="field-hint">Pre-filled from your last login attempt.</p>
+    <button class="m-btn" style="margin-top:14px">Send reset code</button>
+    <p class="mute" style="font-size:12px;text-align:center;margin:18px 0 0;color:var(--muted)">Remembered it? <b style="color:var(--text)">Log in</b></p>
+  </div></div></div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-cap"><b>Forgot password — step 2: reset</b><span>existing screen's 2nd state</span></div>
+  <div class="phone"><div class="m-status"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:10px"></b><b style="height:10px;margin-left:5px;width:16px;border-radius:2px"></b></i></div>
+  <div class="m-screen"><div class="m-pad" style="padding-top:20px">
+    <div class="m-head" style="padding:0 0 14px">
+      <button class="m-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>
+    </div>
+    <h1 class="m-title-xl">Enter your reset code</h1>
+    <p class="mute" style="font-size:12.5px;color:var(--muted);margin:0 0 18px">Paste the reset code you received and choose a new password.</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="m-search is-focused" style="align-items:flex-start">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="margin-top:1px;flex:none"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span style="color:var(--text);word-break:break-all;line-height:1.5;flex:1;min-width:0">P5gFZNiwujXig0kqEIBP0DXIG_blSwUaDP_DuER3OL8</span>
+      </div>
+      <p class="field-hint" style="margin-top:-4px">Reset code — pasted from the email (43 characters). Icon left as-drawn (unconstrained), same as the rest of this gallery — sizing here is pending Muhammad's Sign-up A/B/C choice and will be resized to match. As-drawn, this icon swallows the row and forces the code into a one-character-per-line wrap (see the G1 report).</p>
+      <div class="m-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>New password</span></div>
+      <div style="display:flex;flex-direction:column;gap:5px;padding:2px 2px 0">
+        <div class="chk-row"><span class="chk-dot">•</span>At least 8 characters</div>
+        <div class="chk-row"><span class="chk-dot">•</span>One uppercase letter</div>
+        <div class="chk-row"><span class="chk-dot">•</span>One number</div>
+        <div class="chk-row"><span class="chk-dot">•</span>One special character</div>
+      </div>
+      <button class="m-btn" style="margin-top:6px">Reset password</button>
+    </div>
+  </div></div></div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-cap"><b>Field states</b><span>email, drawn in isolation</span></div>
+  <div class="states-strip">
+    <b>Empty</b>
+    <div class="m-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span>Email</span></div>
+    <b>Focused</b>
+    <div class="m-search is-focused"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span style="color:var(--text)">sara.kh|</span></div>
+    <b>Error</b>
+    <div class="m-search is-error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span style="color:var(--text)">sara.khan@</span></div>
+    <div class="field-err">Enter a valid email address.</div>
+    <b>Valid</b>
+    <div class="m-search is-valid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span style="color:var(--text)">sara.khan@example.com</span></div>
+    <b>Submit — loading</b>
+    <button class="m-btn is-loading"><span class="spin"></span></button>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -3,8 +3,22 @@
 import { useState } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
-import { StatusBadge } from "@/components/owner/status-badge";
+import {
+  AdminBadge,
+  AdminEmpty,
+  AdminPerson,
+  AdminTableFoot,
+  statusLabel,
+} from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -16,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { useAllBookings } from "@/hooks/useAdmin";
 import { formatDate, formatRs, formatTime } from "@/lib/format";
-import type { BookingStatus } from "@/types";
+import type { AdminBooking, BookingStatus } from "@/types";
 
 const STATUSES: BookingStatus[] = [
   "pending_payment",
@@ -27,109 +41,189 @@ const STATUSES: BookingStatus[] = [
   "rejected",
 ];
 
+type Period = "" | "today" | "7d" | "30d";
+
+/** Calendar dates are Asia/Karachi dates, as on the backend. */
+function karachiDate(offsetDays = 0): string {
+  const d = new Date(Date.now() + offsetDays * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(d);
+}
+
+/** The period filters the slot date (booking_date), up to and including today. */
+function periodRange(period: Period): { date_from?: string; date_to?: string } {
+  if (!period) return {};
+  const today = karachiDate();
+  if (period === "today") return { date_from: today, date_to: today };
+  return { date_from: karachiDate(period === "7d" ? -6 : -29), date_to: today };
+}
+
+/** The booking reference the player and the owner see (AHB-xxxxxx), so one booking reads the same everywhere. */
+function bookingRef(b: { booking_code?: string; id: string }): string {
+  return b.booking_code || `#BK-${b.id.slice(0, 4).toUpperCase()}`;
+}
+
 export default function AdminBookingsPage() {
   const [status, setStatus] = useState<BookingStatus | "">("");
+  const [period, setPeriod] = useState<Period>("");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useAllBookings({ status: status || undefined, page });
+  const [viewing, setViewing] = useState<AdminBooking | null>(null);
+  const { data, isLoading } = useAllBookings({
+    status: status || undefined,
+    ...periodRange(period),
+    page,
+  });
 
   const bookings = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
 
   return (
     <>
-      <PageHeader title="Booking Monitoring" subtitle="Monitor all arena bookings">
+      <PageHeader title="Booking monitoring" subtitle="Every booking on the network">
+        <Select
+          value={period}
+          aria-label="Period"
+          onChange={(e) => {
+            setPeriod(e.target.value as Period);
+            setPage(1);
+          }}
+        >
+          <option value="">Any date</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+        </Select>
         <Select
           value={status}
+          aria-label="Status"
           onChange={(e) => {
             setStatus(e.target.value as BookingStatus | "");
             setPage(1);
           }}
-          className="w-44"
         >
-          <option value="">All Status</option>
+          <option value="">Any status</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s.replace(/_/g, " ")}
+              {statusLabel(s)}
             </option>
           ))}
         </Select>
       </PageHeader>
 
-      <div className="animate-fade-in space-y-4 p-4 sm:p-6 lg:p-8">
-        <div className="shadow-card overflow-hidden rounded-xl border border-border bg-card">
+      <div className="animate-fade-in">
+        <section className="ah-card">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Booking</TableHead>
                 <TableHead>Player</TableHead>
                 <TableHead>Arena</TableHead>
                 <TableHead>Court</TableHead>
-                <TableHead>Date &amp; Time</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>Slot</TableHead>
+                <TableHead className="ah-r">Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="ah-r">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
+                  <TableCell className="ah-mute" colSpan={8}>
                     Loading…
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && bookings.length === 0 && (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    No bookings found.
+                  <TableCell colSpan={8} className="p-0">
+                    <AdminEmpty>No bookings found.</AdminEmpty>
                   </TableCell>
                 </TableRow>
               )}
               {bookings.map((b) => (
                 <TableRow key={b.id}>
-                  <TableCell className="font-medium text-foreground">{b.player_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{b.arena_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{b.court_name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(b.booking_date)}, {formatTime(b.start_time)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatRs(b.total_amount)}
-                  </TableCell>
+                  <TableCell className="ah-strong tabular-nums">{bookingRef(b)}</TableCell>
                   <TableCell>
-                    <StatusBadge status={b.status} />
+                    <AdminPerson name={b.player_name} />
+                  </TableCell>
+                  <TableCell>{b.arena_name}</TableCell>
+                  <TableCell className="ah-t2">{b.court_name}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatDate(b.booking_date)} · {formatTime(b.start_time)}
+                  </TableCell>
+                  <TableCell className="ah-r ah-money">{formatRs(b.total_amount)}</TableCell>
+                  <TableCell>
+                    <span className="ah-badges">
+                      <AdminBadge status={b.status} />
+                      {b.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
+                    </span>
+                  </TableCell>
+                  <TableCell className="ah-r">
+                    <div className="ah-row-actions">
+                      <Button variant="ghost" size="sm" onClick={() => setViewing(b)}>
+                        View
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
 
-        {data && data.total > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Showing {(page - 1) * data.page_size + 1}–
-              {Math.min(page * data.page_size, data.total)} of {data.total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+          {data && data.total > 0 && (
+            <AdminTableFoot
+              from={(page - 1) * data.page_size + 1}
+              to={Math.min(page * data.page_size, data.total)}
+              total={data.total}
+              page={page}
+              pageCount={totalPages}
+              onPage={setPage}
+            />
+          )}
+        </section>
       </div>
+
+      {/* everything shown is on the row already: no extra request */}
+      <Dialog open={!!viewing} onOpenChange={(v) => !v && setViewing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{viewing ? `Booking ${bookingRef(viewing)}` : ""}</DialogTitle>
+            <DialogDescription>{viewing?.arena_name}</DialogDescription>
+          </DialogHeader>
+          {viewing && (
+            <dl className="ah-detail">
+              <dt>Status</dt>
+              <dd>
+                <span className="ah-badges">
+                  <AdminBadge status={viewing.status} />
+                  {viewing.refund_pending && <AdminBadge tone="wait">Pending refund</AdminBadge>}
+                </span>
+              </dd>
+              <dt>Player</dt>
+              <dd>{viewing.player_name}</dd>
+              <dt>Court</dt>
+              <dd>{viewing.court_name}</dd>
+              <dt>Slot</dt>
+              <dd className="tabular-nums">
+                {formatDate(viewing.booking_date)} · {formatTime(viewing.start_time)}–
+                {formatTime(viewing.end_time)}
+              </dd>
+              <dt>Amount</dt>
+              <dd className="tabular-nums">{formatRs(viewing.total_amount)}</dd>
+              <dt>Payment</dt>
+              <dd>
+                {viewing.payment_type === "full" ? "Paid in full" : "Advance, rest at the arena"}
+              </dd>
+              <dt>Booked on</dt>
+              <dd className="tabular-nums">{formatDate(viewing.created_at.slice(0, 10))}</dd>
+            </dl>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewing(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

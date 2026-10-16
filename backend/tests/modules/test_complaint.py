@@ -101,3 +101,83 @@ async def test_complaint_assignment_sticks_to_first_responder(
         json={"admin_response": "Fixed in the next release.", "status": "resolved"},
     )
     assert second.json()["data"]["assigned_to"] == first_assignee
+
+
+async def test_player_gets_a_notice_when_the_admin_replies(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, _ = await make_user(client, db_session, "cplayer10@example.com", "player")
+    created = await client.post(
+        "/api/v1/complaints",
+        headers=auth_header(player),
+        json={"category": "other", "description": "Please help."},
+    )
+    complaint_id = created.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "cadmin10@example.com")
+    before = await client.get("/api/v1/notifications", headers=auth_header(player))
+    assert not [n for n in before.json()["data"]["items"] if n["event"] == "complaint_reply"]
+
+    await client.put(
+        f"/api/v1/admin/complaints/{complaint_id}",
+        headers=auth_header(admin),
+        json={"admin_response": "We looked into it.", "status": "under_review"},
+    )
+    after = await client.get("/api/v1/notifications", headers=auth_header(player))
+    notices = [n for n in after.json()["data"]["items"] if n["event"] == "complaint_reply"]
+    assert len(notices) == 1
+    assert notices[0]["data"]["complaint_id"] == complaint_id
+    assert notices[0]["title"] == "We replied to your complaint"
+
+    # editing the reply (or only changing the status) sends no second notice
+    await client.put(
+        f"/api/v1/admin/complaints/{complaint_id}",
+        headers=auth_header(admin),
+        json={"admin_response": "We looked into it again: fixed.", "status": "resolved"},
+    )
+    edited = await client.get("/api/v1/notifications", headers=auth_header(player))
+    again = [n for n in edited.json()["data"]["items"] if n["event"] == "complaint_reply"]
+    assert len(again) == 1
+
+
+async def test_a_player_reads_only_their_own_complaint_with_the_reply(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, _ = await make_user(client, db_session, "cplayer11@example.com", "player")
+    other, _ = await make_user(client, db_session, "cplayer12@example.com", "player")
+    created = await client.post(
+        "/api/v1/complaints",
+        headers=auth_header(player),
+        json={"category": "technical_problem", "description": "The app froze."},
+    )
+    complaint_id = created.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "cadmin11@example.com")
+    await client.put(
+        f"/api/v1/admin/complaints/{complaint_id}",
+        headers=auth_header(admin),
+        json={"admin_response": "Fixed in the next update.", "status": "resolved"},
+    )
+    mine = await client.get(f"/api/v1/complaints/{complaint_id}", headers=auth_header(player))
+    assert mine.status_code == 200
+    assert mine.json()["data"]["admin_response"] == "Fixed in the next update."
+    assert mine.json()["data"]["status"] == "resolved"
+    theirs = await client.get(f"/api/v1/complaints/{complaint_id}", headers=auth_header(other))
+    assert theirs.status_code == 404
+    assert (await client.get(f"/api/v1/complaints/{complaint_id}")).status_code == 401
+
+
+async def test_complaint_text_is_limited_to_2000_characters(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, _ = await make_user(client, db_session, "cplayer13@example.com", "player")
+    long = await client.post(
+        "/api/v1/complaints",
+        headers=auth_header(player),
+        json={"category": "other", "description": "x" * 2001},
+    )
+    assert long.status_code == 422
+    ok = await client.post(
+        "/api/v1/complaints",
+        headers=auth_header(player),
+        json={"category": "other", "description": "x" * 2000},
+    )
+    assert ok.status_code == 201

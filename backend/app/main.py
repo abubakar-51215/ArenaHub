@@ -4,6 +4,7 @@ Wires logging, exception handlers, CORS, and the /api/v1 routers. Feature
 modules register their own routers here as they land.
 """
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.cache.redis import redis_client
 from app.core.config import get_settings
@@ -18,11 +20,19 @@ from app.core.handlers import register_exception_handlers
 from app.core.logging import configure_logging
 from app.database import metadata as _metadata  # noqa: F401 — registers all ORM mappers
 from app.database.session import engine
+from app.integrations.email.smtp import log_email_mode
+from app.middleware.hardening import (
+    BodyLimitMiddleware,
+    SecurityHeadersMiddleware,
+    TimeLimitMiddleware,
+)
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_context import RequestContextMiddleware
 from app.modules.admin.api import router as admin_router
 from app.modules.ai.api import router as ai_router
 from app.modules.arena.api import owner_router as arena_owner_router
 from app.modules.arena.api import router as arena_router
+from app.modules.assistant.api import router as assistant_router
 from app.modules.auth.api import router as auth_router
 from app.modules.booking.api import owner_router as booking_owner_router
 from app.modules.booking.api import router as booking_router
@@ -35,9 +45,12 @@ from app.modules.equipment.api import owner_router as equipment_owner_router
 from app.modules.equipment.api import router as equipment_router
 from app.modules.health.api import router as health_router
 from app.modules.match.api import router as match_router
+from app.modules.media.api import receipt_router
 from app.modules.media.api import router as media_router
 from app.modules.notification.api import router as notification_router
+from app.modules.payment.api import admin_refund_router as payment_admin_refund_router
 from app.modules.payment.api import admin_router as payment_admin_router
+from app.modules.payment.api import owner_refund_router as payment_owner_refund_router
 from app.modules.payment.api import owner_router as payment_owner_router
 from app.modules.payment.api import router as payment_router
 from app.modules.payment.api import webhook_router as payment_webhook_router
@@ -50,6 +63,7 @@ from app.modules.review.api import router as review_router
 from app.modules.slot.api import owner_router as slot_owner_router
 from app.modules.slot.api import router as slot_router
 from app.modules.user.api import router as user_router
+from app.shared.storage import uses_local_disk
 from app.tasks.scheduler import create_scheduler
 from app.websocket.api import router as websocket_router
 
@@ -61,6 +75,7 @@ API_V1_PREFIX = "/api/v1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    log_email_mode()  # one line: real SMTP (host, port) or console only, and why
     scheduler = create_scheduler()
     scheduler.start()
     yield
@@ -70,13 +85,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await redis_client.aclose()
 
 
+class PublicMedia(StaticFiles):
+    """The public pictures folder, without the private ``receipts`` folder inside it."""
+
+    def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
+        full, found = super().lookup_path(path)
+        if found is not None:
+            private = os.path.realpath(os.path.join(str(self.directory), "receipts"))
+            if os.path.commonpath([os.path.realpath(full), private]) == private:
+                return "", None  # answered like a missing file
+        return full, found
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="ArenaHub API",
         version="0.1.0",
         description="Sports arena booking platform for Pakistan.",
-        docs_url="/docs",
-        openapi_url=f"{API_V1_PREFIX}/openapi.json",
+        # the interactive docs and the schema describe every route: development only
+        docs_url="/docs" if settings.is_dev else None,
+        redoc_url="/redoc" if settings.is_dev else None,
+        openapi_url=f"{API_V1_PREFIX}/openapi.json" if settings.is_dev else None,
         lifespan=lifespan,
     )
 
@@ -85,18 +114,36 @@ def create_app() -> FastAPI:
     # with credentials") — an explicit localhost allowlist in dev avoids that
     # gap without losing convenience. Prod/staging read a configured list.
     if settings.is_dev:
-        cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+        # 3000 is the web app, 8081 is Expo web (the mobile app in a browser)
+        cors_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
+        ]
     else:
         cors_origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
 
+    # Starlette wraps each middleware added after the earlier ones, so the last
+    # one added is outermost. CORS is added last so that its headers are also
+    # present on the 429 responses the rate limiter returns.
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Retry-After", "X-Request-ID"],
     )
-    app.add_middleware(RateLimitMiddleware)
+    # added last = outermost: every log line and every answer (even a 429) carries the request id
+    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(BodyLimitMiddleware)
+    app.add_middleware(TimeLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    if not settings.is_dev:
+        hosts = [h.strip() for h in settings.allowed_hosts.split(",") if h.strip()]
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)  # outermost
 
     register_exception_handlers(app)
 
@@ -120,26 +167,33 @@ def create_app() -> FastAPI:
     app.include_router(complaint_router, prefix=API_V1_PREFIX)
     app.include_router(complaint_admin_router, prefix=API_V1_PREFIX)
     app.include_router(media_router, prefix=API_V1_PREFIX)
+    app.include_router(receipt_router, prefix=API_V1_PREFIX)
     app.include_router(payment_router, prefix=API_V1_PREFIX)
     app.include_router(payment_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(payment_owner_refund_router, prefix=API_V1_PREFIX)
     app.include_router(payment_admin_router, prefix=API_V1_PREFIX)
+    app.include_router(payment_admin_refund_router, prefix=API_V1_PREFIX)
     app.include_router(payment_webhook_router, prefix=API_V1_PREFIX)
     app.include_router(dashboard_owner_router, prefix=API_V1_PREFIX)
     app.include_router(notification_router, prefix=API_V1_PREFIX)
     app.include_router(report_router, prefix=API_V1_PREFIX)
     app.include_router(report_owner_router, prefix=API_V1_PREFIX)
+    app.include_router(assistant_router, prefix=API_V1_PREFIX)
     app.include_router(report_admin_router, prefix=API_V1_PREFIX)
     app.include_router(ai_router, prefix=API_V1_PREFIX)
     app.include_router(match_router, prefix=API_V1_PREFIX)
     app.include_router(websocket_router)
 
-    # Serve locally-stored uploads in dev (Cloudinary serves them in prod).
-    Path(settings.media_root).mkdir(parents=True, exist_ok=True)
-    app.mount(
-        settings.media_url_prefix,
-        StaticFiles(directory=settings.media_root),
-        name="media",
-    )
+    # Pictures kept on this server's disk (development, or no CLOUDINARY_URL) are served here.
+    # Receipts are not: they live in the same folder but only come out through a signed link
+    # (GET /api/v1/media/receipts/..., see app/shared/receipt_links.py).
+    if uses_local_disk():
+        Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+        app.mount(
+            settings.media_url_prefix,
+            PublicMedia(directory=settings.media_root),
+            name="media",
+        )
 
     return app
 

@@ -33,7 +33,8 @@ def _post_sync(messages: list[dict[str, object]]) -> None:
         },
         method="POST",
     )
-    with urlopen(request, timeout=10) as response:
+    # fixed https address (EXPO_PUSH_ENDPOINT), never one given by a user
+    with urlopen(request, timeout=10) as response:  # nosec B310
         response.read()
 
 
@@ -43,7 +44,7 @@ async def send_push(tokens: list[str], title: str, body: str, data: dict[str, st
     blocks the notification flow."""
     valid = [t for t in tokens if t.startswith("ExponentPushToken")]
     if not valid:
-        log.info("push_dev_delivery", tokens=tokens, title=title, body=body)
+        log.info("push_dev_delivery", devices=len(tokens), title=title)
         return
 
     messages: list[dict[str, object]] = [

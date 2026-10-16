@@ -3,6 +3,8 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { AdminThemeSync } from "@/components/admin/theme-sync";
+import { FirstLoadLoader } from "@/components/brand/arena-loader";
 import { makeQueryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth";
 
@@ -19,5 +21,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     useAuthStore.persist.rehydrate();
   }, []);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AdminThemeSync />
+      {children}
+      <FirstLoadLoader />
+    </QueryClientProvider>
+  );
 }

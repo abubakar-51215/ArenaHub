@@ -17,10 +17,12 @@ import type { Tokens, User } from "@/types";
 // nothing: every API call still requires a valid Bearer JWT.
 function setRoleCookie(role: string | null) {
   if (typeof document === "undefined") return;
+  // Secure whenever the site is served over https (a script-set cookie cannot be httpOnly)
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
   if (role) {
-    document.cookie = `session_role=${role}; path=/; max-age=2592000; samesite=lax`;
+    document.cookie = `session_role=${role}; path=/; max-age=2592000; samesite=lax${secure}`;
   } else {
-    document.cookie = "session_role=; path=/; max-age=0; samesite=lax";
+    document.cookie = `session_role=; path=/; max-age=0; samesite=lax${secure}`;
   }
 }
 

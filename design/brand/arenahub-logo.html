@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArenaHub Logo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1A15; --paper:#F1F2EF; --card:#FFFFFF; --line:#E2E6E1;
+  --text:#0F1A15; --text-2:#46534C; --muted:#68756D; --lime:#C4F546;
+  --T:7.2s;
+}
+.stage{--bg:#0F1A15;--mk:#C4F546;--ac:#C4F546;--hole:#0F1A15;--spk:#F3F7EF;--ring:#C4F546;--wd:#F3F7EF;--tg:#8FA096;--btn:#1C2B23;--btnl:#26362D;--btnt:#D9E4DC}
+.stage.light{--bg:#F1F2EF;--mk:#0F1A15;--ac:#7FA30F;--hole:#F1F2EF;--spk:#0F1A15;--ring:#0F1A15;--wd:#0F1A15;--tg:#59665F;--btn:#FFFFFF;--btnl:#D3D9D3;--btnt:#0F1A15}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--text);font:15px/1.55 'Inter Tight',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+/* ================= STAGE ================= */
+.stage{min-height:100vh;background:var(--bg);display:grid;place-items:center;position:relative;overflow:hidden;padding:40px 16px 96px}
+.lockup{display:flex;flex-direction:column;align-items:center;gap:18px}
+.hmark{position:relative;width:264px;height:264px}
+.hbox{position:absolute;left:0;top:0;width:120px;height:120px;transform:scale(2.2);transform-origin:0 0}
+.shake{position:absolute;inset:0}
+.hsvg{position:absolute;left:0;top:0;overflow:visible}
+.word{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 74,'wght' 800;font-size:58px;letter-spacing:-.025em;color:var(--wd);line-height:1;display:flex}
+.word span{display:inline-block;opacity:0}
+.tag{color:var(--tg);font-size:17px;opacity:0}
+.shock{position:absolute;left:50%;top:59%;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid var(--ac);opacity:0;pointer-events:none}
+
+.controls{position:absolute;right:16px;bottom:16px;left:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.controls button{border:1px solid var(--btnl);background:var(--btn);color:var(--btnt);font:600 14px 'Inter Tight',sans-serif;padding:11px 16px;border-radius:12px;cursor:pointer;min-height:44px}
+.controls button:hover{filter:brightness(1.12)}
+.controls button[aria-pressed="true"]{outline:2px solid var(--ac);outline-offset:1px}
+.controls button:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+
+/* base (pre-animation) states */
+.track{stroke-dasharray:240;stroke-dashoffset:240;stroke-opacity:.36}
+.glint{stroke-dasharray:40 400;stroke-dashoffset:0;opacity:0}
+.trail{stroke-dasharray:14 300;stroke-dashoffset:14;opacity:0}
+.rk,.bt{transform-origin:60px 24px;opacity:0;transform:rotate(0deg) translateY(-6px)}
+.burst{transform-origin:60px 71px;opacity:0}
+.spark,.dot,.pulse{transform-box:fill-box;transform-origin:center;opacity:0}
+.ball,.gh{position:absolute;left:0;top:0;width:18px;height:18px;opacity:0;
+  offset-path:path("M60 8 V71 Q34 72 14 58 V54 A38 38 0 0 1 52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V54 A38 38 0 0 1 52 16 H60 V71");
+  offset-anchor:50% 50%;offset-rotate:0deg}
+.gh{display:grid;place-items:center}
+.gh i{display:block;width:13px;height:13px;border-radius:50%;background:var(--ac)}
+.sc{width:18px;height:18px;transform-origin:50% 70%}
+.sp{position:relative;width:18px;height:18px}
+.f{position:absolute;left:0;top:0;opacity:0}
+
+
+/* ---- hero colour modes: same markup, colours come from the stage variables ---- */
+.hsvg .rk [fill="#C4F546"],.hsvg .bt [fill="#C4F546"]{fill:var(--mk)}
+.hsvg .rk [fill="#0F1A15"],.hsvg .rk [stroke="#0F1A15"],.hsvg .bt [stroke="#0F1A15"]{fill:var(--hole)}
+.hsvg .rk path[stroke="#0F1A15"],.hsvg .bt path[stroke="#0F1A15"]{fill:none;stroke:var(--hole)}
+.hsvg .track{stroke:var(--ring)}
+.hsvg .glint,.hsvg .trail{stroke:var(--ac)}
+.hsvg .spark[fill="#C4F546"],.hsvg .dot[fill="#C4F546"]{fill:var(--ac)}
+.hsvg .spark[fill="#F3F7EF"],.hsvg .dot[fill="#F3F7EF"]{fill:var(--spk)}
+.hsvg .pulse{stroke:var(--ac)}
+.hsvg .burst{stroke:var(--spk)}
+
+/* ---- animations, only while .on ---- */
+.on .lockup{animation:hWrap var(--T) linear infinite}
+.on .track{animation:hTrack var(--T) linear infinite}
+.on .glint{animation:hGlint var(--T) linear infinite}
+.on .trail{animation:hTrail var(--T) linear infinite}
+.on .rk{animation:hRk var(--T) linear infinite}
+.on .bt{animation:hBt var(--T) linear infinite}
+.on .burst{animation:hBurst var(--T) linear infinite}
+.on .spark{animation:hSpark var(--T) linear infinite}
+.on .dot{animation:hDot var(--T) linear infinite}
+.on .pulse{animation:hPulse var(--T) linear infinite}
+.on .shake{animation:hShake var(--T) linear infinite}
+.on .ball{animation:hPos var(--T) linear infinite,hShow var(--T) linear infinite}
+.on .gh{animation:hPos var(--T) linear infinite,hGhost var(--T) linear infinite}
+.on .gh.g1{animation-delay:.045s;--go:.42}
+.on .gh.g2{animation-delay:.09s;--go:.2}
+.on .sc{animation:hSq var(--T) ease-in-out infinite}
+.on .sp{animation:hSpin var(--T) linear infinite}
+.on .f1{animation:hF1 var(--T) linear infinite}
+.on .f2{animation:hF2 var(--T) linear infinite}
+.on .f3{animation:hF3 var(--T) linear infinite}
+.on .f4{animation:hF4 var(--T) linear infinite}
+.on .shock{animation:hShock var(--T) linear infinite}
+.on .wordwrap{animation:hWordWrap var(--T) linear infinite}
+.on .word span{animation:hLet var(--T) linear infinite;animation-delay:calc(var(--i) * 45ms)}
+.on .tag{animation:hTag var(--T) linear infinite}
+.paused, .paused *{animation-play-state:paused!important}
+
+/* timeline (7.2s):
+   0–8%   ring draws          3–12%  racket + bat swing in
+   10–14% cricket ball drops  17–22% bat winds up and hits
+   22–26% ball flies to racket, racket taps it onto the ring
+   26–62% ball laps the arena 1¼ times: tennis → basketball → football, bat and racket tap it as it passes
+   62–68% ball drops into the middle, lands, sparks, ring lights up
+   70–82% wordmark + tagline   93–100% fade, loop */
+@keyframes hWrap{0%{opacity:0}1%,93%{opacity:1}99.5%,100%{opacity:0}}
+@keyframes hTrack{
+  0%{stroke-dashoffset:240;stroke-opacity:.36;animation-timing-function:cubic-bezier(.6,0,.2,1)}
+  8%,68%{stroke-dashoffset:0;stroke-opacity:.36}
+  69%{stroke-dashoffset:0;stroke-opacity:.95}
+  80%,100%{stroke-dashoffset:0;stroke-opacity:.36}}
+@keyframes hGlint{0%,68%{stroke-dashoffset:0;opacity:0;animation-timing-function:cubic-bezier(.3,.5,.4,1)}68.5%{opacity:1}76%{opacity:.9}79%,100%{stroke-dashoffset:-240;opacity:0}}
+@keyframes hTrail{0%,25.9%{stroke-dashoffset:14;opacity:0}26%{stroke-dashoffset:14;opacity:.9}62%{stroke-dashoffset:-86;opacity:.9}66%,100%{stroke-dashoffset:-86;opacity:0}}
+
+@keyframes hRk{
+  0%,3%{opacity:0;transform:rotate(0deg) translateY(-6px);animation-timing-function:cubic-bezier(.3,1.35,.5,1)}
+  6%{opacity:1}
+  11%,24.5%{opacity:1;transform:rotate(24deg) translateY(0);animation-timing-function:ease-out}
+  26%{transform:rotate(34deg) translateY(0);animation-timing-function:ease-in-out}
+  28.5%,53.3%{transform:rotate(24deg) translateY(0);animation-timing-function:ease-out}
+  54.8%{transform:rotate(34deg) translateY(0);animation-timing-function:ease-in-out}
+  57.3%,68%{transform:rotate(24deg) translateY(0)}
+  69%{transform:rotate(19deg) translateY(0)}
+  71%{transform:rotate(26deg) translateY(0)}
+  73%,80%{transform:rotate(24deg) translateY(0);animation-timing-function:ease-in-out}
+  84.5%{transform:rotate(26.5deg) translateY(0);animation-timing-function:ease-in-out}
+  89%{transform:rotate(22.5deg) translateY(0);animation-timing-function:ease-in-out}
+  93%,100%{opacity:1;transform:rotate(24deg) translateY(0)}}
+@keyframes hBt{
+  0%,4%{opacity:0;transform:rotate(0deg) translateY(-6px);animation-timing-function:cubic-bezier(.3,1.35,.5,1)}
+  7%{opacity:1}
+  12%,17.5%{opacity:1;transform:rotate(-24deg) translateY(0);animation-timing-function:cubic-bezier(.4,0,.6,1)}
+  20.8%{transform:rotate(-46deg) translateY(0);animation-timing-function:cubic-bezier(.7,0,.95,.5)}
+  21.8%{transform:rotate(-6deg) translateY(0);animation-timing-function:cubic-bezier(.2,.8,.3,1)}
+  24.5%{transform:rotate(-28deg) translateY(0);animation-timing-function:ease-in-out}
+  26.5%,38.9%{transform:rotate(-24deg) translateY(0);animation-timing-function:ease-out}
+  40.4%{transform:rotate(-34deg) translateY(0);animation-timing-function:ease-in-out}
+  42.9%,68%{transform:rotate(-24deg) translateY(0)}
+  69%{transform:rotate(-19deg) translateY(0)}
+  71%{transform:rotate(-26deg) translateY(0)}
+  73%,80%{transform:rotate(-24deg) translateY(0);animation-timing-function:ease-in-out}
+  84.5%{transform:rotate(-21.5deg) translateY(0);animation-timing-function:ease-in-out}
+  89%{transform:rotate(-25.5deg) translateY(0);animation-timing-function:ease-in-out}
+  93%,100%{opacity:1;transform:rotate(-24deg) translateY(0)}}
+
+@keyframes hPos{
+  0%,10%{offset-distance:0%;animation-timing-function:cubic-bezier(.55,0,.9,.5)}
+  14%,22%{offset-distance:11.997%;animation-timing-function:cubic-bezier(.15,.75,.4,1)}
+  26%{offset-distance:21.268%;animation-timing-function:linear}
+  62%{offset-distance:89.527%;animation-timing-function:cubic-bezier(.5,0,.9,.55)}
+  68%,100%{offset-distance:100%}}
+@keyframes hShow{0%,9.9%{opacity:0}10%,100%{opacity:1}}
+@keyframes hGhost{0%,22%{opacity:0}22.6%,65.5%{opacity:var(--go)}67.5%,100%{opacity:0}}
+@keyframes hSq{
+  0%,11%{transform:scale(1)}
+  13%{transform:scale(.88,1.14)}
+  14%{transform:scale(1.3,.7)}
+  15.5%{transform:scale(.92,1.08)}
+  17%,21.7%{transform:scale(1)}
+  22.2%{transform:scale(.7,1.22)}
+  23.5%{transform:scale(1.06,.95)}
+  24.5%,25.6%{transform:scale(1)}
+  26.3%{transform:scale(1.22)}
+  27.5%,40%{transform:scale(1)}
+  40.7%{transform:scale(1.22)}
+  42%,54.4%{transform:scale(1)}
+  55.1%{transform:scale(1.22)}
+  56.4%,63%{transform:scale(1)}
+  66.5%{transform:scale(.88,1.14)}
+  68%{transform:scale(1.32,.68)}
+  69.5%{transform:scale(.93,1.07)}
+  71%,100%{transform:scale(1)}}
+@keyframes hSpin{0%,22%{transform:rotate(0deg);animation-timing-function:cubic-bezier(.2,.6,.4,1)}68%,100%{transform:rotate(1260deg)}}
+@keyframes hF1{0%,25.8%{opacity:1}26.2%,100%{opacity:0}}
+@keyframes hF2{0%,25.8%{opacity:0}26.2%,40.2%{opacity:1}40.6%,100%{opacity:0}}
+@keyframes hF3{0%,40.2%{opacity:0}40.6%,54.6%{opacity:1}55%,100%{opacity:0}}
+@keyframes hF4{0%,54.6%{opacity:0}55%,100%{opacity:1}}
+
+@keyframes hBurst{0%,21.6%{opacity:0;transform:scale(.6)}21.9%{opacity:1;transform:scale(1);animation-timing-function:ease-out}25%,100%{opacity:0;transform:scale(1.4)}}
+@keyframes hSpark{0%,21.7%{opacity:0;transform:translate(0,0) scale(1)}21.9%{opacity:1;transform:translate(0,0) scale(1);animation-timing-function:cubic-bezier(.2,.7,.3,1)}26%,100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)}}
+@keyframes hDot{0%,67.9%{opacity:0;transform:translate(0,0) scale(1)}68.2%{opacity:1;transform:translate(0,0) scale(1);animation-timing-function:cubic-bezier(.2,.7,.3,1)}77%,100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
+@keyframes hPulse{0%,67.9%{opacity:0;transform:scale(1)}68%{opacity:.85;transform:scale(1);animation-timing-function:cubic-bezier(.2,.6,.3,1)}78%,100%{opacity:0;transform:scale(3.6)}}
+@keyframes hShock{0%,68%{opacity:0;transform:scale(.5)}68.3%{opacity:.35;transform:scale(.5);animation-timing-function:cubic-bezier(.2,.6,.3,1)}82%,100%{opacity:0;transform:scale(4)}}
+@keyframes hShake{
+  0%,21.7%{transform:translate(0,0)}22%{transform:translate(1.2px,0)}22.6%{transform:translate(-1px,.5px)}23.2%{transform:translate(.6px,-.4px)}23.8%,67.9%{transform:translate(0,0)}
+  68.3%{transform:translate(0,1.6px)}69%{transform:translate(0,-1px)}69.6%{transform:translate(0,.5px)}70.2%,100%{transform:translate(0,0)}}
+@keyframes hWordWrap{0%,69.9%{opacity:0}70%,100%{opacity:1}}
+@keyframes hLet{0%,71%{opacity:0;transform:translateY(22px) scale(.96);animation-timing-function:cubic-bezier(.2,.75,.3,1)}77%,100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes hTag{0%,76%{opacity:0;transform:translateY(8px);animation-timing-function:cubic-bezier(.2,.75,.3,1)}82%,100%{opacity:1;transform:translateY(0)}}
+
+/* ================= SHEET ================= */
+.wrap{max-width:1120px;margin:0 auto;padding:56px 24px 80px}
+h2{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 88,'wght' 700;font-size:22px;letter-spacing:-.01em;margin:0}
+section{margin-top:48px}
+section:first-child{margin-top:0}
+section > p{color:var(--text-2);max-width:66ch;margin:6px 0 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.tile.dark{background:var(--ink);border-color:var(--ink)}
+.tile .show{display:flex;align-items:flex-end;gap:16px;min-height:110px}
+.tile b{font-size:15px}
+.tile.dark b{color:#F3F7EF}
+.tile span{color:var(--muted);font-size:14px}
+.tile.dark span{color:#8FA096}
+.horiz{display:flex;align-items:center;gap:12px}
+.horiz .w{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 74,'wght' 800;font-size:28px;letter-spacing:-.025em}
+.loaders{display:flex;flex-wrap:wrap;gap:16px}
+.ldt{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;flex:1 1 220px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.ldt.dark{background:var(--ink);border-color:var(--ink)}
+.ldt span{color:var(--muted);font-size:14px;text-align:center}
+.ldt.dark span{color:#8FA096}
+.ldarea{height:84px;display:grid;place-items:center}
+
+/* loader */
+.ld{position:relative}
+.ldbox{position:absolute;left:0;top:0;width:120px;height:120px;transform-origin:0 0}
+.lrun{stroke-dasharray:26 400;animation:lRunT 1.4s linear infinite}
+.lball{position:absolute;left:0;top:0;width:18px;height:18px;
+  offset-path:path("M14 58 V54 A38 38 0 0 1 52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V58");
+  offset-anchor:50% 50%;offset-rotate:0deg;animation:lRun 1.4s linear infinite}
+.lsp{position:relative;width:18px;height:18px;animation:lSpin 1.4s linear infinite}
+.lsp.sway{animation:lSway 1.4s ease-in-out infinite}
+@keyframes lSway{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(14deg)}}
+.lf{position:absolute;left:0;top:0;opacity:0}
+.lf{animation:lFace 11.2s linear infinite;animation-delay:calc(var(--k) * 1.4s)}
+@keyframes lRunT{from{stroke-dashoffset:-74}to{stroke-dashoffset:-174}}
+@keyframes lRun{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes lSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes lFace{0%,12.4%{opacity:1}12.5%,100%{opacity:0}}
+
+@media (max-width:520px){
+  .hmark{width:204px;height:204px}
+  .hbox{transform:scale(1.7)}
+  .word{font-size:44px}
+  .tag{font-size:15px}
+  .wrap{padding:40px 16px 60px}
+}
+
+
+/* ================= SHEET ADDITIONS ================= */
+.lead{color:var(--text-2);max-width:68ch;margin:6px 0 18px}
+.tile.lime{background:#C4F546;border-color:#C4F546}.tile.lime b{color:#0F1A15}.tile.lime span{color:#27340A}
+.tile.paper{background:#F1F2EF}
+.tile.white{background:#FFFFFF}
+.tile.photo{background:linear-gradient(135deg,#2c4a3b,#6b7d52 55%,#b9a77a);border-color:transparent}.tile.photo b{color:#fff}.tile.photo span{color:#EEF2E4}
+.cap{color:var(--muted);font-size:14px}
+.balls8{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
+.balls8 div{background:var(--ink);border-radius:16px;padding:14px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;color:#D9E4DC;font-size:14px;text-align:center}
+.balls8 small{color:#8FA096;font-size:12.5px}
+.row{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end}
+.mask{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.mask .m{overflow:hidden;background:#0F1A15;display:grid;place-items:center}
+.tabstrip{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px 12px 0 0;font-size:14px;min-width:210px}
+.tabstrip.l{background:#E6E9E4;color:#0F1A15}.tabstrip.d{background:#1C2B23;color:#E9EFE9}
+.share{width:100%;max-width:600px;aspect-ratio:1200/630;background:#0F1A15;border-radius:18px;display:flex;align-items:center;gap:28px;padding:0 6%;color:#F3F7EF}
+.share .t{font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 74,'wght' 800;font-size:clamp(26px,5vw,44px);letter-spacing:-.025em;line-height:1}
+.share .s{color:#8FA096;font-size:clamp(13px,2vw,17px);margin-top:8px}
+.emailbar{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 24px;max-width:600px;display:flex;align-items:center;gap:14px}
+.emailbar b{font-size:16px}.emailbar span{color:var(--muted);font-size:14px;display:block}
+.notif{background:#3A4640;border-radius:16px;padding:14px;max-width:360px;display:flex;gap:12px;align-items:center;color:#fff}
+.notif .ico{width:28px;height:28px;border-radius:50%;background:#0F1A15;display:grid;place-items:center;flex:none}
+.notif b{font-size:14px;display:block}.notif span{font-size:13px;color:#C9D3CC}
+.demo{display:flex;flex-wrap:wrap;gap:16px}
+.dcard{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;flex:1 1 240px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.dcard b{font-size:15px}.dcard span{color:var(--muted);font-size:14px}
+.dcard button{border:1px solid var(--line);background:var(--paper);color:var(--text);font:600 14px 'Inter Tight',sans-serif;padding:10px 16px;border-radius:12px;cursor:pointer;min-height:44px}
+.dcard button:focus-visible{outline:2px solid #7FA30F;outline-offset:2px}
+/* success: ring lights, ball lands, burst */
+.ok .okring{stroke-dasharray:240;stroke-dashoffset:240}
+.ok .okball{transform-origin:60px 71px;transform:translateY(-34px) scale(.7);opacity:0}
+.ok .okpulse{transform-origin:60px 71px;opacity:0}
+.ok.go .okring{animation:okR .6s cubic-bezier(.6,0,.2,1) forwards}
+.ok.go .okball{animation:okB .5s cubic-bezier(.4,0,.6,1) .25s forwards}
+.ok.go .okpulse{animation:okP .6s ease-out .6s forwards}
+@keyframes okR{to{stroke-dashoffset:0}}
+@keyframes okB{0%{opacity:0;transform:translateY(-34px) scale(.7)}20%{opacity:1}62%{transform:translateY(0) scale(1.08,.86)}80%{transform:translateY(-5px)}100%{opacity:1;transform:none}}
+@keyframes okP{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(3.6)}}
+.ok.done .okring{stroke-dashoffset:0}.ok.done .okball{opacity:1;transform:none}
+/* offline: ring breaks into dashes, ball greys and drifts */
+.off .offball{transform-origin:60px 71px;animation:offB 3s ease-in-out infinite}
+@keyframes offB{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+@media (prefers-reduced-motion: reduce){.off .offball{animation:none}.ok.go *{animation:none!important}.ok .okring{stroke-dashoffset:0}.ok .okball{opacity:1;transform:none}}
+
+/* reduce motion: final picture at once */
+@media (prefers-reduced-motion: reduce){
+  .stage *, .lrun, .lball, .lsp, .lf{animation:none!important}
+  .track{stroke-dashoffset:0}
+  .rk{opacity:1;transform:rotate(24deg)}
+  .bt{opacity:1;transform:rotate(-24deg)}
+  .ball{opacity:1;offset-distance:100%}
+  .f4,.word span,.tag{opacity:1}
+  .lf{opacity:0;animation:none!important}.lf.k0{opacity:1}
+  .lrun{opacity:0}
+  .lball{offset-distance:62%}
+  .l4{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<div class="stage on" id="stage" data-mode="dark">
+  <div class="lockup">
+    <div class="hmark" role="img" aria-label="ArenaHub logo: a padel racket and a cricket bat form the A. The bat hits a ball, it laps the arena changing from tennis to basketball to football, then drops into the middle.">
+      <div class="shock"></div>
+      <div class="hbox">
+        <div class="shake">
+          <svg class="hsvg" viewBox="0 0 120 120" width="120" height="120" overflow="visible" aria-hidden="true">
+            <!-- arena ring -->
+            <rect class="track" x="14" y="16" width="92" height="84" rx="38" fill="none" stroke="#C4F546" stroke-width="3.2" stroke-linecap="round" pathLength="240"/>
+            <rect class="glint" x="14" y="16" width="92" height="84" rx="38" fill="none" stroke="#C4F546" stroke-width="4.6" stroke-linecap="round" pathLength="240"/>
+            <path class="trail" d="M14 58 V54 A38 38 0 0 1 52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V54 A38 38 0 0 1 52 16 H60" pathLength="100" fill="none" stroke="#C4F546" stroke-width="4.4" stroke-linecap="round"/>
+
+            <g transform="translate(-2.5 0)">
+              <!-- padel racket -->
+              <g class="rk">
+                <rect x="57.4" y="22" width="5.2" height="27" rx="2.6" fill="#C4F546"/>
+                <path d="M58 44h4M58 40h4" stroke="#0F1A15" stroke-width="1.1" stroke-linecap="round" opacity=".55"/>
+                <rect x="48" y="50" width="24" height="34" rx="12" fill="#C4F546"/>
+                <circle cx="55" cy="59" r="1.35" fill="#0F1A15"/><circle cx="60" cy="59" r="1.35" fill="#0F1A15"/><circle cx="65" cy="59" r="1.35" fill="#0F1A15"/>
+                <circle cx="55" cy="65" r="1.35" fill="#0F1A15"/><circle cx="60" cy="65" r="1.35" fill="#0F1A15"/><circle cx="65" cy="65" r="1.35" fill="#0F1A15"/>
+                <circle cx="55" cy="71" r="1.35" fill="#0F1A15"/><circle cx="60" cy="71" r="1.35" fill="#0F1A15"/><circle cx="65" cy="71" r="1.35" fill="#0F1A15"/>
+                <circle cx="57.5" cy="77" r="1.35" fill="#0F1A15"/><circle cx="62.5" cy="77" r="1.35" fill="#0F1A15"/>
+              </g>
+              <!-- cricket bat -->
+              <g class="bt">
+                <rect x="57.6" y="22" width="4.8" height="28" rx="2.4" fill="#C4F546"/>
+                <path d="M57.8 29h4.4M57.8 33h4.4M57.8 37h4.4" stroke="#0F1A15" stroke-width="1" opacity=".5"/>
+                <path d="M53 49 Q60 45 67 49 V84 Q67 90 60 90 Q53 90 53 84 Z" fill="#C4F546"/>
+                <path d="M60 53 V84" stroke="#0F1A15" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
+              </g>
+            </g>
+
+            <!-- bat impact -->
+            <g class="burst" stroke="#F3F7EF" stroke-width="1.6" stroke-linecap="round" fill="none">
+              <path d="M70 71 h6 M68.5 64.5 l4.2 -3.2 M68.5 77.5 l4.2 3.2"/>
+            </g>
+            <circle class="spark" cx="66" cy="71" r="1.3" fill="#C4F546" style="--dx:11px;--dy:-7px"/>
+            <circle class="spark" cx="66" cy="71" r="1.1" fill="#F3F7EF" style="--dx:13px;--dy:2px"/>
+            <circle class="spark" cx="66" cy="71" r="1.3" fill="#C4F546" style="--dx:9px;--dy:9px"/>
+            <circle class="spark" cx="66" cy="71" r="1" fill="#F3F7EF" style="--dx:4px;--dy:-11px"/>
+
+            <!-- landing -->
+            <circle class="pulse" cx="60" cy="71" r="8" fill="none" stroke="#C4F546" stroke-width="1.4"/>
+            <circle class="dot" cx="60" cy="71" r="1.4" fill="#C4F546" style="--dx:18px;--dy:0px"/>
+            <circle class="dot" cx="60" cy="71" r="1.1" fill="#F3F7EF" style="--dx:12.7px;--dy:10.2px"/>
+            <circle class="dot" cx="60" cy="71" r="1.4" fill="#C4F546" style="--dx:0px;--dy:14.4px"/>
+            <circle class="dot" cx="60" cy="71" r="1.1" fill="#F3F7EF" style="--dx:-12.7px;--dy:10.2px"/>
+            <circle class="dot" cx="60" cy="71" r="1.4" fill="#C4F546" style="--dx:-18px;--dy:0px"/>
+            <circle class="dot" cx="60" cy="71" r="1.1" fill="#F3F7EF" style="--dx:-12.7px;--dy:-10.2px"/>
+            <circle class="dot" cx="60" cy="71" r="1.4" fill="#C4F546" style="--dx:0px;--dy:-14.4px"/>
+            <circle class="dot" cx="60" cy="71" r="1.1" fill="#F3F7EF" style="--dx:12.7px;--dy:-10.2px"/>
+          </svg>
+
+          <!-- motion ghosts -->
+          <div class="gh g2"><i></i></div>
+          <div class="gh g1"><i></i></div>
+
+          <!-- the ball -->
+          <div class="ball"><div class="sc"><div class="sp">
+            <!--FACES-->
+          </div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wordwrap">
+      <div class="word" aria-label="ArenaHub"><span style="--i:0">A</span><span style="--i:1">r</span><span style="--i:2">e</span><span style="--i:3">n</span><span style="--i:4">a</span><span style="--i:5">H</span><span style="--i:6">u</span><span style="--i:7">b</span></div>
+    </div>
+    <div class="tag">Find a court. Get a game.</div>
+  </div>
+  <div class="controls">
+    <button type="button" id="mDark" aria-pressed="true">Dark</button>
+    <button type="button" id="mLight" aria-pressed="false">Light</button>
+    <button type="button" id="pause" aria-pressed="false">Pause</button>
+    <button type="button" id="replay">Replay</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <section>
+    <h2>What plays</h2>
+    <p class="lead">The splash above is the animation. Every time it loops, or the app starts, it picks a new order from the eight balls, so the ball that is bowled, tapped around the arena and finally dropped in the middle is different each time. The timing never changes. Only the ball does.</p>
+    <div class="balls8" id="lineup"></div>
+  </section>
+
+  <section>
+    <h2>The mark in every colour mode</h2>
+    <p class="lead">Same shapes, different ink. Use the dark and light versions in the app, the lime badge for the app icon on stores, and the one-colour versions when only one colour is allowed.</p>
+    <div class="grid" id="modes"></div>
+  </section>
+
+  <section>
+    <h2>App icon, store and phone</h2>
+    <p class="lead">Phones do not animate icons, so every icon uses the football. Android also needs a version with only the shapes (themed icon) and a white one for notifications.</p>
+    <div class="row" id="icons"></div>
+    <div style="height:22px"></div>
+    <div class="row" id="notifrow"></div>
+  </section>
+
+  <section>
+    <h2>Browser tab, share card and email</h2>
+    <p class="lead">The tab icon drops the ring and racket holes below 24px so it stays readable.</p>
+    <div class="row" id="tabs"></div>
+    <div style="height:22px"></div>
+    <div class="row"><div id="share"></div><div id="emailbar"></div></div>
+  </section>
+
+  <section>
+    <h2>Loading</h2>
+    <p class="lead">The ball laps the arena ring with a lime runner behind it. Each lap is 1.4 seconds and every lap is a different ball, in a random order each time the loader appears.</p>
+    <div class="loaders" id="loaders"></div>
+  </section>
+
+  <section>
+    <h2>Two small moments</h2>
+    <p class="lead">Booking confirmed uses the landing from the splash, once. Offline and no-connection screens use the same mark with a broken ring and a grey ball, so it still feels like the same app.</p>
+    <div class="demo">
+      <div class="dcard"><div id="okmark"></div><b>Booking confirmed</b><span>Plays once when the confirmation screen opens. About 1.1 seconds. Still under reduce motion.</span><button type="button" id="okplay">Play again</button></div>
+      <div class="dcard"><div id="offmark"></div><b>No connection</b><span>Static with a slow drift. Replaces the plain wifi icon on full-screen error screens.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where each version goes</h2>
+    <div class="grid" id="where"></div>
+  </section>
+</div>
+
+<script>
+/* ======================================================================
+   BALL FACES (viewBox -9 -9 18 18, circle radius 8, centred on 0,0)
+   ====================================================================== */
+const FACES = {
+  cricket:    {name:'Cricket ball', sport:'Cricket', svg:'<circle r="8" fill="#C2272D"/><path d="M-2.2 -7.6 Q-3.5 0 -2.2 7.6 M2.2 -7.6 Q3.5 0 2.2 7.6" fill="none" stroke="#F7E7CF" stroke-width="0.9" stroke-dasharray="1.1 0.9"/>'},
+  tennis:     {name:'Tennis ball',  sport:'Tennis, Padel', svg:'<circle r="8" fill="#E6F23E"/><path d="M-5.9 -5.6 Q-1.3 0 -5.9 5.6 M5.9 -5.6 Q1.3 0 5.9 5.6" fill="none" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round"/>'},
+  basketball: {name:'Basketball',   sport:'Basketball', svg:'<circle r="8" fill="#E8742C"/><path d="M0 -8 V8 M-8 0 H8 M-5.7 -5.7 Q-2 0 -5.7 5.7 M5.7 -5.7 Q2 0 5.7 5.7" fill="none" stroke="#3B1B09" stroke-width="0.85"/>'},
+  football:   {name:'Football',     sport:'Futsal, Football', svg:'<circle r="8" fill="#FFFFFF" stroke="#0F1A15" stroke-width="1.1"/><path d="M0 -3.8 L3.6 -1.2 L2.2 3 H-2.2 L-3.6 -1.2 Z" fill="#0F1A15"/><path d="M0 -3.8 V-7.8 M3.6 -1.2 L7.4 -2.4 M2.2 3 L4.4 6.2 M-2.2 3 L-4.4 6.2 M-3.6 -1.2 L-7.4 -2.4" stroke="#0F1A15" stroke-width="1" stroke-linecap="round"/>'},
+  volleyball: {name:'Volleyball',   sport:'Volleyball', svg:'<circle r="8" fill="#F6EFC9" stroke="#2F5FB3" stroke-width="0.7"/><path d="M0 0 Q0.4 -4.6 -3.4 -7.4 M0 0 Q4.8 1.6 7.4 -2.4 M0 0 Q-3.8 3.6 -3 7.6" fill="none" stroke="#2F5FB3" stroke-width="1"/><path d="M-3.4 -7.4 Q3.2 -6.4 7.4 -2.4" fill="none" stroke="#E0A91E" stroke-width="1"/>'},
+  shuttle:    {name:'Shuttlecock',  sport:'Badminton', svg:'<path d="M-5 -7.4 H5 L2.6 2.6 H-2.6 Z" fill="#F4F7F2" stroke="#0F1A15" stroke-width="0.7"/><path d="M-2.4 -7.4 L-1.2 2.6 M0 -7.4 V2.6 M2.4 -7.4 L1.2 2.6 M-3.8 -3 H3.8" stroke="#0F1A15" stroke-width="0.6"/><path d="M-2.8 3.2 H2.8 Q2.8 8 0 8 Q-2.8 8 -2.8 3.2 Z" fill="#E8742C" stroke="#0F1A15" stroke-width="0.7"/>'},
+  tabletennis:{name:'Table tennis ball', sport:'Table tennis', svg:'<circle r="5.6" fill="#FF8A2B" stroke="#7A3A07" stroke-width="0.7"/><path d="M-3.2 -2.6 Q-1.8 -4.2 0.4 -4.4" fill="none" stroke="#FFD2A6" stroke-width="1" stroke-linecap="round"/>'},
+  squash:     {name:'Squash ball',  sport:'Squash', svg:'<circle r="5.6" fill="#26312B" stroke="#E6F23E" stroke-width="1"/><circle cx="2.2" cy="-1.8" r="1.2" fill="#E6F23E"/><circle cx="-2" cy="1.2" r="0.9" fill="#E6F23E"/>'}
+};
+const KEYS = Object.keys(FACES);
+const faceSvg = (k, cls) => '<svg class="'+(cls||'')+'" viewBox="-9 -9 18 18" width="18" height="18" aria-hidden="true">'+FACES[k].svg+'</svg>';
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+let lastFinal = null;
+
+/* ======================================================================
+   HERO: four balls per loop, picked at random from the eight.
+   Stage 1 is bowled (0-26%), stage 2 and 3 lap the ring, stage 4 lands.
+   ====================================================================== */
+const stage = document.getElementById('stage');
+const sp = document.querySelector('.hmark .sp');
+function pickFour(){
+  let p = shuffle(KEYS).slice(0,4);
+  if(p[3] === lastFinal){ const alt = KEYS.filter(k => !p.includes(k)); p[3] = alt[0]; }
+  lastFinal = p[3];
+  return p;
+}
+function setHeroBalls(){
+  const p = pickFour();
+  sp.innerHTML = p.map((k,i) => faceSvg(k, 'f f'+(i+1))).join('');
+  stage.dataset.balls = p.join(',');
+}
+setHeroBalls();
+/* a new set at the start of every loop (hWrap is the loop's first animation) */
+document.querySelector('.lockup').addEventListener('animationiteration', e => { if(e.animationName === 'hWrap') setHeroBalls(); });
+
+const pauseBtn = document.getElementById('pause');
+document.getElementById('replay').addEventListener('click', () => {
+  stage.classList.remove('on', 'paused');
+  pauseBtn.textContent = 'Pause'; pauseBtn.setAttribute('aria-pressed', 'false');
+  setHeroBalls();
+  void stage.offsetWidth;
+  stage.classList.add('on');
+});
+pauseBtn.addEventListener('click', () => {
+  const p = stage.classList.toggle('paused');
+  pauseBtn.textContent = p ? 'Play' : 'Pause';
+  pauseBtn.setAttribute('aria-pressed', String(p));
+});
+function setMode(m){
+  stage.classList.toggle('light', m === 'light'); stage.dataset.mode = m;
+  document.getElementById('mDark').setAttribute('aria-pressed', String(m === 'dark'));
+  document.getElementById('mLight').setAttribute('aria-pressed', String(m === 'light'));
+}
+document.getElementById('mDark').addEventListener('click', () => setMode('dark'));
+document.getElementById('mLight').addEventListener('click', () => setMode('light'));
+
+/* ======================================================================
+   STILL MARKS
+   o: line (racket+bat), hole, ring, ball (key or 'mono'), badge colour
+   ====================================================================== */
+function racket(c, hole, small){
+  return '<g transform="rotate(24 60 24)">' +
+    '<rect x="57.4" y="22" width="5.2" height="'+(small?30:27)+'" rx="2.6" fill="'+c+'"/>' +
+    (small ? '' : '<path d="M58 44h4M58 40h4" stroke="'+hole+'" stroke-width="1.1" stroke-linecap="round" opacity=".55"/>') +
+    '<rect x="'+(small?47:48)+'" y="50" width="'+(small?26:24)+'" height="'+(small?36:34)+'" rx="'+(small?13:12)+'" fill="'+c+'"/>' +
+    (small ? '' : [[55,59],[60,59],[65,59],[55,65],[60,65],[65,65],[55,71],[60,71],[65,71],[57.5,77],[62.5,77]]
+      .map(p => '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.35" fill="'+hole+'"/>').join('')) +
+    '</g>';
+}
+function bat(c, ridge, small){
+  return '<g transform="rotate(-24 60 24)">' +
+    '<rect x="57.6" y="22" width="4.8" height="28" rx="2.4" fill="'+c+'"/>' +
+    (small ? '' : '<path d="M57.8 29h4.4M57.8 33h4.4M57.8 37h4.4" stroke="'+ridge+'" stroke-width="1" opacity=".5"/>') +
+    '<path d="M53 49 Q60 45 67 49 V84 Q67 90 60 90 Q53 90 53 84 Z" fill="'+c+'"/>' +
+    (small ? '' : '<path d="M60 53 V84" stroke="'+ridge+'" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>') +
+    '</g>';
+}
+function ballShape(o){
+  if(o.small)  return '<circle cx="60" cy="71" r="10" fill="'+(o.smallBall||o.line)+'"/><circle cx="60" cy="71" r="3.4" fill="'+o.hole+'"/>';
+  if(o.mono)   return '<circle cx="60" cy="71" r="8" fill="'+o.line+'"/><path d="M60 67.2 L63.6 69.8 L62.2 74 H57.8 L56.4 69.8 Z" fill="'+o.hole+'"/><path d="M60 67.2 V63.2 M63.6 69.8 L67.4 68.6 M62.2 74 L64.4 77.2 M57.8 74 L55.6 77.2 M56.4 69.8 L52.6 68.6" stroke="'+o.hole+'" stroke-width="1" stroke-linecap="round"/>';
+  const k = o.ball || 'football';
+  let face = FACES[k].svg;
+  if(k === 'football' && o.foot) face = face.replace('fill="#FFFFFF"','fill="'+o.foot+'"');
+  return '<g transform="translate(60 71)">'+face+'</g>';
+}
+function mark(o){
+  return (o.badge ? '<rect width="120" height="120" rx="'+(o.sq?0:30)+'" fill="'+o.badge+'"/>' : '') +
+    (o.small || o.noRing ? '' : '<rect x="14" y="16" width="92" height="84" rx="38" fill="none" stroke="'+o.ring+'" stroke-width="3.2" stroke-linecap="round"'+(o.dash?' stroke-dasharray="7 9"':'')+'/>') +
+    '<g transform="translate(-2.5 0)">' + racket(o.line, o.hole, o.small) + bat(o.line, o.hole, o.small) + '</g>' +
+    (o.noBall ? '' : ballShape(o));
+}
+const P = {
+  dark:  {line:'#C4F546', hole:'#0F1A15', ring:'rgba(196,245,70,.36)', run:'#C4F546', foot:'#FFFFFF'},
+  light: {line:'#0F1A15', hole:'#F1F2EF', ring:'rgba(15,26,21,.26)',  run:'#7FA30F', foot:'#C4F546'},
+  onLime:{line:'#0F1A15', hole:'#C4F546', ring:'rgba(15,26,21,.32)',  run:'#0F1A15', foot:'#FFFFFF'},
+  monoInk:  {line:'#0F1A15', hole:'#FFFFFF', ring:'#0F1A15', mono:true},
+  monoWhite:{line:'#FFFFFF', hole:'#0F1A15', ring:'#FFFFFF', mono:true}
+};
+const svg = (w, inner, extra) => '<svg width="'+w+'" height="'+w+'" viewBox="0 0 120 120" '+(extra||'aria-hidden="true"')+'>'+inner+'</svg>';
+const svgBox = (w, h, vb, inner) => '<svg width="'+w+'" height="'+h+'" viewBox="'+vb+'" aria-hidden="true">'+inner+'</svg>';
+const word = c => '<span class="w" style="color:'+c+'">ArenaHub</span>';
+const lock = (pal, c) => '<div class="horiz">'+svg(48, mark(pal))+word(c)+'</div>';
+
+/* ---------- ball line-up ---------- */
+document.getElementById('lineup').innerHTML = KEYS.map((k,i) =>
+  svg(72, mark(Object.assign({}, P.dark, {ball:k}))) + ''
+).map((m,i) => '<div>'+m+FACES[KEYS[i]].name+'<small>'+FACES[KEYS[i]].sport+'</small></div>').join('');
+
+/* ---------- colour modes ---------- */
+const modes = [
+  {c:'tile dark',  t:'Dark', d:'Lime shapes, white football. Splash, dark screens, owner and admin dark theme.', h:lock(P.dark,'#F3F7EF')},
+  {c:'tile paper', t:'Light', d:'Ink shapes, lime football. App light screens, web headers, receipts.', h:lock(P.light,'#0F1A15')},
+  {c:'tile lime',  t:'On lime', d:'Ink shapes on the brand lime. Store listing, banners, merchandise.', h:lock(P.onLime,'#0F1A15')},
+  {c:'tile white', t:'One colour, ink', d:'Black and white print, stamps, invoices, anything with one ink.', h:lock(P.monoInk,'#0F1A15')},
+  {c:'tile dark',  t:'One colour, white', d:'Over dark photos and video, or a one-colour white print.', h:lock(P.monoWhite,'#FFFFFF')},
+  {c:'tile photo', t:'Over a photo', d:'Use the one-colour white version, never the lime one.', h:lock(P.monoWhite,'#FFFFFF')}
+];
+document.getElementById('modes').innerHTML = modes.map(m => '<div class="'+m.c+'"><div class="show">'+m.h+'</div><b>'+m.t+'</b><span>'+m.d+'</span></div>').join('');
+
+/* ---------- icons ---------- */
+const iconBase = Object.assign({}, P.dark, {badge:'#0F1A15'});
+const iosIcon = (w) => svg(w, mark(Object.assign({}, iconBase, {sq:true})));
+/* adaptive foreground: shapes inside the centre 66% of a 108 canvas */
+const adaptiveFg = (extra) => '<g transform="translate(14.4 14.4) scale(.76)">'+extra+'</g>';
+const adaptive = (w, shape) => {
+  const radius = shape==='circle' ? '50%' : shape==='squircle' ? '34%' : '16%';
+  return '<div class="mask"><div class="m" style="width:'+w+'px;height:'+w+'px;border-radius:'+radius+'">'+
+    svg(w, '<rect width="120" height="120" fill="#0F1A15"/>'+adaptiveFg(mark(Object.assign({}, P.dark, {noRing:false}))), 'aria-hidden="true"')+'</div>'+shape+'</div>';
+};
+document.getElementById('icons').innerHTML =
+  '<div class="mask"><div class="m" style="border-radius:22%;width:112px;height:112px">'+iosIcon(112)+'</div>iPhone, full square</div>'+
+  adaptive(112,'circle')+adaptive(112,'squircle')+adaptive(112,'rounded')+
+  '<div class="mask"><div class="m" style="width:112px;height:112px;border-radius:50%;background:#2B3A33">'+svg(112,'<g transform="translate(14.4 14.4) scale(.76)">'+mark(Object.assign({}, P.monoWhite, {noRing:false, line:'#C8D8CE', hole:'#2B3A33', ring:'#C8D8CE'}))+'</g>')+'</div>Android themed icon</div>';
+document.getElementById('notifrow').innerHTML =
+  '<div class="notif"><div class="ico">'+svg(22, mark(Object.assign({}, P.monoWhite, {noRing:true, noBall:false, hole:'#0F1A15'})))+'</div><div><b>Booking confirmed</b><span>Court A, Thu 22 May, 6 to 8 PM</span></div></div>'+
+  '<div class="cap" style="max-width:36ch">Notification icon: shapes and ball only, in white on transparent, as Android requires. No ring, no holes under 24 pixels.</div>';
+
+/* ---------- tab, share, email ---------- */
+const tabIcon = s => svg(s, mark(Object.assign({}, iconBase, {small:s<24, sq:false})));
+document.getElementById('tabs').innerHTML =
+  '<div><div class="tabstrip l">'+tabIcon(16)+'ArenaHub</div></div>'+
+  '<div><div class="tabstrip d">'+tabIcon(16)+'ArenaHub</div></div>'+
+  '<div class="mask">'+tabIcon(32)+'32</div><div class="mask">'+tabIcon(48)+'48</div><div class="mask">'+svg(64, mark(Object.assign({}, iconBase, {sq:false})))+'Apple touch</div>';
+document.getElementById('share').innerHTML = '<div class="share">'+svg(150, mark(Object.assign({}, P.dark, {ball:'football'})))+'<div><div class="t">ArenaHub</div><div class="s">Find a court. Get a game.</div></div></div>';
+document.getElementById('emailbar').innerHTML = '<div class="emailbar">'+svg(40, mark(Object.assign({}, iconBase)))+'<div><b>Your booking is confirmed</b><span>Kickoff Arena, Court A</span></div></div>';
+
+/* ---------- loaders: every lap a different ball ---------- */
+const RING2 = 'M14 58 V54 A38 38 0 0 1 52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V54 A38 38 0 0 1 52 16 H68 A38 38 0 0 1 106 54 V62 A38 38 0 0 1 68 100 H52 A38 38 0 0 1 14 62 V58';
+function loader(size, pal){
+  const order = shuffle(KEYS);
+  return '<div class="ld" style="width:'+size+'px;height:'+size+'px" role="img" aria-label="Loading">' +
+    '<div class="ldbox" style="transform:scale('+(size/120)+')">' +
+      '<svg class="hsvg" viewBox="0 0 120 120" width="120" height="120" overflow="visible" aria-hidden="true">' +
+        mark(Object.assign({}, pal, {noBall:true})) +
+        '<path class="lrun" d="'+RING2+'" pathLength="200" fill="none" stroke="'+pal.run+'" stroke-width="4.6" stroke-linecap="round"/>' +
+      '</svg>' +
+      '<div class="lball"><div class="lsp">' +
+        order.map((k,i) => '<svg class="lf k'+i+'" style="--k:'+i+'" viewBox="-9 -9 18 18" width="18" height="18" aria-hidden="true">'+FACES[k].svg+'</svg>').join('') +
+      '</div></div>' +
+    '</div></div>';
+}
+document.getElementById('loaders').innerHTML = [
+  {s:72, p:P.light, d:false, t:'Full-screen wait, 72px'},
+  {s:48, p:P.light, d:false, t:'Section wait, 48px'},
+  {s:60, p:P.dark,  d:true,  t:'On dark, 60px'}
+].map(l => '<div class="ldt'+(l.d?' dark':'')+'"><div class="ldarea">'+loader(l.s, l.p)+'</div><span>'+l.t+'</span></div>').join('');
+
+/* ---------- success and offline ---------- */
+function okMark(){
+  const p = P.light;
+  return '<svg class="ok" id="okSvg" width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">'+
+    '<rect x="14" y="16" width="92" height="84" rx="38" fill="none" stroke="rgba(15,26,21,.18)" stroke-width="3.2"/>'+
+    '<rect class="okring" x="14" y="16" width="92" height="84" rx="38" fill="none" stroke="#7FA30F" stroke-width="3.6" stroke-linecap="round" pathLength="240"/>'+
+    '<g transform="translate(-2.5 0)">'+racket(p.line,p.hole,false)+bat(p.line,p.hole,false)+'</g>'+
+    '<circle class="okpulse" cx="60" cy="71" r="8" fill="none" stroke="#7FA30F" stroke-width="1.4"/>'+
+    '<g class="okball">'+ballShape(Object.assign({}, p, {ball:'football'}))+'</g></svg>';
+}
+document.getElementById('okmark').innerHTML = okMark();
+const okSvg = document.getElementById('okSvg');
+function playOk(){ okSvg.classList.remove('go','done'); void okSvg.getBoundingClientRect(); okSvg.classList.add('go'); }
+document.getElementById('okplay').addEventListener('click', playOk);
+playOk();
+const grey = {line:'#8A968F', hole:'#F1F2EF', ring:'#8A968F', foot:'#C9D0CB'};
+document.getElementById('offmark').innerHTML = '<svg class="off" width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">'+
+  mark(Object.assign({}, grey, {dash:true, noBall:true}))+
+  '<g class="offball">'+ballShape(Object.assign({}, grey, {ball:'football'}))+'<path d="M50 83 L70 59" stroke="#CF4141" stroke-width="3" stroke-linecap="round"/></g></svg>';
+
+/* ---------- where each version goes ---------- */
+const where = [
+  ['Splash and app start','Animated hero. Plays once per cold start while the session loads. A new set of balls each time.'],
+  ['Log in, Register, Verify, Forgot','Still dark or light mark at the top, football.'],
+  ['Waits over half a second','Loader at 72px (full screen), 48px (section). Random ball each lap.'],
+  ['Booking confirmed','The success landing once. Still after that.'],
+  ['No connection, server error','Offline mark with a broken ring.'],
+  ['Owner and admin web','Still mark in the rail and sign-in page, light or dark with the theme. Loader on first page load only.'],
+  ['App icon, store, favicon, share card','Football only, lime on ink badge.'],
+  ['Emails, receipts, invoices','Still badge or light mark. One-colour ink for print.']
+];
+document.getElementById('where').innerHTML = where.map(w => '<div class="tile"><b>'+w[0]+'</b><span>'+w[1]+'</span></div>').join('');
+</script>
+</body>
+</html>

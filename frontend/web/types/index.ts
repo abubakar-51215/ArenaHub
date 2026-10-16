@@ -19,8 +19,10 @@ export interface User {
 
 export interface RegisterResult {
   user: User;
-  /** OTP delivery channel used, so the client can prompt correctly. */
+  /** The masked address the code went to ("a***@gmail.com"). */
   otp_sent_to: string;
+  /** false when the code email could not be sent: the code step says so and "Send a new code" works at once. */
+  code_sent: boolean;
 }
 
 export interface Tokens {
@@ -75,6 +77,11 @@ export interface Arena {
   is_active: boolean;
   amenities: Amenity[];
   created_at: string;
+  /** set by an admin; players never see a suspended or removed arena */
+  suspended_at?: string | null;
+  suspended_reason?: string | null;
+  deleted_at?: string | null;
+  deleted_reason?: string | null;
 }
 
 export interface Court {
@@ -247,6 +254,8 @@ export interface DashboardAnalytics {
 
 export interface OwnerBookingRow {
   booking_id: string;
+  /** AHB-xxxxxx, the reference the player sees */
+  booking_code?: string;
   booking_date: string;
   start_time: string;
   end_time: string;
@@ -257,8 +266,17 @@ export interface OwnerBookingRow {
   player_name: string;
   total_amount: string;
   status: BookingStatus;
+  /** the player's phone, masked by the server ("+92 300 11••••") */
+  player_phone?: string | null;
   payment_id: string | null;
+  payment_method?: PaymentMethod | null;
+  payment_status?: PaymentStatus | null;
+  payment_lifecycle_status?: string | null;
   receipt_proof_url: string | null;
+  /** "Awaiting payment" with the slot still ahead: the owner may send a reminder */
+  can_remind?: boolean;
+  /** minutes until another reminder may go out, while one went out in the last hour */
+  remind_wait_minutes?: number | null;
 }
 
 export interface RevenueBreakdownItem {
@@ -341,6 +359,10 @@ export interface AdminUserDetail extends AdminUser {
 }
 
 export interface AdminBooking {
+  /** AHB-xxxxxx, the reference the player and the owner see */
+  booking_code?: string;
+  /** a refund for this booking is still waiting (gateway retry, or manual) */
+  refund_pending?: boolean;
   id: string;
   player_id: string;
   player_name: string;
@@ -357,6 +379,10 @@ export interface AdminBooking {
 }
 
 export interface AdminPayment {
+  /** a refund against this payment is still waiting (gateway retry, or manual) */
+  refund_pending?: boolean;
+  /** fine-grained lifecycle; "refunded" once refunds reach the amount */
+  lifecycle_status?: string;
   id: string;
   player_id: string;
   player_name: string;
@@ -457,3 +483,24 @@ export const WEEKDAY_NAMES = [
   "saturday",
   "sunday",
 ] as const;
+
+/** One refund on the owner's own arenas (GET /owner/refunds). */
+export type RefundStatusValue = "pending" | "processed" | "failed";
+export interface OwnerRefund {
+  id: string;
+  status: RefundStatusValue;
+  amount: string;
+  reason: string;
+  payment_method: "card" | "jazzcash" | "easypaisa" | "bank_transfer";
+  player_name: string;
+  booking_code: string;
+  arena_name: string;
+  court_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  processed_at: string | null;
+  /** True only for a pending bank-transfer refund: the owner sends the money and marks it paid. */
+  can_mark_paid: boolean;
+}
