@@ -13,6 +13,7 @@ never block the event loop.
 import asyncio
 import uuid
 from decimal import Decimal
+from typing import Any
 
 import stripe
 import structlog
@@ -84,7 +85,7 @@ class StripeProvider:
         stripe.api_key = settings.stripe_secret_key
         # the same key on a retry makes Stripe return the first refund instead
         # of creating a second one
-        extra = {"idempotency_key": idempotency_key} if idempotency_key else {}
+        extra: dict[str, Any] = {"idempotency_key": idempotency_key} if idempotency_key else {}
         refund = await asyncio.to_thread(
             stripe.Refund.create,
             payment_intent=gateway_transaction_id,

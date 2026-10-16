@@ -6,7 +6,7 @@ report is built fresh from the same repositories the dashboards already query.
 
 import uuid
 from datetime import date, datetime, time
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,7 +41,7 @@ _LIMIT = 5000  # a report is a bulk export, not a paginated view
 _PAID = {"completed": "paid"}
 
 
-def _owner_payment(booking, payment) -> str:
+def _owner_payment(booking: Any, payment: Any) -> str:
     """The payment as the owner Bookings screen writes it ("Bank transfer · paid")."""
     if payment is None:
         return "Not paid yet" if booking.status.value == "pending_payment" else "-"

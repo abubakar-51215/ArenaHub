@@ -4,11 +4,12 @@ Run from backend/:  .venv/Scripts/python scripts/route_table.py
 """
 
 from pathlib import Path
+from typing import Any
 
 from app.main import app
 
 
-def _who(dep, out: set[str]) -> None:
+def _who(dep: Any, out: set[str]) -> None:
     for d in dep.dependencies:
         name = getattr(d.call, "__name__", "")
         if name == "get_current_user":

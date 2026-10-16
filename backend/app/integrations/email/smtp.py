@@ -156,10 +156,10 @@ async def send_email(
         try:
             await asyncio.to_thread(
                 _send_sync,
-                s.email_host,
+                s.email_host or "",
                 s.email_port,
                 s.email_username,
-                s.email_password,
+                s.email_password or "",
                 msg,
                 timeout,
             )

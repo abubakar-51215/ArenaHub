@@ -10,6 +10,7 @@ single feature module, so it lives here instead.
 import secrets
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -329,7 +330,9 @@ async def reactivate_user(db: AsyncSession, actor: User, user_id: uuid.UUID) -> 
 # ---- platform-wide monitoring --------------------------------------------------
 
 
-async def _pending_refund_ids(db: AsyncSession, column, ids: list[uuid.UUID]) -> set[uuid.UUID]:
+async def _pending_refund_ids(
+    db: AsyncSession, column: Any, ids: list[uuid.UUID]
+) -> set[uuid.UUID]:
     """Which of ``ids`` (booking or payment ids, per ``column``) have a refund
     that is still pending."""
     if not ids:

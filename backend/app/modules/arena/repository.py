@@ -10,13 +10,12 @@ import uuid
 from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple, cast
 
 from sqlalchemy import (
     CursorResult,
     Float,
     Select,
-    UnaryExpression,
     func,
     literal_column,
     or_,
@@ -90,7 +89,7 @@ async def list_owner_arena_ids(
     return list(result.scalars().all())
 
 
-def _review_summary():
+def _review_summary() -> Any:
     """Per arena: average rating and count over non-flagged reviews."""
     return (
         select(
@@ -104,7 +103,7 @@ def _review_summary():
     )
 
 
-def _price_summary():
+def _price_summary() -> Any:
     """Per arena: the "from" price, the lowest price a slot can be quoted at.
 
     Each available court's slot price is ``base_price`` times the lowest active
@@ -171,7 +170,7 @@ async def arena_summaries(
 EARTH_RADIUS_KM = 6371.0
 
 
-def distance_km_expr(lat: float, lon: float):
+def distance_km_expr(lat: float, lon: float) -> Any:
     """Haversine distance in km from (lat, lon) to the arena's coordinates, as a SQL expression."""
     a_lat = func.radians(sa_cast(Arena.latitude, Float))
     a_lon = func.radians(sa_cast(Arena.longitude, Float))
@@ -256,7 +255,7 @@ async def search_public_arenas(
 
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
 
-    order: tuple[UnaryExpression]
+    order: tuple[Any, ...]
     if sort == "near" and dist is not None:
         # arenas without coordinates sort last
         order = (dist.asc().nulls_last(), Arena.name.asc())

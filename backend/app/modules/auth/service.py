@@ -245,13 +245,13 @@ async def login(
             sent_to=codes.mask_address(user.email),
             code_sent=delivered,
         )
-    issued = await _issue_tokens(db, user)
+    token_pair = await _issue_tokens(db, user)
     if user.role == UserRole.owner and background is not None:
         # a new owner sign-in: one alert email, sent after the answer is on its way
         background.add_task(
             send_owner_login_alert, user.id, user.full_name, user.email, datetime.now(UTC)
         )
-    return issued
+    return token_pair
 
 
 _CHALLENGE_INVALID = "This sign-in step has expired or is not valid. Sign in again."
