@@ -135,3 +135,13 @@ None of these chooses a deferred value; they are the work to do when a server ex
    - c. Keep everything on the server's disk only if that disk is persistent and backed up.
    - Warning: many hosts give a server a disk that is wiped on every restart or deploy. Such a disk cannot hold uploads: photos and receipts would silently disappear.
 2. **Set `ENVIRONMENT` explicitly on every server** (`prod` or `staging`). The default is `dev`, which turns on the development behaviour (codes written to the log, interactive docs, mock helpers, plain-http origins). `scripts/security-check.py` warns when it is not set.
+
+## Paying by card and mobile wallet (2026-10-16)
+
+Built: card on Stripe's hosted card page and JazzCash / EasyPaisa by wallet number, both confirming the booking at once when the payment arrives (no owner step); bank transfer stays receipt + owner approval. Development uses stand-ins (a test card page and a wallet simulator with "development only" buttons). To make them real, nothing here chosen yet:
+
+1. **Card (Stripe):** a Stripe account and keys: `STRIPE_SECRET_KEY`, and a webhook endpoint at `{API_PUBLIC_URL}/api/v1/webhooks/stripe` sending `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` and `checkout.session.expired`, whose signing secret goes in `STRIPE_WEBHOOK_SECRET`. Stripe Checkout must accept PKR for the account (check before launch).
+2. **`API_PUBLIC_URL`:** the public https address of the API; Stripe's card page sends the player back to the app through `/api/v1/payments/return`, which forwards only to app addresses (`arenahub://...`, and the web address in `WEB_PUBLIC_URL`).
+3. **JazzCash and EasyPaisa:** merchant accounts, then connect their "mobile account" payment request APIs in `backend/app/integrations/payments/jazzcash.py` and `easypaisa.py` (the `initiate` method, which receives the wallet number) and their signed callbacks (already verified with `JAZZCASH_WEBHOOK_SECRET` / `EASYPAISA_WEBHOOK_SECRET`). Until then they show "coming soon" outside development.
+4. The phone app's own link scheme (`arenahub://`) must be kept when the app identifiers are decided, or the return address list updated.
+
