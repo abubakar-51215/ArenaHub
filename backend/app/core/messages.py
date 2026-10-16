@@ -95,6 +95,44 @@ def player_login_alert_lines(
     return _login_alert_lines(name, when_text, support_email, "account")
 
 
+# Email restyle, Layout A (login alert) — new wording, listed for approval (see the work report).
+LOGIN_ALERT_BADGE = "NEW SIGN-IN"
+LOGIN_ALERT_TITLE = "New sign-in to your account"
+LOGIN_ALERT_NOT_YOU_HEADING = "Not you?"
+LOGIN_ALERT_LABEL_NAME = "Name"
+LOGIN_ALERT_LABEL_ACCOUNT = "Account"
+LOGIN_ALERT_LABEL_ROLE = "Role"
+LOGIN_ALERT_LABEL_WHEN = "Date and time"
+LOGIN_ALERT_LABEL_SIGNED_IN_WITH = "Signed in with"
+LOGIN_ALERT_LABEL_DEVICE = "Device"
+LOGIN_ALERT_LABEL_IP = "IP address"
+NOT_AVAILABLE = "Not available"
+
+# Email restyle, Layout B (every emailed code except password reset) — new wording.
+CODE_GREETING_NAMED = "Hello {name},"
+CODE_GREETING_BARE = "Hello,"
+CODE_VALID_LINE = "This code is valid for 10 minutes."
+CODE_DO_NOT_SHARE = "Do not share this code with anyone."
+CODE_IGNORE_SHORT_LINE = "If you didn't request this, ignore this email."
+
+# One line per code purpose saying what the code is for (Layout B's explanation line). The purpose
+# names reuse the already-approved CODE_PURPOSE_WORDS as the centred title; these are new.
+CODE_EXPLANATION_WORDS = {
+    "registration": "Use this code to confirm your email address.",
+    "admin_login": "Use this code to finish signing in as an admin.",
+    "password_change": "Use this code to confirm your new password.",
+    "email_change": "Use this code to confirm your new email address.",
+    "phone_change": "Use this code to confirm your new phone number.",
+}
+
+# Email restyle, Layout C (password reset) — new wording.
+RESET_GREETING_NAMED = "Hi {name},"
+RESET_GREETING_BARE = "Hi there,"
+RESET_EXPLANATION = "A password reset was requested for your ArenaHub account."
+RESET_HELP_LINE = "Need help? Contact us at {support_email}."
+RESET_SIGN_OFF = "Cheers," + chr(10) + "The ArenaHub Team"
+
+
 # Paying by card or mobile wallet (approved by the owner on 2026-10-16)
 WALLET_NUMBER_NEEDED = "Enter your {wallet} number."
 WALLET_NUMBER_INVALID = "Enter a Pakistani mobile number, like 0300 1234567."

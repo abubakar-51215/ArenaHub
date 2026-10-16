@@ -78,7 +78,7 @@ async def _answer(
     )  # fmt: skip
     await db.commit()
     # a successful Google sign-in: one alert email (players only, if they have an email).
-    dispatch_login_alert(background, user)
+    dispatch_login_alert(background, user, signed_in_with="Google")
     return GoogleSignInResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=refresh,

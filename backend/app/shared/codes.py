@@ -31,7 +31,7 @@ from app.cache import redis as redis_cache
 from app.core.config import get_settings
 from app.core.exceptions import TooManyRequestsError, ValidationError
 from app.integrations.email.smtp import EmailSendError, send_email
-from app.integrations.email.templates import code_email
+from app.integrations.email.templates import code_email, password_reset_email
 from app.modules.auth import repository as repo
 from app.modules.auth.model import OtpVerification
 from app.shared.audit import audit
@@ -149,12 +149,14 @@ async def issue_code(
     destination: str,
     *,
     quiet: bool = False,
+    name: str | None = None,
 ) -> Issued:
     """Make a new code, end the older ones, store its hash and send it.
 
     The 60 s wait and the hourly maximum count only codes that went out. ``quiet``: inside the
     wait or over the maximum, send nothing and say nothing (sign-in starting an admin or
-    verification code; public flows throttle before calling this)."""
+    verification code; public flows throttle before calling this). ``name`` is the account's
+    display name, used only for the email's greeting ("Hello {name},"); never stored or logged."""
     masked = mask_address(destination)
     latest = await repo.get_latest_otp(db, user_id, purpose, for_update=True)
     if latest is not None and not latest.delivery_failed:
@@ -186,14 +188,16 @@ async def issue_code(
         expires_at=_now() + CODE_TTL,
     )
     await db.commit()
-    delivered = await _deliver(destination, code, purpose, user_id)
+    delivered = await _deliver(destination, code, purpose, user_id, name)
     if not delivered:
         otp.delivery_failed = True
         await db.commit()
     return Issued(sent=True, delivered=delivered, masked=masked)
 
 
-async def _deliver(destination: str, code: str, purpose: OtpPurpose, user_id: uuid.UUID) -> bool:
+async def _deliver(
+    destination: str, code: str, purpose: OtpPurpose, user_id: uuid.UUID, name: str | None = None
+) -> bool:
     settings = get_settings()
     if settings.is_dev:
         # dev only: the code in the backend terminal, so a test never waits for an inbox
@@ -207,9 +211,11 @@ async def _deliver(destination: str, code: str, purpose: OtpPurpose, user_id: uu
             "code_not_sent", purpose=purpose.value, user_id=str(user_id), reason="no SMS provider"
         )
         return False
-    subject, text, html = code_email(
-        code, purpose.value, ttl_minutes=int(CODE_TTL.total_seconds() // 60)
-    )
+    ttl_minutes = int(CODE_TTL.total_seconds() // 60)
+    if purpose == OtpPurpose.password_reset:
+        subject, text, html = password_reset_email(code, ttl_minutes, name, settings.support_email)
+    else:
+        subject, text, html = code_email(code, purpose.value, ttl_minutes, name)
     try:
         await send_email(destination, subject, text, html=html, kind=f"code:{purpose.value}")
     except EmailSendError as err:

@@ -136,7 +136,9 @@ async def register(db: AsyncSession, data: RegisterRequest) -> RegisterResponse:
     # the account exists even if the email cannot go out: the screen then offers Resend.
     # (No per-address wait starts here: a resend right after sign-up must look the same as
     # one for an address nobody used; the account's own 60 s rule keeps it quiet.)
-    issued = await codes.issue_code(db, user.id, OtpPurpose.registration, user.email)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.registration, user.email, name=user.full_name
+    )
     return RegisterResponse(
         user=UserPublic.model_validate(user), otp_sent_to=issued.masked, code_sent=issued.delivered
     )
@@ -165,7 +167,9 @@ async def resend_otp(db: AsyncSession, email: str) -> bool:
     user = await repo.get_user_by_email(db, email)
     if user is None or user.is_verified or user.deleted_at is not None:
         return True
-    issued = await codes.issue_code(db, user.id, OtpPurpose.registration, user.email, quiet=True)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.registration, user.email, quiet=True, name=user.full_name
+    )
     if not issued.delivered:
         await codes.forget_failed_public(OtpPurpose.registration, email)
     return issued.delivered
@@ -222,7 +226,7 @@ async def login(
     if not user.is_verified:
         # the right password: send a fresh code (the 60 s wait permitting) and open the code screen
         issued = await codes.issue_code(
-            db, user.id, OtpPurpose.registration, user.email, quiet=True
+            db, user.id, OtpPurpose.registration, user.email, quiet=True, name=user.full_name
         )
         raise VerifyEmailRequiredError(
             data={"email": user.email, "sent_to": issued.masked, "code_sent": issued.delivered}
@@ -247,7 +251,7 @@ async def login(
         )
     token_pair = await _issue_tokens(db, user)
     # a successful password sign-in: one alert email (player or owner), sent in the background.
-    dispatch_login_alert(background, user)
+    dispatch_login_alert(background, user, signed_in_with="Password")
     return token_pair
 
 
@@ -260,7 +264,9 @@ async def _send_admin_code(db: AsyncSession, user: User, *, asked_again: bool = 
     last minute still works, so only the hourly maximum is said (the password was right, so
     nothing about the account is given away). Returns False when the email could not be sent."""
     try:
-        issued = await codes.issue_code(db, user.id, OtpPurpose.admin_login, user.email)
+        issued = await codes.issue_code(
+            db, user.id, OtpPurpose.admin_login, user.email, name=user.full_name
+        )
     except TooManyRequestsError as exc:
         if asked_again or exc.message == codes.TOO_MANY_CODES_MESSAGE:
             raise
@@ -358,7 +364,9 @@ async def forgot_password(db: AsyncSession, data: ForgotPasswordRequest) -> None
     user = await repo.get_user_by_email(db, data.email)
     if user is None or user.deleted_at is not None:
         return
-    issued = await codes.issue_code(db, user.id, OtpPurpose.password_reset, user.email, quiet=True)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.password_reset, user.email, quiet=True, name=user.full_name
+    )
     if not issued.delivered:
         await codes.forget_failed_public(OtpPurpose.password_reset, data.email)
 
