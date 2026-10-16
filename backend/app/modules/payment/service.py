@@ -52,6 +52,7 @@ from app.modules.payment.schema import (
 from app.modules.slot import repository as slot_repo
 from app.modules.slot.model import SlotStatus
 from app.modules.user.model import User, UserRole
+from app.shared import receipt_links
 from app.shared.audit import audit
 from app.shared.notify import booking_when, notify_user
 from app.shared.pagination import PaginationParams, paginated
@@ -419,8 +420,7 @@ async def dev_simulate_confirm(
 
 def _is_our_receipt_url(url: str) -> bool:
     """Only an address our own upload endpoint handed out (never a link to some other site)."""
-    prefix = f"{get_settings().media_url_prefix}/receipts/"
-    return url.startswith(prefix) and ".." not in url and "?" not in url and "#" not in url
+    return receipt_links.stored_name(url) is not None
 
 
 async def upload_receipt(

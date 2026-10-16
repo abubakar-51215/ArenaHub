@@ -8,6 +8,7 @@ owner becomes one pending refund of the full amount (the money may have arrived)
 """
 
 from decimal import Decimal
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -20,7 +21,9 @@ from tests.helpers import auth_header, make_user
 from tests.modules.test_admin_arena_actions import API, _act, _fresh, _setup, _slot_ids
 
 
-async def _book(client, player, court_id, slot_ids, plan="full") -> dict:
+async def _book(
+    client: AsyncClient, player: Any, court_id: Any, slot_ids: Any, plan: Any = "full"
+) -> dict:
     made = await client.post(
         f"{API}/bookings",
         headers=auth_header(player),
@@ -32,7 +35,7 @@ async def _book(client, player, court_id, slot_ids, plan="full") -> dict:
     return group["data"]
 
 
-async def _send_receipt(client, player, gid) -> str:
+async def _send_receipt(client: AsyncClient, player: Any, gid: Any) -> str:
     init = await client.post(
         f"{API}/payments/initiate",
         headers=auth_header(player),
@@ -42,12 +45,12 @@ async def _send_receipt(client, player, gid) -> str:
     await client.post(
         f"{API}/payments/{pid}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/r.png"},
+        json={"receipt_proof_url": "/uploads/receipts/b0c0f928a53b0f77134c9ccc99ebb969.png"},
     )
     return pid
 
 
-async def _paid(client, owner, player, gid) -> None:
+async def _paid(client: AsyncClient, owner: Any, player: Any, gid: Any) -> None:
     pid = await _send_receipt(client, player, gid)
     ok = await client.post(f"{API}/owner/payments/{pid}/approve", headers=auth_header(owner))
     assert ok.status_code == 200, ok.text
@@ -57,7 +60,7 @@ async def _group_refunds(db: AsyncSession, booking_ids: list[str]) -> list[Refun
     return list(await _fresh(db, select(Refund).where(Refund.booking_id.in_(booking_ids))))
 
 
-async def _events(db: AsyncSession, user_id, booking_ids: list[str]) -> list[str]:
+async def _events(db: AsyncSession, user_id: Any, booking_ids: list[str]) -> list[str]:
     rows = await _fresh(db, select(Notification).where(Notification.user_id == user_id))
     return [n.event for n in rows if (n.data or {}).get("booking_id") in booking_ids]
 

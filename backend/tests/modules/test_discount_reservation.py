@@ -10,6 +10,7 @@
 
 import uuid
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -23,7 +24,7 @@ from tests.helpers import arena_payload, auth_header, make_admin, make_user
 from tests.modules.test_payment import ALL_WEEK_HOURS
 
 
-async def _setup(client: AsyncClient, db: AsyncSession, tag: str, max_uses: int | None = 2):
+async def _setup(client: AsyncClient, db: AsyncSession, tag: str, max_uses: int | None = 2) -> Any:
     owner, _ = await make_user(client, db, f"dr-o-{tag}@example.com", "owner")
     admin = await make_admin(client, db, f"dr-a-{tag}@example.com")
     arena = await client.post(
@@ -67,14 +68,16 @@ async def _used(client: AsyncClient, owner: dict, arena_id: str) -> int:
     return next(r for r in rows if r["code"] == "SAVE10")["used_count"]
 
 
-async def _book(client, player, court_id, slot_ids, code: str | None = "SAVE10"):
+async def _book(
+    client: AsyncClient, player: Any, court_id: Any, slot_ids: Any, code: str | None = "SAVE10"
+) -> Any:
     body = {"court_id": court_id, "slot_ids": slot_ids, "payment_type": "full"}
     if code:
         body["discount_code"] = code
     return await client.post("/api/v1/bookings", headers=auth_header(player), json=body)
 
 
-async def _pay_by_transfer(client, player, gid: str) -> str:
+async def _pay_by_transfer(client: AsyncClient, player: Any, gid: str) -> str:
     init = await client.post(
         "/api/v1/payments/initiate",
         headers=auth_header(player),
@@ -84,7 +87,7 @@ async def _pay_by_transfer(client, player, gid: str) -> str:
     sent = await client.post(
         f"/api/v1/payments/{pid}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/r.png"},
+        json={"receipt_proof_url": "/uploads/receipts/b0c0f928a53b0f77134c9ccc99ebb969.png"},
     )
     assert sent.status_code == 200, sent.text
     return pid
@@ -139,6 +142,7 @@ async def test_the_atomic_take_never_goes_past_the_limit(
     code = await db_session.scalar(
         select(DiscountCode).where(DiscountCode.code == "SAVE10", DiscountCode.arena_id == arena_id)
     )
+    assert code is not None
     assert await arena_repo.try_increment_discount_usage(db_session, code.id) is True
     assert await arena_repo.try_increment_discount_usage(db_session, code.id) is False
 
@@ -233,4 +237,5 @@ async def test_a_booking_without_a_code_is_untouched(
     await client.post(f"/api/v1/bookings/group/{gid}/release", headers=auth_header(player))
     assert await _used(client, owner, arena_id) == 0
     row = await db_session.scalar(select(Booking).where(Booking.booking_group_id == gid))
+    assert row is not None
     assert row.discount_code_id is None and row.discount_released_at is None

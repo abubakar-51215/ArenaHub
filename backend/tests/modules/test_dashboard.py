@@ -2,6 +2,7 @@
 queue, calendar view, and revenue widgets."""
 
 from datetime import date, timedelta
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,7 +76,7 @@ async def test_dashboard_summary_counts_arenas_and_pending_approvals(
     await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
 
     summary = await client.get("/api/v1/owner/dashboard/summary", headers=auth_header(owner))
@@ -108,7 +109,7 @@ async def test_pending_approvals_panel_lists_across_all_owner_arenas(
     await client.post(
         f"/api/v1/payments/{payment_id}/receipt",
         headers=auth_header(player),
-        json={"receipt_proof_url": "/uploads/receipts/fake.jpg"},
+        json={"receipt_proof_url": "/uploads/receipts/c898309f41b1f46378fc698549e1c592.jpg"},
     )
 
     panel = await client.get(
@@ -119,7 +120,10 @@ async def test_pending_approvals_panel_lists_across_all_owner_arenas(
     assert len(items) == 1
     assert items[0]["arena_id"] == arena_id
     assert items[0]["payment_method"] == "bank_transfer"
-    assert items[0]["receipt_proof_url"] == "/uploads/receipts/fake.jpg"
+    # the stored receipt comes out only as a short-lived signed link
+    link = items[0]["receipt_proof_url"]
+    assert link.startswith("/api/v1/media/receipts/c898309f41b1f46378fc698549e1c592.jpg?expires=")
+    assert "&sig=" in link
 
     # Approving clears it from the queue.
     await client.post(f"/api/v1/owner/payments/{payment_id}/approve", headers=auth_header(owner))
@@ -319,7 +323,7 @@ def test_phone_mask_hides_all_but_the_prototype_prefix() -> None:
     assert mask_phone(None) is None and mask_phone("") is None
 
 
-async def _awaiting_booking(client: AsyncClient, db_session: AsyncSession, tag: str):
+async def _awaiting_booking(client: AsyncClient, db_session: AsyncSession, tag: str) -> Any:
     """An owner, a player and one booking awaiting payment (a future Monday)."""
     owner, _ = await make_user(client, db_session, f"remind-owner-{tag}@example.com", "owner")
     player, player_row = await make_user(

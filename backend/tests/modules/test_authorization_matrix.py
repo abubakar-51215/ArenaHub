@@ -17,6 +17,7 @@ import json
 import uuid
 from datetime import date, timedelta
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -25,12 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
 from tests.modules.test_payment import ALL_WEEK_HOURS
 
-RECEIPT = "/uploads/receipts/matrix.jpg"
+RECEIPT = "/uploads/receipts/f02c831521b25cf7921bd45c4d950565.jpg"
 DAY = date.today() + timedelta(days=4)
 GHOST = "00000000-0000-4000-8000-00000000dead"  # an id nothing has
 
 
-async def _arena(client: AsyncClient, db: AsyncSession, owner: dict, admin: dict, tag: str):
+async def _arena(client: AsyncClient, db: AsyncSession, owner: dict, admin: dict, tag: str) -> Any:
     res = await client.post(
         "/api/v1/owner/arenas",
         headers=auth_header(owner),
@@ -96,8 +97,8 @@ async def _arena(client: AsyncClient, db: AsyncSession, owner: dict, admin: dict
 
 
 async def _book(
-    client: AsyncClient, player: dict, owner: dict, arena, slot_index: int, *, confirm: bool
-):
+    client: AsyncClient, player: dict, owner: dict, arena: Any, slot_index: int, *, confirm: bool
+) -> Any:
     booked = await client.post(
         "/api/v1/bookings",
         headers=auth_header(player),
@@ -137,7 +138,7 @@ def _no_rate_limit_in_sweeps(client: AsyncClient) -> None:
 
     real = client.request
 
-    async def request(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    async def request(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN002, ANN003, ANN202
         await redis_cache.get_redis().delete("ratelimit:api:127.0.0.1", "ratelimit:auth:127.0.0.1")
         return await real(*args, **kwargs)
 
@@ -201,7 +202,7 @@ def _routes() -> list[tuple[str, str, str]]:
             dep = c.dependant or c.original_route.dependant
             names: set[str] = set()
 
-            def walk(d) -> None:  # noqa: ANN001
+            def walk(d: Any) -> None:  # noqa: ANN001
                 for x in d.dependencies:
                     names.add(getattr(x.call, "__name__", ""))
                     if getattr(x.call, "__name__", "") == "_guard" and x.call.__closure__:
@@ -355,7 +356,7 @@ def _player_attacks(w: SimpleNamespace) -> list[tuple[str, str, dict | None]]:
 
 
 async def _same_as_missing(
-    client, who: dict, method: str, path: str, body, missing_path: str
+    client: AsyncClient, who: dict, method: str, path: str, body: Any, missing_path: str
 ) -> str | None:
     """None when the call on someone else's thing is refused exactly like a call on a thing that
     does not exist; otherwise a description of what is wrong."""
@@ -571,6 +572,7 @@ async def test_a_suspended_owner_is_blocked_and_a_suspended_arena_cannot_be_book
         assert res.status_code in (403, 404, 409, 422), (method, path, res.status_code, res.text)
 
     owner = await db_session.scalar(select(User).where(User.email == "mx-owner-a@example.com"))
+    assert owner is not None
     sus = await client.patch(
         f"/api/v1/admin/users/{owner.id}/suspend",
         headers=auth_header(world.admin),

@@ -13,6 +13,7 @@ from app.modules.payment.model import (
     PaymentPurpose,
     RefundStatus,
 )
+from app.shared.receipt_links import ReceiptLink
 from app.shared.request_model import RequestModel
 
 
@@ -44,7 +45,7 @@ class PaymentResponse(BaseModel):
     lifecycle_status: PaymentLifecycleStatus
     payment_type: PaymentPlan
     purpose: PaymentPurpose
-    receipt_proof_url: str | None = None
+    receipt_proof_url: ReceiptLink = None
     created_at: datetime
 
 
