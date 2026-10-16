@@ -11,11 +11,18 @@ export function listPaymentMethods(): Promise<PayMethodInfo[]> {
 export function initiatePayment(
   bookingGroupId: string,
   paymentMethod: PaymentMethod,
+  extra: { wallet_number?: string; return_url?: string } = {},
 ): Promise<PaymentInitiateResult> {
   return api.post<PaymentInitiateResult>('/payments/initiate', {
     booking_group_id: bookingGroupId,
     payment_method: paymentMethod,
+    ...extra,
   });
+}
+
+/** Development only: stands in for approving (or declining) in the wallet app. */
+export function simulatePayment(paymentId: string, success: boolean): Promise<Payment> {
+  return api.post<Payment>(`/payments/${paymentId}/simulate-confirm?success=${success}`, {});
 }
 
 export function uploadReceipt(paymentId: string, receiptProofUrl: string): Promise<Payment> {
