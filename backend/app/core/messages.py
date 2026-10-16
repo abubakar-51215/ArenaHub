@@ -79,3 +79,9 @@ def owner_login_alert_lines(
         f"support at {support_email}.",
         "Thank you," + chr(10) + "ArenaHub",
     )
+
+
+# Paying by card or mobile wallet (approved by the owner on 2026-10-16)
+WALLET_NUMBER_NEEDED = "Enter your {wallet} number."
+WALLET_NUMBER_INVALID = "Enter a Pakistani mobile number, like 0300 1234567."
+RETURN_ADDRESS_REFUSED = "This return address is not allowed."

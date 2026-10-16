@@ -8,7 +8,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
+from app.core.config import Environment, get_settings
 from tests.helpers import auth_header, make_user
 from tests.modules.test_payment import _create_booking_group, _make_bookable_court, _slots
 
@@ -22,10 +22,16 @@ async def _setup(client: AsyncClient, db: AsyncSession, tag: str) -> Any:
     return owner, player, arena_id, court_id, day
 
 
+def _outside_development(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The production rules: development has test stand-ins for card and the wallets."""
+    monkeypatch.setattr(get_settings(), "environment", Environment.staging)
+
+
 async def test_card_with_placeholder_or_empty_key_is_a_clean_503(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, player, _, court_id, day = await _setup(client, db_session, "k1")
+    _outside_development(monkeypatch)
     slots = await _slots(client, court_id, day)
     group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
     for key in ("sk_test_xxx", "", None):
@@ -40,16 +46,21 @@ async def test_card_with_placeholder_or_empty_key_is_a_clean_503(
 
 
 async def test_wallets_are_coming_soon_and_refuse_to_start(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, player, _, court_id, day = await _setup(client, db_session, "k2")
+    _outside_development(monkeypatch)
     slots = await _slots(client, court_id, day)
     group_id = await _create_booking_group(client, player, court_id, slots[0]["id"])
     for method in ("jazzcash", "easypaisa"):
         resp = await client.post(
             "/api/v1/payments/initiate",
             headers=auth_header(player),
-            json={"booking_group_id": group_id, "payment_method": method},
+            json={
+                "booking_group_id": group_id,
+                "payment_method": method,
+                "wallet_number": "03001234567",
+            },
         )
         assert resp.status_code == 503
         assert "coming soon" in resp.json()["message"]
@@ -59,6 +70,10 @@ async def test_methods_list_has_exactly_four_in_order(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, player, _, _, _ = await _setup(client, db_session, "k3")
+    # in development every method has a stand-in, so all four can be chosen
+    resp = await client.get("/api/v1/payments/methods", headers=auth_header(player))
+    assert [m["state"] for m in resp.json()["data"]] == ["available"] * 4
+    _outside_development(monkeypatch)
     monkeypatch.setattr(get_settings(), "stripe_secret_key", "sk_test_xxx")
     resp = await client.get("/api/v1/payments/methods", headers=auth_header(player))
     data = resp.json()["data"]

@@ -24,20 +24,45 @@ from decimal import Decimal
 import structlog
 
 from app.core.config import get_settings
-from app.core.exceptions import ValidationError
-from app.integrations.payments.base import InitiateResult, RefundResult, WebhookEvent
+from app.core.exceptions import ServiceUnavailableError, ValidationError
+from app.integrations.payments.base import (
+    InitiateResult,
+    RefundResult,
+    WebhookEvent,
+    mask_wallet,
+)
 
 log = structlog.get_logger()
 
 
 class JazzCashProvider:
-    async def initiate(self, *, amount: Decimal, currency: str, reference: str) -> InitiateResult:
+    async def initiate(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        reference: str,
+        wallet_number: str | None = None,
+        return_url: str | None = None,
+    ) -> InitiateResult:
+        """Send a payment request to the player's JazzCash account (they approve it in their
+        JazzCash app; the payment then arrives through the signed webhook).
+
+        No merchant account exists yet, so in development this is a simulator: it only notes
+        the request (with a masked number) and the payment is approved or declined through the
+        dev-only simulate-confirm route. Outside development it refuses until the real API is
+        connected here, behind the same interface."""
+        if not get_settings().is_dev:
+            raise ServiceUnavailableError("JazzCash is coming soon.")
         txn_id = f"jc_test_{uuid.uuid4().hex}"
-        log.info("jazzcash_simulated_initiate", reference=reference, amount=str(amount), txn=txn_id)
-        return InitiateResult(
-            gateway_transaction_id=txn_id,
-            redirect_url=f"https://sandbox.jazzcash.example/pay/{txn_id}",
+        log.info(
+            "jazzcash_simulated_request",
+            reference=reference,
+            amount=str(amount),
+            txn=txn_id,
+            wallet=mask_wallet(wallet_number or ""),
         )
+        return InitiateResult(gateway_transaction_id=txn_id)
 
     def verify_webhook(self, payload: bytes, headers: dict[str, str]) -> WebhookEvent:
         settings = get_settings()

@@ -1,12 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BankIcon, CardIcon, Eyebrow, IconTile, Line, PhoneIcon, SecureBadge } from '@/components/booking/parts';
 import { Button } from '@/components/ui/button';
+import { FieldMessage } from '@/components/auth/field-message';
 import { Card } from '@/components/ui/card';
+import { Field } from '@/components/ui/field';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHead } from '@/components/ui/screen-head';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,14 +26,19 @@ import { hoursLabel, parseEquipment, parseSlots } from '@/lib/checkout';
 import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { createBooking, getBookingGroup, previewBooking } from '@/services/bookings';
+import { localMobile, maskMobile, PAY_TEXT, type WalletName } from '@/lib/payment-text';
 import { getPaymentByGroup, initiatePayment, listPaymentMethods } from '@/services/payments';
+import { useAuthStore } from '@/store/auth';
 import { checkoutKey, useCheckout } from '@/store/checkout';
 import type { PayMethodInfo } from '@/types';
 
 // Payment, from arena-hub-player-app-booking-payment.html (frames 2 to 4 and 8).
-// Four ways, in this order, nothing chosen to begin with. Card and the two
-// wallets are listed but cannot be chosen yet (the server says so). The booking
-// is made when Pay is tapped, not before; a second tap while it is working is
+// Four ways, in this order, nothing chosen to begin with; the server says which can be chosen.
+// - Card: Stripe's card page opens; paid there = the booking is confirmed at once.
+// - JazzCash / EasyPaisa: the player's wallet number; the request goes to that wallet app;
+//   paid there = confirmed at once (the waiting screen follows it).
+// - Bank transfer: upload the receipt; the arena owner approves it.
+// The booking is made when Pay is tapped, not before; a second tap while it is working is
 // ignored, so only one request goes out.
 const SUBTITLE: Record<PayMethodInfo['key'], string> = {
   stripe: 'Debit or credit',
@@ -45,6 +54,8 @@ const FALLBACK: PayMethodInfo[] = [
   { key: 'jazzcash', method: 'jazzcash', label: 'JazzCash', state: 'coming_soon', message: null },
   { key: 'easypaisa', method: 'easypaisa', label: 'EasyPaisa', state: 'coming_soon', message: null },
 ];
+
+const WALLETS: Partial<Record<PayMethodInfo['key'], WalletName>> = { jazzcash: 'JazzCash', easypaisa: 'EasyPaisa' };
 
 function MethodIcon({ k, on }: { k: PayMethodInfo['key']; on: boolean }) {
   const color = on ? Colors.light.limeDeep : Colors.light.text2;
@@ -103,6 +114,11 @@ export default function PaymentScreen() {
   const methods = useQuery({ queryKey: ['payment-methods'], queryFn: listPaymentMethods, retry: 1 });
   const list = methods.data ?? (methods.isError ? FALLBACK : []);
   const [method, setMethod] = useState<PayMethodInfo | null>(null);
+  const wallet = method ? WALLETS[method.key] : undefined;
+  // the wallet number: the account's own phone to begin with, changeable
+  const myPhone = useAuthStore((s) => s.user?.phone ?? '');
+  const [walletNumber, setWalletNumber] = useState(() => localMobile(myPhone) ?? '');
+  const [walletError, setWalletError] = useState<string | null>(null);
 
   // the promo code: what is typed, what the server accepted, and why one was refused
   const [input, setInput] = useState('');
@@ -168,6 +184,15 @@ export default function PaymentScreen() {
   const [busy, setBusy] = useState(false);
   async function pay() {
     if (paying.current || !method || !p) return;
+    let walletLocal: string | null = null;
+    if (wallet) {
+      walletLocal = localMobile(walletNumber);
+      if (!walletNumber.trim() || !walletLocal) {
+        setWalletError(walletNumber.trim() ? PAY_TEXT.walletInvalid : PAY_TEXT.walletMissing(wallet));
+        errorHaptic();
+        return;
+      }
+    }
     paying.current = true;
     setBusy(true);
     let gid = groupId;
@@ -183,14 +208,46 @@ export default function PaymentScreen() {
         gid = made.booking_group_id;
         remember(key, gid);
       }
+      const returnUrl = Linking.createURL('booking/return');
       let paymentId: string;
+      let paidBy: string = method.method;
+      let page: string | null = null;
       try {
-        paymentId = (await initiatePayment(gid, method.method)).payment.id;
+        const started = await initiatePayment(gid, method.method, {
+          wallet_number: walletLocal ? walletLocal.replace(/\s/g, '') : undefined,
+          return_url: method.method === 'card' ? returnUrl : undefined,
+        });
+        paymentId = started.payment.id;
+        page = started.redirect_url;
       } catch (e) {
-        if (e instanceof ApiError && e.status === 409) paymentId = (await getPaymentByGroup(gid)).id;
-        else throw e;
+        if (e instanceof ApiError && e.status === 409) {
+          // a payment was already started for this booking (a second tap, or back and Pay again)
+          const existing = await getPaymentByGroup(gid);
+          paymentId = existing.id;
+          paidBy = existing.payment_method;
+        } else if (e instanceof ApiError && e.status === 422 && wallet) {
+          setWalletError(e.message || PAY_TEXT.walletInvalid);
+          errorHaptic();
+          return;
+        } else throw e;
       }
-      router.push({ pathname: '/booking/bank/[groupId]', params: { groupId: gid, paymentId, arenaId } });
+      if (paidBy === 'bank_transfer') {
+        router.push({ pathname: '/booking/bank/[groupId]', params: { groupId: gid, paymentId, arenaId } });
+        return;
+      }
+      if (paidBy === 'card' && page) await WebBrowser.openAuthSessionAsync(page, returnUrl);
+      router.push({
+        pathname: '/booking/processing/[groupId]',
+        params: {
+          groupId: gid,
+          paymentId,
+          arenaId,
+          courtId,
+          method: paidBy,
+          page: page ?? '',
+          masked: walletLocal ? maskMobile(walletLocal) : '',
+        },
+      });
     } catch (e) {
       const status = e instanceof ApiError ? e.status : 0;
       if (!gid && status === 409) {
@@ -237,6 +294,26 @@ export default function PaymentScreen() {
             ? [0, 1, 2, 3].map((i) => <Skeleton key={i} height={58} radius={15} />)
             : list.map((m) => <MethodRow key={m.key} m={m} on={method?.key === m.key} onPress={() => setMethod(m)} />)}
         </View>
+
+        {wallet ? (
+          <View style={{ marginTop: 14 }}>
+            <Eyebrow top={0}>{PAY_TEXT.walletLabel(wallet)}</Eyebrow>
+            <Field
+              placeholder={PAY_TEXT.walletPlaceholder}
+              value={walletNumber}
+              onChangeText={(t) => {
+                setWalletNumber(t);
+                if (walletError) setWalletError(null);
+              }}
+              error={!!walletError}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              accessibilityLabel={PAY_TEXT.walletLabel(wallet)}
+            />
+            {walletError ? <FieldMessage>{walletError}</FieldMessage> : <FieldMessage kind="hint">{PAY_TEXT.walletHint(wallet)}</FieldMessage>}
+          </View>
+        ) : null}
 
         {resume ? null : <Eyebrow top={18}>Promo code</Eyebrow>}
         {resume ? null : (
