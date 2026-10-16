@@ -50,6 +50,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        # an empty value (as in .env.example) means "use the default"; outside development the
+        # start-up checks below still refuse a default secret
+        env_ignore_empty=True,
         # a failed start-up check must never print the values it read (connection strings, secrets)
         hide_input_in_errors=True,
     )
