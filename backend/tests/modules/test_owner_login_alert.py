@@ -193,6 +193,54 @@ async def test_one_login_gives_one_send(
     assert len(_alerts(sent)) == 2  # a second sign-in is a second session
 
 
+async def test_at_most_five_alert_emails_per_hour_per_account(
+    client: AsyncClient, db_session: AsyncSession, sent: list[dict]
+) -> None:
+    _, owner = await make_user(client, db_session, "alert-cap@example.com", "owner")
+    sent.clear()
+    with structlog.testing.capture_logs() as logs:
+        for _ in range(7):
+            assert (await _login(client, owner.email)).status_code == 200
+    assert len(_alerts(sent)) == 5  # capped at five an hour
+    skips = [e for e in logs if e["event"] == "login_alert_skipped"]
+    assert len(skips) == 2  # the sixth and seventh sign-ins sent nothing
+    assert all("alert-cap@example.com" not in str(e) for e in skips)  # never the address
+
+
+async def test_the_player_switch_off_stops_player_alerts_only(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    sent: list[dict],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(get_settings(), "player_login_alert_enabled", False)
+    _, player = await make_user(client, db_session, "switch-player@example.com", "player")
+    sent.clear()
+    assert (await _login(client, player.email)).status_code == 200
+    assert not _player_alerts(sent)  # the emergency switch is off for players
+
+    _, owner = await make_user(client, db_session, "switch-owner@example.com", "owner")
+    sent.clear()
+    assert (await _login(client, owner.email)).status_code == 200
+    assert len(_alerts(sent)) == 1  # owners are never affected by the player switch
+
+
+def test_dispatch_skips_an_admin_or_an_account_with_no_email() -> None:
+    import uuid
+
+    from fastapi import BackgroundTasks
+
+    from app.modules.auth.login_alert import dispatch_login_alert
+    from app.modules.user.model import UserRole
+
+    emailless = User(id=uuid.uuid4(), full_name="No Email", email=None, role=UserRole.player)
+    admin = User(id=uuid.uuid4(), full_name="Admin", email="admin@example.com", role=UserRole.admin)
+    for user in (emailless, admin):
+        bg = BackgroundTasks()
+        dispatch_login_alert(bg, user)
+        assert bg.tasks == []  # nothing scheduled, no error
+
+
 def test_karachi_time_is_written_with_seconds_and_the_right_day() -> None:
     assert karachi_stamp(datetime(2026, 10, 14, 20, 0, 0, tzinfo=UTC)) == (
         "Thu, 15-Oct-2026 at 01:00:00 AM"

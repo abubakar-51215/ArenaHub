@@ -35,6 +35,24 @@ async def _hit(name: str, who: str, limit: int, window: int) -> None:
         raise TooManyRequestsError(MESSAGE)
 
 
+async def allow(name: str, who: str, limit: int, window_seconds: int) -> bool:
+    """Count one hit and report whether it is within ``limit`` for the window.
+
+    Unlike ``_hit`` this never raises — callers that want to *skip* (not reject) an
+    action when over the limit use this. Fails open (returns True) if Redis is down.
+    """
+    key = f"abuse:{name}:{hashlib.sha256(who.encode()).hexdigest()[:24]}"
+    try:
+        redis = redis_cache.get_redis()
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, window_seconds)
+    except Exception as exc:  # noqa: BLE001 - fail open like the address limiter
+        log.warning("abuse_limit_unavailable", error=str(exc))
+        return True
+    return count <= limit
+
+
 def per_user(name: str, limit: int, window_seconds: int) -> Callable[..., Awaitable[None]]:
     async def dependency(user: User = Depends(get_current_user)) -> None:
         await _hit(name, str(user.id), limit, window_seconds)

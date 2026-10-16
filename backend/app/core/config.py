@@ -171,9 +171,12 @@ class Settings(BaseSettings):
     code_hash_secret: SecretStr = Field(
         default=SecretStr(_DEV_CODE_HASH_SECRET), alias="CODE_HASH_SECRET"
     )
-    # The support address named in the owner login-alert email (and nowhere else). Temporary,
+    # The support address named in the login-alert email (and nowhere else). Temporary,
     # chosen by the owner; see docs/BEFORE_GOING_LIVE.md.
     support_email: str = Field(default="support.arenahub@gmail.com", alias="SUPPORT_EMAIL")
+    # Emergency off switch for the player login-alert email (owners always get theirs). ON by
+    # default; set to 0/false only to stop player alerts in a hurry.
+    player_login_alert_enabled: bool = Field(default=True, alias="PLAYER_LOGIN_ALERT_ENABLED")
     # Production host names the API answers to, comma-separated ("api.example.com"); never "*".
     allowed_hosts: str = Field(default="", alias="ALLOWED_HOSTS")
 
