@@ -8,6 +8,7 @@ recorders. Nothing leaves the machine.
 """
 
 import io
+from typing import Any
 
 import pytest
 from PIL import Image
@@ -27,7 +28,7 @@ class _FakeUploader:
         self.uploads: list[dict] = []
         self.destroys: list[dict] = []
 
-    def upload(self, _file, **kwargs):  # noqa: ANN001, ANN003
+    def upload(self, _file: Any, **kwargs: Any) -> dict[str, str]:
         self.uploads.append(kwargs)
         public_id = kwargs["public_id"]
         delivery = kwargs["type"]
@@ -36,7 +37,7 @@ class _FakeUploader:
             "public_id": public_id,
         }
 
-    def destroy(self, public_id, **kwargs):  # noqa: ANN001, ANN003
+    def destroy(self, public_id: Any, **kwargs: Any) -> dict[str, str]:
         self.destroys.append({"public_id": public_id, **kwargs})
         return {"result": "ok"}
 
@@ -53,7 +54,7 @@ def cloud(monkeypatch: pytest.MonkeyPatch) -> _FakeUploader:
     monkeypatch.setattr(cloudinary.uploader, "upload", fake.upload)
     monkeypatch.setattr(cloudinary.uploader, "destroy", fake.destroy)
 
-    def fake_url(public_id, **kwargs):  # noqa: ANN001, ANN003
+    def fake_url(public_id: Any, **kwargs: Any) -> tuple[str, dict[str, Any]]:
         return (
             f"https://res.cloudinary.com/demo/image/{kwargs['type']}/s--sig--/v1/{public_id}.png",
             kwargs,
@@ -89,7 +90,7 @@ def test_receipt_fetch_url_passes_expiry_and_signing(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(storage, "_configure_cloudinary", lambda: None)
     import cloudinary.utils
 
-    def fake_url(public_id, **kwargs):  # noqa: ANN001, ANN003
+    def fake_url(public_id: Any, **kwargs: Any) -> tuple[str, dict[str, Any]]:
         captured.update(public_id=public_id, **kwargs)
         return ("https://res.cloudinary.com/demo/image/authenticated/s--x--/v1/x.png", kwargs)
 
