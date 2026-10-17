@@ -274,7 +274,8 @@ async def notify(
 
     if _channel_enabled(user, "push", category):
         tokens = await repo.list_active_tokens(db, user_id)
-        await send_push(tokens, title, body, {k: str(v) for k, v in context.items()})
+        push_data = {"event": event, **{k: str(v) for k, v in context.items()}}
+        await send_push(tokens, title, body, push_data)
 
     if _channel_enabled(user, "email", category):
         subject, text, html = notification_email(title, body)

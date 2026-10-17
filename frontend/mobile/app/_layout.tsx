@@ -23,6 +23,7 @@ import { NetworkShell } from "@/components/ui/network-banner";
 import { startNetworkWatcher } from "@/lib/network";
 import { initSentry } from "@/lib/sentry";
 import { ToastHost } from "@/components/ui/toast";
+import { usePushNavigation } from "@/hooks/usePushNavigation";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { ApiError } from "@/lib/api";
 import { linkFitsRole, pathFromUrl, rememberLink, takePendingLink } from "@/lib/deeplink";
@@ -132,6 +133,7 @@ function RootNavigator() {
   // loaded) put the whole app back to "waiting": the screens were taken away mid sign-in and the splash started again.
   if (sessionReady || gaveUp) everReady.current = true;
   usePushRegistration(sessionReady && !!accessToken && !!user);
+  usePushNavigation(sessionReady);
 
   useEffect(() => {
     if (hydrated) startupLog(`saved sign-in read from the phone (${accessToken ? "one is saved" : "none"})`);

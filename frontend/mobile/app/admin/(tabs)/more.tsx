@@ -7,6 +7,7 @@ import { BigTitle, Card, MenuRow } from '@/components/admin/kit';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
+import { unregisterCurrentDevice } from '@/lib/push';
 import { logout } from '@/services/auth';
 import { useAuthStore } from '@/store/auth';
 
@@ -22,7 +23,7 @@ export default function MoreScreen() {
   async function onLogout() {
     setBusy(true);
     try {
-      if (refreshToken) await logout(refreshToken);
+      await Promise.all([refreshToken ? logout(refreshToken) : Promise.resolve(), unregisterCurrentDevice()]);
     } catch {
       // the phone's own sign-in is cleared whatever the server says
     } finally {

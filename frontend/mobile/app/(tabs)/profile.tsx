@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { Colors } from '@/constants/theme';
 import { formatRs } from '@/lib/money';
+import { unregisterCurrentDevice } from '@/lib/push';
 import { listLikedArenas } from '@/services/arenas';
 import { logout } from '@/services/auth';
 import { listBookingGroups, type BookingTab } from '@/services/bookings';
@@ -66,7 +67,7 @@ export default function ProfileScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      if (refreshToken) await logout(refreshToken);
+      await Promise.all([refreshToken ? logout(refreshToken) : Promise.resolve(), unregisterCurrentDevice()]);
     } catch {
       // the server could not be told: the phone signs out anyway
     } finally {

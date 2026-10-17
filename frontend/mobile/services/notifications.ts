@@ -44,6 +44,6 @@ export function registerDeviceToken(
   return api.post<null>("/notifications/devices", { token, platform });
 }
 
-export function unregisterDeviceToken(token: string): Promise<null> {
-  return api.del<null>(`/notifications/devices/${encodeURIComponent(token)}`);
+export function unregisterDeviceToken(token: string, opts?: { timeoutMs?: number }): Promise<null> {
+  return api.del<null>(`/notifications/devices/${encodeURIComponent(token)}`, opts);
 }
