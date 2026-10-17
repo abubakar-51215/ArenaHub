@@ -133,9 +133,9 @@ async def reset_password(
 
 @router.post("/google", summary="Continue with Google (players on the phone)")
 async def google_sign_in(
-    data: GoogleSignInRequest, db: AsyncSession = Depends(get_db)
+    data: GoogleSignInRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
-    result = await google_service.sign_in(db, data.id_token)
+    result = await google_service.sign_in(db, data.id_token, background)
     message = "Signed in with Google."
     if result.password_removed:
         message = google_service.PASSWORD_REMOVED

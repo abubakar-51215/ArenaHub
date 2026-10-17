@@ -12,7 +12,7 @@ import structlog
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.request_context import client_ip_var, request_id_var
+from app.core.request_context import client_ip_var, request_id_var, user_agent_var
 from app.middleware.rate_limit import _client_ip
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
@@ -32,6 +32,7 @@ class RequestContextMiddleware:
         ip = _client_ip(request)
         id_token = request_id_var.set(request_id)
         ip_token = client_ip_var.set(ip)
+        ua_token = user_agent_var.set(request.headers.get("user-agent", ""))
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
         async def send_with_id(message: Message) -> None:
@@ -47,3 +48,4 @@ class RequestContextMiddleware:
             structlog.contextvars.unbind_contextvars("request_id")
             request_id_var.reset(id_token)
             client_ip_var.reset(ip_token)
+            user_agent_var.reset(ua_token)

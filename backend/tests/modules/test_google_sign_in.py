@@ -99,6 +99,31 @@ async def test_a_new_person_gets_a_player_account_that_needs_a_phone(
     assert wrong.json()["message"] == "Invalid email/phone or password."
 
 
+async def test_a_google_sign_in_sends_a_player_login_alert(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.auth import login_alert
+
+    calls: list[dict] = []
+
+    async def fake(to, subject, body, html=None, *, timeout=8, kind="email"):  # type: ignore[no-untyped-def]  # noqa: E501
+        calls.append({"to": to, "kind": kind, "body": body})
+        return True
+
+    monkeypatch.setattr(login_alert, "send_email", fake)
+    res = await client.post(
+        GOOGLE, json={"id_token": token("g.alert@gmail.com", "g-alert", name="Sana Malik")}
+    )
+    assert res.status_code == 200
+    alerts = [c for c in calls if c["kind"] == "player_login_alert"]
+    assert len(alerts) == 1
+    assert alerts[0]["to"] == "g.alert@gmail.com"
+    assert "your ArenaHub account" in alerts[0]["body"]
+    assert "Dear Sana Malik," in alerts[0]["body"]
+    assert "Signed in with: Google" in alerts[0]["body"]
+    assert "Account: g.alert@gmail.com" in alerts[0]["body"]
+
+
 async def test_an_existing_player_signs_in_and_gets_linked(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

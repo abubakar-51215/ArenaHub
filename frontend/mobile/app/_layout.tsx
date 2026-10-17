@@ -21,7 +21,9 @@ import { Colors, Font } from "@/constants/theme";
 import { AnimatedSplash } from "@/components/brand/animated-splash";
 import { NetworkShell } from "@/components/ui/network-banner";
 import { startNetworkWatcher } from "@/lib/network";
+import { initSentry } from "@/lib/sentry";
 import { ToastHost } from "@/components/ui/toast";
+import { usePushNavigation } from "@/hooks/usePushNavigation";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { ApiError } from "@/lib/api";
 import { linkFitsRole, pathFromUrl, rememberLink, takePendingLink } from "@/lib/deeplink";
@@ -100,6 +102,9 @@ function RootNavigator() {
   // one is saved, it is checked with the server (GET /users/me, 8 s limit). If the server cannot be reached the app goes
   // on to Log in (the saved sign-in stays in storage). Whatever is still unfinished after SPLASH_MAX_MS is given up on.
   useEffect(() => startNetworkWatcher(), []);
+  useEffect(() => {
+    void initSentry(); // error tracking, a no-op unless EXPO_PUBLIC_SENTRY_DSN is set
+  }, []);
 
   // a link opened before the account is loaded (signed out, or a saved sign-in still being checked) is kept: it opens
   // after Log in, or after "Try again" when the server could not be reached at start (lib/deeplink.ts)
@@ -128,6 +133,7 @@ function RootNavigator() {
   // loaded) put the whole app back to "waiting": the screens were taken away mid sign-in and the splash started again.
   if (sessionReady || gaveUp) everReady.current = true;
   usePushRegistration(sessionReady && !!accessToken && !!user);
+  usePushNavigation(sessionReady);
 
   useEffect(() => {
     if (hydrated) startupLog(`saved sign-in read from the phone (${accessToken ? "one is saved" : "none"})`);

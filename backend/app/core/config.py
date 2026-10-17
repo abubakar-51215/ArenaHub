@@ -134,6 +134,10 @@ class Settings(BaseSettings):
     # Which provider backs the gateway payment methods — see PaymentMode.
     payment_mode: PaymentMode = Field(default=PaymentMode.auto, alias="PAYMENT_MODE")
 
+    # Error tracking (Sentry). Empty = off: no SDK init, no network call.
+    # See app/core/observability.py for the scrubber.
+    sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
+
     @property
     def stripe_configured(self) -> bool:
         """True only for a real-looking secret key. An empty value or a
@@ -167,9 +171,12 @@ class Settings(BaseSettings):
     code_hash_secret: SecretStr = Field(
         default=SecretStr(_DEV_CODE_HASH_SECRET), alias="CODE_HASH_SECRET"
     )
-    # The support address named in the owner login-alert email (and nowhere else). Temporary,
+    # The support address named in the login-alert email (and nowhere else). Temporary,
     # chosen by the owner; see docs/BEFORE_GOING_LIVE.md.
     support_email: str = Field(default="support.arenahub@gmail.com", alias="SUPPORT_EMAIL")
+    # Emergency off switch for the player login-alert email (owners always get theirs). ON by
+    # default; set to 0/false only to stop player alerts in a hurry.
+    player_login_alert_enabled: bool = Field(default=True, alias="PLAYER_LOGIN_ALERT_ENABLED")
     # Production host names the API answers to, comma-separated ("api.example.com"); never "*".
     allowed_hosts: str = Field(default="", alias="ALLOWED_HOSTS")
 
@@ -201,6 +208,10 @@ class Settings(BaseSettings):
             problems.append("DEBUG must be off")
         if self.payment_mode == PaymentMode.mock:
             problems.append("PAYMENT_MODE=mock is for development and tests only")
+        if not self.cloudinary_url:
+            # Without it, uploads fall back to this server's own disk, which most
+            # hosts wipe on restart (see docs/BEFORE_GOING_LIVE.md).
+            problems.append("CLOUDINARY_URL is required outside development (image storage)")
         for origin in (o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()):
             if "*" in origin:
                 problems.append("CORS_ALLOWED_ORIGINS must list exact origins, no wildcard")

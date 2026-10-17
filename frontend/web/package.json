@@ -13,6 +13,7 @@
     "check:no-admin-links": "node scripts/check-no-admin-links.mjs"
   },
   "dependencies": {
+    "@sentry/nextjs": "^11.8.0",
     "@tanstack/react-query": "^5.101.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

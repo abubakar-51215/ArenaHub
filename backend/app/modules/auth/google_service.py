@@ -25,6 +25,7 @@ import secrets
 from datetime import UTC, datetime
 
 import structlog
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +41,7 @@ from app.core.security import create_access_token, hash_password
 from app.integrations import google
 from app.modules.auth import repository as repo
 from app.modules.auth import sessions, tokens
+from app.modules.auth.login_alert import dispatch_login_alert
 from app.modules.auth.schema import GoogleSignInResponse
 from app.modules.user.model import User, UserRole
 from app.modules.user.schema import UserPublic
@@ -63,7 +65,11 @@ def _unusable_password() -> str:
 
 
 async def _answer(
-    db: AsyncSession, user: User, *, password_removed: bool = False
+    db: AsyncSession,
+    user: User,
+    *,
+    password_removed: bool = False,
+    background: BackgroundTasks | None = None,
 ) -> GoogleSignInResponse:
     refresh = await sessions.issue(db, user.id)
     await audit(
@@ -71,6 +77,8 @@ async def _answer(
         details={"new_account": user.phone is None, "password_removed": password_removed},
     )  # fmt: skip
     await db.commit()
+    # a successful Google sign-in: one alert email (players only, if they have an email).
+    dispatch_login_alert(background, user, signed_in_with="Google")
     return GoogleSignInResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=refresh,
@@ -89,15 +97,17 @@ async def _identity(id_token: str) -> google.GoogleIdentity:
         raise UnauthorizedError(FAILED) from exc
 
 
-async def sign_in(db: AsyncSession, id_token: str) -> GoogleSignInResponse:
+async def sign_in(
+    db: AsyncSession, id_token: str, background: BackgroundTasks | None = None
+) -> GoogleSignInResponse:
     try:
         who = await _identity(id_token)
         try:
-            return await _sign_in(db, who)
+            return await _sign_in(db, who, background)
         except IntegrityError:
             # the same new person twice at once: the other request made the account; use it
             await db.rollback()
-            return await _sign_in(db, who)
+            return await _sign_in(db, who, background)
     except AppError as exc:
         await audit(
             db, "auth.google", result="fail", details={"reason": exc.message[:80]}, commit=True
@@ -105,7 +115,9 @@ async def sign_in(db: AsyncSession, id_token: str) -> GoogleSignInResponse:
         raise
 
 
-async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignInResponse:
+async def _sign_in(
+    db: AsyncSession, who: google.GoogleIdentity, background: BackgroundTasks | None = None
+) -> GoogleSignInResponse:
     user = await repo.get_user_by_google_sub(db, who.sub)
     if user is None:
         user = await repo.get_user_by_email(db, who.email)
@@ -127,7 +139,7 @@ async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignIn
         db.add(user)
         await db.commit()
         log.info("google_account_created", user_id=str(user.id))
-        return await _answer(db, user)
+        return await _answer(db, user, background=background)
 
     if user.role != UserRole.player:
         raise ForbiddenError(MUST_USE_PASSWORD)
@@ -156,7 +168,7 @@ async def _sign_in(db: AsyncSession, who: google.GoogleIdentity) -> GoogleSignIn
         # sessions issued at or before that moment are refused; the new ones come after it
         await asyncio.sleep(0.005)
         log.info("google_confirmed_unverified_account", user_id=str(user.id))
-    return await _answer(db, user, password_removed=password_removed)
+    return await _answer(db, user, password_removed=password_removed, background=background)
 
 
 async def save_phone(db: AsyncSession, user: User, phone: str) -> UserPublic:

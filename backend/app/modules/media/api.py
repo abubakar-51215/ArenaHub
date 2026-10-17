@@ -11,14 +11,16 @@ but still needs a URL to hand to ``POST /payments/{id}/receipt`` — and to the
 Every other folder (arena/court images) stays owner/admin-only.
 """
 
+from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, File, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.modules.user.model import User, UserRole
-from app.shared import abuse, receipt_links
+from app.shared import abuse, receipt_links, storage
 from app.shared.auth import get_current_user
 from app.shared.response import success
 from app.shared.storage import MAX_IMAGE_BYTES, save_image
@@ -71,20 +73,33 @@ async def receipt_picture(
     name: str,
     expires: int = Query(..., ge=0),
     sig: str = Query(..., min_length=64, max_length=64),
-) -> FileResponse:
+) -> Response:
     # one answer for a bad name, a wrong or expired signature and a missing file
-    path = receipt_links.receipt_path(name)
-    if not receipt_links.check(name, expires, sig) or not path.is_file():
+    if not receipt_links.check(name, expires, sig):
         raise NotFoundError("Receipt not found.")
-    return FileResponse(
-        path,
-        media_type=_RECEIPT_TYPES[path.suffix],
-        headers={
-            "Cache-Control": "private, no-store",
-            "Content-Disposition": "inline",
-            "Content-Security-Policy": "default-src 'none'; sandbox",
-        },
-    )
+    media_type = _RECEIPT_TYPES[Path(name).suffix]
+    headers = {
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": "inline",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+    }
+
+    # Local disk (dev, or any receipt saved before Cloudinary).
+    path = receipt_links.receipt_path(name)
+    if path.is_file():
+        return FileResponse(path, media_type=media_type, headers=headers)
+
+    # Cloudinary-backed receipt: fetch the authenticated image server-side with a
+    # short-lived signed URL (built by us, not from any user input) and stream the
+    # bytes. The Cloudinary URL is never sent to the viewer.
+    fetch_url = storage.cloudinary_receipt_fetch_url(name)
+    if fetch_url is not None:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            upstream = await client.get(fetch_url)
+        if upstream.status_code == 200:
+            return Response(content=upstream.content, media_type=media_type, headers=headers)
+
+    raise NotFoundError("Receipt not found.")
 
 
 _RECEIPT_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}

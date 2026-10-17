@@ -59,6 +59,29 @@ async def test_notify_respects_disabled_push_preference(
     assert sent == []
 
 
+async def test_push_payload_includes_event_name(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: MonkeyPatch
+) -> None:
+    """The push ``data`` carries ``event`` alongside the context (not just the in-app
+    row does): a tapped push has no other way to tell what it is about, since the
+    allowlisted event -> screen mapping on the phone keys off it
+    (frontend/mobile/lib/push-navigation.ts)."""
+    _, user = await make_user(client, db_session, "notifyplayer6@example.com")
+
+    captured: dict[str, str] = {}
+
+    async def _fake_send_push(
+        tokens: list[str], title: str, body: str, data: dict[str, str]
+    ) -> None:
+        captured.update(data)
+
+    monkeypatch.setattr("app.modules.notification.service.send_push", _fake_send_push)
+
+    await notif_service.notify(db_session, user.id, "booking_confirmed", {"booking_id": "x"})
+
+    assert captured == {"event": "booking_confirmed", "booking_id": "x"}
+
+
 async def test_notification_center_list_and_mark_read(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

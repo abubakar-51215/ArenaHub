@@ -18,6 +18,7 @@ from app.cache.redis import redis_client
 from app.core.config import get_settings
 from app.core.handlers import register_exception_handlers
 from app.core.logging import configure_logging
+from app.core.observability import init_sentry
 from app.database import metadata as _metadata  # noqa: F401 — registers all ORM mappers
 from app.database.session import engine
 from app.integrations.email.smtp import log_email_mode
@@ -98,6 +99,7 @@ class PublicMedia(StaticFiles):
 
 
 def create_app() -> FastAPI:
+    init_sentry()  # error tracking, a no-op unless SENTRY_DSN is set
     app = FastAPI(
         title="ArenaHub API",
         version="0.1.0",

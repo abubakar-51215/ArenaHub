@@ -18,6 +18,8 @@ IMG_SRC.push("https://res.cloudinary.com", "https://images.unsplash.com");
 const CONNECT_SRC = ["'self'"];
 if (API_ORIGIN) CONNECT_SRC.push(API_ORIGIN);
 if (API_WS_ORIGIN) CONNECT_SRC.push(API_WS_ORIGIN);
+// Sentry error reporting (only used when a DSN is configured).
+CONNECT_SRC.push("https://*.sentry.io", "https://*.ingest.sentry.io");
 
 const isProd = process.env.NODE_ENV === "production";
 

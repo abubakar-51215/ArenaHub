@@ -29,6 +29,25 @@ export function noticeTarget(n: Pick<AppNotification, 'event' | 'data'>): Notice
   return bookingId ? { kind: 'booking', bookingId } : { kind: 'none' };
 }
 
+/** What an admin notice is about (arena-hub-admin-app.html: Admin notifications). */
+export type AdminNoticeTarget =
+  | { kind: 'approval'; arenaId: string }
+  | { kind: 'complaint'; complaintId: string }
+  | { kind: 'none' };
+
+export function adminNoticeTarget(n: Pick<AppNotification, 'event' | 'data'>): AdminNoticeTarget {
+  const d = n.data ?? {};
+  if (n.event === 'arena_waiting') {
+    const arenaId = str(d.arena_id);
+    return arenaId ? { kind: 'approval', arenaId } : { kind: 'none' };
+  }
+  if (n.event === 'complaint_new') {
+    const complaintId = str(d.complaint_id);
+    return complaintId ? { kind: 'complaint', complaintId } : { kind: 'none' };
+  }
+  return { kind: 'none' };
+}
+
 export type NoticeTone = 'ok' | 'wait' | 'off' | 'idle';
 export type NoticeIcon = 'tick' | 'clock' | 'receipt' | 'star' | 'close' | 'people' | 'bell' | 'lifebuoy';
 

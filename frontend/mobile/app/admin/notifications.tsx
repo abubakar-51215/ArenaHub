@@ -10,15 +10,16 @@ import { ADMIN_KEY } from '@/hooks/useAdmin';
 import { useAdminPages } from '@/hooks/useAdminPages';
 import { Colors } from '@/constants/theme';
 import { dayGroup } from '@/lib/karachi';
+import { adminNoticeTarget } from '@/lib/notification-target';
 import { listMyNotificationsPage, markAllNotificationsRead, markNotificationRead, type AppNotification } from '@/services/notifications';
 
 // Admin notifications (arena-hub-admin-app.html: Admin notifications): a new arena waiting, a new complaint.
 const back = () => (router.canGoBack() ? router.back() : router.replace('/admin/more' as Href));
 
 function look(n: AppNotification): { icon: AdminIconName; tone: PillTone; href: string | null } {
-  const d = n.data ?? {};
-  if (n.event === 'arena_waiting') return { icon: 'approvals', tone: 'wait', href: typeof d.arena_id === 'string' ? `/admin/approvals/${d.arena_id}` : '/admin/approvals' };
-  if (n.event === 'complaint_new') return { icon: 'complaints', tone: 'off', href: typeof d.complaint_id === 'string' ? `/admin/complaints/${d.complaint_id}` : '/admin/complaints' };
+  const target = adminNoticeTarget(n);
+  if (n.event === 'arena_waiting') return { icon: 'approvals', tone: 'wait', href: target.kind === 'approval' ? `/admin/approvals/${target.arenaId}` : '/admin/approvals' };
+  if (n.event === 'complaint_new') return { icon: 'complaints', tone: 'off', href: target.kind === 'complaint' ? `/admin/complaints/${target.complaintId}` : '/admin/complaints' };
   return { icon: 'bell', tone: 'idle', href: null };
 }
 

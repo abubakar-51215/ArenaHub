@@ -76,7 +76,9 @@ async def request_password_change(
 
     user.pending_password_hash = hash_password(data.new_password)
     await db.commit()
-    issued = await codes.issue_code(db, user.id, OtpPurpose.password_change, user.email)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.password_change, user.email, name=user.full_name
+    )
     return issued.delivered
 
 
@@ -124,7 +126,9 @@ async def request_phone_change(db: AsyncSession, user: User, data: PhoneChangeRe
 
     user.pending_phone = data.new_phone
     await db.commit()
-    issued = await codes.issue_code(db, user.id, OtpPurpose.phone_change, data.new_phone)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.phone_change, data.new_phone, name=user.full_name
+    )
     return issued.delivered
 
 
@@ -152,7 +156,9 @@ async def request_email_change(db: AsyncSession, user: User, data: EmailChangeRe
 
     user.pending_email = data.new_email
     await db.commit()
-    issued = await codes.issue_code(db, user.id, OtpPurpose.email_change, data.new_email)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.email_change, data.new_email, name=user.full_name
+    )
     return issued.delivered
 
 

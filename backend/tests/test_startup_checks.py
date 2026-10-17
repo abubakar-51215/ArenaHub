@@ -15,6 +15,7 @@ GOOD = {
     "PAYMENT_MODE": "auto",
     "CORS_ALLOWED_ORIGINS": "https://app.example.test",
     "ALLOWED_HOSTS": "api.example.test",
+    "CLOUDINARY_URL": "cloudinary://key:secret@cloudname",
 }
 SECRET_DB = "postgresql+asyncpg://user:hunter2-db-password@localhost/arenahub"
 
@@ -57,6 +58,7 @@ def test_development_needs_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
         ({"CORS_ALLOWED_ORIGINS": "http://app.example.test"}, "https://"),
         ({"ALLOWED_HOSTS": ""}, "ALLOWED_HOSTS"),
         ({"ALLOWED_HOSTS": "*"}, "ALLOWED_HOSTS"),
+        ({"CLOUDINARY_URL": ""}, "CLOUDINARY_URL is required"),
     ],
 )
 def test_each_unsafe_setting_stops_the_start(

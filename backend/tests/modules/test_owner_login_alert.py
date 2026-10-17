@@ -1,19 +1,24 @@
-"""The login-alert email for arena owners: sent once per new owner sign-in and never otherwise."""
+"""The Layout A login-alert email: sent once per new player/owner sign-in and never otherwise."""
 
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 import structlog
+from fastapi import BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
 from app.core.config import get_settings
 from app.integrations.email.smtp import EmailSendError
-from app.integrations.email.templates import owner_login_alert_email
+from app.integrations.email.templates import owner_login_alert_email, player_login_alert_email
 from app.modules.auth import login_alert
-from app.modules.user.model import User
+from app.modules.auth.login_alert import dispatch_login_alert
+from app.modules.user.model import User, UserRole
+from app.shared.device import NOT_AVAILABLE
 from app.shared.display import karachi_stamp
 from app.shared.otp import OtpPurpose
 from tests.helpers import PASSWORD, auth_header, last_code, make_admin, make_user
@@ -38,8 +43,16 @@ def _alerts(sent: list[dict]) -> list[dict]:
     return [c for c in sent if c["kind"] == "owner_login_alert"]
 
 
-async def _login(client: AsyncClient, email: str, password: str = PASSWORD) -> Any:
-    return await client.post("/api/v1/auth/login", json={"identifier": email, "password": password})
+def _player_alerts(sent: list[dict]) -> list[dict]:
+    return [c for c in sent if c["kind"] == "player_login_alert"]
+
+
+async def _login(client: AsyncClient, email: str, password: str = PASSWORD, **headers: str) -> Any:
+    return await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": email, "password": password},
+        headers=headers or None,
+    )
 
 
 async def test_a_successful_owner_login_sends_exactly_one_alert(
@@ -60,11 +73,21 @@ async def test_a_successful_owner_login_sends_exactly_one_alert(
     assert mail["to"] == "alert-owner1@example.com"
     assert mail["subject"] == "ArenaHub login alert"
     body = mail["body"]
+    # the approved greeting/body wording, kept exactly
     assert "Dear Ayesha Khan," in body
     assert "successfully logged into your ArenaHub owner account on " in body
     assert "(Pakistan time)" in body
     assert get_settings().support_email in body
     assert "please change your password right away" in body
+    # Layout A's new pieces: badge, title (HTML-only, decorative), details table, "Not you?" box
+    assert messages.LOGIN_ALERT_BADGE in mail["html"]
+    assert messages.LOGIN_ALERT_TITLE in mail["html"]
+    assert messages.LOGIN_ALERT_NOT_YOU_HEADING in mail["html"]
+    assert "Name: Ayesha Khan" in body
+    assert "Account: alert-owner1@example.com" in body
+    assert "Role: Owner" in body
+    assert "Signed in with: Password" in body
+    assert "Device:" in body and "IP address:" in body
     for secret in (PASSWORD, tokens["access_token"], tokens["refresh_token"]):
         assert secret not in body
         assert secret not in mail["html"]
@@ -102,13 +125,34 @@ async def test_refresh_and_ordinary_requests_send_nothing(
     assert not _alerts(sent)
 
 
-async def test_players_and_admins_get_no_alert(
+async def test_a_successful_player_login_sends_one_role_neutral_alert(
     client: AsyncClient, db_session: AsyncSession, sent: list[dict]
 ) -> None:
-    _, player = await make_user(client, db_session, "alert-player@example.com", "player")
+    _, player = await make_user(client, db_session, "alert-player1@example.com", "player")
+    player.full_name = "Bilal Ahmed"
+    await db_session.commit()
+    sent.clear()
+
     assert (await _login(client, player.email)).status_code == 200
+    mails = _player_alerts(sent)
+    assert len(mails) == 1
+    mail = mails[0]
+    assert mail["to"] == "alert-player1@example.com"
+    assert mail["subject"] == "ArenaHub login alert"
+    body = mail["body"]
+    assert "Dear Bilal Ahmed," in body
+    # role-neutral wording: "your ArenaHub account", never "owner account"
+    assert "successfully logged into your ArenaHub account on " in body
+    assert "owner account" not in body
+    assert "Role: Player" in body
+    assert "Signed in with: Password" in body
+    # a player login raises no owner alert
     assert not _alerts(sent)
 
+
+async def test_admins_get_no_login_alert(
+    client: AsyncClient, db_session: AsyncSession, sent: list[dict]
+) -> None:
     await make_admin(client, db_session, "alert-admin@example.com")
     sent.clear()
     first = await _login(client, "alert-admin@example.com")
@@ -125,6 +169,7 @@ async def test_players_and_admins_get_no_alert(
     )
     assert done.status_code == 200
     assert not _alerts(sent)
+    assert not _player_alerts(sent)
 
 
 async def test_a_failing_or_slow_mail_never_breaks_the_login_and_logs_safely(
@@ -156,6 +201,8 @@ async def test_a_failing_or_slow_mail_never_breaks_the_login_and_logs_safely(
         assert "alert-owner4@example.com" not in str(line)  # only a masked address
         assert "@" in line["address"] and "*" in line["address"]
         assert "Dear" not in str(line) and data["access_token"] not in str(line)
+        # the device/IP shown in the (unsent) email never leak into the failure log either
+        assert "Windows" not in str(line) and "Chrome" not in str(line)
 
 
 async def test_one_login_gives_one_send(
@@ -167,6 +214,75 @@ async def test_one_login_gives_one_send(
     assert len(_alerts(sent)) == 1
     await _login(client, owner.email)
     assert len(_alerts(sent)) == 2  # a second sign-in is a second session
+
+
+async def test_at_most_five_alert_emails_per_hour_per_account(
+    client: AsyncClient, db_session: AsyncSession, sent: list[dict]
+) -> None:
+    _, owner = await make_user(client, db_session, "alert-cap@example.com", "owner")
+    sent.clear()
+    with structlog.testing.capture_logs() as logs:
+        for _ in range(7):
+            assert (await _login(client, owner.email)).status_code == 200
+    assert len(_alerts(sent)) == 5  # capped at five an hour
+    skips = [e for e in logs if e["event"] == "login_alert_skipped"]
+    assert len(skips) == 2  # the sixth and seventh sign-ins sent nothing
+    assert all("alert-cap@example.com" not in str(e) for e in skips)  # never the address
+
+
+async def test_the_player_switch_off_stops_player_alerts_only(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    sent: list[dict],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(get_settings(), "player_login_alert_enabled", False)
+    _, player = await make_user(client, db_session, "switch-player@example.com", "player")
+    sent.clear()
+    assert (await _login(client, player.email)).status_code == 200
+    assert not _player_alerts(sent)  # the emergency switch is off for players
+
+    _, owner = await make_user(client, db_session, "switch-owner@example.com", "owner")
+    sent.clear()
+    assert (await _login(client, owner.email)).status_code == 200
+    assert len(_alerts(sent)) == 1  # owners are never affected by the player switch
+
+
+async def test_device_is_read_from_the_real_sign_in_request(
+    client: AsyncClient, db_session: AsyncSession, sent: list[dict]
+) -> None:
+    _, owner = await make_user(client, db_session, "alert-device@example.com", "owner")
+    sent.clear()
+    chrome_ua = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+    res = await _login(client, owner.email, **{"User-Agent": chrome_ua})
+    assert res.status_code == 200
+    body = _alerts(sent)[0]["body"]
+    assert "Device: Chrome on Windows" in body
+
+
+def test_dispatch_skips_an_admin_or_an_account_with_no_email() -> None:
+    emailless = User(id=uuid.uuid4(), full_name="No Email", email=None, role=UserRole.player)
+    admin = User(id=uuid.uuid4(), full_name="Admin", email="admin@example.com", role=UserRole.admin)
+    for user in (emailless, admin):
+        bg = BackgroundTasks()
+        dispatch_login_alert(bg, user, signed_in_with="Password")
+        assert bg.tasks == []  # nothing scheduled, no error
+
+
+def test_dispatch_uses_not_available_outside_a_request_context() -> None:
+    """Device/IP are read from the request that is signing in; with no request context (as in
+    this plain unit call) they fall back to "Not available", never crash or guess."""
+    owner = User(
+        id=uuid.uuid4(), full_name="No Context", email="nc@example.com", role=UserRole.owner
+    )
+    bg = BackgroundTasks()
+    dispatch_login_alert(bg, owner, signed_in_with="Password")
+    assert len(bg.tasks) == 1
+    args = bg.tasks[0].args
+    assert args[-2:] == (NOT_AVAILABLE, NOT_AVAILABLE)  # (device, ip)
 
 
 def test_karachi_time_is_written_with_seconds_and_the_right_day() -> None:
@@ -187,22 +303,55 @@ def test_karachi_time_is_written_with_seconds_and_the_right_day() -> None:
 def test_the_html_escapes_the_name_and_has_one_mailto_and_nothing_remote() -> None:
     _, text, html = owner_login_alert_email(
         '<script>alert("x")</script> & O\'Neil',
+        "owner@example.test",
         "Thu, 15-Oct-2026 at 01:54:12 PM",
+        "Password",
+        "Chrome on Windows",
+        "203.0.113.4",
         "help@example.test",
     )
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
     assert 'href="mailto:help@example.test"' in html
-    assert html.count("href=") == 1
-    # (the xmlns name in the page tag is a label, not an address that is fetched)
-    assert "src=" not in html and 'href="http' not in html and "<img" not in html
+    assert html.count("href=") == 1  # the only link allowed: the support address
+    assert "src=" not in html and "<img" not in html  # Layout A's header is text, not an image
     assert "Dear <script>" in text  # the plain text part is not HTML, so it is left as typed
 
 
 def test_the_support_address_comes_from_the_setting(monkeypatch: pytest.MonkeyPatch) -> None:
     assert get_settings().support_email == "support.arenahub@gmail.com"
-    first = owner_login_alert_email("A", "when", get_settings().support_email)
+    first = owner_login_alert_email(
+        "A", "a@example.test", "when", "Password", "Not available", "Not available",
+        get_settings().support_email,
+    )  # fmt: skip
     monkeypatch.setattr(get_settings(), "support_email", "changed@example.test")
-    second = owner_login_alert_email("A", "when", get_settings().support_email)
+    second = owner_login_alert_email(
+        "A", "a@example.test", "when", "Password", "Not available", "Not available",
+        get_settings().support_email,
+    )  # fmt: skip
     assert "support.arenahub@gmail.com" in first[1]
     assert "changed@example.test" in second[1] and "support.arenahub@gmail.com" not in second[1]
+
+
+def test_both_role_variants_show_the_right_role_and_account_row() -> None:
+    _, owner_text, _ = owner_login_alert_email(
+        "Ayesha", "ayesha@example.test", "when", "Password", "Not available", "Not available",
+        "help@example.test",
+    )  # fmt: skip
+    _, player_text, _ = player_login_alert_email(
+        "Bilal", "bilal@example.test", "when", "Google", "Not available", "Not available",
+        "help@example.test",
+    )  # fmt: skip
+    assert "Role: Owner" in owner_text and "Account: ayesha@example.test" in owner_text
+    assert "Role: Player" in player_text and "Account: bilal@example.test" in player_text
+    assert "Signed in with: Google" in player_text
+
+
+def test_unavailable_device_and_ip_show_not_available() -> None:
+    _, text, html = owner_login_alert_email(
+        "A", "a@example.test", "when", "Password", NOT_AVAILABLE, NOT_AVAILABLE,
+        "help@example.test",
+    )  # fmt: skip
+    assert "Device: Not available" in text
+    assert "IP address: Not available" in text
+    assert "Not available" in html

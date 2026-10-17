@@ -9,12 +9,16 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.arenahub.app",
+      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.arenahub.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0F1A15",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -72,6 +76,13 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "description": "Find and book sports courts in Pakistan."
+    "description": "Find and book sports courts in Pakistan.",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0c5a319a-ebeb-4ebf-81ff-4a9a7cda3419"
+      }
+    },
+    "owner": "abubakar_51215"
   }
 }

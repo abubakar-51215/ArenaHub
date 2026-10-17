@@ -129,11 +129,18 @@ None of these chooses a deferred value; they are the work to do when a server ex
 
 ## Go-live blockers found in review (2026-10-16)
 
-1. **Picture storage outside development is not built.** With `ENVIRONMENT` other than `dev` and `CLOUDINARY_URL` set, `save_image` (`backend/app/shared/storage.py`) refuses every upload with "Remote image upload is not configured." Without `CLOUDINARY_URL` it writes to the server's own disk. Nothing is chosen yet; options to decide between:
-   - a. **Public CDN for arena photos and avatars** (for example Cloudinary or an object store behind a CDN): these pictures are public anyway.
-   - b. **Private storage with signed links for receipts** (an object store bucket that is not public, handing out short-lived signed links, the same idea as today's `/api/v1/media/receipts/...` route).
-   - c. Keep everything on the server's disk only if that disk is persistent and backed up.
-   - Warning: many hosts give a server a disk that is wiped on every restart or deploy. Such a disk cannot hold uploads: photos and receipts would silently disappear.
+1. **Picture storage (Cloudinary) is built; it only needs the key.** `save_image`
+   (`backend/app/shared/storage.py`) now uploads to Cloudinary when `CLOUDINARY_URL` is set:
+   public pictures (arenas, courts, avatars, misc) as `type=upload` (public `secure_url` stored),
+   and receipts as `type=authenticated` — receipts keep the same `/uploads/receipts/<name>`
+   reference and the existing short-lived signed link (`/api/v1/media/receipts/...`), and the
+   authenticated Cloudinary URL is minted server-side only, so a receipt never has a public
+   address. Replacing/removing a picture deletes the old one from Cloudinary too. Outside
+   development the server **refuses to start without `CLOUDINARY_URL`** (it used to fall back to
+   local disk silently). **To do at go-live:** create a Cloudinary account (free plan is enough),
+   copy its `CLOUDINARY_URL` from the dashboard into `backend/.env`. Local disk stays the default
+   in development. (Warning kept for the record: many hosts wipe a server's own disk on every
+   restart/deploy, which is why uploads must not live there.)
 2. **Set `ENVIRONMENT` explicitly on every server** (`prod` or `staging`). The default is `dev`, which turns on the development behaviour (codes written to the log, interactive docs, mock helpers, plain-http origins). `scripts/security-check.py` warns when it is not set.
 
 ## Paying by card and mobile wallet (2026-10-16)
