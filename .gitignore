@@ -88,3 +88,5 @@ design/baselines/mobile/*.png
 !design/baselines/mobile/[0-2][0-9]-*.png
 
 ArenaHub-dev.apk
+
+backend/stripe.exe
