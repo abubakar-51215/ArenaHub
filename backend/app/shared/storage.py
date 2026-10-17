@@ -22,6 +22,7 @@ Public vs. private:
 import io
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
 import structlog
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -119,10 +120,17 @@ _RECEIPT_URL_MINUTES = 15  # matches receipt_links.LINK_MINUTES
 def _configure_cloudinary() -> None:
     import cloudinary
 
-    # cloudinary.config() reads CLOUDINARY_URL from the environment; pass it
-    # explicitly so we don't depend on it being exported into os.environ.
+    # cloudinary.config() only auto-parses CLOUDINARY_URL from the process environment, at import
+    # time; passing cloudinary_url=<value> as a keyword here is not parsed by the SDK (it only sets
+    # it as an opaque, unused attribute) — it still needs cloud_name/api_key/api_secret, which we
+    # parse from our own setting ourselves rather than depending on CLOUDINARY_URL being exported
+    # into os.environ.
     url = get_settings().cloudinary_url
-    cloudinary.config(cloudinary_url=url, secure=True)
+    assert url is not None  # callers only reach here when uses_local_disk() is False
+    parsed = urlparse(url)
+    cloudinary.config(
+        cloud_name=parsed.hostname, api_key=parsed.username, api_secret=parsed.password, secure=True
+    )
 
 
 def _public_id_for(folder: str, name_no_ext: str) -> str:

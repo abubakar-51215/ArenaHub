@@ -32,6 +32,11 @@ Stripe must reach your machine. Use the Stripe CLI:
 stripe login
 stripe listen --forward-to localhost:8000/api/v1/webhooks/stripe
 ```
+Newer Stripe CLI builds refuse to start with "must specify events to forward using
+--events, --all-snapshot, or --all-thin" unless told which events to send — add
+`--events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired`
+if you hit that.
+
 `stripe listen` prints a `whsec_...` signing secret — put it in `STRIPE_WEBHOOK_SECRET`
 and restart the backend. Leave `stripe listen` running while you test.
 

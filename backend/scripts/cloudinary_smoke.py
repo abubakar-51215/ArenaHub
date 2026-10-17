@@ -57,7 +57,9 @@ def main() -> int:
     import cloudinary.uploader
     import cloudinary.utils
 
-    cloudinary.config(cloudinary_url=get_settings().cloudinary_url, secure=True)
+    from app.shared.storage import _configure_cloudinary
+
+    _configure_cloudinary()
 
     tag = uuid.uuid4().hex[:10]
     pub_id = f"arenahub_smoke/public_{tag}"
