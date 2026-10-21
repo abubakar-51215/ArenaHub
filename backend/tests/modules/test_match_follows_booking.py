@@ -75,6 +75,38 @@ async def test_an_arena_suspension_cancels_the_match_and_reactivation_does_not_b
     assert match_id not in [m["id"] for m in listed.json()["data"]["items"]]
 
 
+async def test_a_match_at_a_suspended_or_removed_arena_cannot_be_joined(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Not just "cancelled" in the database: an actual join attempt, by someone who was never
+    in the match, is refused once the arena is suspended or removed."""
+    creator, _, group_id, arena_id, *_ = await _setup(client, db_session, "fb5")
+    match_id = (await _post(client, creator, group_id, max_players=4)).json()["data"]["id"]
+    admin = await make_admin(client, db_session, "fb5-admin@example.com")
+    await client.post(
+        f"{API}/admin/arenas/{arena_id}/suspend",
+        headers=auth_header(admin),
+        json={"reason": "Safety check."},
+    )
+    late, _ = await make_user(client, db_session, "fb5-late@example.com", "player")
+    joined = await client.post(f"{API}/matches/{match_id}/join", headers=auth_header(late))
+    assert joined.status_code == 409
+    assert joined.json()["message"] == "This match was cancelled."
+
+    creator2, _, group_id2, arena_id2, *_ = await _setup(client, db_session, "fb6")
+    match_id2 = (await _post(client, creator2, group_id2, max_players=4)).json()["data"]["id"]
+    await client.request(
+        "DELETE",
+        f"{API}/admin/arenas/{arena_id2}",
+        headers=auth_header(admin),
+        json={"reason": "Closed down."},
+    )
+    late2, _ = await make_user(client, db_session, "fb6-late@example.com", "player")
+    joined2 = await client.post(f"{API}/matches/{match_id2}/join", headers=auth_header(late2))
+    assert joined2.status_code == 409
+    assert joined2.json()["message"] == "This match was cancelled."
+
+
 async def test_rescheduling_the_booking_moves_the_match(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
