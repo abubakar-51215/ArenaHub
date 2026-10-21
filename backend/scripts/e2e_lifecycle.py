@@ -130,15 +130,17 @@ async def _ensure_admin_seeded() -> None:
         existing = result.scalar_one_or_none()
         if existing:
             return
-        db.add(User(
-            full_name="Platform Admin",
-            email=ADMIN_EMAIL,
-            phone=ADMIN_PHONE,
-            password_hash=hash_password(ADMIN_PASSWORD),
-            role=UserRole.admin,
-            is_verified=True,
-            is_active=True,
-        ))
+        db.add(
+            User(
+                full_name="Platform Admin",
+                email=ADMIN_EMAIL,
+                phone=ADMIN_PHONE,
+                password_hash=hash_password(ADMIN_PASSWORD),
+                role=UserRole.admin,
+                is_verified=True,
+                is_active=True,
+            )
+        )
         await db.commit()
 
 
@@ -191,13 +193,16 @@ async def main() -> int:
         async with AsyncClient(transport=transport, base_url="http://test/api/v1") as c:
             # -------------------------------------------------- 1. owner registers
             step("1. Register arena owner")
-            r = await c.post("/auth/register", json={
-                "full_name": "E2E Test Owner",
-                "email": owner_email,
-                "phone": owner_phone,
-                "password": password,
-                "role": "owner",
-            })
+            r = await c.post(
+                "/auth/register",
+                json={
+                    "full_name": "E2E Test Owner",
+                    "email": owner_email,
+                    "phone": owner_phone,
+                    "password": password,
+                    "role": "owner",
+                },
+            )
             check("owner registration accepted (201)", r.status_code == 201, r.text)
             code = latest_code(logs, owner_email, "registration")
             check("owner OTP captured", code is not None)
@@ -208,24 +213,28 @@ async def main() -> int:
             # -------------------------------------------------- 2. create arena
             step("2. Owner creates an arena")
             days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-            r = await c.post("/owner/arenas", json={
-                "name": f"E2E Test Arena {tag}",
-                "description": "Created by the automated lifecycle script.",
-                "address": "123 Test Street, Gulberg",
-                "city": "Lahore",
-                "area": "Gulberg",
-                "latitude": "31.5204",
-                "longitude": "74.3587",
-                "contact_phone": owner_phone,
-                "contact_email": owner_email,
-                "operating_hours": {d: {"open": "08:00", "close": "23:00"} for d in days},
-                "sports_offered": ["futsal"],
-                "images": [],
-                "amenity_ids": [],
-                "advance_percentage": 100,
-                "require_full_payment": True,
-                "refund_policy": [],
-            }, headers=owner_h)
+            r = await c.post(
+                "/owner/arenas",
+                json={
+                    "name": f"E2E Test Arena {tag}",
+                    "description": "Created by the automated lifecycle script.",
+                    "address": "123 Test Street, Gulberg",
+                    "city": "Lahore",
+                    "area": "Gulberg",
+                    "latitude": "31.5204",
+                    "longitude": "74.3587",
+                    "contact_phone": owner_phone,
+                    "contact_email": owner_email,
+                    "operating_hours": {d: {"open": "08:00", "close": "23:00"} for d in days},
+                    "sports_offered": ["futsal"],
+                    "images": [],
+                    "amenity_ids": [],
+                    "advance_percentage": 100,
+                    "require_full_payment": True,
+                    "refund_policy": [],
+                },
+                headers=owner_h,
+            )
             check("arena created (201)", r.status_code == 201, r.text)
             arena = r.json()["data"]
             arena_id = arena["id"]
@@ -233,19 +242,24 @@ async def main() -> int:
 
             # -------------------------------------------------- 3. court + slots
             step("3. Owner adds a court and generates slots")
-            r = await c.post(f"/owner/arenas/{arena_id}/courts", json={
-                "name": "Court 1",
-                "description": "Main futsal court",
-                "sport_types": ["futsal"],
-                "capacity": 10,
-                "base_price": "2000.00",
-                "images": [],
-                "is_available": True,
-            }, headers=owner_h)
+            r = await c.post(
+                f"/owner/arenas/{arena_id}/courts",
+                json={
+                    "name": "Court 1",
+                    "description": "Main futsal court",
+                    "sport_types": ["futsal"],
+                    "capacity": 10,
+                    "base_price": "2000.00",
+                    "images": [],
+                    "is_available": True,
+                },
+                headers=owner_h,
+            )
             check("court created (201)", r.status_code == 201, r.text)
             court_id = r.json()["data"]["id"]
 
             import datetime as dt
+
             start = dt.date.today() + dt.timedelta(days=1)
             end = start + dt.timedelta(days=2)
             r = await c.post(
@@ -287,13 +301,16 @@ async def main() -> int:
 
             # -------------------------------------------------- 5. player registers
             step("5. Register player and verify the arena is publicly visible")
-            r = await c.post("/auth/register", json={
-                "full_name": "E2E Test Player",
-                "email": player_email,
-                "phone": player_phone,
-                "password": password,
-                "role": "player",
-            })
+            r = await c.post(
+                "/auth/register",
+                json={
+                    "full_name": "E2E Test Player",
+                    "email": player_email,
+                    "phone": player_phone,
+                    "password": password,
+                    "role": "player",
+                },
+            )
             check("player registration accepted (201)", r.status_code == 201, r.text)
             pcode = latest_code(logs, player_email, "registration")
             check("player OTP captured", pcode is not None)
@@ -316,12 +333,16 @@ async def main() -> int:
             check("at least one open slot to book", has_slots, slots)
             slot_id = slot_list[0]["id"] if slot_list else None
 
-            r = await c.post("/bookings", json={
-                "court_id": court_id,
-                "slot_ids": [slot_id],
-                "payment_type": "full",
-                "equipment": [],
-            }, headers=player_h)
+            r = await c.post(
+                "/bookings",
+                json={
+                    "court_id": court_id,
+                    "slot_ids": [slot_id],
+                    "payment_type": "full",
+                    "equipment": [],
+                },
+                headers=player_h,
+            )
             check("booking created", r.status_code in (200, 201), r.text)
             booking_group = r.json()["data"]
             group_id = booking_group.get("id") or booking_group.get("booking_group_id")
@@ -329,10 +350,14 @@ async def main() -> int:
 
             # -------------------------------------------------- 7. pay + receipt
             step("7. Player pays by bank transfer and uploads a receipt")
-            r = await c.post("/payments/initiate", json={
-                "booking_group_id": group_id,
-                "payment_method": "bank_transfer",
-            }, headers=player_h)
+            r = await c.post(
+                "/payments/initiate",
+                json={
+                    "booking_group_id": group_id,
+                    "payment_method": "bank_transfer",
+                },
+                headers=player_h,
+            )
             check("payment initiated", r.status_code in (200, 201), r.text)
             payment_id = r.json()["data"].get("payment", {}).get("id")
             check("payment id returned", bool(payment_id), r.json())

@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.user.model import User
 from app.shared.otp import OtpPurpose
 from tests.helpers import arena_payload, auth_header, last_code, make_admin, make_user
 
@@ -290,7 +291,7 @@ async def test_liked_list_requires_auth(client: AsyncClient) -> None:
 
 
 async def _add_bank(
-    client: AsyncClient, h: dict, owner_user, arena_id: str, **fields: object
+    client: AsyncClient, h: dict, owner_user: User, arena_id: str, **fields: object
 ) -> dict:
     """Request + confirm adding a bank account (always needs the emailed code); returns the
     created account's JSON."""
