@@ -229,7 +229,7 @@ export default function RegisterPage() {
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+          className="inline-block py-1 font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
         >
           Sign in
         </Link>

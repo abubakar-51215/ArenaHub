@@ -143,7 +143,7 @@ export default function LoginPage() {
           <div className="mt-1.5 text-right">
             <Link
               href="/forgot-password"
-              className="inline-block text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground max-md:py-3 coarse:py-3"
+              className="inline-block text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground py-1 max-md:py-3 coarse:py-3"
             >
               Forgot Password?
             </Link>
@@ -163,7 +163,7 @@ export default function LoginPage() {
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
-          className="font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
+          className="inline-block py-1 font-medium text-foreground underline underline-offset-4 decoration-muted-foreground hover:decoration-foreground"
         >
           Sign up
         </Link>
