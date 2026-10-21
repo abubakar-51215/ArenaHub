@@ -22,8 +22,8 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 
 | Status | Count |
 |---|---|
-| DONE | 66 |
-| PARTIAL | 13 |
+| DONE | 67 |
+| PARTIAL | 12 |
 | NOT BUILT | 2 |
 | DEFERRED BY DECISION | 9 |
 | NEEDS PHONE | 2 |
@@ -55,11 +55,11 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
   gateway credentials, (b) a handful of backend routes with no UI (blocked-dates, admin
   force-refund, payment-event history, pay-balance-through-gateway), (c) deployment phase (deferred
   by deviation #1), and (d) device-only verification (push delivery, camera uploads).
-- Two features are **built but sit outside the frozen plan / contradict a guideline deviation**:
-  Google sign-in (deviation #6 says "deferred, don't build unless asked") and the support
-  **assistant** (deviation #3 says "no separate FAQ knowledge-base bot"). Both are flagged in
-  Conflicts. A third, the **mobile admin app**, is beyond the frozen plan (which scopes Admin as
-  web-only) but was explicitly decided later in `MOBILE_ADMIN_PLAN.md`.
+- Two features were **built ahead of the guideline and are now confirmed in scope**: Google
+  sign-in (deviation #6 rewritten to accept it; `ADR-009`) and the support **assistant**
+  (deviation #3 rewritten to carve it out; `ADR-010`). Both conflicts (C2, C3) are now resolved.
+  A third, the **mobile admin app**, is beyond the frozen plan (which scopes Admin as web-only)
+  but was explicitly decided later in `MOBILE_ADMIN_PLAN.md`.
 - Status docs disagree with each other: `TRACEABILITY_MATRIX.md` marks several items DONE that
   `FEATURE_GAP_REPORT.md` and the code show as PARTIAL. Where they conflicted, the code decided.
 
@@ -69,13 +69,13 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 
 | # | Topic | Documents in tension | The disagreement |
 |---|---|---|---|
-| C1 | **Walk-in bookings** (the owner's open question) | none | **No mention anywhere** in any planning doc or in the code (grep across repo = 0 hits). It is genuinely undecided and unbuilt. Not resolved here — it is the flagged open product decision. Nearest adjacent concept: the "pay balance at the arena" line on bookings with an advance, which is not a walk-in flow. |
-| C2 | **Google / social sign-in** | `PROJECT_GUIDELINES.md` deviation #6 ("deferred… don't build unless asked"; doc 06 marks it optional) **vs.** the code (`/auth/google`, `/auth/google/phone` in ROUTES_AND_ROLES.md; mobile `app/one-more-step.tsx`, `lib/google-sign-in.ts`; `backend/app/integrations/google.py`; documented in `DEV_BUILD_AND_GOOGLE_PUSH.md` and `MOBILE_SCREEN_INVENTORY.md` 2026-10-14). | The frozen guideline says do **not** build it; it is **built**. Evidently a later working-session decision, but deviation #6 was never updated and there is no ADR. Needs an explicit scope confirmation + a guideline/ADR update. (Status row: NEEDS ACCOUNT OR KEY — code is done, but it is off until `GOOGLE_CLIENT_IDS` is set.) |
-| C3 | **Support "assistant"** | `PROJECT_GUIDELINES.md` deviation #3 ("The AI module is NLP search + recommendations ONLY… No separate FAQ knowledge-base bot") **vs.** the code (`modules/assistant/`, `/assistant/ask`; mobile `app/support/assistant.tsx`, `app/support/faq.tsx`; `docs/ASSISTANT_ANSWERS.md`). | A separate support assistant exists. It is **not** an external-ML / open-ended KB bot — it returns only fixed, pre-written sentences filled with the player's own booking/payment/refund data (`assistant/service.py`), which is defensibly outside the letter of the exclusion. Still, it is a "separate support bot," which deviation #3 appeared to rule out. Needs confirmation that this is accepted scope. |
-| C4 | **Booking approval model** | doc 03 (FR-P-10, FR-O-06) + docs 07/11 ("owner must manually approve **every** booking") **vs.** `PROJECT_GUIDELINES.md` deviation #2b + `ADR-008` (only `bank_transfer` needs owner approval; card/JazzCash/EasyPaisa auto-confirm by webhook). | Direct doc-vs-doc contradiction, but **resolved by precedence**: guidelines + ADR win. Listed here only so the viva reader is not surprised that the code does not match the raw FR text. Code follows the deviation. |
+| C1 | **Walk-in bookings** (the owner's open question) | none | **RESOLVED** — walk-in bookings (booking a slot at the arena in person, without the app) are **skipped by decision, out of scope** (recorded in `MOBILE_REQUIREMENTS.md` → "Decided out of scope or settled"). There was no mention anywhere in any planning doc or the code (grep across repo = 0 hits); the owner has now settled it as out of scope, so it is no longer open. |
+| C2 | **Google / social sign-in** | `PROJECT_GUIDELINES.md` deviation #6 ("deferred… don't build unless asked"; doc 06 marks it optional) **vs.** the code (`/auth/google`, `/auth/google/phone` in ROUTES_AND_ROLES.md; mobile `app/one-more-step.tsx`, `lib/google-sign-in.ts`; `backend/app/integrations/google.py`; documented in `DEV_BUILD_AND_GOOGLE_PUSH.md` and `MOBILE_SCREEN_INVENTORY.md` 2026-10-14). | **RESOLVED** — Google sign-in is now accepted scope: deviation #6 has been rewritten to accept it and `ADR-009` records the reasoning (Apple stays deferred). The code was built in a later working session ahead of the guideline; the gap is now closed. (Status row: NEEDS ACCOUNT OR KEY — code is done, but it is off until `GOOGLE_CLIENT_IDS` is set.) |
+| C3 | **Support "assistant"** | `PROJECT_GUIDELINES.md` deviation #3 ("The AI module is NLP search + recommendations ONLY… No separate FAQ knowledge-base bot") **vs.** the code (`modules/assistant/`, `/assistant/ask`; mobile `app/support/assistant.tsx`, `app/support/faq.tsx`; `docs/ASSISTANT_ANSWERS.md`). | **RESOLVED** — the rule-based support assistant is now accepted scope: deviation #3 has been rewritten to carve it out and `ADR-010` records the boundary (fixed templates + the user's own data only, no external ML, no open-ended retrieval). It is **not** an external-ML / open-ended KB bot — it returns only fixed, pre-written sentences filled with the player's own booking/payment/refund data (`assistant/service.py`), which is why it is accepted inside the deviation #3 boundary. |
+| C4 | **Booking approval model** | doc 03 (FR-P-10, FR-O-06) + docs 07/11 ("owner must manually approve **every** booking") **vs.** `PROJECT_GUIDELINES.md` deviation #2b + `ADR-008` (only `bank_transfer` needs owner approval; card/JazzCash/EasyPaisa auto-confirm by webhook). | Direct doc-vs-doc contradiction, but **resolved by precedence**: guidelines + ADR win. Inline pointer notes now sit next to the stale "owner approves every booking" wording in docs 03 (FR-P-16 notification bullet), 07 (§8 Booking Approval) and 11 (§2 status flow + §6 owner approval flow), each pointing to deviation #2b + ADR-008. Listed here only so the viva reader is not surprised that the code does not match the raw FR text. Code follows the deviation. |
 | C5 | **Push: Firebase FCM vs Expo Push** | FR-P-16 / FR-S-03 + `finalCheckList.md` ("Firebase Cloud Messaging") **vs.** the code (Expo Push service, `integrations/push/expo_push.py`). | Resolved by a documented deviation (TRACEABILITY_MATRIX 🔀). Expo fans out to FCM/APNs; a real Android build still needs FCM credentials (`DEV_BUILD_AND_GOOGLE_PUSH.md`). Noted, not open. |
 | C6 | **Maps: Google Maps vs OpenStreetMap** | doc 03 (FR-P-04/06 name Google Maps) **vs.** deviation #8 (OpenStreetMap + Haversine). | Resolved by deviation #8. Mobile actually ships a static OSM mosaic + "Get Directions" deep link, not an interactive map — see B-ARENA-04. Noted, not open. |
-| C7 | **Sport taxonomy (Football vs Futsal)** | `MOBILE_REQUIREMENTS.md` #40 / "Later work logged during G2" | Explicitly "needs a decision"; `sports_offered`/`sport_types` accept any string today and a validated 10-sport enum is deferred until the owner picker exists. Genuinely open. |
+| C7 | **Sport taxonomy (Football vs Futsal)** | `MOBILE_REQUIREMENTS.md` #40 / "Later work logged during G2" | **RESOLVED** — decided that Football and Futsal stay **two distinct sports** (no taxonomy merge); no code change needed and chips keep using the backend's own values (`MOBILE_REQUIREMENTS.md` #40). The validated 10-sport enum remains later work, but the taxonomy question itself is settled. |
 
 ---
 
@@ -94,12 +94,12 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Account lockout after 5 fails / 15 min | DONE | `modules/auth/service.py`; `test_auth` lockout test | FR-P-02 | |
 | Login by email OR phone (single field) | DONE | `/auth/login` `identifier`; web + mobile login | SCOPE-LOCK §5, MOBILE_REQUIREMENTS #20/#38 | Pakistani phone forms normalized; admins email-only. |
 | Password strength + last-3 reuse prevention | DONE | `core/security.py`; `finalCheckList` §1 | FR-P-01, MASTER §S2 | |
-| Forgot/reset password by 6-digit code | DONE | `/auth/forgot-password`, `/auth/reset-password`; web `reset-password/page.tsx`; mobile `reset-password.tsx` | FR-P-02, SCOPE-LOCK §5 | Reset ends old sessions. Codes stored plaintext (hardening open, WEB_COMPLETENESS §6). |
+| Forgot/reset password by 6-digit code | DONE | `/auth/forgot-password`, `/auth/reset-password`; web `reset-password/page.tsx`; mobile `reset-password.tsx` | FR-P-02, SCOPE-LOCK §5 | Reset ends old sessions. Codes are stored hashed (HMAC-SHA256 via `code_hash()`), never plaintext — `app/shared/codes.py`. |
 | Change email / phone / password via OTP | DONE | `/users/me/email`, `/phone`, `/password` (+`/verify`); mobile `profile/change-*.tsx` | Multi-city+OTP memory decision, FR-P-03 | Phone-change OTP has the same email-delivery gap as registration. |
 | Admin login (email+password → emailed code) | DONE | `/auth/admin/verify-code`, `/resend-code`; web `admin/login/page.tsx`; mobile `(auth)/admin-code.tsx` | FR-A-01, SCOPE-LOCK §1/§3 | Prod needs working mail or no admin can sign in. No admin password reset / email-loss recovery (open gap). |
 | Role-based authorization (player/owner/admin) | DONE | `shared/auth.py` `require_role`; `tests/modules/test_authorization_matrix.py` (every route) | FR-S-04, dev #10 | |
 | Redis rate limiting (stricter on auth) | DONE | `middleware/rate_limit.py`, `shared/abuse.py` | MASTER §S2, NFR | 100/min/IP; owner pages can hit it (WEB_COMPLETENESS §6). |
-| Google / social sign-in | NEEDS ACCOUNT OR KEY | `/auth/google`, `/auth/google/phone`; `integrations/google.py`; mobile `one-more-step.tsx`, `lib/google-sign-in.ts` | **Conflict C2** (deviation #6 said deferred) | Code complete; refuses with "not available yet" until `GOOGLE_CLIENT_IDS` set. Native flow needs a dev build. |
+| Google / social sign-in | NEEDS ACCOUNT OR KEY | `/auth/google`, `/auth/google/phone`; `integrations/google.py`; mobile `one-more-step.tsx`, `lib/google-sign-in.ts` | deviation #6 (now accepts Google), `ADR-009` (was Conflict C2, resolved) | Code complete; refuses with "not available yet" until `GOOGLE_CLIENT_IDS` set. Native flow needs a dev build. |
 | Owner business name + business contact at signup | PARTIAL | web `register/page.tsx` collects name/email/phone only | FR-O-01 | Not collected at signup; arena carries business contact instead. |
 
 ### Player Profile & Account
@@ -108,7 +108,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 |---|---|---|---|---|
 | View / edit profile (name, phone, bio) | DONE | `/users/me` GET/PUT; mobile `profile/edit.tsx` | FR-P-03 | |
 | Preferred sports / locations | DONE | `modules/user` prefs; `/users/me` | FR-P-03 | |
-| Profile picture upload | PARTIAL | `/uploads/image`; mobile `lib/pick-photo.ts` | FR-P-03 | Saves to local `/uploads/` in dev; Cloudinary path unwritten (see Infra). |
+| Profile picture upload | PARTIAL | `/uploads/image`; mobile `lib/pick-photo.ts` | FR-P-03 | Saves to local `/uploads/` in dev; the Cloudinary remote path is implemented (see Infra) but needs a real `CLOUDINARY_URL` to exercise. |
 | Notification preferences | DONE | `modules/user`; mobile `profile/settings.tsx` | FR-O-11/FR-P-16, dev list | |
 | Change password (in-app) | DONE | `/users/me/password` (+`/verify`) | FR-P-03 | |
 | Soft-delete account (grace period) | DONE | `/users/me/delete` (+`/verify`); mobile `profile/settings.tsx` | FR-P-03, dev #22 | Distinct from admin scrubbing delete. |
@@ -275,7 +275,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | OpenAPI `/docs` + pagination | DONE | FastAPI app; `shared/pagination.py` | FR (API), MASTER | |
 | Structured logging (structlog) | DONE | `core/logging.py` | dev #16 | |
 | One migration per module, reversible | DONE | `backend/alembic/versions/*` | dev §Migration policy | |
-| Cloudinary image upload (prod) | PARTIAL | `shared/storage.py` local fallback; remote path unwritten | dev #9, FR-P-03/FR-O-02 | Dev saves to `/uploads/`; outside dev it errors "Remote image upload is not configured". Also → NEEDS ACCOUNT OR KEY for real Cloudinary. |
+| Cloudinary image upload (prod) | DONE | `shared/storage.py` `_configure_cloudinary()` + `_upload_to_cloudinary()` fully implemented | dev #9, FR-P-03/FR-O-02 | Code complete. Local `/uploads/` is a by-design dev fallback when `CLOUDINARY_URL` is unset (dev #9). NEEDS ACCOUNT OR KEY to exercise the live remote path with a real `CLOUDINARY_URL`. |
 | Camera-based receipt/photo upload | NEEDS PHONE | mobile `lib/pick-photo.ts` (expo-image-picker) | FR-P-09, FR-O-02 | Web build uses file picker; true camera capture needs a device. |
 | CSP / security headers | PARTIAL | `frontend/web/next.config.ts`; `middleware/hardening.py` | MASTER §S5 security checklist | Headers set; `script-src` still allows `unsafe-inline/eval` (Next runtime) — nonce policy deferred. |
 | Docker / docker-compose | DEFERRED BY DECISION | `.github/workflows` only `.gitkeep`-era; no Dockerfiles | dev #1 (no Docker until Sprint 5), MASTER §S5 | Explicitly deferred to the final sprint. |
@@ -304,8 +304,8 @@ rather than silently given a status.
 
 | Feature | Evidence | Where it came from | Note |
 |---|---|---|---|
-| **Google sign-in** | `/auth/google`, `/auth/google/phone`; `integrations/google.py`; mobile `one-more-step.tsx` | Later working session; `DEV_BUILD_AND_GOOGLE_PUSH.md`, `MOBILE_SCREEN_INVENTORY.md` | **Contradicts guideline deviation #6** ("deferred, don't build unless asked"). No ADR. See Conflict C2. |
-| **Support assistant** | `modules/assistant/`, `/assistant/ask`; mobile `support/assistant.tsx`, `support/faq.tsx` | `ASSISTANT_ANSWERS.md` (2026-10-14) | **In tension with guideline deviation #3** ("no separate FAQ knowledge-base bot"). Rule-based, data-aware, no external ML. See Conflict C3. |
+| **Google sign-in** | `/auth/google`, `/auth/google/phone`; `integrations/google.py`; mobile `one-more-step.tsx` | Later working session; `DEV_BUILD_AND_GOOGLE_PUSH.md`, `MOBILE_SCREEN_INVENTORY.md` | **Now accepted scope** — deviation #6 rewritten to accept Google sign-in, recorded in `ADR-009`. Conflict C2 resolved. |
+| **Support assistant** | `modules/assistant/`, `/assistant/ask`; mobile `support/assistant.tsx`, `support/faq.tsx` | `ASSISTANT_ANSWERS.md` (2026-10-14) | **Now accepted scope** — deviation #3 rewritten to carve out the rule-based assistant, recorded in `ADR-010` (rule-based, data-aware, no external ML). Conflict C3 resolved. |
 | **Mobile admin app** | mobile `app/admin/**`; `/admin/phone/*`, `/admin/arena-cards` | `MOBILE_ADMIN_PLAN.md` (2026-10-13) | Beyond the frozen plan (Admin = web). Explicitly decided in a working doc; documented, not rogue. |
 | **Owner booking-reminder nudge** | `POST /owner/dashboard/bookings/{id}/remind` | RESTYLE_FOLLOWUPS "Remind" | Small addition; lets an owner nudge an unpaid booking. Not in any FR. |
 | **Payment step/event history** | `GET /payments/{id}/events` | — | Route exists, no screen, no FR. Backend-only. |
