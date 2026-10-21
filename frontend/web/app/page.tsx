@@ -269,21 +269,21 @@ export default function Home() {
                 <a
                   key={link.href}
                   href={link.href}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="inline-block py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {link.label}
                 </a>
               ))}
               <AboutDialog
                 trigger={
-                  <button className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                  <button className="inline-block py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                     About
                   </button>
                 }
               />
               <ContactDialog
                 trigger={
-                  <button className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                  <button className="inline-block py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                     Contact
                   </button>
                 }
@@ -709,17 +709,17 @@ export default function Home() {
                 <h4 className="text-sm font-bold text-foreground">Platform</h4>
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                   <li>
-                    <a href="#features" className="hover:text-foreground">
+                    <a href="#features" className="inline-block py-1 hover:text-foreground">
                       Features
                     </a>
                   </li>
                   <li>
-                    <a href="#how-it-works" className="hover:text-foreground">
+                    <a href="#how-it-works" className="inline-block py-1 hover:text-foreground">
                       How it Works
                     </a>
                   </li>
                   <li>
-                    <a href="#owners" className="hover:text-foreground">
+                    <a href="#owners" className="inline-block py-1 hover:text-foreground">
                       For Owners
                     </a>
                   </li>
@@ -730,21 +730,27 @@ export default function Home() {
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                   <li>
                     <AboutDialog
-                      trigger={<button className="hover:text-foreground">About Us</button>}
+                      trigger={
+                        <button className="inline-block py-1 hover:text-foreground">
+                          About Us
+                        </button>
+                      }
                     />
                   </li>
                   <li>
                     <ContactDialog
-                      trigger={<button className="hover:text-foreground">Contact</button>}
+                      trigger={
+                        <button className="inline-block py-1 hover:text-foreground">Contact</button>
+                      }
                     />
                   </li>
                   <li>
-                    <Link href="/login" className="hover:text-foreground">
+                    <Link href="/login" className="inline-block py-1 hover:text-foreground">
                       Sign In
                     </Link>
                   </li>
                   <li>
-                    <Link href="/register" className="hover:text-foreground">
+                    <Link href="/register" className="inline-block py-1 hover:text-foreground">
                       Get Started
                     </Link>
                   </li>

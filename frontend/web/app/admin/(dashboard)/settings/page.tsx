@@ -99,6 +99,7 @@ function EmailTab() {
           </p>
         </div>
         <Switch
+          aria-label="Email notifications"
           checked={form.email.enabled}
           onCheckedChange={(v) => set("email", { ...form.email, enabled: v })}
         />
@@ -137,6 +138,7 @@ function SmsTab() {
           <p className="text-xs text-muted-foreground">Has no effect until a provider is wired.</p>
         </div>
         <Switch
+          aria-label="SMS notifications"
           checked={form.sms.enabled}
           onCheckedChange={(v) => set("sms", { ...form.sms, enabled: v })}
         />
@@ -182,6 +184,7 @@ function PaymentGatewaysTab() {
         <div key={g.key} className="ah-setting-row">
           <p className="text-sm font-medium text-foreground">{g.label}</p>
           <Switch
+            aria-label={g.label}
             checked={form.payment_gateways[g.key]}
             onCheckedChange={(v) =>
               set("payment_gateways", { ...form.payment_gateways, [g.key]: v })
@@ -302,6 +305,7 @@ function NotificationsTab() {
         <div key={ev.key} className="ah-setting-row">
           <p className="text-sm font-medium text-foreground">{ev.label}</p>
           <Switch
+            aria-label={ev.label}
             checked={form.notifications[ev.key]}
             onCheckedChange={(v) => set("notifications", { ...form.notifications, [ev.key]: v })}
           />
