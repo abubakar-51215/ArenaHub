@@ -120,6 +120,41 @@ async def test_group_cancel_refunds_once_and_never_more_than_paid(
     assert all(s["status"] == "available" for s in slots[:3])
 
 
+async def test_a_cancelled_slot_can_be_booked_by_a_different_player(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The real flow end to end: player books, pays, cancels; the refund follows the arena's
+    policy; the freed slot is not just "available" in isolation — a different player can
+    actually book it again."""
+    player, group, payment, court_id, monday = await _paid_group(client, db_session, "m5")
+    gid = group["booking_group_id"]
+    cancelled = await client.post(
+        f"/api/v1/bookings/group/{gid}/cancel", headers=auth_header(player), json={}
+    )
+    assert cancelled.status_code == 200
+    assert Decimal(cancelled.json()["data"]["refund_amount"]) == Decimal("6000.00")
+    assert await _refunded(db_session, payment["id"]) == Decimal("6000.00")
+
+    freed_slots = await _slots(client, court_id, monday)
+    assert all(s["status"] == "available" for s in freed_slots[:3])
+
+    other_player, _ = await make_user(client, db_session, "gcp-m5-other@example.com")
+    rebooked = await client.post(
+        "/api/v1/bookings",
+        headers=auth_header(other_player),
+        json={
+            "court_id": court_id,
+            "slot_ids": [s["id"] for s in freed_slots[:3]],
+            "payment_type": "full",
+        },
+    )
+    assert rebooked.status_code in (200, 201), rebooked.text
+    assert rebooked.json()["data"]["booking_group_id"] != gid
+
+    now_booked = await _slots(client, court_id, monday)
+    assert all(s["status"] != "available" for s in now_booked[:3])
+
+
 async def test_group_cancel_after_one_slot_was_cancelled_refunds_only_the_rest(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
