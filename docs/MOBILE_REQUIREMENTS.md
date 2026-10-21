@@ -110,7 +110,7 @@ Screen-level requirements already written down:
 | 37 | `GET /arenas` returns `avg_rating`, `review_count`, `min_price` (HIGH PRIORITY). | `RESTYLE_FOLLOWUPS.md` | Not started |
 | 38 | Email matched without regard to case; login by email or phone. | earlier prompt | Done |
 | 39 | Unique index on `lower(email)` after a duplicate check. | `RESTYLE_FOLLOWUPS.md` | Not started |
-| 40 | Sport taxonomy (Football vs Futsal) needs a decision; chips use the backend's own values meanwhile. | `RESTYLE_FOLLOWUPS.md` | Waiting for a decision |
+| 40 | Sport taxonomy (Football vs Futsal) needs a decision; chips use the backend's own values meanwhile. | `RESTYLE_FOLLOWUPS.md` | Decided: Football and Futsal stay two distinct sports (no taxonomy merge); no code change — chips keep using the backend's own values, as they already do. |
 
 ---
 
@@ -161,7 +161,7 @@ Screen-level requirements already written down:
 | 64 | "Tax & service" and "Invite players" are dropped. Booking code is `AHB-` plus the first 6 characters of the group id. Reminder text says one hour. Add to calendar shares an .ics file with a one-hour reminder. | Done |
 | 65 | Cancellation rules are shown as text made from the arena refund policy (`cancellation_note`). Pay now is the arena advance when it takes one, else the full price; with an advance, Payment and Booking confirmed add a "Pay at the arena" line (not in the frame). | Done |
 | 66 | Bank transfer reads the arena own account from its bank-transfer settings (default account). Receipts are photos (JPG or PNG, up to 5 MB): the frame says "or PDF", the server does not take PDFs yet. | Done, PDF is later work |
-| 67 | Later work: the old balance screen `/payment/[groupId]` (pay a balance on a confirmed booking) is untouched and still uses the dev simulator for gateways; it moves with the Bookings tab (G5). Real Stripe, JazzCash and EasyPaisa gateways stay last. A payment-method picker for several bank accounts is not built (the default account is shown). | Later |
+| 67 | **Skipped by decision (final, not "later"):** paying an outstanding balance online. The old balance screen `/payment/[groupId]` (pay a balance on a confirmed booking) is not built; the balance line stays "Pay at the arena" everywhere it appears (item 65). The online balance gateways (Stripe / JazzCash / EasyPaisa for a balance) are out of scope. A payment-method picker for several bank accounts is also not built (the default account is shown). | Skipped (final) |
 
 ## G5 decisions (My bookings, detail, cancel, move, history report) - frames in `arena-hub-player-app-bookings.html`
 
@@ -173,14 +173,14 @@ Screen-level requirements already written down:
 | 71 | Cancel sheet uses `cancel-preview` (You paid / Kept by arena / You get back); the late variant is the same sheet with the server numbers. After a cancel: toast and the Cancelled tab. | Done |
 | 72 | Move: day strip and start times on the same court and the same length; `reschedule-preview` and `reschedule`. A dearer time leaves the extra "to pay at the arena" (the approved answer 7); there is no online balance payment, so the old balance screen is removed. The frame button "Pay Rs 400 and move" is therefore "Move booking". | Done, deviation |
 | 73 | Booking history is a Profile row ("Booking History"), not part of My bookings. Period chips, "Bookings found", "Total spent", a PDF from `GET /reports/my-bookings` shared through the system share sheet. Found and spent are counted on the phone from the grouped list. | Done |
-| 74 | Not built (no frame): paying an unpaid ("Awaiting payment") booking from My bookings, "View pass", "You keep coming back to", the receipt PDF download that the old card had (the service call is kept), a bell on My bookings. | Later |
+| 74 | Not built: paying an unpaid ("Awaiting payment") booking online from My bookings is **skipped by decision (final, same as item 67)** — unpaid bookings auto-cancel after 24 h and any balance is paid at the arena. The rest are no-frame-yet / later: "View pass", "You keep coming back to", the receipt PDF download that the old card had (the service call is kept), a bell on My bookings. | Later (online-pay part skipped) |
 
 ## Confirmed, not built yet (the user will make prototype frames first)
 
 | # | Requirement | Source | Status |
 |---|---|---|---|
 | 41 | A complaints screen for players (file a complaint, see your own complaints and the admin's answer). | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
-| 42 | Distance search ("near me"): the distance on arena cards and a radius search. | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
+| 42 | Distance search ("near me"): the distance on arena cards and a radius search. | earlier prompt (confirmed at the G1 release) | IN SCOPE — backend near-me / distance / "Get Directions" is now being built; the near-me UI still needs phone frames. (The radius *filter* row stays later work — see "Later work logged during G2"; it is a filter row, distinct from the near-me *sort* now in scope.) |
 | 43 | A booking-history report (download or share your bookings as a file). | earlier prompt (confirmed at the G1 release) | Not started: waits for a frame |
 | 44 | The final G1 sign-in frames are in `design/prototypes/arena-hub-player-app-auth-2-fixed.html`: Log in, Forgot password, the code and new-password steps, success, failed, admin code, wrong code, admin landing (temporary until the admin group), the pop-up pattern and the toast pattern. | earlier prompt | Done (G1) |
 
@@ -190,6 +190,8 @@ Screen-level requirements already written down:
 - **A sign-in step with no frame:** the frames now exist (auth-2 file). Any other screen without a frame waits for a frame.
 - **The old Verify wording that mentioned the backend console:** it does not come back.
 - **Sign-up variant:** stays "unconfirmed, built the only frame".
+- **Walk-in bookings:** booking a slot at the arena in person, without the app, is skipped by decision — out of scope.
+- **Owner business name at sign-up:** collecting a business name when an owner registers is skipped by decision — out of scope (the business contact lives on the arena). Note: docs 03 (FR-O-01) and 07 (§2 Registration Fields) still list a business-name field; this decision overrides that.
 
 ## Open conflict
 
