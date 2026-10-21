@@ -76,8 +76,15 @@ ask.
    Docs say React Native; Expo is the chosen toolchain.
 5. STATE MANAGEMENT = Zustand (client state) + TanStack Query
    (server state) on both web and mobile.
-6. SOCIAL LOGIN (Google/Apple) is deferred — doc 06 already marks it
-   optional. Don't build it unless asked.
+6. SOCIAL LOGIN — GOOGLE SIGN-IN FOR PLAYERS IS ACCEPTED SCOPE AND BUILT
+   (supersedes the earlier "both deferred" wording; doc 06 marked social
+   login optional). Players can "Continue with Google": `/auth/google`
+   and `/auth/google/phone`, `backend/app/integrations/google.py`, with
+   mobile `app/one-more-step.tsx` and `lib/google-sign-in.ts`. It is OFF
+   at runtime until `GOOGLE_CLIENT_IDS` is configured
+   (backend/app/core/config.py), so dev defaults to email/password.
+   APPLE sign-in remains deferred — doc 06 marks it optional; don't build
+   it unless asked. See ADR-009.
 7. OTP IN DEV: generate + validate real OTPs, but in dev mode deliver
    by logging to the backend console instead of email/SMS. Real email
    delivery (SMTP/SendGrid) is wired in Sprint 2; SMS OTP only if a
