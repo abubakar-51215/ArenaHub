@@ -32,6 +32,12 @@ FALLBACK = (
     "or write to support."
 )
 
+# Exact wording, approved by the project owner: never changed, never combined with anything
+# else. Used only when the question has no ArenaHub word in it at all (intents.in_scope is
+# False) - a question that uses ArenaHub words but still isn't understood gets FALLBACK instead,
+# so a real player question is never told it is "not from our project".
+OUT_OF_SCOPE = "Sorry this is not from our project please ask me about it"
+
 
 @dataclass
 class Action:
@@ -146,7 +152,8 @@ _NOT_YOURS = "I could not find that booking code in your bookings."
 async def _cancel(db: AsyncSession, user: User, text: str) -> Answer:
     general = (
         "Open My bookings, tap the booking, then tap Cancel booking. "
-        "You will see how much comes back before you confirm."
+        "You will see how much comes back before you confirm. Once you cancel, that time is "
+        "free again for someone else to book."
     )
     row, found = await _for_booking(db, user, text)
     if not found:
@@ -343,6 +350,22 @@ ANSWERS = {
         [Action("open_new_complaint", "New complaint")],
         ["next_booking"],
     ),
+    "payments_how": _fixed(
+        "payments_how",
+        "ArenaHub takes four ways to pay: Card, Bank transfer, JazzCash and EasyPaisa. Bank "
+        "transfer always works: send the arena the exact amount and upload your receipt. If "
+        "another way is not ready yet, the app tells you so when you try to pay with it.",
+        [],
+        ["bank_transfer", "how_to_book"],
+    ),
+    "complaints_how": _fixed(
+        "complaints_how",
+        "Open Help and support and tap New complaint. Pick a category, describe what happened, "
+        "and send it. You can see the admin's answer on that complaint once the team replies. "
+        "There is no support email or phone; a complaint is how you reach us.",
+        [Action("open_new_complaint", "New complaint")],
+        ["app_problem"],
+    ),
 }
 assert set(ANSWERS) == set(intents.INTENTS)
 
@@ -362,6 +385,8 @@ async def ask(db: AsyncSession, user: User, text: str | None, suggestion: str | 
     # an anonymous count of what is asked: the intent only, never the words or who asked
     log.info("assistant_intent", intent=intent)
     if intent == intents.NOT_SURE:
+        if words and not intents.in_scope(words):
+            return Answer(intents.NOT_SURE, OUT_OF_SCOPE, [], []).as_dict()
         return Answer(
             intents.NOT_SURE,
             FALLBACK,

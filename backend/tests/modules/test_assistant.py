@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from structlog.testing import capture_logs
 
 from app.modules.assistant import intents
-from app.modules.assistant.service import FALLBACK
+from app.modules.assistant.service import FALLBACK, OUT_OF_SCOPE
 from app.modules.booking.service import booking_code_for
 from app.modules.payment.model import Refund, RefundStatus
 from app.modules.user.model import User
@@ -65,6 +65,18 @@ PHRASINGS: dict[str, list[str]] = {
     "near_me": ["How does near me work?", "arenas nearby", "location is not used"],
     "notifications": ["notifications", "turn off reminders", "how do notifications work"],
     "app_problem": ["The app is not working", "app is offline", "it is stuck", "I found a bug"],
+    "payments_how": [
+        "How do payments work?",
+        "what payment methods do you have",
+        "how can I pay",
+        "jazzcash",
+    ],
+    "complaints_how": [
+        "How do I contact support?",
+        "file a complaint",
+        "how do complaints work",
+        "new complaint",
+    ],
 }
 
 
@@ -119,6 +131,32 @@ async def test_not_sure_sends_to_support_and_never_guesses(
     assert data["intent"] == "not_sure" and data["answer"] == FALLBACK
     assert [a["kind"] for a in data["actions"]] == ["open_new_complaint"]
     assert [s["id"] for s in data["suggestions"]] == ["next_booking", "refund_status"]
+
+
+async def test_out_of_scope_questions_get_the_exact_approved_wording(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Nothing from ArenaHub in the question at all: the fixed, exact "not from our project"
+    reply, word for word, never combined with FALLBACK or an action."""
+    tok, _ = await make_user(client, db_session, "as-outofscope@example.com")
+    for text in ("what is the weather today", "tell me a joke", "who is the president of France"):
+        data = await _ask(client, tok, text=text)
+        assert data["intent"] == "not_sure"
+        assert data["answer"] == OUT_OF_SCOPE
+        assert OUT_OF_SCOPE == "Sorry this is not from our project please ask me about it"
+        assert data["actions"] == []
+        assert data["suggestions"] == []
+
+
+async def test_an_arenahub_question_that_is_still_unclear_keeps_the_ordinary_fallback(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A question that uses an ArenaHub word but still is not understood must never be told it
+    is "not from our project" — it gets the ordinary fallback, with support offered."""
+    tok, _ = await make_user(client, db_session, "as-unclear@example.com")
+    data = await _ask(client, tok, text="Can you change my arena owner?")
+    assert data["intent"] == "not_sure" and data["answer"] == FALLBACK
+    assert data["answer"] != OUT_OF_SCOPE
 
 
 async def test_answers_without_bookings_or_refunds(
@@ -190,6 +228,26 @@ async def test_account_aware_answers_with_a_booking_and_a_refund(
     assert refund["actions"][0]["kind"] == "open_payments"
     for word in ("day", "hour", "week", "@", "+92"):
         assert word not in refund["answer"]
+
+
+async def test_cancel_answer_says_the_slot_is_free_again(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    tok, _ = await make_user(client, db_session, "as-cancelfree@example.com")
+    data = await _ask(client, tok, text="how do I cancel")
+    assert "free again for someone else to book" in data["answer"]
+
+
+async def test_payments_how_and_complaints_how_answers(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    tok, _ = await make_user(client, db_session, "as-newintents@example.com")
+    payments = await _ask(client, tok, text="how do payments work")
+    assert "Card, Bank transfer, JazzCash and EasyPaisa" in payments["answer"]
+    complaints = await _ask(client, tok, text="how do I contact support")
+    assert "New complaint" in complaints["answer"]
+    assert [a["kind"] for a in complaints["actions"]] == ["open_new_complaint"]
+    assert "no support email or phone" in complaints["answer"]
 
 
 async def test_another_players_booking_code_never_leaks(

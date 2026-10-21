@@ -234,10 +234,81 @@ INTENTS: dict[str, list[tuple[str, int]]] = {
         ("slow", 3),
         ("bug", 4),
     ],
+    "payments_how": [
+        ("how do payment work", 6),
+        ("how does payment work", 6),
+        ("payment methods", 5),
+        ("payment options", 5),
+        ("ways to payment", 4),
+        ("how to payment", 4),
+        ("how can i payment", 4),
+        ("card payment", 3),
+        ("jazzcash", 4),
+        ("easypaisa", 4),
+    ],
+    "complaints_how": [
+        ("file a complaint", 6),
+        ("new complaint", 6),
+        ("how do i complain", 6),
+        ("how do complaints work", 6),
+        ("contact support", 6),
+        ("talk to support", 5),
+        ("customer support", 5),
+        ("contact us", 4),
+        ("get help", 3),
+        ("report a problem", 4),
+        ("complaint", 3),
+    ],
 }
 
 # below this the assistant is not sure enough to answer
 MIN_SCORE = 3
+
+# Nouns whose presence means a question is at least about ArenaHub, even when which intent it
+# wants is unclear. Generic question words (how, when, where, what, why) are deliberately left
+# out: "what's the capital of France" must not count as in-scope just because it starts with
+# "what". A question with none of these words gets the fixed "not from our project" reply
+# instead of the ordinary "not sure" one.
+IN_SCOPE_WORDS = [
+    "booking",
+    "match",
+    "refund",
+    "payment",
+    "review",
+    "complaint",
+    "account",
+    "password",
+    "email",
+    "notification",
+    "support",
+    "cancel",
+    "move",
+    "transfer",
+    "delete",
+    "app",
+    "arena",
+    "court",
+    "slot",
+    "rate",
+    "report",
+    "futsal",
+    "cricket",
+    "padel",
+    "badminton",
+    "tennis",
+    "squash",
+    "basketball",
+    "volleyball",
+    "snooker",
+    "table tennis",
+]
+
+
+def in_scope(text: str) -> bool:
+    """Whether the normalised text mentions at least one ArenaHub-specific word."""
+    t = normalise(text)
+    return any(re.search(rf"\b{re.escape(w)}\b", t) for w in IN_SCOPE_WORDS)
+
 
 # the question chips (suggestions) the screen can send instead of words
 SUGGESTIONS = {
@@ -259,6 +330,8 @@ SUGGESTIONS = {
     "near_me": "How does near me work?",
     "notifications": "How do notifications work?",
     "app_problem": "The app is not working",
+    "payments_how": "How do payments work?",
+    "complaints_how": "How do I contact support?",
 }
 
 _CODE = re.compile(r"\bAHB-[0-9A-F]{6}\b", re.IGNORECASE)
