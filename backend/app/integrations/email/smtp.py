@@ -12,6 +12,11 @@ one-line hint. A temporary failure (timeout, connection drop, a 4xx answer) is
 tried once more after a short pause. Logs never carry the password, the
 recipient, the subject or the body (a code email carries the code).
 ``smtplib`` is synchronous, so the send runs in a worker thread.
+
+Reserved or fake addresses (example.com and its siblings, the .test/.invalid/
+.localhost/.example TLDs reserved by RFC 2606 and RFC 6761, or a domain with no
+dot at all) are never actually sent to, even with EMAIL_SEND_IN_DEV=1 — a manual
+live check or a stray test run can never mail a real inbox by mistake.
 """
 
 import asyncio
@@ -28,6 +33,21 @@ log = structlog.get_logger()
 
 SEND_TIMEOUT_SECONDS = 8
 RETRY_PAUSE_SECONDS = 2.0
+
+_RESERVED_DOMAINS = {"example.com", "example.org", "example.net"}
+_RESERVED_SUFFIXES = (".test", ".invalid", ".localhost", ".example")
+
+
+def _is_reserved_address(to: str) -> bool:
+    domain = to.rpartition("@")[2].strip().lower()
+    if "." not in domain:
+        return True
+    # a subdomain of a reserved domain (sub.example.com) is reserved too
+    if domain in _RESERVED_DOMAINS or any(
+        domain.endswith("." + reserved) for reserved in _RESERVED_DOMAINS
+    ):
+        return True
+    return domain.endswith(_RESERVED_SUFFIXES)
 
 
 class EmailSendError(Exception):
@@ -149,6 +169,9 @@ async def send_email(
     mode = email_mode()
     if mode["mode"] != "smtp":
         log.info("email_dev_delivery", kind=kind, html=html is not None)
+        return False
+    if _is_reserved_address(to):
+        log.info("email_skipped", reason="reserved_address")
         return False
     s = get_settings()
     msg = _message(to, subject, body, html)

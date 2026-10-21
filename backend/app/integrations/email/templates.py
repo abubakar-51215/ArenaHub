@@ -542,7 +542,7 @@ def code_email(
         f"{what}. {valid_line}",
         _header_grey_centered_logo(),
         body_html,
-        html_lib.escape(messages.CODE_IGNORE_SHORT_LINE, quote=False),
+        "This message was sent to the email address of your account.",
     )
     return subject, text, html
 

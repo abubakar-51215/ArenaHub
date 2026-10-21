@@ -172,3 +172,19 @@ def test_notice_emails_carry_the_badge_and_code_emails_do_not_reuse_it() -> None
     assert html.index("data:image/png;base64,") < html.index("font-size:22px")  # before heading
     for other in (email_changed_email("n***@x.pk", datetime(2026, 10, 15, tzinfo=UTC))[2],):
         assert "data:image/png;base64," not in other
+
+
+def test_the_badge_image_has_a_text_fallback() -> None:
+    html = code_email("482913", "registration", 10, "Hassan")[2]
+    assert 'alt="ArenaHub"' in html
+
+
+@pytest.mark.parametrize("purpose", _LAYOUT_B_PURPOSES)
+def test_the_ignore_line_appears_once_in_a_code_email(purpose: str) -> None:
+    html = code_email("482913", purpose, 10, "Hassan")[2]
+    assert html.count(messages.CODE_IGNORE_SHORT_LINE) == 1
+
+
+def test_the_ignore_line_appears_once_in_the_password_reset_email() -> None:
+    html = password_reset_email("657348", 10, "Imran", "support@example.com")[2]
+    assert html.count(messages.CODE_IGNORE_SHORT_LINE) == 1
