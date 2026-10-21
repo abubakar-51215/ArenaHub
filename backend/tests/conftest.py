@@ -97,6 +97,23 @@ def fake_redis(monkeypatch: pytest.MonkeyPatch) -> fakeredis.aioredis.FakeRedis:
     return fake
 
 
+@pytest.fixture(autouse=True)
+def fake_smtp(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The suite never really sends email, however many purposes exercise ``send_email``.
+
+    Whatever backend/.env has (real Gmail credentials, EMAIL_SEND_IN_DEV=1), every ``send_email``
+    call still goes through its own mode detection, retry and logging exactly as in production —
+    only the one line that opens a real network socket (``smtp._send_sync``, run off the event
+    loop by ``send_email``) is swapped for an instant success. A test that wants to see a real
+    failure still can: it monkeypatches ``send_email`` itself in its own module (several already
+    do), which runs instead of ever reaching this. Before this fixture, a full run paid a real
+    SMTP round trip (several seconds) for every one of the suite's many emailed-code and notice
+    tests; this is the fix for that, not a workaround for it."""
+    from app.integrations.email import smtp
+
+    monkeypatch.setattr(smtp, "_send_sync", lambda *args, **kwargs: None)
+
+
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     """A transaction-scoped session bound into the app via dependency override.

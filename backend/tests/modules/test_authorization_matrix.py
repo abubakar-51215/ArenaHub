@@ -23,7 +23,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.helpers import arena_payload, auth_header, make_admin, make_user
+from app.shared.otp import OtpPurpose
+from tests.helpers import arena_payload, auth_header, last_code, make_admin, make_user
 from tests.modules.test_payment import ALL_WEEK_HOURS
 
 RECEIPT = "/uploads/receipts/f02c831521b25cf7921bd45c4d950565.jpg"
@@ -31,7 +32,9 @@ DAY = date.today() + timedelta(days=4)
 GHOST = "00000000-0000-4000-8000-00000000dead"  # an id nothing has
 
 
-async def _arena(client: AsyncClient, db: AsyncSession, owner: dict, admin: dict, tag: str) -> Any:
+async def _arena(
+    client: AsyncClient, db: AsyncSession, owner: dict, owner_user: Any, admin: dict, tag: str
+) -> Any:
     res = await client.post(
         "/api/v1/owner/arenas",
         headers=auth_header(owner),
@@ -55,7 +58,7 @@ async def _arena(client: AsyncClient, db: AsyncSession, owner: dict, admin: dict
     slots = (
         await client.get(f"/api/v1/courts/{court_id}/slots", params={"date": DAY.isoformat()})
     ).json()["data"]
-    bank = await client.post(
+    await client.post(
         f"/api/v1/owner/arenas/{arena_id}/bank-details",
         headers=auth_header(owner),
         json={
@@ -64,6 +67,11 @@ async def _arena(client: AsyncClient, db: AsyncSession, owner: dict, admin: dict
             "account_title": "Matrix",
             "account_number": "1234567890",
         },
+    )
+    bank = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/verify",
+        headers=auth_header(owner),
+        json={"code": last_code(owner_user.id, OtpPurpose.bank_details_change)},
     )
     disc = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/discounts",
@@ -147,13 +155,13 @@ def _no_rate_limit_in_sweeps(client: AsyncClient) -> None:
 
 @pytest.fixture
 async def world(client: AsyncClient, db_session: AsyncSession) -> SimpleNamespace:
-    owner_a, _ = await make_user(client, db_session, "mx-owner-a@example.com", "owner")
-    owner_b, _ = await make_user(client, db_session, "mx-owner-b@example.com", "owner")
+    owner_a, owner_a_user = await make_user(client, db_session, "mx-owner-a@example.com", "owner")
+    owner_b, owner_b_user = await make_user(client, db_session, "mx-owner-b@example.com", "owner")
     player_a, user_a = await make_user(client, db_session, "mx-player-a@example.com")
     player_b, user_b = await make_user(client, db_session, "mx-player-b@example.com")
     admin = await make_admin(client, db_session, "mx-admin@example.com")
-    arena_a = await _arena(client, db_session, owner_a, admin, "A")
-    arena_b = await _arena(client, db_session, owner_b, admin, "B")
+    arena_a = await _arena(client, db_session, owner_a, owner_a_user, admin, "A")
+    arena_b = await _arena(client, db_session, owner_b, owner_b_user, admin, "B")
 
     waiting = await _book(client, player_a, owner_a, arena_a, 0, confirm=False)  # receipt waiting
     paid = await _book(client, player_a, owner_a, arena_a, 1, confirm=True)  # confirmed

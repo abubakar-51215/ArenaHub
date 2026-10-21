@@ -7,6 +7,7 @@ import {
   deleteBankDetails,
   listOwnerBankDetails,
   updateBankDetails,
+  verifyBankDetailsChange,
 } from "@/services/bank-details";
 
 const key = (arenaId: string) => ["bank-details", arenaId] as const;
@@ -40,6 +41,15 @@ export function useDeleteBankDetails(arenaId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteBankDetails(arenaId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key(arenaId) }),
+  });
+}
+
+/** Confirms whatever add/edit/remove is staged for this arena with its emailed code. */
+export function useVerifyBankDetailsChange(arenaId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => verifyBankDetailsChange(arenaId, code),
     onSuccess: () => qc.invalidateQueries({ queryKey: key(arenaId) }),
   });
 }

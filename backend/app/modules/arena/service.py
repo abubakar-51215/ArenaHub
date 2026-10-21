@@ -6,12 +6,15 @@ Admin approve/reject lives in ``modules/admin`` but reuses ``set_status`` here
 so the state machine has a single implementation.
 """
 
+import json
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache import redis as redis_cache
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.arena import repository as repo
 from app.modules.arena.model import (
@@ -38,7 +41,10 @@ from app.modules.arena.schema import (
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User, UserRole
+from app.shared import codes
+from app.shared.audit import audit
 from app.shared.notify import notify_admins
+from app.shared.otp import OtpPurpose
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.storage import delete_image
 
@@ -451,11 +457,10 @@ async def _ensure_active_default(db: AsyncSession, arena_id: uuid.UUID) -> None:
         active[0].is_default = True  # list is default-first then newest
 
 
-async def add_bank_details(
-    db: AsyncSession, user: User, arena_id: uuid.UUID, data: ArenaBankDetailsCreate
+async def _apply_add_bank_details(
+    db: AsyncSession, arena_id: uuid.UUID, fields: dict
 ) -> ArenaBankDetailsResponse:
-    await _owned_arena(db, arena_id, user)
-    fields = data.model_dump()
+    fields = dict(fields)
     # A default must be active — asking for a default implies active.
     if fields.get("is_default"):
         fields["is_active"] = True
@@ -468,15 +473,9 @@ async def add_bank_details(
     return ArenaBankDetailsResponse.model_validate(saved)
 
 
-async def update_bank_details(
-    db: AsyncSession,
-    user: User,
-    arena_id: uuid.UUID,
-    bank_details_id: uuid.UUID,
-    data: ArenaBankDetailsUpdate,
+async def _apply_update_bank_details(
+    db: AsyncSession, details: ArenaBankDetails, arena_id: uuid.UUID, fields: dict
 ) -> ArenaBankDetailsResponse:
-    details = await _owned_bank_details(db, user, arena_id, bank_details_id)
-    fields = data.model_dump(exclude_unset=True)
     # Making an account the default also activates it (a default must be
     # active, so it's always offered at checkout).
     if fields.get("is_default"):
@@ -490,16 +489,138 @@ async def update_bank_details(
     return ArenaBankDetailsResponse.model_validate(details)
 
 
-async def delete_bank_details(
-    db: AsyncSession, user: User, arena_id: uuid.UUID, bank_details_id: uuid.UUID
+async def _apply_delete_bank_details(
+    db: AsyncSession, details: ArenaBankDetails, arena_id: uuid.UUID
 ) -> None:
-    details = await _owned_bank_details(db, user, arena_id, bank_details_id)
     await db.delete(details)
     await db.flush()
     # Removing the default (or any account) may leave the arena without an
     # active default — promote another if so.
     await _ensure_active_default(db, arena_id)
     await db.commit()
+
+
+# ---- bank details: the emailed-code gate ------------------------------------------------------
+#
+# Adding or removing an account always needs a code: either is a new or a gone payout
+# destination. Editing one needs a code only when the account number, account name or bank
+# changes; a pure default/active switch between accounts already on file applies at once, as
+# before. The proposed change is staged in Redis (never logged, never in the database), keyed to
+# the owner and the arena, for the same 10 minutes a code is good for. A new request always
+# replaces both the older staged change AND the older code (``issue_code`` ends the previous code
+# for this user and purpose), so a code can only ever apply the change it was issued for.
+
+_BANK_PENDING_TTL = int(codes.CODE_TTL.total_seconds())
+_SENSITIVE_BANK_FIELDS = ("account_number", "account_title", "bank_name")
+
+
+@dataclass
+class BankDetailsRequestResult:
+    """What happened when a bank-detail change was asked for."""
+
+    applied: bool  # True: a pure default/active switch, done at once
+    record: ArenaBankDetailsResponse | None = None  # set when applied
+    delivered: bool = True  # set when not applied; False = the code email failed to send
+
+
+def _bank_pending_key(user_id: uuid.UUID, arena_id: uuid.UUID) -> str:
+    return f"bank_pending:{user_id}:{arena_id}"
+
+
+async def _stage_bank_change(
+    user: User, arena_id: uuid.UUID, op: str, bank_details_id: uuid.UUID | None, fields: dict
+) -> None:
+    client = redis_cache.get_redis()
+    payload = json.dumps(
+        {
+            "op": op,
+            "bank_details_id": str(bank_details_id) if bank_details_id else None,
+            "fields": fields,
+        }
+    )
+    await client.set(_bank_pending_key(user.id, arena_id), payload, ex=_BANK_PENDING_TTL)
+
+
+def _bank_change_is_sensitive(details: ArenaBankDetails, fields: dict) -> bool:
+    return any(
+        field in fields and fields[field] != getattr(details, field)
+        for field in _SENSITIVE_BANK_FIELDS
+    )
+
+
+async def request_add_bank_details(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, data: ArenaBankDetailsCreate
+) -> BankDetailsRequestResult:
+    await _owned_arena(db, arena_id, user)
+    fields = data.model_dump(mode="json")
+    await _stage_bank_change(user, arena_id, "add", None, fields)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.bank_details_change, user.email, name=user.full_name
+    )
+    return BankDetailsRequestResult(applied=False, delivered=issued.delivered)
+
+
+async def request_update_bank_details(
+    db: AsyncSession,
+    user: User,
+    arena_id: uuid.UUID,
+    bank_details_id: uuid.UUID,
+    data: ArenaBankDetailsUpdate,
+) -> BankDetailsRequestResult:
+    details = await _owned_bank_details(db, user, arena_id, bank_details_id)
+    fields = data.model_dump(exclude_unset=True, mode="json")
+    if not _bank_change_is_sensitive(details, fields):
+        updated = await _apply_update_bank_details(db, details, arena_id, fields)
+        return BankDetailsRequestResult(applied=True, record=updated)
+    await _stage_bank_change(user, arena_id, "update", bank_details_id, fields)
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.bank_details_change, user.email, name=user.full_name
+    )
+    return BankDetailsRequestResult(applied=False, delivered=issued.delivered)
+
+
+async def request_delete_bank_details(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, bank_details_id: uuid.UUID
+) -> BankDetailsRequestResult:
+    await _owned_bank_details(db, user, arena_id, bank_details_id)
+    await _stage_bank_change(user, arena_id, "delete", bank_details_id, {})
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.bank_details_change, user.email, name=user.full_name
+    )
+    return BankDetailsRequestResult(applied=False, delivered=issued.delivered)
+
+
+async def verify_bank_details_change(
+    db: AsyncSession, user: User, arena_id: uuid.UUID, code: str
+) -> ArenaBankDetailsResponse | None:
+    """Apply the bank-detail change staged for this owner and this arena, once the code
+    matches it. ``None`` when the change was a removal."""
+    client = redis_cache.get_redis()
+    key = _bank_pending_key(user.id, arena_id)
+    raw = await client.get(key)
+    if raw is None:
+        raise ValidationError("No bank account change is pending.")
+    pending = json.loads(raw)
+    await _owned_arena(db, arena_id, user)
+    await codes.check_code(db, user.id, OtpPurpose.bank_details_change, code, user.email)
+    await client.delete(key)
+    op = pending["op"]
+    bank_details_id = uuid.UUID(pending["bank_details_id"]) if pending["bank_details_id"] else None
+    if op == "add":
+        result = await _apply_add_bank_details(db, arena_id, pending["fields"])
+    elif op == "update":
+        assert bank_details_id is not None
+        details = await _owned_bank_details(db, user, arena_id, bank_details_id)
+        result = await _apply_update_bank_details(db, details, arena_id, pending["fields"])
+    else:
+        assert bank_details_id is not None
+        details = await _owned_bank_details(db, user, arena_id, bank_details_id)
+        await _apply_delete_bank_details(db, details, arena_id)
+        result = None
+    await audit(
+        db, f"bank_details.{op}", actor=user, target_type="arena", target_id=arena_id, commit=True
+    )
+    return result
 
 
 async def get_bank_details_for_checkout(

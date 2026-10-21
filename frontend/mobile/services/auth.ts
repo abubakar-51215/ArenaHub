@@ -142,6 +142,11 @@ export function verifyEmailChange(code: string): Promise<User> {
   return api.post<User>("/users/me/email/verify", { code });
 }
 
-export function deleteAccount(): Promise<null> {
-  return api.del<null>("/users/me");
+/** A 6-digit code goes to the account's own email; the account is deleted only once it is confirmed. */
+export function requestAccountDeletion(): Promise<null> {
+  return api.post<null>("/users/me/delete", {});
+}
+
+export function verifyAccountDeletion(code: string): Promise<null> {
+  return api.post<null>("/users/me/delete/verify", { code });
 }

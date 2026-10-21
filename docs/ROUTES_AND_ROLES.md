@@ -104,6 +104,7 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | PATCH | `/owner/arenas/{arena_id}` | owner |
 | GET | `/owner/arenas/{arena_id}/bank-details` | owner |
 | POST | `/owner/arenas/{arena_id}/bank-details` | owner |
+| POST | `/owner/arenas/{arena_id}/bank-details/verify` | owner |
 | DELETE | `/owner/arenas/{arena_id}/bank-details/{bank_details_id}` | owner |
 | PATCH | `/owner/arenas/{arena_id}/bank-details/{bank_details_id}` | owner |
 | GET | `/owner/arenas/{arena_id}/blocked-dates` | owner |
@@ -170,9 +171,10 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | POST | `/reviews/{review_id}/report` | any signed-in user |
 | GET | `/search/nlp` | nobody (public) |
 | POST | `/uploads/image` | any signed-in user |
-| DELETE | `/users/me` | any signed-in user |
 | GET | `/users/me` | any signed-in user |
 | PUT | `/users/me` | any signed-in user |
+| POST | `/users/me/delete` | any signed-in user |
+| POST | `/users/me/delete/verify` | any signed-in user |
 | POST | `/users/me/email` | any signed-in user |
 | POST | `/users/me/email/verify` | any signed-in user |
 | PUT | `/users/me/password` | any signed-in user |

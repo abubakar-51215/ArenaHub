@@ -123,6 +123,8 @@ CODE_EXPLANATION_WORDS = {
     "password_change": "Use this code to confirm your new password.",
     "email_change": "Use this code to confirm your new email address.",
     "phone_change": "Use this code to confirm your new phone number.",
+    "account_deletion": "Use this code to confirm deleting your account.",
+    "bank_details_change": "Use this code to confirm a change to your arena's bank account.",
 }
 
 # Email restyle, Layout C (password reset) — new wording.

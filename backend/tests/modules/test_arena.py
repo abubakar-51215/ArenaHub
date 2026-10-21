@@ -10,7 +10,8 @@ from datetime import date, timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.helpers import arena_payload, auth_header, make_admin, make_user
+from app.shared.otp import OtpPurpose
+from tests.helpers import arena_payload, auth_header, last_code, make_admin, make_user
 
 
 def _next_weekday(target_iso_weekday: int) -> date:
@@ -288,10 +289,26 @@ async def test_liked_list_requires_auth(client: AsyncClient) -> None:
     assert resp.status_code == 401
 
 
+async def _add_bank(
+    client: AsyncClient, h: dict, owner_user, arena_id: str, **fields: object
+) -> dict:
+    """Request + confirm adding a bank account (always needs the emailed code); returns the
+    created account's JSON."""
+    req = await client.post(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h, json=fields)
+    assert req.status_code == 200
+    assert req.json()["data"] is None  # a code was sent, not yet created
+    code = last_code(owner_user.id, OtpPurpose.bank_details_change)
+    verified = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/verify", headers=h, json={"code": code}
+    )
+    assert verified.status_code == 200
+    return verified.json()["data"]
+
+
 async def test_owner_bank_accounts_crud_and_player_checkout_read(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    owner, _ = await make_user(client, db_session, "bankowner1@example.com", "owner")
+    owner, owner_user = await make_user(client, db_session, "bankowner1@example.com", "owner")
     h = auth_header(owner)
     arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
         "data"
@@ -302,36 +319,35 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
     assert empty.status_code == 200
     assert empty.json()["data"] == []
 
-    # First account added becomes the default automatically.
-    first = await client.post(
-        f"/api/v1/owner/arenas/{arena_id}/bank-details",
-        headers=h,
-        json={
-            "label": "Meezan Main",
-            "bank_name": "Meezan Bank",
-            "account_title": "ArenaHub Sports",
-            "account_number": "1234567890123",
-            "iban": "PK36MEZN0001234567890123",
-        },
+    # First account added becomes the default automatically — but only once the emailed code
+    # that adding always requires is confirmed.
+    first_data = await _add_bank(
+        client,
+        h,
+        owner_user,
+        arena_id,
+        label="Meezan Main",
+        bank_name="Meezan Bank",
+        account_title="ArenaHub Sports",
+        account_number="1234567890123",
+        iban="PK36MEZN0001234567890123",
     )
-    assert first.status_code == 201
-    first_id = first.json()["data"]["id"]
-    assert first.json()["data"]["is_default"] is True
+    first_id = first_data["id"]
+    assert first_data["is_default"] is True
 
     # A second account, explicitly default → unseats the first as default.
-    second = await client.post(
-        f"/api/v1/owner/arenas/{arena_id}/bank-details",
-        headers=h,
-        json={
-            "label": "HBL Backup",
-            "bank_name": "HBL",
-            "account_title": "ArenaHub Sports",
-            "account_number": "9876543210",
-            "is_default": True,
-        },
+    second_data = await _add_bank(
+        client,
+        h,
+        owner_user,
+        arena_id,
+        label="HBL Backup",
+        bank_name="HBL",
+        account_title="ArenaHub Sports",
+        account_number="9876543210",
+        is_default=True,
     )
-    assert second.status_code == 201
-    second_id = second.json()["data"]["id"]
+    second_id = second_data["id"]
 
     listed = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
     accounts = {a["id"]: a for a in listed.json()["data"]}
@@ -381,8 +397,18 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
     assert checkout_accounts[0]["is_default"] is True
 
     # Deleting the default (HBL) leaves only the inactive first account, so —
-    # a default must be active — the arena is left with no default.
-    await client.delete(f"/api/v1/owner/arenas/{arena_id}/bank-details/{second_id}", headers=h)
+    # a default must be active — the arena is left with no default. Removing always needs the
+    # emailed code too.
+    del_req = await client.delete(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/{second_id}", headers=h
+    )
+    assert del_req.status_code == 200
+    assert del_req.json()["data"] is None
+    await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/bank-details/verify",
+        headers=h,
+        json={"code": last_code(owner_user.id, OtpPurpose.bank_details_change)},
+    )
     after = await client.get(f"/api/v1/owner/arenas/{arena_id}/bank-details", headers=h)
     remaining = {a["id"]: a for a in after.json()["data"]}
     assert len(remaining) == 1
@@ -402,24 +428,22 @@ async def test_owner_bank_accounts_crud_and_player_checkout_read(
 async def test_deactivating_default_bank_account_promotes_another(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    owner, _ = await make_user(client, db_session, "bankowner3@example.com", "owner")
+    owner, owner_user = await make_user(client, db_session, "bankowner3@example.com", "owner")
     h = auth_header(owner)
     arena_id = (await client.post("/api/v1/owner/arenas", headers=h, json=arena_payload())).json()[
         "data"
     ]["id"]
 
-    a = await client.post(
-        f"/api/v1/owner/arenas/{arena_id}/bank-details",
-        headers=h,
-        json={"bank_name": "Meezan", "account_title": "T", "account_number": "1"},
-    )
-    a_id = a.json()["data"]["id"]  # first -> default
-    b = await client.post(
-        f"/api/v1/owner/arenas/{arena_id}/bank-details",
-        headers=h,
-        json={"bank_name": "HBL", "account_title": "T", "account_number": "2"},
-    )
-    b_id = b.json()["data"]["id"]
+    a_data = await _add_bank(
+        client, h, owner_user, arena_id,
+        bank_name="Meezan", account_title="T", account_number="1",
+    )  # fmt: skip
+    a_id = a_data["id"]  # first -> default
+    b_data = await _add_bank(
+        client, h, owner_user, arena_id,
+        bank_name="HBL", account_title="T", account_number="2",
+    )  # fmt: skip
+    b_id = b_data["id"]
 
     # Deactivating the default (a) promotes the other active account (b).
     await client.patch(

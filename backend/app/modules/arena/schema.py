@@ -276,6 +276,10 @@ class ArenaBankDetailsResponse(BaseModel):
     is_active: bool
 
 
+class BankDetailsVerifyRequest(RequestModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
 class ArenaSearchParams(BaseModel):
     """Public arena search/filter (approved + active only)."""
 

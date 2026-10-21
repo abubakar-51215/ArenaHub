@@ -12,3 +12,5 @@ class OtpPurpose(StrEnum):
     phone_change = "phone_change"
     email_change = "email_change"
     admin_login = "admin_login"  # second sign-in step for admins
+    account_deletion = "account_deletion"
+    bank_details_change = "bank_details_change"

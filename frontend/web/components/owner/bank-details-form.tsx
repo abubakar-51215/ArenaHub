@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { AdminBadge } from "@/components/admin/ui";
+import { OtpDialog } from "@/components/auth/otp-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import {
   useBankDetails,
   useDeleteBankDetails,
   useUpdateBankDetails,
+  useVerifyBankDetailsChange,
 } from "@/hooks/useBankDetails";
 import { ApiError } from "@/services/api";
 import type { BankDetailsInput } from "@/services/bank-details";
@@ -53,10 +55,16 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
   const add = useAddBankDetails(arenaId);
   const update = useUpdateBankDetails(arenaId);
   const remove = useDeleteBankDetails(arenaId);
+  const verify = useVerifyBankDetailsChange(arenaId);
 
   const [editing, setEditing] = useState<BankDetails | "new" | null>(null);
   const [form, setForm] = useState<BankDetailsInput>(emptyForm());
   const [error, setError] = useState<string | null>(null);
+  // Adding, deleting, or editing the account number/title/bank always needs a code (a pure
+  // default/active switch applies at once, see useUpdateBankDetails). `resend` re-sends the
+  // exact same request, which both re-sends the email and re-stages the same change.
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [resend, setResend] = useState<() => Promise<unknown>>(() => () => Promise.resolve());
 
   function openNew() {
     setForm(emptyForm());
@@ -89,13 +97,42 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
     try {
       if (editing === "new") {
         await add.mutateAsync(payload);
+        // adding is always gated: a null result always means a code was sent
+        setResend(() => () => add.mutateAsync(payload));
+        setOtpOpen(true);
       } else if (editing) {
-        await update.mutateAsync({ id: editing.id, input: payload });
+        const id = editing.id;
+        const result = await update.mutateAsync({ id, input: payload });
+        if (result === null) {
+          // the account number, title or bank changed: a code was sent
+          setResend(() => () => update.mutateAsync({ id, input: payload }));
+          setOtpOpen(true);
+        } else {
+          setEditing(null);
+        }
       }
-      setEditing(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not save the bank account.");
     }
+  }
+
+  async function onDelete(a: BankDetails) {
+    if (!confirm(`Delete ${a.label || a.bank_name}?`)) return;
+    setError(null);
+    try {
+      await remove.mutateAsync(a.id);
+      // removing is always gated: success here always means a code was sent, not yet removed
+      setResend(() => () => remove.mutateAsync(a.id));
+      setOtpOpen(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not remove the bank account.");
+    }
+  }
+
+  async function onVerify(code: string) {
+    await verify.mutateAsync(code);
+    setOtpOpen(false);
+    setEditing(null);
   }
 
   if (isLoading) {
@@ -153,9 +190,8 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => {
-                    if (confirm(`Delete ${a.label || a.bank_name}?`)) remove.mutate(a.id);
-                  }}
+                  disabled={remove.isPending}
+                  onClick={() => onDelete(a)}
                 >
                   Delete
                 </Button>
@@ -274,6 +310,15 @@ export function BankDetailsForm({ arenaId }: { arenaId: string }) {
           </Button>
         </div>
       )}
+
+      <OtpDialog
+        open={otpOpen}
+        onOpenChange={setOtpOpen}
+        title="Confirm this bank account change"
+        description="We sent a 6-digit code to your account email. It works for 10 minutes."
+        onVerify={onVerify}
+        onResend={resend}
+      />
     </div>
   );
 }

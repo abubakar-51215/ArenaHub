@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useCodeStep } from '@/components/g6/code-step';
 import { GroupLabel, MenuCard, MenuRow, Switch } from '@/components/g6/profile-ui';
 import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { IconExtra } from '@/components/ui/icon-extra';
@@ -12,13 +13,15 @@ import { Text } from '@/components/ui/text';
 import { showToast } from '@/components/ui/toast';
 import { Colors } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
-import { deleteAccount, updateProfile } from '@/services/auth';
+import { requestAccountDeletion, updateProfile, verifyAccountDeletion } from '@/services/auth';
 import { useAuthStore } from '@/store/auth';
 
 // Settings, from arena-hub-player-app-account.html (frames 10 and 11). The four switches are real stored preferences:
 // notification_preferences = { push: { booking, reminder, payment, match }, email: { … } } (a missing key means on), and the
 // switch sets push and email for its category together. Account notices (a suspension, say) have no switch and always go
-// out. Delete account is a red sheet; the server refuses while there is an upcoming or unpaid booking and says so.
+// out. Delete account is a red sheet; the server refuses while there is an upcoming or unpaid booking and says so. A
+// confirmed delete only sends a 6-digit code to the account's own email — the second phase of the same sheet (reusing
+// the same code-entry step as change-phone/change-email) asks for it before the account is actually deleted.
 const SWITCHES = [
   { key: 'booking', title: 'Booking updates', sub: 'Confirmed, cancelled, moved' },
   { key: 'reminder', title: 'Reminders', sub: 'One day and one hour before' },
@@ -35,7 +38,7 @@ export default function SettingsScreen() {
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clear);
   const saving = useRef<Set<Category>>(new Set());
-  const [sheet, setSheet] = useState(false);
+  const [phase, setPhase] = useState<'closed' | 'confirm' | 'code'>('closed');
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
 
@@ -61,20 +64,28 @@ export default function SettingsScreen() {
     }
   }
 
-  async function doDelete() {
+  async function requestDelete() {
     if (busy) return;
     setBusy(true);
     try {
-      await deleteAccount();
-      clear();
-      setSheet(false);
-      router.replace({ pathname: '/(auth)/login', params: { notice: 'Your account was deleted.' } } as unknown as Href);
+      await requestAccountDeletion();
+      setPhase('code');
     } catch (err) {
-      setRefusal(err instanceof ApiError ? err.message : 'Could not delete your account. Please try again.');
+      setRefusal(err instanceof ApiError ? err.message : 'Could not send the code. Please try again.');
     } finally {
       setBusy(false);
     }
   }
+
+  const deleteStep = useCodeStep({
+    onVerify: async (code) => {
+      await verifyAccountDeletion(code);
+      clear();
+      setPhase('closed');
+      router.replace({ pathname: '/(auth)/login', params: { notice: 'Your account was deleted.' } } as unknown as Href);
+    },
+    onResend: () => requestAccountDeletion().then(() => undefined),
+  });
 
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
@@ -103,7 +114,7 @@ export default function SettingsScreen() {
             tone="off"
             onPress={() => {
               setRefusal(null);
-              setSheet(true);
+              setPhase('confirm');
             }}
             last
           />
@@ -111,15 +122,24 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <ConfirmSheet
-        visible={sheet}
-        title="Delete your account?"
-        message={refusal ?? 'Your profile and sign-in will be removed. Upcoming bookings should be cancelled first. This cannot be undone.'}
-        confirmLabel="Yes, delete my account"
-        loading={busy}
+        visible={phase !== 'closed'}
+        title={phase === 'code' ? 'Enter the code' : 'Delete your account?'}
+        message={
+          phase === 'code'
+            ? 'We sent a 6-digit code to your email. Enter it to permanently delete your account.'
+            : (refusal ?? 'Your profile and sign-in will be removed. Upcoming bookings should be cancelled first. This cannot be undone.')
+        }
+        confirmLabel={phase === 'code' ? 'Confirm' : 'Yes, delete my account'}
+        loading={phase === 'code' ? deleteStep.loading : busy}
+        confirmDisabled={phase === 'code' ? !deleteStep.ready : false}
         stacked
-        onConfirm={doDelete}
-        onCancel={() => !busy && setSheet(false)}
-      />
+        onConfirm={phase === 'code' ? deleteStep.confirm : requestDelete}
+        onCancel={() => {
+          if (busy || deleteStep.loading) return;
+          setPhase('closed');
+        }}>
+        {phase === 'code' ? deleteStep.view : null}
+      </ConfirmSheet>
     </SafeAreaView>
   );
 }

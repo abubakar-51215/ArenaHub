@@ -13,7 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ServiceUnavailableError, ValidationError
 from app.database.session import get_db
 from app.modules.arena import service
 from app.modules.arena.model import ArenaCity
@@ -22,12 +22,13 @@ from app.modules.arena.schema import (
     ArenaBankDetailsUpdate,
     ArenaCreate,
     ArenaUpdate,
+    BankDetailsVerifyRequest,
     BlockedDateCreate,
     DiscountCodeCreate,
     DiscountCodeUpdate,
 )
 from app.modules.user.model import User
-from app.shared import abuse
+from app.shared import abuse, codes
 from app.shared.auth import get_current_user, require_role
 from app.shared.pagination import PaginationParams, pagination_params
 from app.shared.response import success
@@ -311,8 +312,7 @@ async def list_owner_bank_details(
 
 @owner_router.post(
     "/{arena_id}/bank-details",
-    status_code=status.HTTP_201_CREATED,
-    summary="Add a bank account to my arena",
+    summary="Request adding a bank account to my arena (sends OTP; always needed for a new one)",
 )
 async def add_bank_details(
     arena_id: uuid.UUID,
@@ -320,12 +320,16 @@ async def add_bank_details(
     user: User = Depends(_owner),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    saved = await service.add_bank_details(db, user, arena_id, data)
-    return success(data=saved, message="Bank account added.")
+    result = await service.request_add_bank_details(db, user, arena_id, data)
+    if not result.delivered:
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(user.email)}.")
 
 
 @owner_router.patch(
-    "/{arena_id}/bank-details/{bank_details_id}", summary="Update one of my arena's bank accounts"
+    "/{arena_id}/bank-details/{bank_details_id}",
+    summary="Update one of my arena's bank accounts (OTP needed only if the account number, "
+    "name or bank changes)",
 )
 async def update_bank_details(
     arena_id: uuid.UUID,
@@ -334,12 +338,17 @@ async def update_bank_details(
     user: User = Depends(_owner),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    saved = await service.update_bank_details(db, user, arena_id, bank_details_id, data)
-    return success(data=saved, message="Bank account updated.")
+    result = await service.request_update_bank_details(db, user, arena_id, bank_details_id, data)
+    if result.applied:
+        return success(data=result.record, message="Bank account updated.")
+    if not result.delivered:
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(user.email)}.")
 
 
 @owner_router.delete(
-    "/{arena_id}/bank-details/{bank_details_id}", summary="Remove one of my arena's bank accounts"
+    "/{arena_id}/bank-details/{bank_details_id}",
+    summary="Request removing one of my arena's bank accounts (sends OTP)",
 )
 async def delete_bank_details(
     arena_id: uuid.UUID,
@@ -347,5 +356,21 @@ async def delete_bank_details(
     user: User = Depends(_owner),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    await service.delete_bank_details(db, user, arena_id, bank_details_id)
-    return success(message="Bank account removed.")
+    result = await service.request_delete_bank_details(db, user, arena_id, bank_details_id)
+    if not result.delivered:
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(user.email)}.")
+
+
+@owner_router.post(
+    "/{arena_id}/bank-details/verify",
+    summary="Confirm a pending bank account change with its emailed code",
+)
+async def verify_bank_details_change(
+    arena_id: uuid.UUID,
+    data: BankDetailsVerifyRequest,
+    user: User = Depends(_owner),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    result = await service.verify_bank_details_change(db, user, arena_id, data.code)
+    return success(data=result, message="Bank account change confirmed.")

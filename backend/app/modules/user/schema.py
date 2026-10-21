@@ -65,3 +65,7 @@ class EmailChangeRequest(RequestModel):
 
 class EmailChangeVerifyRequest(RequestModel):
     code: str = Field(min_length=6, max_length=6)
+
+
+class AccountDeletionVerifyRequest(RequestModel):
+    code: str = Field(min_length=6, max_length=6)

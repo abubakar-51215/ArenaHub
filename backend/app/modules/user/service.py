@@ -20,6 +20,7 @@ from app.modules.auth import repository as auth_repo
 from app.modules.auth.service import enforce_password_reuse
 from app.modules.user.model import User
 from app.modules.user.schema import (
+    AccountDeletionVerifyRequest,
     ChangePasswordRequest,
     ChangePasswordVerifyRequest,
     EmailChangeRequest,
@@ -99,6 +100,23 @@ async def verify_password_change(
     subject, text, html = password_changed_email(datetime.now(UTC))
     with contextlib.suppress(EmailSendError):  # logged with its reason; the change stands
         await send_email(user.email, subject, text, html=html, kind="password_changed")
+
+
+async def request_account_deletion(db: AsyncSession, user: User) -> bool:
+    """Email a code to the account's own address; the account is deleted only once it is
+    confirmed with ``verify_account_deletion``. Returns False when the email could not be sent."""
+    issued = await codes.issue_code(
+        db, user.id, OtpPurpose.account_deletion, user.email, name=user.full_name
+    )
+    return issued.delivered
+
+
+async def verify_account_deletion(
+    db: AsyncSession, user: User, data: AccountDeletionVerifyRequest
+) -> None:
+    await codes.check_code(db, user.id, OtpPurpose.account_deletion, data.code, user.email)
+    await audit(db, "account.delete", actor=user, target_type="user", target_id=user.id)
+    await delete_account(db, user)
 
 
 async def delete_account(db: AsyncSession, user: User) -> None:

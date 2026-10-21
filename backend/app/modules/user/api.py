@@ -14,6 +14,7 @@ from app.database.session import get_db
 from app.modules.user import service
 from app.modules.user.model import User
 from app.modules.user.schema import (
+    AccountDeletionVerifyRequest,
     ChangePasswordRequest,
     ChangePasswordVerifyRequest,
     EmailChangeRequest,
@@ -65,12 +66,23 @@ async def verify_password_change(
     return success(message="Password changed. Please log in again.")
 
 
-@router.delete("/me", summary="Delete (soft) own account")
-async def delete_me(
+@router.post("/me/delete", summary="Request account deletion (sends OTP to your own email)")
+async def request_account_deletion(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    await service.delete_account(db, user)
+    if not await service.request_account_deletion(db, user):
+        raise ServiceUnavailableError(codes.NOT_SENT_MESSAGE)
+    return success(message=f"We sent a 6-digit code to {codes.mask_address(user.email)}.")
+
+
+@router.post("/me/delete/verify", summary="Confirm account deletion (soft delete)")
+async def verify_account_deletion(
+    data: AccountDeletionVerifyRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    await service.verify_account_deletion(db, user, data)
     return success(message="Account scheduled for deletion.")
 
 
