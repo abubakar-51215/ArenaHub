@@ -144,8 +144,10 @@ async def request_phone_change(db: AsyncSession, user: User, data: PhoneChangeRe
 
     user.pending_phone = data.new_phone
     await db.commit()
+    # the code is emailed to the account's own address, not "sent" to the new phone number:
+    # there is no SMS provider (deviation #7), and a phone number has no "@" to deliver to.
     issued = await codes.issue_code(
-        db, user.id, OtpPurpose.phone_change, data.new_phone, name=user.full_name
+        db, user.id, OtpPurpose.phone_change, user.email, name=user.full_name
     )
     return issued.delivered
 
@@ -155,7 +157,7 @@ async def verify_phone_change(
 ) -> UserPublic:
     if user.pending_phone is None:
         raise ValidationError("No phone change is pending.")
-    await codes.check_code(db, user.id, OtpPurpose.phone_change, data.code, user.pending_phone)
+    await codes.check_code(db, user.id, OtpPurpose.phone_change, data.code, user.email)
     user.phone = user.pending_phone
     user.pending_phone = None
     await audit(db, "phone.change", actor=user, target_type="user", target_id=user.id)

@@ -89,6 +89,10 @@ async def test_phone_change_by_code(client: AsyncClient, db_session: AsyncSessio
         "/api/v1/users/me/phone/verify", headers=auth_header(tokens), json={"code": "000000"}
     )
     assert wrong.status_code == 422
+    # the code is emailed to the account's own address, not "sent" to the new phone number
+    # (there is no SMS provider): the stored row's channel must say so.
+    otp = await repo.get_latest_otp(db_session, user.id, OtpPurpose.phone_change, for_update=False)
+    assert otp is not None and otp.channel == "email"
     done = await client.post(
         "/api/v1/users/me/phone/verify", headers=auth_header(tokens), json={"code": code}
     )
