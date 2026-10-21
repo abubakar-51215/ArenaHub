@@ -67,11 +67,22 @@ ask.
      it's only entered by the bank_transfer path.
    - Auto-cancel-after-24hr and refund policies apply the same way to
      both paths.
-3. AI MODULE = NLP query interface + recommendations ONLY (doc 12
-   as written). The "chatbot" experience is the NLP search itself:
-   player types natural language, system parses (keyword extraction
-   per doc 12) and executes the search/filter. No separate FAQ
-   knowledge-base bot. No deep learning, no external ML service.
+3. AI MODULE = NLP query interface + recommendations + a rule-based
+   support assistant (doc 12 as written, extended). The "chatbot"
+   experience is the NLP search itself: player types natural language,
+   system parses (keyword extraction per doc 12) and executes the
+   search/filter. SMART SEARCH — rule-based language understanding over
+   that NLP query interface — is accepted (it was already allowed by this
+   deviation as written). ALSO accepted: a RULE-BASED SUPPORT ASSISTANT
+   that answers common questions with fixed, pre-written sentences filled
+   in with the player's OWN booking/payment/refund data
+   (`backend/app/modules/assistant/`, `/assistant/ask`; mobile
+   `app/support/assistant.tsx`, `app/support/faq.tsx`;
+   `docs/ASSISTANT_ANSWERS.md`). The boundary still holds: no deep
+   learning, no external ML service, and NO general FAQ knowledge-base
+   retrieval bot — the assistant only fills fixed templates with the
+   user's own data, never open-ended retrieval and never generated novel
+   text. See ADR-010.
 4. MOBILE = React Native WITH EXPO (TypeScript), EAS builds later.
    Docs say React Native; Expo is the chosen toolchain.
 5. STATE MANAGEMENT = Zustand (client state) + TanStack Query
