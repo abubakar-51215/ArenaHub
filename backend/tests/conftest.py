@@ -51,6 +51,35 @@ os.environ["DATABASE_URL"] = _test_database_url()
 os.environ.setdefault("JAZZCASH_WEBHOOK_SECRET", "test-jazzcash-webhook-secret")
 os.environ.setdefault("EASYPAISA_WEBHOOK_SECRET", "test-easypaisa-webhook-secret")
 
+# Hermetic settings: a developer's backend/.env can carry real Stripe, Cloudinary, Sentry and
+# SMTP credentials (needed to run the app by hand), but a test must never be able to see — let
+# alone reach — a real service, however a test happens to ask for "unset". Two problems with just
+# leaving it to backend/.env: (1) Settings' own `env_ignore_empty=True` treats an explicitly
+# emptied variable as "not set" and falls through to a real, non-empty value sitting in the .env
+# file instead of to the field's own default (this silently broke
+# test_each_unsafe_setting_stops_the_start[CLOUDINARY_URL] the moment a real CLOUDINARY_URL was
+# added to backend/.env); (2) a credential a test never touches at all (STRIPE_SECRET_KEY, say)
+# would otherwise come from the .env file too. So Settings is told to never read that file during
+# a test run at all — only explicit environment variables (set here, or by `monkeypatch.setenv`
+# in an individual test) and each field's own Python default ever apply.
+from app.core.config import Settings  # noqa: E402
+
+Settings.model_config["env_file"] = None
+for _unset in (
+    "EMAIL_HOST",
+    "EMAIL_USERNAME",
+    "EMAIL_PASSWORD",
+    "EMAIL_SEND_IN_DEV",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "CLOUDINARY_URL",
+    "SENTRY_DSN",
+    "GOOGLE_CLIENT_IDS",
+):
+    os.environ.pop(_unset, None)
+os.environ["ENVIRONMENT"] = "dev"
+os.environ["PAYMENT_MODE"] = "auto"
+
 from collections.abc import AsyncIterator, Iterator  # noqa: E402
 
 import fakeredis.aioredis  # noqa: E402

@@ -105,8 +105,10 @@ class StripeProvider:
             raise ValidationError("Invalid Stripe webhook signature.") from exc
 
         # event["data"]["object"] is a StripeObject, not a dict — it supports [] but not .get(),
-        # so this converts it once up front rather than changing every .get() call below.
-        session = event["data"]["object"].to_dict()
+        # so this converts it once up front rather than changing every .get() call below (already
+        # a plain dict when a test fakes the event, where it needs no converting).
+        raw_object = event["data"]["object"]
+        session = raw_object.to_dict() if hasattr(raw_object, "to_dict") else raw_object
         kind = event["type"]
         paid_now = kind == "checkout.session.completed" and session.get("payment_status") == "paid"
         if paid_now or kind == "checkout.session.async_payment_succeeded":
