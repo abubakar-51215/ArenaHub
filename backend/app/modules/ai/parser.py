@@ -15,8 +15,9 @@ What it understands:
   (best rated), premium / expensive (most expensive first); when two clash, the first one
   written wins;
 * near me (sort by distance; needs the phone's position);
-* times in Asia/Karachi: today / aaj, tonight, tomorrow / kal, this weekend, morning / subah,
-  afternoon, evening / shaam, night / raat, late night, after 6pm, before 5pm, at 8, 8:30 pm.
+* times in Asia/Karachi: today / aaj, tonight, tomorrow / kal, this weekend, a named weekday
+  (Monday .. Sunday - the next one to come, today itself if today already is that day), morning /
+  subah, afternoon, evening / shaam, night / raat, late night, after 6pm, before 5pm, at 8, 8:30 pm.
 Filler words (in, at, for, a, me, find, show, arena, ground, ...) are ignored. Nothing
 understood: the words are searched as an arena name instead (the screen says so).
 Input: at most 120 characters are read; emoji and Urdu script are simply not understood (never
@@ -264,6 +265,17 @@ def _clock_label(t: time) -> str:
     return f"{h}:{t.minute:02d} {suffix}" if t.minute else f"{h} {suffix}"
 
 
+_WEEKDAYS = [
+    ("monday", 0),
+    ("tuesday", 1),
+    ("wednesday", 2),
+    ("thursday", 3),
+    ("friday", 4),
+    ("saturday", 5),
+    ("sunday", 6),
+]
+
+
 def _time(text: str, now: datetime) -> tuple[TimeWindow | None, str]:
     today = now.date()
     day_first = day_last = None
@@ -277,6 +289,7 @@ def _time(text: str, now: datetime) -> tuple[TimeWindow | None, str]:
         ("aaj", "today"),
         ("tomorrow", "tomorrow"),
         ("kal", "tomorrow"),
+        *[(name, f"weekday:{n}") for name, n in _WEEKDAYS],
     ]:
         found, text2, _ = _take(text, phrase)
         if not found:
@@ -296,6 +309,18 @@ def _time(text: str, now: datetime) -> tuple[TimeWindow | None, str]:
         elif kind == "tomorrow":
             day_first = day_last = today + timedelta(days=1)
             day_label = "Tomorrow"
+        elif kind.startswith("weekday:"):
+            # a named weekday ("Saturday evening"): the next time that day comes round,
+            # today itself if today already is that day (same rule "this weekend" uses).
+            target = int(kind.split(":")[1])
+            offset = (target - today.weekday()) % 7
+            day_first = day_last = today + timedelta(days=offset)
+            if offset == 0:
+                day_label = "Today"
+            elif offset == 1:
+                day_label = "Tomorrow"
+            else:
+                day_label = day_first.strftime("%A")
         else:
             day_first = day_last = today
             day_label = "Today"
