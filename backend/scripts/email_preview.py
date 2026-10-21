@@ -27,7 +27,7 @@ from app.integrations.email.templates import (
 OUT_DIR = Path(__file__).resolve().parent / ".email_preview"
 SAMPLE_WHEN = datetime(2026, 10, 16, 15, 30, tzinfo=UTC)  # 8:30 PM in Pakistan
 SAMPLE_WHEN_TEXT = "Fri, 16-Oct-2026 at 08:30:00 PM"
-SUPPORT_EMAIL = "support.arenahub@gmail.com"
+SUPPORT_EMAIL = "arenahub.support@gmail.com"
 
 
 def _write(name: str, html: str) -> None:

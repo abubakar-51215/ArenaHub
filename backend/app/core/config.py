@@ -173,7 +173,7 @@ class Settings(BaseSettings):
     )
     # The support address named in the login-alert email (and nowhere else). Temporary,
     # chosen by the owner; see docs/BEFORE_GOING_LIVE.md.
-    support_email: str = Field(default="support.arenahub@gmail.com", alias="SUPPORT_EMAIL")
+    support_email: str = Field(default="arenahub.support@gmail.com", alias="SUPPORT_EMAIL")
     # Emergency off switch for the player login-alert email (owners always get theirs). ON by
     # default; set to 0/false only to stop player alerts in a hurry.
     player_login_alert_enabled: bool = Field(default=True, alias="PLAYER_LOGIN_ALERT_ENABLED")

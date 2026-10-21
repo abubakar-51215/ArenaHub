@@ -1,9 +1,16 @@
 """Delete account: an emailed code is always required; refused while the player has an
 upcoming or unpaid booking, allowed otherwise."""
 
+from datetime import timedelta
+from typing import Any
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.integrations.email.smtp import EmailSendError
+from app.modules.auth import repository as repo
+from app.shared import codes
 from app.shared.otp import OtpPurpose
 from tests.helpers import auth_header, last_code, make_user
 from tests.modules.test_match import _arena_and_court, _book
@@ -99,3 +106,71 @@ async def test_delete_another_users_code_is_refused(
     code_a = last_code(user_a.id, OtpPurpose.account_deletion)
     resp = await client.post(VERIFY, headers=auth_header(player_b), json={"code": code_a})
     assert resp.status_code == 422
+
+
+async def test_delete_expired_code_is_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, user = await make_user(client, db_session, "dplayer7@example.com", "player")
+    await _request_code(client, player)
+    code = last_code(user.id, OtpPurpose.account_deletion)
+    row = await repo.get_latest_otp(db_session, user.id, OtpPurpose.account_deletion)
+    assert row is not None
+    row.expires_at -= timedelta(minutes=11)
+    await db_session.commit()
+    resp = await client.post(VERIFY, headers=auth_header(player), json={"code": code})
+    assert resp.status_code == 422
+    assert resp.json()["message"] == codes.WRONG_CODE_MESSAGE
+
+
+async def test_delete_code_cannot_be_used_twice(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, user = await make_user(client, db_session, "dplayer8@example.com", "player")
+    await _request_code(client, player)
+    code = last_code(user.id, OtpPurpose.account_deletion)
+    first = await client.post(VERIFY, headers=auth_header(player), json={"code": code})
+    assert first.status_code == 200
+    second = await client.post(VERIFY, headers=auth_header(player), json={"code": code})
+    assert second.status_code == 401  # the session from the first (successful) delete is dead
+
+
+async def test_delete_five_wrong_tries_locks_the_code(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, user = await make_user(client, db_session, "dplayer9@example.com", "player")
+    await _request_code(client, player)
+    real = last_code(user.id, OtpPurpose.account_deletion)
+    wrong = "000000" if real != "000000" else "111111"
+    for _ in range(4):
+        await client.post(VERIFY, headers=auth_header(player), json={"code": wrong})
+    fifth = await client.post(VERIFY, headers=auth_header(player), json={"code": wrong})
+    assert fifth.json()["message"] == "Too many wrong tries. Ask for a new code."
+    locked = await client.post(VERIFY, headers=auth_header(player), json={"code": real})
+    assert locked.json()["message"] == "Too many wrong tries. Ask for a new code."
+
+
+async def test_delete_a_failed_send_is_reported_and_resend_works(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mirrors test_bank_details_otp.py: the sender is swapped out, so no real address —
+    reserved or otherwise — is ever actually contacted."""
+    player, user = await make_user(client, db_session, "dplayer10@example.com", "player")
+
+    async def broken(*args: Any, **kwargs: Any) -> None:
+        raise EmailSendError("cannot connect or timed out", "Check EMAIL_HOST.", temporary=True)
+
+    monkeypatch.setattr(codes, "send_email", broken)
+    req = await client.post(REQUEST, headers=auth_header(player))
+    assert req.status_code == 503
+    assert req.json()["message"] == codes.NOT_SENT_MESSAGE
+
+    async def works(*args: Any, **kwargs: Any) -> bool:
+        return True
+
+    monkeypatch.setattr(codes, "send_email", works)
+    retry = await client.post(REQUEST, headers=auth_header(player))
+    assert retry.status_code == 200  # a failed send does not count against the 60 s wait
+    code = last_code(user.id, OtpPurpose.account_deletion)
+    done = await client.post(VERIFY, headers=auth_header(player), json={"code": code})
+    assert done.status_code == 200

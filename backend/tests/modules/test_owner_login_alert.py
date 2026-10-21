@@ -319,18 +319,20 @@ def test_the_html_escapes_the_name_and_has_one_mailto_and_nothing_remote() -> No
 
 
 def test_the_support_address_comes_from_the_setting(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert get_settings().support_email == "support.arenahub@gmail.com"
+    """Whatever SUPPORT_EMAIL is in the real environment (it is read from backend/.env, not
+    hardcoded here), the email shows exactly that address, and changing the setting changes
+    the email — nothing here assumes a specific default value."""
+    original = get_settings().support_email
     first = owner_login_alert_email(
-        "A", "a@example.test", "when", "Password", "Not available", "Not available",
-        get_settings().support_email,
+        "A", "a@example.test", "when", "Password", "Not available", "Not available", original,
     )  # fmt: skip
     monkeypatch.setattr(get_settings(), "support_email", "changed@example.test")
     second = owner_login_alert_email(
         "A", "a@example.test", "when", "Password", "Not available", "Not available",
         get_settings().support_email,
     )  # fmt: skip
-    assert "support.arenahub@gmail.com" in first[1]
-    assert "changed@example.test" in second[1] and "support.arenahub@gmail.com" not in second[1]
+    assert original in first[1]
+    assert "changed@example.test" in second[1] and original not in second[1]
 
 
 def test_both_role_variants_show_the_right_role_and_account_row() -> None:
