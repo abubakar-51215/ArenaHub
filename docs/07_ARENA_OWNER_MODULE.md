@@ -114,6 +114,8 @@ The Arena Owner Module allows facility owners to register and manage sports aren
 
 ## 8. Booking Approval
 
+> Note: this owner approval step applies only to bank-transfer bookings; card/JazzCash/EasyPaisa auto-confirm via webhook and skip straight to Confirmed. See PROJECT_GUIDELINES.md deviation #2b and ADR-008.
+
 ### Flow
 1. Player completes payment (full or advance)
 2. Owner receives push notification + in-dashboard alert

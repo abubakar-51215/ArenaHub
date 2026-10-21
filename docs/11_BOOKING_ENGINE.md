@@ -25,6 +25,8 @@ CONFIRMED → (booking time passes) → COMPLETED
           → (force majeure) → CANCELLED (admin full refund)
 ```
 
+> Note: the `PENDING_APPROVAL → (owner approves) → CONFIRMED` path is bank-transfer only; card/JazzCash/EasyPaisa skip straight to CONFIRMED via gateway webhook. See PROJECT_GUIDELINES.md deviation #2b and ADR-008.
+
 ---
 
 ## 3. Distributed Locking (Redis)
@@ -128,6 +130,8 @@ def create_booking(player_id, court_id, date, slot_id, payment_method, payment_t
 ---
 
 ## 6. Owner Approval Flow
+
+> Note: this flow (and the `pending_approval` step in the pseudocode above) is bank-transfer only; card/JazzCash/EasyPaisa skip straight to CONFIRMED via gateway webhook, with no owner step. See PROJECT_GUIDELINES.md deviation #2b and ADR-008.
 
 1. After payment → booking status = `pending_approval`
 2. Player sees: "Waiting for Approval"

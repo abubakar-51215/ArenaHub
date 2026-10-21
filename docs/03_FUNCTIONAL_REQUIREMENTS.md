@@ -123,6 +123,7 @@
 
 ### FR-P-16: Push Notifications
 - The system shall notify the player when: booking is confirmed, payment is received, booking is approved by owner, booking reminder, booking is cancelled, refund is processed.
+  > Note: "approved by owner" applies only to bank-transfer bookings; card/JazzCash/EasyPaisa auto-confirm via webhook. See PROJECT_GUIDELINES.md deviation #2b and ADR-008.
 - Notifications shall be delivered via Firebase Cloud Messaging.
 - The player shall be able to view notification history in-app.
 
