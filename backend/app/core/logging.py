@@ -100,5 +100,13 @@ def configure_logging() -> None:
             logging.getLevelName(settings.log_level.upper())
         ),
         logger_factory=structlog.PrintLoggerFactory(),
-        cache_logger_on_first_use=True,
+        # Must be False: a cached logger freezes the processor chain on its first-ever log
+        # call for the lifetime of the process. structlog.testing.capture_logs() works by
+        # swapping in a capturing processor for the duration of a `with` block — but any
+        # module-level `log = structlog.get_logger()` that already fired a log line earlier
+        # in the test run (true for almost every module by the time a given test runs in
+        # the full suite) would keep using its frozen, pre-capture chain and print straight
+        # to stdout instead, so the test's captured list stays empty. Only ever caught this
+        # file-by-file, never alone, which is exactly that symptom.
+        cache_logger_on_first_use=False,
     )
