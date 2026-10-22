@@ -54,6 +54,46 @@ async def test_pass_route_returns_arena_court_date_time_status_and_qr(
     # the response itself is the display data, not the QR's own encoded bytes.
 
 
+async def test_pass_qr_is_generated_inline_never_a_public_file(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A saved QR file (even at an unguessable path) is a public address reachable by
+    anyone who ever gets the link. The pass route must build the image fresh from the
+    token on each call instead of handing back a stored file's URL."""
+    player, group, payment, court_id, monday = await _paid_group(client, db_session, "passqr")
+    booking_id = group["bookings"][0]["id"]
+
+    got = await client.get(f"/api/v1/bookings/{booking_id}/pass", headers=auth_header(player))
+    assert got.status_code == 200, got.text
+    qr = got.json()["data"]["qr_code_url"]
+    assert qr.startswith("data:image/png;base64,")
+    assert "/uploads/" not in qr and "cloudinary" not in qr
+
+    booking = await db_session.get(Booking, booking_id)
+    assert booking is not None
+    assert booking.qr_code_url is None  # confirmation no longer writes a public file
+    assert booking.pass_token is not None
+
+
+async def test_pass_route_shows_the_whole_groups_time_range(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A two-hour group is one pass: the time shown spans the earliest start to the
+    latest end across the group, not just the one booking row the id happens to name."""
+    player, group, payment, court_id, monday = await _paid_group(
+        client, db_session, "passrange", slot_count=2
+    )
+    bookings = sorted(group["bookings"], key=lambda b: b["start_time"])
+    assert bookings[0]["start_time"] != bookings[-1]["end_time"]  # genuinely two slots
+
+    for booking_id in (bookings[0]["id"], bookings[-1]["id"]):
+        got = await client.get(f"/api/v1/bookings/{booking_id}/pass", headers=auth_header(player))
+        assert got.status_code == 200, got.text
+        data = got.json()["data"]
+        assert data["start_time"] == bookings[0]["start_time"]
+        assert data["end_time"] == bookings[-1]["end_time"]
+
+
 async def test_pass_route_refuses_a_pending_booking(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

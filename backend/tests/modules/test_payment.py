@@ -130,8 +130,9 @@ async def test_card_payment_confirms_booking_via_simulate_confirm(
     my_bookings = await client.get("/api/v1/bookings", headers=auth_header(player))
     booked = my_bookings.json()["data"]["items"][0]
     assert booked["status"] == "confirmed"
-    assert booked["qr_code_url"] is not None
-    assert booked["qr_code_url"].startswith("/uploads/misc/")
+    # the QR is no longer written to a public address at confirmation time; it is
+    # built in memory, only when the pass route is actually requested (test_booking_pass.py)
+    assert booked["qr_code_url"] is None
 
 
 async def test_card_payment_failure_cancels_booking(
@@ -227,7 +228,7 @@ async def test_bank_transfer_receipt_and_owner_approval(
     my_bookings = await client.get("/api/v1/bookings", headers=auth_header(player))
     booked = my_bookings.json()["data"]["items"][0]
     assert booked["status"] == "confirmed"
-    assert booked["qr_code_url"] is not None
+    assert booked["qr_code_url"] is None
 
 
 async def test_bank_transfer_owner_rejection_releases_slot(

@@ -62,7 +62,9 @@ class BookingResponse(BaseModel):
 class BookingPassResponse(BaseModel):
     """What the player's "View pass" screen shows: enough to display the pass and the
     QR, nothing about anyone else's booking. ``qr_code_url`` carries a signed token,
-    never the raw booking id (``shared.qr``)."""
+    never the raw booking id (``shared.qr``). ``start_time``/``end_time`` span the
+    whole booking group (earliest start to latest end), not just one hour slot,
+    since a group booked across several hours is one pass, not one per hour."""
 
     booking_id: uuid.UUID
     booking_code: str

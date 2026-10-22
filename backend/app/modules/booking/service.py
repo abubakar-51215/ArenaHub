@@ -42,6 +42,7 @@ from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams
 from app.shared.pricing import apply_discount
+from app.shared.qr import generate_booking_qr_data_uri
 from app.shared.refunds import (
     describe_refund_policy,
     free_cancel_cutoff,
@@ -401,24 +402,32 @@ async def get_booking_pass(
 ) -> BookingPassResponse:
     """The "View pass" data: only for the player who owns this booking, and only once
     it is confirmed — never for a pending, cancelled or someone else's booking. A
-    booking that isn't the caller's own answers exactly like one that doesn't exist."""
+    booking that isn't the caller's own answers exactly like one that doesn't exist.
+
+    A booking group spanning several hours is one pass: the time range shown is the
+    earliest start to the latest end across every booking in the group, not just the
+    one row ``booking_id`` happens to name."""
     booking = await repo.get_booking(db, booking_id)
     if booking is None or user.role != UserRole.player or booking.player_id != user.id:
         raise NotFoundError("Booking not found.")
     if booking.status != BookingStatus.confirmed:
         raise ValidationError("This booking has no pass yet.")
+    group = await repo.list_group(db, booking.booking_group_id)
     arena = await arena_repo.get_arena(db, booking.arena_id)
     court = await court_repo.get_court(db, booking.court_id)
+    qr_code_url = booking.qr_code_url  # legacy rows: a previously saved public URL
+    if qr_code_url is None and booking.pass_token is not None:
+        qr_code_url = generate_booking_qr_data_uri(booking.pass_token)
     return BookingPassResponse(
         booking_id=booking.id,
         booking_code=booking_code_for(booking.booking_group_id),
         arena_name=arena.name if arena else "",
         court_name=court.name if court else "",
         booking_date=booking.booking_date,
-        start_time=booking.start_time,
-        end_time=booking.end_time,
+        start_time=min(b.start_time for b in group),
+        end_time=max(b.end_time for b in group),
         status=booking.status,
-        qr_code_url=booking.qr_code_url,
+        qr_code_url=qr_code_url,
     )
 
 
