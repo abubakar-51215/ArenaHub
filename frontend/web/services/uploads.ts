@@ -68,11 +68,18 @@ function attempt(
     };
     xhr.onerror = () => reject(new UploadNetworkError());
     xhr.ontimeout = () =>
-      reject(new UploadNetworkError("The upload took too long. Check your connection and try again."));
+      reject(
+        new UploadNetworkError("The upload took too long. Check your connection and try again."),
+      );
     xhr.onabort = () => reject(new UploadAbortedError());
     xhr.onload = () => {
       if (xhr.status === 401 && token) return resolve({ retry: true });
-      let env: { success?: boolean; message?: string; data?: { url?: string }; errors?: FieldError[] | null };
+      let env: {
+        success?: boolean;
+        message?: string;
+        data?: { url?: string };
+        errors?: FieldError[] | null;
+      };
       try {
         env = JSON.parse(xhr.responseText);
       } catch {

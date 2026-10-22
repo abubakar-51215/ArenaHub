@@ -133,7 +133,10 @@ export function BlockedDates({ arenaId }: { arenaId: string }) {
         </ul>
       )}
 
-      <Dialog open={!!unblocking} onOpenChange={(v) => !v && !unblockDate.isPending && setUnblocking(null)}>
+      <Dialog
+        open={!!unblocking}
+        onOpenChange={(v) => !v && !unblockDate.isPending && setUnblocking(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Unblock this date?</DialogTitle>

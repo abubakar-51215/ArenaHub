@@ -77,8 +77,8 @@ export function ForceRefundDialog({
         <DialogHeader>
           <DialogTitle>Force a full refund?</DialogTitle>
           <DialogDescription>
-            This refunds 100% of what was paid, regardless of the arena&apos;s cancellation
-            policy, and frees the time slot. The player is notified.
+            This refunds 100% of what was paid, regardless of the arena&apos;s cancellation policy,
+            and frees the time slot. The player is notified.
           </DialogDescription>
         </DialogHeader>
         <div className="ah-reason">

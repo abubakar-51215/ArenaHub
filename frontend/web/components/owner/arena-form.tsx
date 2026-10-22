@@ -251,9 +251,7 @@ export function ArenaForm({
             >
               {locating ? "Locating…" : "Use my current location"}
             </Button>
-            {locationError && (
-              <p className="mt-1.5 text-sm text-destructive">{locationError}</p>
-            )}
+            {locationError && <p className="mt-1.5 text-sm text-destructive">{locationError}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

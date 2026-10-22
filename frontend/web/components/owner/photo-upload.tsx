@@ -109,7 +109,11 @@ export function PhotoUpload({
       <div className="flex flex-wrap gap-2">
         {images.map((url, i) => (
           <div key={url} className="relative size-20 overflow-hidden rounded-lg border">
-            <img src={url} alt={i === 0 ? "Cover photo" : "Arena photo"} className="size-full object-cover" />
+            <img
+              src={url}
+              alt={i === 0 ? "Cover photo" : "Arena photo"}
+              className="size-full object-cover"
+            />
             <button
               type="button"
               onClick={() => removeSaved(url)}
