@@ -6,6 +6,7 @@ import {
   deleteUser,
   fetchDashboardMetrics,
   fetchPlatformSettings,
+  forceRefund,
   getUserDetail,
   listAllBookings,
   listAllPayments,
@@ -188,6 +189,16 @@ export function useAllBookings(params: {
       params.page,
     ],
     queryFn: () => listAllBookings(params),
+  });
+}
+
+/** Force a 100% refund on a booking; refreshes the booking list. */
+export function useForceRefund() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, reason }: { bookingId: string; reason: string }) =>
+      forceRefund(bookingId, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-bookings"] }),
   });
 }
 

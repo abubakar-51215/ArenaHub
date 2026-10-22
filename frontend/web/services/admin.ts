@@ -115,6 +115,11 @@ export function listAllBookings(params: {
   return api.get<Page<AdminBooking>>(`/admin/bookings?${q.toString()}`);
 }
 
+/** Force a 100% refund regardless of the arena's cancellation policy (force majeure). */
+export function forceRefund(bookingId: string, reason: string): Promise<unknown> {
+  return api.post<unknown>(`/admin/bookings/${bookingId}/force-refund`, { reason });
+}
+
 export function listAllPayments(params: {
   status?: PaymentStatus;
   method?: PaymentMethod;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { ForceRefundDialog } from "@/components/admin/force-refund-dialog";
 import { PageHeader } from "@/components/admin/page-header";
 import {
   AdminBadge,
@@ -67,6 +68,13 @@ export default function AdminBookingsPage() {
   const [period, setPeriod] = useState<Period>("");
   const [page, setPage] = useState(1);
   const [viewing, setViewing] = useState<AdminBooking | null>(null);
+  const [refunding, setRefunding] = useState<AdminBooking | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
   const { data, isLoading } = useAllBookings({
     status: status || undefined,
     ...periodRange(period),
@@ -110,6 +118,11 @@ export default function AdminBookingsPage() {
       </PageHeader>
 
       <div className="animate-fade-in">
+        {notice && (
+          <p className="ah-saved ah-notice" role="status">
+            {notice}
+          </p>
+        )}
         <section className="ah-card">
           <Table>
             <TableHeader>
@@ -221,9 +234,28 @@ export default function AdminBookingsPage() {
             <Button variant="outline" onClick={() => setViewing(null)}>
               Close
             </Button>
+            {viewing &&
+              viewing.status !== "pending_payment" &&
+              viewing.status !== "pending_approval" && (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setRefunding(viewing);
+                    setViewing(null);
+                  }}
+                >
+                  Force refund
+                </Button>
+              )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ForceRefundDialog
+        booking={refunding}
+        onClose={() => setRefunding(null)}
+        onDone={setNotice}
+      />
     </>
   );
 }
