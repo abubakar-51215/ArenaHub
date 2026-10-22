@@ -137,6 +137,13 @@ export interface DiscountCode {
   is_active: boolean;
 }
 
+export interface BlockedDate {
+  id: string;
+  arena_id: string;
+  blocked_date: string;
+  reason: string | null;
+}
+
 export interface BankDetails {
   id: string;
   arena_id: string;

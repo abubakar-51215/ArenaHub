@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
+import { BlockedDates } from "@/components/owner/blocked-dates";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -349,6 +350,8 @@ export function ArenaForm({
               ))}
             </div>
           </div>
+
+          {editing && <BlockedDates arenaId={arena.id} />}
 
           <div>
             <Label htmlFor="a-images">Image URLs</Label>
