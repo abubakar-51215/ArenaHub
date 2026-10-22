@@ -232,6 +232,7 @@ function RootNavigator() {
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
         <Stack.Screen name="booking/detail/[groupId]" options={{ headerShown: false }} />
+        <Stack.Screen name="booking/pass/[bookingId]" options={{ headerShown: false }} />
         <Stack.Screen name="booking/move/[groupId]" options={{ headerShown: false }} />
         <Stack.Screen name="play/[matchId]" options={{ headerShown: false }} />
         <Stack.Screen name="play/create" options={{ headerShown: false }} />
