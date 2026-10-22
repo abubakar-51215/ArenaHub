@@ -97,8 +97,10 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
     area: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    latitude: Mapped[Decimal] = mapped_column(Numeric(10, 7), nullable=False)
-    longitude: Mapped[Decimal] = mapped_column(Numeric(10, 7), nullable=False)
+    # optional: an owner may skip the map pin. Never both-null-one-set — enforced in the
+    # schema's validator, not here (the column itself permits either, independently).
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(10, 7), nullable=True)
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(10, 7), nullable=True)
     contact_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

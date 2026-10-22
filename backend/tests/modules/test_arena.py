@@ -135,6 +135,105 @@ async def test_owner_registers_arena_pending_then_admin_approves(
     assert public.status_code == 200
 
 
+async def test_arena_coordinates_are_optional(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An owner may skip the map pin entirely — the arena still registers, approves, and
+    is listed; it only has no distance when a player searches near me."""
+    owner, _ = await make_user(client, db_session, "owner-nocoords@example.com", "owner")
+    created = await client.post(
+        "/api/v1/owner/arenas",
+        headers=auth_header(owner),
+        json=arena_payload(name="No Pin Arena", latitude=None, longitude=None),
+    )
+    assert created.status_code == 201, created.text
+    arena = created.json()["data"]
+    assert arena["latitude"] is None and arena["longitude"] is None
+    arena_id = arena["id"]
+
+    admin = await make_admin(client, db_session, "admin-nocoords@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+    listed = await client.get("/api/v1/arenas", params={"q": "No Pin"})
+    found = next(i for i in listed.json()["data"]["items"] if i["id"] == arena_id)
+    assert found["distance_km"] is None
+
+
+async def test_arena_coordinates_need_both_or_neither(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "owner-onecoord@example.com", "owner")
+    only_lat = await client.post(
+        "/api/v1/owner/arenas",
+        headers=auth_header(owner),
+        json=arena_payload(latitude="31.5204", longitude=None),
+    )
+    assert only_lat.status_code == 422
+    assert "both" in only_lat.text.lower()
+
+
+async def test_arena_coordinates_outside_pakistan_are_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "owner-badcoord@example.com", "owner")
+    # London — a real place, nowhere near Pakistan
+    outside = await client.post(
+        "/api/v1/owner/arenas",
+        headers=auth_header(owner),
+        json=arena_payload(latitude="51.5072", longitude="-0.1276"),
+    )
+    assert outside.status_code == 422
+    assert "outside pakistan" in outside.text.lower()
+
+
+async def test_arena_swapped_coordinates_are_caught(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "owner-swapcoord@example.com", "owner")
+    # Lahore is (31.52, 74.36) — written the other way round
+    swapped = await client.post(
+        "/api/v1/owner/arenas",
+        headers=auth_header(owner),
+        json=arena_payload(latitude="74.3587", longitude="31.5204"),
+    )
+    assert swapped.status_code == 422
+    assert "swapped" in swapped.text.lower()
+
+
+async def test_arena_coordinates_can_be_added_or_cleared_on_update(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "owner-editcoord@example.com", "owner")
+    created = await client.post(
+        "/api/v1/owner/arenas",
+        headers=auth_header(owner),
+        json=arena_payload(latitude=None, longitude=None),
+    )
+    arena_id = created.json()["data"]["id"]
+
+    added = await client.patch(
+        f"/api/v1/owner/arenas/{arena_id}",
+        headers=auth_header(owner),
+        json={"latitude": "31.5204", "longitude": "74.3587"},
+    )
+    assert added.status_code == 200
+    assert added.json()["data"]["latitude"] == "31.5204"
+
+    one_sided = await client.patch(
+        f"/api/v1/owner/arenas/{arena_id}",
+        headers=auth_header(owner),
+        json={"latitude": "31.6"},
+    )
+    assert one_sided.status_code == 422
+
+    cleared = await client.patch(
+        f"/api/v1/owner/arenas/{arena_id}",
+        headers=auth_header(owner),
+        json={"latitude": None, "longitude": None},
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["data"]["latitude"] is None
+
+
 async def test_reject_requires_reason_then_owner_resubmits(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

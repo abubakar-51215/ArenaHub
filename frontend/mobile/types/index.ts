@@ -66,8 +66,8 @@ export interface Arena {
   address: string;
   city: ArenaCity;
   area: string | null;
-  latitude: string;
-  longitude: string;
+  latitude: string | null;
+  longitude: string | null;
   contact_phone: string | null;
   contact_email: string | null;
   operating_hours: OperatingHours;

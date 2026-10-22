@@ -55,6 +55,27 @@ class RefundTier(RequestModel):
 Latitude = Annotated[Decimal, Field(ge=-90, le=90)]
 Longitude = Annotated[Decimal, Field(ge=-180, le=180)]
 
+# Pakistan's rough bounding box — wide enough to cover the whole country, tight enough to
+# catch a typo or a swapped pair before it saves somewhere nobody will ever spot on a map.
+_PK_LAT = (23.0, 37.0)
+_PK_LON = (60.0, 78.0)
+
+
+def _in_range(value: Decimal, bounds: tuple[float, float]) -> bool:
+    return bounds[0] <= float(value) <= bounds[1]
+
+
+def _validate_coordinates(lat: Decimal | None, lon: Decimal | None) -> None:
+    if (lat is None) != (lon is None):
+        raise ValueError("Send both latitude and longitude, or neither.")
+    if lat is None or lon is None:
+        return
+    if _in_range(lat, _PK_LAT) and _in_range(lon, _PK_LON):
+        return
+    if _in_range(lon, _PK_LAT) and _in_range(lat, _PK_LON):
+        raise ValueError("Latitude and longitude look swapped.")
+    raise ValueError("This location is outside Pakistan.")
+
 
 class ArenaCreate(RequestModel):
     name: str = Field(min_length=1, max_length=255)
@@ -62,8 +83,8 @@ class ArenaCreate(RequestModel):
     address: str = Field(min_length=1, max_length=500)
     city: ArenaCity
     area: str | None = Field(default=None, max_length=100)
-    latitude: Latitude
-    longitude: Longitude
+    latitude: Latitude | None = None
+    longitude: Longitude | None = None
     contact_phone: str | None = Field(default=None, max_length=20)
     contact_email: EmailStr | None = None
     operating_hours: OperatingHours
@@ -78,6 +99,11 @@ class ArenaCreate(RequestModel):
     @classmethod
     def _hours(cls, v: dict) -> dict:
         return _validate_operating_hours(v)
+
+    @model_validator(mode="after")
+    def _coordinates(self) -> "ArenaCreate":
+        _validate_coordinates(self.latitude, self.longitude)
+        return self
 
 
 class ArenaUpdate(RequestModel):
@@ -105,6 +131,15 @@ class ArenaUpdate(RequestModel):
     def _hours(cls, v: dict | None) -> dict | None:
         return _validate_operating_hours(v) if v is not None else v
 
+    @model_validator(mode="after")
+    def _coordinates(self) -> "ArenaUpdate":
+        provided = self.model_fields_set
+        if "latitude" in provided or "longitude" in provided:
+            if ("latitude" in provided) != ("longitude" in provided):
+                raise ValueError("Send both latitude and longitude, or neither.")
+            _validate_coordinates(self.latitude, self.longitude)
+        return self
+
 
 class AmenityResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -124,8 +159,8 @@ class ArenaResponse(BaseModel):
     address: str
     city: ArenaCity
     area: str | None = None
-    latitude: Decimal
-    longitude: Decimal
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
     contact_phone: str | None = None
     contact_email: str | None = None
     operating_hours: dict

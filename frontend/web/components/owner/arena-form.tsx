@@ -114,8 +114,8 @@ export function ArenaForm({
       address,
       city,
       area: area || null,
-      latitude: latitude.trim(),
-      longitude: longitude.trim(),
+      latitude: latitude.trim() || null,
+      longitude: longitude.trim() || null,
       contact_phone: phone || null,
       contact_email: emailContact || null,
       operating_hours: openHours,
@@ -195,23 +195,21 @@ export function ArenaForm({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="a-lat">Latitude</Label>
+              <Label htmlFor="a-lat">Latitude (optional)</Label>
               <Input
                 id="a-lat"
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
                 placeholder="31.5204"
-                required
               />
             </div>
             <div>
-              <Label htmlFor="a-lng">Longitude</Label>
+              <Label htmlFor="a-lng">Longitude (optional)</Label>
               <Input
                 id="a-lng"
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
                 placeholder="74.3587"
-                required
               />
             </div>
           </div>
