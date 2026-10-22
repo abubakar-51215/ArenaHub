@@ -2,6 +2,7 @@
 
 import asyncio
 import inspect
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -12,7 +13,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from app.core.config import Environment, get_settings
-from app.core.logging import HIDDEN, redact_secrets
+from app.core.logging import HIDDEN, _RedactLocationFromAccessLog, redact_secrets
 from app.main import app, create_app
 from app.middleware import hardening
 
@@ -184,3 +185,61 @@ def test_the_docs_and_schema_are_switched_off_outside_development(
     built = main_module.create_app()
     assert built.docs_url is None and built.redoc_url is None and built.openapi_url is None
     assert get_settings().is_dev  # the real settings were not touched
+
+
+class _Dev:
+    is_dev = True
+
+
+def test_a_near_me_latitude_or_longitude_is_hidden_even_in_development(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unlike the emailed code above, a player's position is never shown — dev included."""
+    monkeypatch.setattr("app.core.logging.get_settings", lambda: _Dev())
+    event = {
+        "event": "near_me_search",
+        "lat": 31.5204,
+        "lon": 74.3587,
+        "latitude": 31.5204,
+        "longitude": 74.3587,
+        "radius_km": 5,
+        "booking_code": "AH-1234",
+    }
+    out = redact_secrets(None, "info", dict(event))
+    for key in ("lat", "lon", "latitude", "longitude", "radius_km"):
+        assert out[key] == HIDDEN, key
+    assert out["booking_code"] == "AH-1234"
+
+
+def test_the_access_log_never_prints_a_near_me_lat_or_lon() -> None:
+    """Uvicorn's own access logger prints the raw request line to stdout, bypassing structlog
+    entirely — the filter attached in configure_logging() must still catch it."""
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg='%s - "%s %s HTTP/%s" %d',
+        args=(
+            "127.0.0.1:54321",
+            "GET",
+            "/api/v1/arenas?sort=near&lat=31.5204&lon=74.3587&radius_km=5",
+            "1.1",
+            200,
+        ),
+        exc_info=None,
+    )
+    assert _RedactLocationFromAccessLog().filter(record) is True
+    rendered = record.getMessage()
+    for leak in ("31.5204", "74.3587", "radius_km=5"):
+        assert leak not in rendered, rendered
+    assert "lat=[hidden]" in rendered
+    assert "lon=[hidden]" in rendered
+
+
+def test_configure_logging_attaches_the_access_log_filter() -> None:
+    from app.core.logging import configure_logging
+
+    configure_logging()
+    access_logger = logging.getLogger("uvicorn.access")
+    assert any(isinstance(f, _RedactLocationFromAccessLog) for f in access_logger.filters)
