@@ -10,6 +10,7 @@ This governs the *fine-grained* lifecycle only; the coarse ``Payment.status``
 revenue queries is still set explicitly by the service alongside these calls.
 """
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.payment.model import Payment, PaymentEvent
@@ -66,7 +67,13 @@ async def advance(
     if not can_transition(current, target):
         raise InvalidTransitionError(f"Cannot move payment from {current} to {target}.")
     payment.lifecycle_status = target
-    event = PaymentEvent(payment_id=payment.id, from_status=current, to_status=target, note=note)
+    event = PaymentEvent(
+        payment_id=payment.id,
+        from_status=current,
+        to_status=target,
+        note=note,
+        created_at=func.clock_timestamp(),
+    )
     db.add(event)
     return event
 
@@ -80,6 +87,7 @@ async def record_created(db: AsyncSession, payment: Payment, *, note: str | None
             from_status=None,
             to_status=payment.lifecycle_status,
             note=note or "Payment created.",
+            created_at=func.clock_timestamp(),
         )
     )
 
@@ -90,6 +98,17 @@ async def record_note(db: AsyncSession, payment: Payment, note: str) -> PaymentE
     but aren't state transitions, e.g. a partial refund. ``from_status`` and
     ``to_status`` are both the current state so the row is unambiguous."""
     current = payment.lifecycle_status
-    event = PaymentEvent(payment_id=payment.id, from_status=current, to_status=current, note=note)
+    # ``created_at``'s column default is ``func.now()``, which is frozen for the whole
+    # transaction in Postgres -- two events written in the same request (e.g. a refund's
+    # note followed by the advance to "refunded") would get an identical timestamp, making
+    # the audit trail's ORDER BY created_at tie-break non-deterministic. clock_timestamp()
+    # advances on every call, so sequential events in one transaction sort correctly.
+    event = PaymentEvent(
+        payment_id=payment.id,
+        from_status=current,
+        to_status=current,
+        note=note,
+        created_at=func.clock_timestamp(),
+    )
     db.add(event)
     return event
