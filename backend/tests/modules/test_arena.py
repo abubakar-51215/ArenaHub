@@ -297,17 +297,18 @@ async def test_blocked_dates_and_discounts(client: AsyncClient, db_session: Asyn
         await client.post("/api/v1/owner/arenas", headers=auth_header(owner), json=arena_payload())
     ).json()["data"]["id"]
     h = auth_header(owner)
+    future_date = (date.today() + timedelta(days=30)).isoformat()
 
     blocked = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/blocked-dates",
         headers=h,
-        json={"blocked_date": "2026-08-14", "reason": "Independence Day"},
+        json={"blocked_date": future_date, "reason": "Independence Day"},
     )
     assert blocked.status_code == 201
     dup = await client.post(
         f"/api/v1/owner/arenas/{arena_id}/blocked-dates",
         headers=h,
-        json={"blocked_date": "2026-08-14"},
+        json={"blocked_date": future_date},
     )
     assert dup.status_code == 409
 
