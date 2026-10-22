@@ -65,7 +65,7 @@ export default function BookingPassScreen() {
             <Line label="Time" value={timeRange(p.start_time, p.end_time)} />
           </Card>
 
-          <Text style={styles.footnote}>Show this at the arena. There is no scan to check in yet — staff can verify your booking code at the counter.</Text>
+          <Text style={styles.footnote}>Show this pass at the arena.</Text>
           <View style={{ height: 20 }} />
         </ScrollView>
       )}
