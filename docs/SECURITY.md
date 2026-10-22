@@ -58,6 +58,20 @@ They do not prove: that there are no other bugs; that real email, real payment p
 - No certificate pinning and no biometric lock on the phone (later items, deliberately not built).
 - Independent security review and penetration test before real payments: not done.
 
+## Admin lockout recovery (2026-10-22)
+
+If every admin account is locked out (password forgotten, no access to the inbox a
+sign-in code would go to), there was no way back in — every in-app path needs either
+the old password or a working inbox. `backend/scripts/admin_recovery.py` closes this
+gap deliberately *without* a web route: only someone with a shell on the server can
+run it (`reset-password <email>` or `reset-email <email>`). The new password is typed
+with `getpass` (never echoed, never logged, never printed back) and the script never
+reads `backend/.env` itself. Every use writes an `audit_logs` row with no signed-in
+actor (`actor_id` is `NULL` — nobody is signed in, that is the whole point) and a
+note that it was run from the server's own command line; a review reads that as "check
+who had server access at this timestamp," since the audit log cannot name a person
+here. Only ever operates on an account whose role is `admin`.
+
 ## Dependency review (2026-10-16)
 
 - **Backend (pip-audit):** no known vulnerabilities after upgrading pyjwt, anyio and urllib3.
