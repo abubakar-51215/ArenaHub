@@ -251,6 +251,30 @@ async def test_matches_at_a_suspended_arena_are_not_listed(
     assert not any(m["id"] == match_id for m in gone.json()["data"]["items"])
 
 
+async def test_joining_a_match_at_a_suspended_or_deleted_arena_is_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    creator, _, group_id, arena_id, *_ = await _setup(client, db_session, "susp1")
+    match_id = (await _post(client, creator, group_id)).json()["data"]["id"]
+
+    arena = await db_session.get(Arena, uuid.UUID(arena_id))
+    assert arena is not None
+    arena.suspended_at = datetime.now()
+    await db_session.flush()
+
+    joiner, _ = await make_user(client, db_session, "mjoin-susp1@example.com", "player")
+    res = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
+    assert res.status_code == 409
+    assert res.json()["message"] == match_service.MSG_ARENA_UNAVAILABLE
+
+    arena.suspended_at = None
+    arena.deleted_at = datetime.now()
+    await db_session.flush()
+    res2 = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
+    assert res2.status_code == 409
+    assert res2.json()["message"] == match_service.MSG_ARENA_UNAVAILABLE
+
+
 async def test_listing_filters_by_city_and_sport_and_hides_started_matches(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

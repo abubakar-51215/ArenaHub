@@ -43,6 +43,7 @@ MSG_CANCELLED = "This match was cancelled."
 MSG_OWN = "You are already in your own match."
 MSG_PAST = "This match has already started."
 MSG_TWICE = "You have already joined this match."
+MSG_ARENA_UNAVAILABLE = "This arena is not available right now."
 
 
 def _to_response(
@@ -226,6 +227,9 @@ async def join_match(
     match = await repo.get_match_for_update(db, match_id)
     if match is None:
         raise NotFoundError("Match not found.")
+    arena = await arena_repo.get_arena(db, match.arena_id)
+    if arena is None or not arena.is_live:
+        raise ConflictError(MSG_ARENA_UNAVAILABLE)
     if match.status == MatchStatus.cancelled:
         raise ConflictError(MSG_CANCELLED)
     if match.creator_id == user.id:
