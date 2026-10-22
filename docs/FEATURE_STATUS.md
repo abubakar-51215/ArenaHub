@@ -22,10 +22,10 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 
 | Status | Count |
 |---|---|
-| DONE | 68 |
-| PARTIAL | 11 |
-| NOT BUILT | 2 |
-| DEFERRED BY DECISION | 9 |
+| DONE | 69 |
+| PARTIAL | 12 |
+| NOT BUILT | 1 |
+| DEFERRED BY DECISION | 8 |
 | NEEDS PHONE | 2 |
 | NEEDS ACCOUNT OR KEY | 5 |
 
@@ -120,9 +120,9 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 |---|---|---|---|---|
 | Search by name/city/sport/price | DONE | `GET /arenas`; mobile `(tabs)/search.tsx`, `results.tsx` | FR-P-04 | |
 | Filter by rating/availability/sport | PARTIAL | `app/filters.tsx` | FR-P-04 | Amenity "must have", time-of-day and radius filter rows deferred (MOBILE_REQUIREMENTS G2). |
-| Sort by distance | NOT BUILT | no distance in `modules/arena/service.py` | FR-P-04 | Backend has no distance search/sort; app filters by nearest city only. Deferred pending a frame (MOBILE_REQUIREMENTS #42). |
+| Sort by distance | DONE | `GET /arenas?sort=near&lat=&lon=`; `arena/repository.distance_km_expr` (haversine) | FR-P-04 | Was mismarked NOT BUILT in an earlier audit pass — the code already had it; `test_arena_near.py` proves it, including radius filtering and validation. Now in scope per MOBILE_REQUIREMENTS #42. |
 | Sort by price / rating | DONE | `GET /arenas?sort=` | FR-P-04 | |
-| Distance / "near me" + distance on cards | DEFERRED BY DECISION | — | MOBILE_REQUIREMENTS #42 ("confirmed… Not started: waits for a frame") | Confirmed in scope but deliberately not started; no frame yet. |
+| Distance / "near me" + distance on cards | PARTIAL | backend: `GET /arenas` returns `distance_km` per item, never dropping a coordinate-less arena outside a radius filter (`test_an_arena_with_no_coordinates_sorts_last_but_is_not_dropped`); `components/venue.tsx` already renders it | MOBILE_REQUIREMENTS #42 (now "IN SCOPE") | Backend done. Distance-on-cards already renders. Still missing: the phone's "Near me" sort chip and the location-permission flow — briefed in `docs/FRAME_BRIEFS.md` §F, not built (no new screen this pass). |
 | Recent search history | DONE | mobile `store/search-history` (AsyncStorage, last 8) | FR-P-04 | |
 | NLP / smart search | DONE | `GET /search/nlp`; `modules/ai`; mobile `results.tsx` "Understood" chips | FR-P-05, dev #3 | |
 | AI recommendations + alternatives-when-full | DONE | `GET /recommendations`; mobile Home; `components/venue.tsx` | FR-P-15 | Recommendation cards carry `avg_rating`/`review_count`/`min_price` (`test_search_list_cards.py::test_recommendations_carry_the_list_card_fields`); the card component reads all three. |
@@ -287,7 +287,6 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 |---|---|
 | Owner staff sub-accounts / permission tiers | dev #10 (Sprint 5 stretch, model-ready only) |
 | SMS / text-message OTP | dev #7, MOBILE_REQUIREMENTS §Decided-out-of-scope |
-| Distance / near-me search | MOBILE_REQUIREMENTS #42 |
 | Excel export | finalCheckList §8 |
 | Docker + full deployment/monitoring | dev #1 |
 | Add-to-calendar (.ics) polish, full-screen photo viewer, sharing | MOBILE_REQUIREMENTS #32, G3 §58 |
