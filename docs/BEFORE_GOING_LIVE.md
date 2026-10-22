@@ -152,3 +152,14 @@ Built: card on Stripe's hosted card page and JazzCash / EasyPaisa by wallet numb
 3. **JazzCash and EasyPaisa:** merchant accounts, then connect their "mobile account" payment request APIs in `backend/app/integrations/payments/jazzcash.py` and `easypaisa.py` (the `initiate` method, which receives the wallet number) and their signed callbacks (already verified with `JAZZCASH_WEBHOOK_SECRET` / `EASYPAISA_WEBHOOK_SECRET`). Until then they show "coming soon" outside development.
 4. The phone app's own link scheme (`arenahub://`) must be kept when the app identifiers are decided, or the return address list updated.
 
+## Go-live task: orphan photo uploads (2026-10-22)
+
+**Known limitation, not fixed yet.** The owner photo picker (`frontend/web/components/owner/photo-upload.tsx`) uploads each photo to storage (local disk or Cloudinary) as soon as it is chosen, before the arena form is saved. If the owner then removes that photo from the picker, or closes the form without saving, the file stays on the storage backend with nothing in the database pointing at it — `update_arena`'s own cleanup only deletes a URL that was *dropped from a previously saved* `images` array, which never applies to a file that was uploaded and removed again before the first save. No route exists today to delete an uploaded-but-unsaved file by URL, so none is called.
+
+This does not expose anything (the file sits at the same kind of address any saved photo would), it only wastes storage over time. At go-live, pick one:
+
+1. **A scheduled cleanup job** (the existing APScheduler, `backend/app/tasks/scheduler.py`, already runs other periodic jobs): list files under the arenas/courts/misc folders older than some threshold (e.g. 48 hours), diff against every `images` URL actually referenced in `arenas`/`courts` rows, delete what's left over. Needs a "file created at" source — Cloudinary's admin API returns asset creation time; local disk can use the file's mtime.
+2. **A `DELETE /uploads/image` route**, called by the picker itself the moment a photo is removed before save — simpler to reason about (no orphan ever accumulates) but is a new authenticated endpoint that has to be scoped so an owner can only delete files from their own just-uploaded batch, not an arbitrary URL.
+
+Either way: **do this before storage costs matter**, since nothing currently reclaims this space.
+
