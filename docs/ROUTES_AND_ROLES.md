@@ -76,6 +76,7 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | POST | `/bookings/preview` | any signed-in user |
 | GET | `/bookings/{booking_id}` | any signed-in user |
 | POST | `/bookings/{booking_id}/cancel` | any signed-in user |
+| GET | `/bookings/{booking_id}/pass` | any signed-in user |
 | POST | `/bookings/{booking_id}/reschedule` | any signed-in user |
 | POST | `/complaints` | any signed-in user |
 | GET | `/complaints/my` | any signed-in user |
