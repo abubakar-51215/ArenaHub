@@ -151,6 +151,99 @@ async def test_owner_payment_report(client: AsyncClient, db_session: AsyncSessio
     assert pdf_resp.content.startswith(b"%PDF")
 
 
+async def test_owner_payment_report_multiple_payments_and_date_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Two payments on different dates and methods (bank_transfer + card), and a
+    date filter that should exclude the earlier one — proves the report is not
+    just the single-row happy path."""
+    owner, _ = await make_user(client, db_session, "payrepowner@example.com", "owner")
+    player, _ = await make_user(client, db_session, "payrepplayer@example.com", "player")
+    h = auth_header(owner)
+    arena = await client.post(
+        "/api/v1/owner/arenas", headers=h, json=arena_payload(require_full_payment=True)
+    )
+    arena_id = arena.json()["data"]["id"]
+    admin = await make_admin(client, db_session, "admin-payrep@example.com")
+    await client.post(f"/api/v1/admin/arenas/{arena_id}/approve", headers=auth_header(admin))
+    court = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/courts",
+        headers=h,
+        json={"name": "Court A", "sport_types": ["futsal"], "base_price": "2000.00"},
+    )
+    court_id = court.json()["data"]["id"]
+    early_monday = _next_weekday(1)
+    late_monday = early_monday + timedelta(days=7)
+
+    async def _book_and_pay(booking_date: date, method: str) -> None:
+        await client.post(
+            f"/api/v1/owner/courts/{court_id}/slots/generate",
+            headers=h,
+            json={"start_date": booking_date.isoformat(), "end_date": booking_date.isoformat()},
+        )
+        slots = (
+            await client.get(
+                f"/api/v1/courts/{court_id}/slots", params={"date": booking_date.isoformat()}
+            )
+        ).json()["data"]
+        created = await client.post(
+            "/api/v1/bookings",
+            headers=auth_header(player),
+            json={"court_id": court_id, "slot_ids": [slots[0]["id"]], "payment_type": "full"},
+        )
+        group_id = created.json()["data"]["booking_group_id"]
+        initiated = await client.post(
+            "/api/v1/payments/initiate",
+            headers=auth_header(player),
+            json={"booking_group_id": group_id, "payment_method": method},
+        )
+        payment_id = initiated.json()["data"]["payment"]["id"]
+        if method == "card":
+            await client.post(
+                f"/api/v1/payments/{payment_id}/simulate-confirm",
+                headers=auth_header(player),
+                params={"success": True},
+            )
+        else:
+            await client.post(
+                f"/api/v1/payments/{payment_id}/receipt",
+                headers=auth_header(player),
+                json={
+                    "receipt_proof_url": "/uploads/receipts/a1b2c3d4e5f60718293a4b5c6d7e8f90.jpg"
+                },
+            )
+            await client.post(
+                f"/api/v1/owner/payments/{payment_id}/approve", headers=auth_header(owner)
+            )
+
+    await _book_and_pay(early_monday, "bank_transfer")
+    await _book_and_pay(late_monday, "card")
+
+    unfiltered = await client.get(
+        "/api/v1/owner/reports",
+        headers=h,
+        params={"type": "payment", "format": "csv"},
+    )
+    assert unfiltered.status_code == 200
+    rows = unfiltered.text.splitlines()[1:]
+    assert len(rows) == 2
+    assert any("Bank transfer" in r for r in rows) and any("Card" in r for r in rows)
+
+    filtered = await client.get(
+        "/api/v1/owner/reports",
+        headers=h,
+        params={
+            "type": "payment",
+            "format": "csv",
+            "date_from": late_monday.isoformat(),
+        },
+    )
+    assert filtered.status_code == 200
+    filtered_rows = filtered.text.splitlines()[1:]
+    assert len(filtered_rows) == 1
+    assert "Card" in filtered_rows[0] and "Bank transfer" not in filtered_rows[0]
+
+
 async def test_owner_report_forbidden_for_players(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
