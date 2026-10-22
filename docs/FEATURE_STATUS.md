@@ -22,8 +22,8 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 
 | Status | Count |
 |---|---|
-| DONE | 67 |
-| PARTIAL | 12 |
+| DONE | 68 |
+| PARTIAL | 11 |
 | NOT BUILT | 2 |
 | DEFERRED BY DECISION | 9 |
 | NEEDS PHONE | 2 |
@@ -125,7 +125,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Distance / "near me" + distance on cards | DEFERRED BY DECISION | — | MOBILE_REQUIREMENTS #42 ("confirmed… Not started: waits for a frame") | Confirmed in scope but deliberately not started; no frame yet. |
 | Recent search history | DONE | mobile `store/search-history` (AsyncStorage, last 8) | FR-P-04 | |
 | NLP / smart search | DONE | `GET /search/nlp`; `modules/ai`; mobile `results.tsx` "Understood" chips | FR-P-05, dev #3 | |
-| AI recommendations + alternatives-when-full | PARTIAL | `GET /recommendations`; mobile Home | FR-P-15 | Works, but recommendation cards lack rating/review-count/price (list DTO gap, RESTYLE_FOLLOWUPS / MOBILE_REQUIREMENTS #37). |
+| AI recommendations + alternatives-when-full | DONE | `GET /recommendations`; mobile Home; `components/venue.tsx` | FR-P-15 | Recommendation cards carry `avg_rating`/`review_count`/`min_price` (`test_search_list_cards.py::test_recommendations_carry_the_list_card_fields`); the card component reads all three. |
 | Trending arenas (recent-booking-count + fallback) | DONE | `GET /arenas/trending`; mobile Home carousel | dev #21 | |
 
 ### Arena Details
