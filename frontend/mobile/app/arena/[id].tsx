@@ -21,6 +21,7 @@ import { sportLabel } from '@/constants/sports';
 import { useArena, useArenaCourts, useArenaRating } from '@/hooks/useArenas';
 import { useSlotsToday } from '@/hooks/useSlotsInfo';
 import { ApiError } from '@/lib/api';
+import { openDirections } from '@/lib/directions';
 import { formatRs } from '@/lib/money';
 import { openTillLabel } from '@/lib/slots';
 import { listArenaReviews } from '@/services/reviews';
@@ -222,6 +223,10 @@ export default function ArenaDetailsScreen() {
                 <Icon name="pin" size={12} color={Colors.light.muted} />
                 <Text style={styles.muted}>{a.area ? `${a.area}, ${a.city}` : a.city}</Text>
               </View>
+              <TapBox onPress={() => openDirections(a)} slop={10} style={styles.directions} inner={styles.directionsInner} accessibilityRole="button" accessibilityLabel="Get directions">
+                <Icon name="pin" size={12} color={Colors.light.limeText} />
+                <Text style={styles.directionsText}>Get Directions</Text>
+              </TapBox>
             </View>
             {summary && summary.review_count > 0 && summary.average_rating != null ? (
               <Badge status="ok" label={`${summary.average_rating} · ${summary.review_count}`} />
@@ -350,6 +355,9 @@ const styles = StyleSheet.create({
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   title: { fontSize: 17, lineHeight: 20, fontWeight: '700', letterSpacing: -0.34, color: Colors.light.text },
   where: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
+  directions: { marginTop: 8 },
+  directionsInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  directionsText: { fontSize: 14, fontWeight: '600', color: Colors.light.limeText },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   tag: { backgroundColor: Colors.light.lineSoft, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
   tagOpen: { backgroundColor: Colors.light.limeWash },
