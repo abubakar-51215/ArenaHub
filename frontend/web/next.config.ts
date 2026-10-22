@@ -42,7 +42,10 @@ const SECURITY_HEADERS = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // geolocation=(self): the owner arena form's "Use my current location"
+  // button needs it for this site's own pages; still blocked for any
+  // embedded third-party content, and camera/microphone stay fully off.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   // the map tiles need the site name as referrer, so this is not "no-referrer" as on the API
   ...(isProd
