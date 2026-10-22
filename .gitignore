@@ -37,6 +37,9 @@ backend/scripts/.seed_manifest.json
 # ---- Email preview output (generated HTML/PNGs, not source) ----
 backend/scripts/.email_preview/
 
+# ---- UI verification screenshots (generated PNGs, not source) ----
+scripts/.ui_verify/
+
 # ---- Node / web ----
 node_modules/
 .next/
