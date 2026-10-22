@@ -30,6 +30,11 @@ _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 _PHONE = re.compile(r"(?:\+?92|0)\d{9,10}\b")
 _TOKEN = re.compile(r"(?i)(?:bearer\s+[A-Za-z0-9._\-]+|eyJ[A-Za-z0-9._\-]{8,})")
 _RECEIPT = re.compile(r"/(?:api/v1/media|uploads)/receipts/[^\s\"'<>]*")
+# The `request` interface's own query_string is dropped wholesale below, but the Sentry SDK
+# also auto-captures breadcrumbs for outgoing fetch/XHR calls (the browser or phone app's own
+# near-me request to the API) with the full URL as free text — this catches the lat/lon/radius
+# there too.
+_LOCATION_QUERY_PARAM = re.compile(r"(?i)\b(lat|lon|latitude|longitude|radius_km)=[^&\s\"'<>]*")
 
 # Parts of a Sentry request interface we never keep anything from.
 _DROP_REQUEST_KEYS = ("data", "headers", "cookies", "query_string", "env")
@@ -40,10 +45,11 @@ _SECRET_KEYS = re.compile(
 
 
 def redact_text(text: str) -> str:
-    """Redact emails, phone numbers, tokens and receipt links inside a string."""
+    """Redact emails, phone numbers, tokens, receipt links and location query params inside a
+    string."""
     for pattern in (_EMAIL, _PHONE, _TOKEN, _RECEIPT):
         text = pattern.sub(REDACTED, text)
-    return text
+    return _LOCATION_QUERY_PARAM.sub(r"\1=[redacted]", text)
 
 
 def _scrub(value: Any, *, key: str | None = None) -> Any:

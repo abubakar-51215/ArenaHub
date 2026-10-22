@@ -13,6 +13,10 @@ const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const PHONE = /(?:\+?92|0)\d{9,10}\b/g;
 const TOKEN = /(?:[Bb]earer\s+[A-Za-z0-9._-]+|eyJ[A-Za-z0-9._-]{8,})/g;
 const RECEIPT = /\/(?:api\/v1\/media|uploads)\/receipts\/[^\s"'<>]*/g;
+// Sentry auto-captures breadcrumbs for the app's own fetch/XHR calls, including the full URL as
+// free text — this catches a near-me search's lat/lon/radius there (request.query_string is
+// dropped wholesale below, but breadcrumbs are a separate code path).
+const LOCATION_QUERY_PARAM = /\b(lat|lon|latitude|longitude|radius_km)=[^&\s"'<>]*/gi;
 const SECRET_KEY = /password|token|secret|authorization|cookie|api[_-]?key|otp|code|session/i;
 
 export function redactText(text: string): string {
@@ -20,7 +24,8 @@ export function redactText(text: string): string {
     .replace(EMAIL, REDACTED)
     .replace(PHONE, REDACTED)
     .replace(TOKEN, REDACTED)
-    .replace(RECEIPT, REDACTED);
+    .replace(RECEIPT, REDACTED)
+    .replace(LOCATION_QUERY_PARAM, "$1=[redacted]");
 }
 
 function scrub(value: unknown, key?: string): unknown {

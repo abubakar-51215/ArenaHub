@@ -70,6 +70,29 @@ def test_emails_phones_tokens_and_receipt_links_are_redacted_everywhere() -> Non
     assert "sk_live_realsecretvalue" not in blob
 
 
+def test_a_near_me_lat_or_lon_in_a_fetch_breadcrumb_is_redacted() -> None:
+    """request.query_string is dropped wholesale by scrub_event, but Sentry also auto-captures
+    breadcrumbs for the client's own outgoing fetch/XHR calls with the full URL as free text —
+    this is the gap a near-me search's coordinates could otherwise leak through."""
+    event = {
+        "breadcrumbs": [
+            {
+                "category": "fetch",
+                "data": {
+                    "url": "https://api.arenahub.pk/api/v1/arenas?sort=near&lat=31.5204&lon=74.3587&radius_km=5",
+                    "method": "GET",
+                },
+            }
+        ],
+    }
+    out = scrub_event(event)
+    blob = repr(out)
+    assert "31.5204" not in blob
+    assert "74.3587" not in blob
+    assert "lat=[redacted]" in blob
+    assert "lon=[redacted]" in blob
+
+
 def test_redact_text_handles_each_kind() -> None:
     assert redact_text("mail me at a@b.com") == "mail me at [redacted]"
     assert redact_text("call 03123456789") == "call [redacted]"
