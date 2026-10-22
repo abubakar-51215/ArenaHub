@@ -261,10 +261,11 @@ async def admin_mark_refund_paid(
 @admin_router.post("/{booking_id}/force-refund", summary="Force a 100% refund (force majeure)")
 async def force_refund(
     booking_id: uuid.UUID,
+    data: RejectRequest,
     user: User = Depends(_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    refund = await service.force_refund(db, user, booking_id)
+    refund = await service.force_refund(db, user, booking_id, data.reason)
     return success(data=refund, message="Refund forced.")
 
 

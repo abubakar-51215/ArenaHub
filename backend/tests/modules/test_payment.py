@@ -530,7 +530,9 @@ async def test_admin_force_refund(client: AsyncClient, db_session: AsyncSession)
 
     admin = await make_admin(client, db_session, "force-refund-admin@example.com")
     forced = await client.post(
-        f"/api/v1/admin/bookings/{booking_id}/force-refund", headers=auth_header(admin)
+        f"/api/v1/admin/bookings/{booking_id}/force-refund",
+        headers=auth_header(admin),
+        json={"reason": "Force majeure — admin full refund."},
     )
     assert forced.status_code == 200
     assert forced.json()["data"]["status"] == "processed"

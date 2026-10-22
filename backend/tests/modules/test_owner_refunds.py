@@ -218,7 +218,9 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
     )
     for booking_id in ids:  # both slots of the group: together they refund exactly what was paid
         forced = await client.post(
-            f"/api/v1/admin/bookings/{booking_id}/force-refund", headers=auth_header(admin)
+            f"/api/v1/admin/bookings/{booking_id}/force-refund",
+            headers=auth_header(admin),
+            json={"reason": "Force majeure — admin full refund."},
         )
         assert forced.status_code == 200
     refunds = (

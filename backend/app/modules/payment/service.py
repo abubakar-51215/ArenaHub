@@ -1012,9 +1012,11 @@ async def refund_reschedule_overpayment(
     )
 
 
-async def force_refund(db: AsyncSession, admin: User, booking_id: uuid.UUID) -> RefundResponse:
+async def force_refund(
+    db: AsyncSession, admin: User, booking_id: uuid.UUID, reason: str
+) -> RefundResponse:
     """Admin force-majeure 100% refund regardless of the arena's tier policy
-    (docs/11_BOOKING_ENGINE.md section 7)."""
+    (docs/11_BOOKING_ENGINE.md section 7). Who did it and why goes to the audit log."""
     if admin.role != UserRole.admin:
         raise ForbiddenError("Only admins can force a refund.")
     booking = await booking_repo.get_booking(db, booking_id)
@@ -1022,9 +1024,14 @@ async def force_refund(db: AsyncSession, admin: User, booking_id: uuid.UUID) -> 
         raise NotFoundError("Booking not found.")
     # Block a redundant re-refund of an already fully-refunded payment, but
     # allow a force refund to top up after a partial one (e.g. a reschedule
-    # overpayment refund already took part of the captured amount).
+    # overpayment refund already took part of the captured amount). Checked by the
+    # actual sum, not payment.status == completed — that status moves to "refunded"
+    # once the full amount is back, so a status-only check would miss it the second time.
     existing_payment = await repo.get_payment_by_group(db, booking.booking_group_id)
-    if existing_payment is not None and existing_payment.status == PaymentStatus.completed:
+    if existing_payment is not None and existing_payment.status in (
+        PaymentStatus.completed,
+        PaymentStatus.refunded,
+    ):
         already = await repo.sum_refunds_for_payment(db, existing_payment.id)
         if already >= existing_payment.amount:
             raise ConflictError("This payment has already been fully refunded.")
@@ -1033,7 +1040,7 @@ async def force_refund(db: AsyncSession, admin: User, booking_id: uuid.UUID) -> 
     booking.refund_percentage = 100
     if booking.status not in (BookingStatus.cancelled, BookingStatus.rejected):
         booking.status = BookingStatus.cancelled
-        booking.cancellation_reason = "Force majeure — admin full refund."
+        booking.cancellation_reason = reason
         slot = await slot_repo.get_slot(db, booking.slot_id)
         if slot is not None and slot.status != SlotStatus.available:
             slot.status = SlotStatus.available
@@ -1043,9 +1050,17 @@ async def force_refund(db: AsyncSession, admin: User, booking_id: uuid.UUID) -> 
         await equipment_service.release_for_booking(db, booking.id)
 
     refund = await create_refund_for_cancelled_booking(db, booking)
-    await db.commit()
     if refund is None:
         raise ValidationError("No completed payment exists for this booking to refund.")
+    await audit(
+        db,
+        "payment.force_refund",
+        actor=admin,
+        target_type="booking",
+        target_id=booking.id,
+        details={"reason": reason, "refund_id": str(refund.id)},
+    )
+    await db.commit()
     return RefundResponse.model_validate(refund)
 
 
