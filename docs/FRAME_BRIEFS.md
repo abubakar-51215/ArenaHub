@@ -116,6 +116,18 @@ as a follow-up, not built now.
 a new dependency); adding one for an optional control was declined in favor of a smaller
 alternative with no new dependency (next item).
 
+**"Use my current location" button — built (2026-10-22), in place of the map picker.** A button
+next to the existing latitude/longitude fields in `components/owner/arena-form.tsx`, using the
+browser's own `navigator.geolocation.getCurrentPosition` once per click (no library, no
+`package.json` change). It fills the two existing fields (rounded to 6 decimals); the owner can
+still hand-edit them afterward, and the existing both-or-neither/swap/Pakistan-bounds validation
+is unchanged. Permission-denied and unavailable states show a message under the fields and leave
+them editable: "Location permission was denied. Type the latitude and longitude instead." /
+"Could not get your location. Try again." (both new wording, listed for approval).
+`navigator.geolocation` only exists on a secure context (https or localhost) — on plain http the
+button's click handler finds `navigator.geolocation` undefined and shows the same "Could not get
+your location" message rather than throwing.
+
 ---
 
 ## D. Admin: force a 100% refund (force majeure)

@@ -81,8 +81,37 @@ export function ArenaForm({
     initialDays(arena?.operating_hours),
   );
   const [tiers, setTiers] = useState<RefundTier[]>(arena?.refund_policy ?? []);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const pending = create.isPending || update.isPending;
+
+  // Browser geolocation only (no library, no server round trip): fills the
+  // existing lat/lng fields once, nothing stored or sent anywhere else.
+  // Only available on a secure context (https or localhost).
+  function useMyLocation() {
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError("Could not get your location. Try again.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude.toFixed(6));
+        setLongitude(pos.coords.longitude.toFixed(6));
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        setLocationError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission was denied. Type the latitude and longitude instead."
+            : "Could not get your location. Try again.",
+        );
+      },
+    );
+  }
 
   function setDay(day: string, patch: Partial<DayRow>) {
     setDays((d) => ({ ...d, [day]: { ...d[day], ...patch } }));
@@ -211,6 +240,20 @@ export function ArenaForm({
                 placeholder="74.3587"
               />
             </div>
+          </div>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={locating}
+              onClick={useMyLocation}
+            >
+              {locating ? "Locating…" : "Use my current location"}
+            </Button>
+            {locationError && (
+              <p className="mt-1.5 text-sm text-destructive">{locationError}</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
