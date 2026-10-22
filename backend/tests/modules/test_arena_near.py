@@ -21,7 +21,7 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 async def _arena_at(
-    client: AsyncClient, db: AsyncSession, tag: str, lat: str, lon: str, name: str
+    client: AsyncClient, db: AsyncSession, tag: str, lat: str | None, lon: str | None, name: str
 ) -> str:
     owner, _ = await make_user(client, db, f"near-{tag}@example.com", "owner")
     made = await client.post(
@@ -93,6 +93,25 @@ async def test_no_position_means_no_distance_and_sort_near_needs_one(
     assert (await client.get("/api/v1/arenas?q=Near&lat=31.5")).status_code == 422
     assert (await client.get("/api/v1/arenas?lat=95&lon=74&sort=near")).status_code == 422
     assert (await client.get(f"/api/v1/arenas?{_q(radius_km=0)}")).status_code == 422
+
+
+async def test_an_arena_with_no_coordinates_sorts_last_but_is_not_dropped(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    ids = await _three(client, db_session)
+    no_coords = await _arena_at(client, db_session, "d", None, None, "Near No Coords")
+
+    sorted_near = await client.get(f"/api/v1/arenas?{_q(sort='near')}")
+    order = [i["id"] for i in sorted_near.json()["data"]["items"]]
+    assert order == [ids["close"], ids["mid"], ids["far"], no_coords]
+    without = next(i for i in sorted_near.json()["data"]["items"] if i["id"] == no_coords)
+    assert without["distance_km"] is None
+
+    # dropped only when a radius is set, never just for lacking coordinates
+    within = await client.get(f"/api/v1/arenas?{_q(radius_km=30)}")
+    assert no_coords not in {i["id"] for i in within.json()["data"]["items"]}
+    unsorted = await client.get("/api/v1/arenas?q=Near")
+    assert no_coords in {i["id"] for i in unsorted.json()["data"]["items"]}
 
 
 async def test_other_filters_still_apply_with_a_radius(

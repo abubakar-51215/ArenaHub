@@ -40,6 +40,7 @@ from app.modules.arena.schema import (
     DiscountCodeResponse,
     DiscountCodeUpdate,
 )
+from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User, UserRole
 from app.shared import codes
 from app.shared.audit import audit
@@ -250,8 +251,12 @@ async def search_arenas(
     )
     items = await list_items(db, arenas)
     if near:
-        # the position was only a search parameter: it is used here and forgotten
+        # the position was only a search parameter: it is used here and forgotten. An arena
+        # with no coordinates of its own has no distance to show (never dropped unless a
+        # radius was set — the repository query already excludes it there).
         for item in items:
+            if item.latitude is None or item.longitude is None:
+                continue
             item.distance_km = round(
                 repo.distance_km(near[0], near[1], float(item.latitude), float(item.longitude)), 2
             )
@@ -320,10 +325,20 @@ async def add_blocked_date(
     existing = await repo.list_blocked_dates(db, arena_id)
     if any(b.blocked_date == data.blocked_date for b in existing):
         raise ConflictError("That date is already blocked.")
+    booked = await slot_repo.count_booked_on_date(db, arena_id, data.blocked_date)
+    if booked:
+        word = "booking" if booked == 1 else "bookings"
+        raise ConflictError(
+            f"This date has {booked} active {word}. Cancel them first, then block the date."
+        )
     blocked = ArenaBlockedDate(
         arena_id=arena_id, blocked_date=data.blocked_date, reason=data.reason
     )
     saved = await repo.add_blocked_date(db, blocked)
+    await audit(
+        db, "arena.block_date", actor=user, target_type="arena", target_id=arena_id,
+        details={"blocked_date": data.blocked_date.isoformat(), "reason": data.reason},
+    )  # fmt: skip
     await db.commit()
     return BlockedDateResponse.model_validate(saved)
 
@@ -343,6 +358,10 @@ async def remove_blocked_date(
     blocked = await repo.get_blocked_date(db, blocked_id)
     if blocked is None or blocked.arena_id != arena_id:
         raise NotFoundError("Blocked date not found.")
+    await audit(
+        db, "arena.unblock_date", actor=user, target_type="arena", target_id=arena_id,
+        details={"blocked_date": blocked.blocked_date.isoformat()},
+    )  # fmt: skip
     await db.delete(blocked)
     await db.commit()
 
