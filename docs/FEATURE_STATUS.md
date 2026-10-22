@@ -18,14 +18,17 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 
 ## 1. Summary
 
-**Total feature rows audited: 97**
+**Total feature rows audited: 119** (recounted 2026-10-22 against the table itself — the
+previous "97" headline and the status breakdown below it had drifted out of sync with the
+per-area table, which already totaled 118 before today's edits added one more row; see
+Part B of this session's instructions, "make the counts match the rows").
 
 | Status | Count |
 |---|---|
-| DONE | 69 |
-| PARTIAL | 12 |
+| DONE | 97 |
+| PARTIAL | 11 |
 | NOT BUILT | 1 |
-| DEFERRED BY DECISION | 8 |
+| DEFERRED BY DECISION | 3 |
 | NEEDS PHONE | 2 |
 | NEEDS ACCOUNT OR KEY | 5 |
 
@@ -42,7 +45,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 | Notifications | 7 |
 | Complaints | 4 |
 | Matchmaking (Play) | 3 |
-| Owner Web Dashboard | 10 |
+| Owner Web Dashboard | 11 |
 | Admin (Web) | 9 |
 | Admin (Mobile) | 4 |
 | Reports | 5 |
@@ -51,10 +54,13 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `DEFERRED BY DECISION` · `
 **Headline findings**
 
 - The project is substantially complete. Nearly everything decided in the frozen plan and the 40
-  functional requirements is built. The remaining gaps are concentrated in: (a) real payment
-  gateway credentials, (b) a handful of backend routes with no UI (blocked-dates, admin
-  force-refund, payment-event history, pay-balance-through-gateway), (c) deployment phase (deferred
-  by deviation #1), and (d) device-only verification (push delivery, camera uploads).
+  functional requirements is built. As of 2026-10-22, blocked-dates, admin force-refund, the
+  booking pass/QR screen, Get Directions, owner photo upload, the owner payment report, and
+  near-me are all now DONE (were PARTIAL/NOT BUILT as recently as this same day — see the row
+  notes for what changed). The remaining gaps are concentrated in: (a) real payment gateway
+  credentials, (b) two backend routes still with no UI (payment-event history,
+  pay-balance-through-gateway), (c) deployment phase (deferred by deviation #1), and (d)
+  device-only verification (push delivery, camera uploads, Google sign-in on a real build).
 - Two features were **built ahead of the guideline and are now confirmed in scope**: Google
   sign-in (deviation #6 rewritten to accept it; `ADR-009`) and the support **assistant**
   (deviation #3 rewritten to carve it out; `ADR-010`). Both conflicts (C2, C3) are now resolved.
@@ -96,7 +102,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Password strength + last-3 reuse prevention | DONE | `core/security.py`; `finalCheckList` §1 | FR-P-01, MASTER §S2 | |
 | Forgot/reset password by 6-digit code | DONE | `/auth/forgot-password`, `/auth/reset-password`; web `reset-password/page.tsx`; mobile `reset-password.tsx` | FR-P-02, SCOPE-LOCK §5 | Reset ends old sessions. Codes are stored hashed (HMAC-SHA256 via `code_hash()`), never plaintext — `app/shared/codes.py`. |
 | Change email / phone / password via OTP | DONE | `/users/me/email`, `/phone`, `/password` (+`/verify`); mobile `profile/change-*.tsx` | Multi-city+OTP memory decision, FR-P-03 | Phone-change OTP has the same email-delivery gap as registration. |
-| Admin login (email+password → emailed code) | DONE | `/auth/admin/verify-code`, `/resend-code`; web `admin/login/page.tsx`; mobile `(auth)/admin-code.tsx` | FR-A-01, SCOPE-LOCK §1/§3 | Prod needs working mail or no admin can sign in. No admin password reset / email-loss recovery (open gap). |
+| Admin login (email+password → emailed code) | DONE | `/auth/admin/verify-code`, `/resend-code`; web `admin/login/page.tsx`; mobile `(auth)/admin-code.tsx` | FR-A-01, SCOPE-LOCK §1/§3 | Prod needs working mail or no admin can sign in. Lockout recovery: `backend/scripts/admin_recovery.py` (server-shell CLI, no web route), added 2026-10-22, `docs/SECURITY.md`. |
 | Role-based authorization (player/owner/admin) | DONE | `shared/auth.py` `require_role`; `tests/modules/test_authorization_matrix.py` (every route) | FR-S-04, dev #10 | |
 | Redis rate limiting (stricter on auth) | DONE | `middleware/rate_limit.py`, `shared/abuse.py` | MASTER §S2, NFR | 100/min/IP; owner pages can hit it (WEB_COMPLETENESS §6). |
 | Google / social sign-in | NEEDS ACCOUNT OR KEY | `/auth/google`, `/auth/google/phone`; `integrations/google.py`; mobile `one-more-step.tsx`, `lib/google-sign-in.ts` | deviation #6 (now accepts Google), `ADR-009` (was Conflict C2, resolved) | Code complete; refuses with "not available yet" until `GOOGLE_CLIENT_IDS` set. Native flow needs a dev build. |
@@ -122,7 +128,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Filter by rating/availability/sport | PARTIAL | `app/filters.tsx` | FR-P-04 | Amenity "must have", time-of-day and radius filter rows deferred (MOBILE_REQUIREMENTS G2). |
 | Sort by distance | DONE | `GET /arenas?sort=near&lat=&lon=`; `arena/repository.distance_km_expr` (haversine) | FR-P-04 | Was mismarked NOT BUILT in an earlier audit pass — the code already had it; `test_arena_near.py` proves it, including radius filtering and validation. Now in scope per MOBILE_REQUIREMENTS #42. |
 | Sort by price / rating | DONE | `GET /arenas?sort=` | FR-P-04 | |
-| Distance / "near me" + distance on cards | PARTIAL | backend: `GET /arenas` returns `distance_km` per item, never dropping a coordinate-less arena outside a radius filter (`test_an_arena_with_no_coordinates_sorts_last_but_is_not_dropped`); `components/venue.tsx` already renders it | MOBILE_REQUIREMENTS #42 (now "IN SCOPE") | Backend done. Distance-on-cards already renders. Still missing: the phone's "Near me" sort chip and the location-permission flow — briefed in `docs/FRAME_BRIEFS.md` §F, not built (no new screen this pass). |
+| Distance / "near me" + distance on cards | DONE | backend: `GET /arenas` returns `distance_km` per item, never dropping a coordinate-less arena outside a radius filter (`test_an_arena_with_no_coordinates_sorts_last_but_is_not_dropped`); `components/venue.tsx` renders it; mobile "Near me" sort chip + location-permission flow verified end to end (Playwright, granted/denied, 2026-10-22) | MOBILE_REQUIREMENTS #42 (now "IN SCOPE") | Was wrongly marked PARTIAL — the "Near me" chip and permission flow were already fully built; `docs/FRAME_BRIEFS.md` §F corrected to match. |
 | Recent search history | DONE | mobile `store/search-history` (AsyncStorage, last 8) | FR-P-04 | |
 | NLP / smart search | DONE | `GET /search/nlp`; `modules/ai`; mobile `results.tsx` "Understood" chips | FR-P-05, dev #3 | |
 | AI recommendations + alternatives-when-full | DONE | `GET /recommendations`; mobile Home; `components/venue.tsx` | FR-P-15 | Recommendation cards carry `avg_rating`/`review_count`/`min_price` (`test_search_list_cards.py::test_recommendations_carry_the_list_card_fields`); the card component reads all three. |
@@ -134,7 +140,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 |---|---|---|---|---|
 | Arena detail: images, amenities, courts, pricing, hours | DONE | `GET /arenas/{id}`, `/courts`, `/slots-today`; mobile `arena/[id].tsx` | FR-P-06 | |
 | Average rating + reviews on detail | DONE | `/arenas/{id}/reviews`, `/reviews/summary`; mobile `arena/[id]/reviews.tsx` | FR-P-06, FR-P-14 | |
-| Embedded map + navigation | PARTIAL | mobile `components/static-map.tsx` (not wired to a screen) | FR-P-06, dev #8 | Static OSM mosaic component exists but the Location/"Get Directions" block is dropped pending a frame (MOBILE_REQUIREMENTS G3). |
+| Embedded map + navigation | DONE | mobile `lib/directions.ts` (`openDirections`), "Get Directions" row on `arena/[id].tsx` | FR-P-06, dev #8 | Built as the deviation #8 / ADR-004 scope: a "Get Directions" deep link to Google/Apple Maps, not an interactive embedded map. An interactive map picker (Leaflet or similar) was considered and **SKIPPED by decision** (no new map library added) — `components/static-map.tsx`'s static OSM mosaic stays unwired, superseded by the deep link. |
 | Real-time slot availability (WebSocket) | DONE | `app/websocket/manager.py`; `/courts/{id}/slots`; mobile `court/[id]/slots.tsx` | FR-P-07, FR-S-02 | Peak/off-peak styling on slots. |
 
 ### Booking Engine
@@ -151,7 +157,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Cancel with refund per policy | DONE | `/bookings/group/{id}/cancel` + `cancel-preview`; `test_booking` refund-tier | FR-P-11, FR-O-05 | |
 | Reschedule / move booking | DONE | `/bookings/group/{id}/reschedule` + `reschedule-preview`; mobile `booking/move/[groupId].tsx` | FR-P-11 | Dearer slot → balance paid at arena (no online balance; deviation, MOBILE_REQUIREMENTS #72). |
 | Auto-cancel after 24h + reminders (24h/1h) | DONE | `tasks/scheduler.py` (APScheduler) | MASTER §S3, dev #14 | |
-| QR code for confirmed bookings | PARTIAL | generated: `shared/qr.py`, set in `payment/service.py:314` (`qr_code_url`) | MASTER §S3, finalCheckList §2 | Generated + stored server-side; **no app screen displays it** ("View pass" not built, MOBILE_SCREEN_INVENTORY). |
+| QR code for confirmed bookings ("View pass") | DONE | `GET /bookings/{id}/pass`; mobile `app/booking/pass/[bookingId].tsx`, "View Pass" button on `booking/detail/[groupId].tsx` | MASTER §S3, finalCheckList §2 | Built 2026-10-22. QR is now generated in memory from `pass_token` on each request and returned as a data URI — never saved to a public address (the old `qr_code_url` public-file path was a standing exposure, fixed; legacy rows mint a token on first open instead of staying blank). No scan/verify route — informational only. |
 | Pay outstanding balance via gateway | NOT BUILT | `POST /payments/initiate-balance` exists, no screen | FR-P-09 (advance), BACKEND_COMPLETENESS | Route exists; balance is paid at the arena today. No UI drawn (decision pending). |
 
 ### Payments & Refunds
@@ -169,7 +175,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Digital receipt (PDF) | DONE | `/payments/{id}/receipt.pdf`; mobile booking detail | FR-P-09, FR-P-17 | |
 | Refund system (tiered, auto per policy) | DONE | `modules/payment` refunds; `/owner/refunds`, `/admin/refunds`; `test_payment` | FR-P-11, FR-O-05 | |
 | Refund retry with backoff + manual handoff | DONE | refund retry schedule (FEATURE_GAP_REPORT §F1) | dev-era decision | "Pending refund" badge on admin Bookings/Payments. |
-| Admin force-refund (100%) | NOT BUILT | `POST /admin/bookings/{id}/force-refund` exists, no screen | MASTER §S3 ("admin force-refund") | Route + logic exist; no admin button drawn (decision pending, BACKEND_COMPLETENESS). |
+| Admin force-refund (100%) | DONE | `POST /admin/bookings/{id}/force-refund`; web `components/admin/force-refund-dialog.tsx`, wired into `admin/bookings/page.tsx` | MASTER §S3 ("admin force-refund") | Built 2026-10-22. Confirm button disabled for the whole request to prevent a double-send. |
 
 ### Equipment
 
@@ -223,7 +229,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 
 | Feature | Status | Evidence (code) | Source(s) | Notes |
 |---|---|---|---|---|
-| Arena management (create/edit/deactivate/resubmit) | PARTIAL | `/owner/arenas/*`; web `owner/arenas/page.tsx` | FR-O-02 | Works; images are pasted URLs only (no file upload). |
+| Arena management (create/edit/deactivate/resubmit) | DONE | `/owner/arenas/*`; web `owner/arenas/page.tsx`, `components/owner/photo-upload.tsx` | FR-O-02 | Real file upload built 2026-10-22 (`POST /uploads/image`, 6-photo cap, first = cover, client-side type/size pre-check), replacing the pasted-URL textarea. Known limitation: a photo uploaded then removed before the form is saved is an orphan file — documented as a go-live task in `docs/BEFORE_GOING_LIVE.md`, not fixed. |
 | Court management + availability toggle | DONE | `/owner/.../courts`, `/owner/courts/{id}/availability`; web `owner/courts/page.tsx` | FR-O-03 | |
 | Pricing: base + peak rules | DONE | `/owner/courts/{id}/pricing-rules`; web `owner/pricing/page.tsx` | FR-O-04, dev #12 | |
 | Payment config: advance %, refund tiers, discounts, bank accounts | DONE | arena fields; `/owner/.../discounts`, `/bank-details`; web `owner/payments/page.tsx` | FR-O-05 | |
@@ -231,8 +237,9 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Calendar / schedule (day/week/month) | DONE | `/owner/.../bookings/calendar`; web `owner/calendar/page.tsx` | FR-O-07 | |
 | Live Board (courts×hours, "now" line) | DONE | web `owner/page.tsx` | SESSION_HANDOFF item 4, RESTYLE_LOG | Built from the calendar endpoint; no new backend. |
 | Revenue / earnings + pending settlements | DONE | `/owner/dashboard/revenue`, `/analytics`; web `owner/revenue/page.tsx` | FR-O-09 | No payout/commission data (left out by decision). |
-| Owner slot screen (generate/block/edit) + blocked dates | PARTIAL | generate in Courts dialog; `/owner/.../blocked-dates` routes exist, no screen | FR-O-02 ("blocked dates"), FEATURE_GAP_REPORT §A1/§D | Block/edit/delete-slot and blocked-dates (whole-day holiday) have **no dedicated UI**. Decision pending (BACKEND_COMPLETENESS). |
+| Owner slot screen (generate/block/edit) + blocked dates | PARTIAL | generate in Courts dialog; blocked dates: `components/owner/blocked-dates.tsx`, wired into the arena form | FR-O-02 ("blocked dates"), FEATURE_GAP_REPORT §A1/§D | Blocked dates (whole-day holiday) got a dedicated UI 2026-10-22, including a past-date guard (backend + inline message) and an app Dialog for "Unblock" (no `window.confirm`). Block/edit/delete of an **individual slot** still has no screen — narrower remaining gap than before. |
 | Notification center + unread badge | DONE | web `owner/notifications/page.tsx` | FR-O-11 | |
+| "Use my current location" button (arena form) | DONE | web `components/owner/arena-form.tsx` (`useMyLocation`, `navigator.geolocation`) | optional item approved 2026-10-22 | Fills the existing latitude/longitude fields, rounded to 6 decimals; no new library. Found and fixed a real bug during verification: `next.config.ts`'s Permissions-Policy was blocking geolocation site-wide (`geolocation=()` → `geolocation=(self)`). |
 
 ### Admin (Web)
 
@@ -261,9 +268,9 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 
 | Feature | Status | Evidence (code) | Source(s) | Notes |
 |---|---|---|---|---|
-| Player booking-history report (file) | PARTIAL→DONE | `GET /reports/my-bookings`; mobile `profile/report.tsx` | FR-P-17 | Was A1 gap; mobile screen now exists (MOBILE_SCREEN_INVENTORY). CSV/PDF. |
+| Player booking-history report (file) | DONE | `GET /reports/my-bookings`; mobile `profile/report.tsx` | FR-P-17 | Was A1 gap; mobile screen now exists (MOBILE_SCREEN_INVENTORY). CSV/PDF. |
 | Owner reports (bookings, occupancy) CSV/PDF | DONE | `GET /owner/reports`; web `owner/reports/page.tsx` | FR-O-10 | |
-| Owner payment report | NOT BUILT (within partial O-10) | — | FR-O-10 | The one O-10 sub-item still missing. |
+| Owner payment report | DONE | `GET /owner/reports`; web `owner/reports/page.tsx` | FR-O-10 | Built; test added 2026-10-22 covering multiple payments/methods and a date filter. O-10 is now fully done. |
 | Admin reports (users/bookings/revenue/arenas/system) PDF+CSV | DONE | `GET /admin/reports`; `test_report` all types | FR-A-07 | |
 | Excel (.xlsx) export | DEFERRED BY DECISION | — | finalCheckList §8, TRACEABILITY "known open" | Beyond the spec's PDF/CSV; not built. |
 
