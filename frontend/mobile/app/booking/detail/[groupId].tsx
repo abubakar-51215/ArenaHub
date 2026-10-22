@@ -192,6 +192,13 @@ export default function BookingDetailScreen() {
 
       {g && active ? (
         <StickyBar>
+          {g.status === 'confirmed' ? (
+            <Button
+              title="View Pass"
+              variant="ghost"
+              onPress={() => router.push({ pathname: '/booking/pass/[bookingId]', params: { bookingId: g.booking_ids[0] } })}
+            />
+          ) : null}
           {unpaid ? (
             <Button title="Pay now" onPress={() => router.push({ pathname: '/booking/payment', params: { groupId, arenaId: g.arena_id, courtId: g.court_id } })} />
           ) : g.can_reschedule ? (

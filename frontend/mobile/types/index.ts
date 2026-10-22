@@ -350,6 +350,20 @@ export interface BookingGroupDetails {
   can_reschedule: boolean;
 }
 
+/** The "View pass" screen's data. ``start_time``/``end_time`` span the whole
+ * booking group (earliest start to latest end), not one hour slot. */
+export interface BookingPass {
+  booking_id: string;
+  booking_code: string;
+  arena_name: string;
+  court_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: BookingStatus;
+  qr_code_url: string | null;
+}
+
 /** GET /payments/methods: exactly four, in this order. */
 export interface PayMethodInfo {
   key: 'stripe' | 'manual' | 'jazzcash' | 'easypaisa';

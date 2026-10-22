@@ -1,6 +1,6 @@
 /** Player-facing booking API calls. */
 import { api } from '../lib/api';
-import type { Booking, BookingGroup, BookingGroupDetails, BookingGroupItem, BookingPreview, BookingStatus, CancelPreview, Page, PaymentPlan, ReschedulePreview } from '../types';
+import type { Booking, BookingGroup, BookingGroupDetails, BookingGroupItem, BookingPass, BookingPreview, BookingStatus, CancelPreview, Page, PaymentPlan, ReschedulePreview } from '../types';
 
 export interface BookingCreateInput {
   court_id: string;
@@ -74,4 +74,10 @@ export function previewReschedule(groupId: string, newSlotIds: string[]): Promis
 
 export function rescheduleBookingGroup(groupId: string, newSlotIds: string[]): Promise<BookingGroupDetails> {
   return api.post<BookingGroupDetails>(`/bookings/group/${groupId}/reschedule`, { new_slot_ids: newSlotIds });
+}
+
+/** The player's pass for a confirmed booking (QR included). Informational only —
+ * there is no owner scan/verify route yet. */
+export function getBookingPass(bookingId: string): Promise<BookingPass> {
+  return api.get<BookingPass>(`/bookings/${bookingId}/pass`);
 }
