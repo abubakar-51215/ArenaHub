@@ -42,7 +42,7 @@ from app.modules.user.model import User, UserRole
 from app.shared.notify import notify_user
 from app.shared.pagination import PaginationParams
 from app.shared.pricing import apply_discount
-from app.shared.qr import generate_booking_qr_data_uri
+from app.shared.qr import generate_booking_qr_data_uri, make_pass_token
 from app.shared.refunds import (
     describe_refund_policy,
     free_cancel_cutoff,
@@ -416,7 +416,13 @@ async def get_booking_pass(
     arena = await arena_repo.get_arena(db, booking.arena_id)
     court = await court_repo.get_court(db, booking.court_id)
     qr_code_url = booking.qr_code_url  # legacy rows: a previously saved public URL
-    if qr_code_url is None and booking.pass_token is not None:
+    if qr_code_url is None:
+        # Confirmed before pass_token existed on this row (an old booking, or one
+        # confirmed before the column was backfilled) — mint one now, on first open of
+        # the pass, so every confirmed booking ends up with a pass one way or another.
+        if booking.pass_token is None:
+            booking.pass_token = make_pass_token()
+            await db.commit()
         qr_code_url = generate_booking_qr_data_uri(booking.pass_token)
     return BookingPassResponse(
         booking_id=booking.id,

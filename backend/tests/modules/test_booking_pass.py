@@ -75,6 +75,33 @@ async def test_pass_qr_is_generated_inline_never_a_public_file(
     assert booking.pass_token is not None
 
 
+async def test_opening_the_pass_mints_a_token_for_a_booking_that_predates_the_column(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A booking confirmed before pass_token existed (or before it was backfilled) has
+    neither a saved qr_code_url nor a pass_token. Opening its pass must still produce a
+    working QR rather than an empty one — by minting a token on first open."""
+    player, group, payment, court_id, monday = await _paid_group(client, db_session, "passback")
+    booking_id = group["bookings"][0]["id"]
+
+    booking = await db_session.get(Booking, booking_id)
+    assert booking is not None
+    booking.pass_token = None
+    booking.qr_code_url = None
+    await db_session.commit()
+
+    got = await client.get(f"/api/v1/bookings/{booking_id}/pass", headers=auth_header(player))
+    assert got.status_code == 200, got.text
+    qr = got.json()["data"]["qr_code_url"]
+    assert qr.startswith("data:image/png;base64,")
+
+    db_session.expire_all()
+    refreshed = await db_session.get(Booking, booking_id)
+    assert refreshed is not None
+    assert refreshed.pass_token is not None
+    assert refreshed.qr_code_url is None  # still never a saved public file
+
+
 async def test_pass_route_shows_the_whole_groups_time_range(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
