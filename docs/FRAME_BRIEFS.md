@@ -90,54 +90,31 @@ screen).
 
 ---
 
-## C. Owner: arena photos as file uploads, plus an optional map picker
+## C. Owner: arena photos as file uploads — built; map picker — not built
 
-**No existing prototype frame for the photo control specifically** (the owner prototype shows
-"Change photo" / "Replace logo" buttons in a profile context, not the arena form). **Not built
-this pass** — no reusable file-upload component exists anywhere in the web app yet (checked:
-there is none), so per instruction this stays a brief rather than new layout.
+**Built (2026-10-22).** `components/owner/photo-upload.tsx` replaces the arena form's old
+newline-separated URL textarea: a thumbnail grid (first photo is the cover — the same
+`images[0]`-as-cover convention `app/owner/courts/page.tsx` already uses for court cards), a
+remove (×) per thumbnail, a 6-photo cap, a progress percentage while a file is going out, and
+the server's own error text shown inline on failure. `services/uploads.ts` is the new web
+upload client (`XMLHttpRequest`, mirroring `frontend/mobile/services/uploads.ts`'s shape, since
+`fetch` has no upload-progress event); it calls ArenaHub's own `POST /uploads/image?folder=arenas`
+only — no Cloudinary credential is ever in the browser. The client pre-checks type and size
+before sending (same JPEG/PNG/WebP, 5 MB limits, same wording as the backend); the backend still
+re-validates everything regardless.
 
-Backend is already there and needs no change: `POST /uploads/image?folder=arenas` (owner/admin
-only) accepts JPG, PNG or WebP up to 5 MB and returns `{url}`; the arena form already sends
-`images: string[]` on create/update. Latitude/longitude are now optional end to end (this pass's
-migration) and the form fields are already un-required — no brief needed for that part, it's
-built.
+**Known limitation, not fixed this pass:** a photo uploaded and then removed from the form
+*before* the arena is saved becomes an orphan file on the storage backend (local disk or
+Cloudinary). The only cleanup path today is `update_arena`'s own "dropped from the saved
+`images` array" delete, which only runs for a URL that was actually part of a previously saved
+record — a URL that was uploaded, shown in the picker, then removed again without ever being
+saved never reaches that code path. There is no delete-by-URL route to call from the picker
+instead. Fixing this would mean adding a new endpoint (e.g. `DELETE /uploads/image`) and is left
+as a follow-up, not built now.
 
-**Who sees it:** arena owner, in `components/owner/arena-form.tsx`, replacing the current
-newline-separated URL textarea for `images`.
-
-**Fields:**
-- A file picker (accept `.jpg,.jpeg,.png,.webp`), multiple files.
-- Thumbnails of the already-chosen/already-saved photos, each with a small remove (×) button.
-- A visible cap, e.g. "6 of 6 photos" once at the limit (schema allows up to 20 — pick a lower
-  practical UI cap and confirm with the owner before building).
-
-**States:**
-- *Uploading*: a spinner on the thumbnail being uploaded; disable Save while any upload is in
-  flight.
-- *Upload error*: the server's own message — "Unsupported image type. Use JPEG, PNG, or WebP."
-  or "Image is too large (max 5 MB)." — shown under the picker, not a toast (consistent with
-  the rest of the form's inline errors).
-- *Remove*: optimistic — the thumbnail disappears immediately; the URL is dropped from the
-  `images` array sent on Save (existing `update_arena` logic already deletes the file for a
-  removed image — no backend change needed).
-
-**What each control does:** choosing a file calls `POST /uploads/image?folder=arenas`
-immediately (not deferred to form Save — matches the receipt-upload pattern the mobile app
-already uses), appends the returned `url` to local `images` state; the × button removes that
-URL from local state only (the actual delete happens server-side on Save, as today).
-
-**Wording needed (new, for approval):** none — reuse the backend's own error text verbatim.
-
-**Optional: "pick the spot on a map" control.** Not built, not in any prototype. Would replace
-typing latitude/longitude by hand with a tap-to-drop-a-pin map (Leaflet, per
-`PROJECT_GUIDELINES.md` deviation #8 — OpenStreetMap is already the project's map choice for
-web). Brief only: a small embedded Leaflet map defaulting to the arena's city centre (or Lahore
-if none), a single draggable pin, with the existing lat/lng text inputs kept alongside and kept
-in sync both ways (typing updates the pin; dragging the pin updates the fields) — satisfies
-"keep the latitude and longitude inputs in the form." This is a genuinely new dependency
-(Leaflet isn't in `frontend/web`'s `package.json` yet) and a larger task than the photo control;
-flagging it as its own follow-up rather than bundling it in.
+**Map picker: skipped.** No map library exists in `frontend/web/package.json` (Leaflet would be
+a new dependency); adding one for an optional control was declined in favor of a smaller
+alternative with no new dependency (next item).
 
 ---
 

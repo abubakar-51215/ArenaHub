@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { BlockedDates } from "@/components/owner/blocked-dates";
+import { PhotoUpload } from "@/components/owner/photo-upload";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,7 +74,7 @@ export function ArenaForm({
   const [phone, setPhone] = useState(arena?.contact_phone ?? "");
   const [emailContact, setEmailContact] = useState(arena?.contact_email ?? "");
   const [sports, setSports] = useState<string[]>(arena?.sports_offered ?? []);
-  const [images, setImages] = useState((arena?.images ?? []).join("\n"));
+  const [images, setImages] = useState<string[]>(arena?.images ?? []);
   const [advance, setAdvance] = useState(String(arena?.advance_percentage ?? 100));
   const [fullPayment, setFullPayment] = useState(arena?.require_full_payment ?? true);
   const [days, setDays] = useState<Record<string, DayRow>>(() =>
@@ -121,10 +122,7 @@ export function ArenaForm({
       contact_email: emailContact || null,
       operating_hours: openHours,
       sports_offered: sportsList,
-      images: images
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      images,
       advance_percentage: Number(advance),
       require_full_payment: fullPayment,
       refund_policy: tiers,
@@ -354,13 +352,8 @@ export function ArenaForm({
           {editing && <BlockedDates arenaId={arena.id} />}
 
           <div>
-            <Label htmlFor="a-images">Image URLs</Label>
-            <Textarea
-              id="a-images"
-              value={images}
-              onChange={(e) => setImages(e.target.value)}
-              placeholder="One URL per line"
-            />
+            <Label>Photos</Label>
+            <PhotoUpload images={images} onChange={setImages} />
           </div>
 
           {error && (

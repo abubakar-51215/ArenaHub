@@ -76,7 +76,7 @@ async function rawRequest(
 }
 
 /** Attempt a one-shot refresh of the token pair. Returns the new access token. */
-async function tryRefresh(): Promise<string | null> {
+export async function tryRefresh(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
     const { refreshToken, setTokens, clear } = useAuthStore.getState();
