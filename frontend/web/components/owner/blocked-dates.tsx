@@ -82,7 +82,7 @@ export function BlockedDates({ arenaId }: { arenaId: string }) {
             className="w-40"
           />
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-40 flex-1">
           <Label htmlFor={reasonId} className="sr-only">
             Reason (optional)
           </Label>
