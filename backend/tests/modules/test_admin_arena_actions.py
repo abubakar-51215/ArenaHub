@@ -676,8 +676,8 @@ async def test_gateway_answering_pending_counts_as_a_try_until_manual(
 async def test_admin_payments_show_lifecycle_status(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """A fully refunded payment keeps status "completed" but its lifecycle is
-    "refunded", so the admin list can label it Refunded."""
+    """A fully refunded payment's coarse status becomes "refunded" too, not stuck at
+    "completed" as if money were still owed; its lifecycle is "refunded" either way."""
     s = await _setup(client, db_session, "life1")
     player, _ = await make_user(client, db_session, "life1-player@example.com")
     slots = await _slot_ids(client, s["court_id"], s["day"])
@@ -691,5 +691,5 @@ async def test_admin_payments_show_lifecycle_status(
     await _act(client, s["admin"], s["arena_id"], "suspend")
     after = (await client.get(f"{API}/admin/payments", headers=h)).json()["data"]["items"]
     [refunded] = after
-    assert refunded["status"] == "completed"
+    assert refunded["status"] == "refunded"
     assert refunded["lifecycle_status"] == "refunded"

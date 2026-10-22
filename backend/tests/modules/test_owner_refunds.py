@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.booking.model import Booking, PaymentStatus
 from app.modules.notification.model import Notification
 from app.modules.payment.model import Payment, PaymentLifecycleStatus, Refund, RefundStatus
 from tests.helpers import auth_header, make_admin, make_user
@@ -204,8 +205,6 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
     )
     assert ok.status_code == 200
     admin = await make_admin(client, db_session, "or6-admin@example.com")
-    from app.modules.booking.model import Booking
-
     pay = await db_session.get(Payment, payment["id"])
     assert pay is not None
     ids = (
@@ -230,6 +229,12 @@ async def test_mark_paid_on_a_confirmed_booking_keeps_the_payment_fully_refunded
     assert len(refunds) == 2 and all(r.status == RefundStatus.pending for r in refunds)
     await db_session.refresh(pay)
     assert pay.lifecycle_status == PaymentLifecycleStatus.refunded
+    # the coarse status (what admin Payments reads) must say "refunded" too, not stay
+    # "completed" as if there were still money owed on this payment.
+    for booking_id in ids:
+        booking = await db_session.get(Booking, booking_id)
+        assert booking is not None and booking.payment_status == PaymentStatus.refunded
+    assert pay.status == PaymentStatus.refunded
     for r in refunds:
         res = await client.post(
             f"/api/v1/owner/refunds/{r.id}/mark-paid", headers=auth_header(owner)

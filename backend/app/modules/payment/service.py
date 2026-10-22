@@ -600,6 +600,11 @@ async def _mark_refunded_if_fully(db: AsyncSession, payment: Payment) -> None:
     refunded = await repo.sum_refunds_for_payment(db, payment.id)
     if refunded >= payment.amount:
         await state_machine.advance(db, payment, Lifecycle.refunded, note="Fully refunded.")
+        # the coarse status (what admin Payments/Bookings and revenue queries read) must say
+        # so too — it stayed "completed" otherwise, which reads as still-owed-money
+        payment.status = PaymentStatus.refunded
+        for booking in await booking_repo.list_group(db, payment.booking_group_id):
+            booking.payment_status = PaymentStatus.refunded
 
 
 async def _issue_refund(

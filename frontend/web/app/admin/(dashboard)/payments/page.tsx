@@ -29,10 +29,10 @@ const STATUSES: PaymentStatus[] = ["pending", "completed", "failed", "refunded"]
 
 type Period = "" | "this" | "last";
 
-/** The status shown in the badge: a payment whose lifecycle reached
- *  "refunded" (refunds equal the amount) reads "Refunded", even though its
- *  coarse status stays "completed". A partial refund cannot be told apart
- *  from the API's fields today. */
+/** The status shown in the badge: the coarse status now reaches "refunded"
+ *  itself once a payment is fully refunded, but this also checks the
+ *  lifecycle in case either field is read from an older cached row. A
+ *  partial refund cannot be told apart from the API's fields today. */
 function shownStatus(p: AdminPayment): string {
   return p.lifecycle_status === "refunded" ? "refunded" : p.status;
 }
