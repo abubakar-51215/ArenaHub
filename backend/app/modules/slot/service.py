@@ -23,6 +23,7 @@ from app.modules.slot.schema import (
     SlotUpdate,
 )
 from app.modules.user.model import User
+from app.shared.audit import audit
 from app.shared.pricing import resolve_peak_price
 from app.websocket.manager import broadcast_slot_status
 
@@ -282,6 +283,14 @@ async def update_slot(
     fields = data.model_dump(exclude_unset=True)
     for field, value in fields.items():
         setattr(slot, field, value)
+    await audit(
+        db,
+        "slot.update",
+        actor=user,
+        target_type="slot",
+        target_id=slot.id,
+        details=data.model_dump(exclude_unset=True, mode="json"),
+    )
     await db.commit()
     await broadcast_slot_status(court_id, slot.id, slot.date, slot.start_time, slot.status.value)
     return SlotResponse.model_validate(slot)
@@ -294,6 +303,14 @@ async def delete_slot(
     if slot.status in _HAS_BOOKING_STATUSES:
         raise ValidationError("Cannot delete a slot that has an active booking.")
     slot_id_, slot_date, start_time = slot.id, slot.date, slot.start_time
+    await audit(
+        db,
+        "slot.delete",
+        actor=user,
+        target_type="slot",
+        target_id=slot_id_,
+        details={"date": slot_date.isoformat(), "start_time": start_time.isoformat()},
+    )
     await db.delete(slot)
     await db.commit()
     await broadcast_slot_status(court_id, slot_id_, slot_date, start_time, "deleted")

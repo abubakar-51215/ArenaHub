@@ -57,6 +57,22 @@ async def add_slot(db: AsyncSession, slot: TimeSlot) -> TimeSlot:
     return slot
 
 
+async def count_booked_on_date(db: AsyncSession, arena_id: uuid.UUID, target_date: date) -> int:
+    """How many of the arena's slots on this date have a live booking (booked or a
+    payment in flight) — what blocking the whole day would knock out."""
+    result = await db.execute(
+        select(func.count())
+        .select_from(TimeSlot)
+        .join(Court, Court.id == TimeSlot.court_id)
+        .where(
+            Court.arena_id == arena_id,
+            TimeSlot.date == target_date,
+            TimeSlot.status.in_((SlotStatus.booked, SlotStatus.reserved)),
+        )
+    )
+    return int(result.scalar() or 0)
+
+
 async def occupancy_counts(
     db: AsyncSession, arena_ids: list[uuid.UUID], *, date_from: date, date_to: date
 ) -> tuple[int, int]:
