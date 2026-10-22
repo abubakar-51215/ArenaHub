@@ -1,12 +1,17 @@
 """Blocking a whole day guards against an owner accidentally wiping out live bookings:
 refused with the count when any slot that day is booked or mid-payment, allowed once
-those are cancelled, and every block/unblock is audited."""
+those are cancelled, and every block/unblock is audited. A date that has already
+passed can never be blocked, whether or not anything was ever booked on it."""
+
+from datetime import timedelta
 
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.messages import BLOCKED_DATE_IN_PAST
 from app.modules.admin.model import AuditLog
+from app.shared.timezone import platform_today
 from tests.helpers import auth_header, make_user
 from tests.modules.test_review import _make_bookable_court, _slots
 
@@ -112,6 +117,36 @@ async def test_editing_or_deleting_a_booked_slot_is_audited_when_allowed(
     )
     assert deleted.status_code == 200
     assert await _audit_count(db_session, "slot.delete", slots[1]["id"]) == 1
+
+
+async def test_a_past_date_cannot_be_blocked_but_today_and_the_future_can(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    owner, _ = await make_user(client, db_session, "bdg-owner5@example.com", "owner")
+    arena_id, _court_id, _monday = await _make_bookable_court(client, db_session, owner, "bdg5")
+    today = platform_today()
+
+    refused = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/blocked-dates",
+        headers=auth_header(owner),
+        json={"blocked_date": (today - timedelta(days=1)).isoformat()},
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["message"] == BLOCKED_DATE_IN_PAST
+
+    allowed_today = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/blocked-dates",
+        headers=auth_header(owner),
+        json={"blocked_date": today.isoformat()},
+    )
+    assert allowed_today.status_code == 201, allowed_today.text
+
+    allowed_future = await client.post(
+        f"/api/v1/owner/arenas/{arena_id}/blocked-dates",
+        headers=auth_header(owner),
+        json={"blocked_date": (today + timedelta(days=7)).isoformat()},
+    )
+    assert allowed_future.status_code == 201, allowed_future.text
 
 
 async def test_a_date_blocked_first_then_refuses_a_booking_on_it(

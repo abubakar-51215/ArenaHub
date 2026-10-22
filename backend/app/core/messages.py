@@ -139,3 +139,6 @@ RESET_SIGN_OFF = "Cheers," + chr(10) + "The ArenaHub Team"
 WALLET_NUMBER_NEEDED = "Enter your {wallet} number."
 WALLET_NUMBER_INVALID = "Enter a Pakistani mobile number, like 0300 1234567."
 RETURN_ADDRESS_REFUSED = "This return address is not allowed."
+
+# Owner blocked dates (approved by the owner on 2026-10-22)
+BLOCKED_DATE_IN_PAST = "You can't block a date that has already passed."

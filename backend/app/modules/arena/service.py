@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import redis as redis_cache
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.messages import BLOCKED_DATE_IN_PAST
 from app.modules.arena import repository as repo
 from app.modules.arena.model import (
     Arena,
@@ -48,6 +49,7 @@ from app.shared.notify import notify_admins
 from app.shared.otp import OtpPurpose
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.storage import delete_image
+from app.shared.timezone import platform_today
 
 # Fields that map 1:1 from the update schema onto the model.
 _SCALAR_UPDATE_FIELDS = (
@@ -322,6 +324,8 @@ async def add_blocked_date(
     db: AsyncSession, user: User, arena_id: uuid.UUID, data: BlockedDateCreate
 ) -> BlockedDateResponse:
     await _owned_arena(db, arena_id, user)
+    if data.blocked_date < platform_today():
+        raise ValidationError(BLOCKED_DATE_IN_PAST)
     existing = await repo.list_blocked_dates(db, arena_id)
     if any(b.blocked_date == data.blocked_date for b in existing):
         raise ConflictError("That date is already blocked.")
