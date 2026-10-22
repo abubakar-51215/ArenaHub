@@ -120,6 +120,41 @@ async def test_a_partial_refund_shows_as_part_refunded_not_completed(
     assert "Part refunded" in csv.text
 
 
+async def test_a_normal_payment_shows_as_completed_not_refunded(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The other two tests above prove the refunded and partly-refunded labels; this
+    is the third leg — an untouched payment must still read "completed" (list/filter)
+    and "Paid" (the CSV's receipt-style wording for the same coarse status) rather than
+    picking up either refund label by accident."""
+    player, group, payment, _, _ = await _paid_group(client, db_session, "fr4", slot_count=1)
+    admin = await make_admin(client, db_session, "fr4-admin@example.com")
+
+    listed = await client.get("/api/v1/admin/payments", headers=auth_header(admin))
+    [row] = [p for p in listed.json()["data"]["items"] if p["id"] == payment["id"]]
+    assert row["status"] == "completed"
+    assert row["partially_refunded"] is False
+
+    filtered = await client.get(
+        "/api/v1/admin/payments", params={"status": "completed"}, headers=auth_header(admin)
+    )
+    assert any(p["id"] == payment["id"] for p in filtered.json()["data"]["items"])
+    not_refunded = await client.get(
+        "/api/v1/admin/payments", params={"status": "refunded"}, headers=auth_header(admin)
+    )
+    assert not any(p["id"] == payment["id"] for p in not_refunded.json()["data"]["items"])
+
+    # Same single-payment db as the other two tests, so the whole CSV is enough to check.
+    csv = await client.get(
+        "/api/v1/admin/reports", params={"type": "revenue", "format": "csv"},
+        headers=auth_header(admin),
+    )  # fmt: skip
+    assert csv.status_code == 200, csv.text
+    assert "Paid" in csv.text
+    assert "Refunded" not in csv.text
+    assert "Part refunded" not in csv.text
+
+
 async def test_force_refund_frees_the_slot_and_notifies_the_player(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
