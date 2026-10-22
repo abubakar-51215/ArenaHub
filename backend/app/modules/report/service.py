@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, NotFoundError
 from app.modules.admin import repository as admin_repo
+from app.modules.admin.service import _partially_refunded_ids
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaStatus
 from app.modules.booking import repository as booking_repo
@@ -334,6 +335,7 @@ async def _admin_revenue_rows(
         offset=0,
         limit=_LIMIT,
     )
+    partial = await _partially_refunded_ids(db, [payment.id for payment, *_ in payments_raw])
     headers = ["Date", "Arena", "Player", "Method", "Status", "Amount"]
     rows = [
         [
@@ -343,7 +345,11 @@ async def _admin_revenue_rows(
             arena_name or "-",
             player_name,
             PAYMENT_METHOD_NAMES.get(payment.payment_method.value, payment.payment_method.value),
-            web_status(_PAID.get(payment.status.value, payment.status.value)),
+            web_status(
+                "partially_refunded"
+                if payment.id in partial
+                else _PAID.get(payment.status.value, payment.status.value)
+            ),
             web_rupees(payment.amount),
         ]
         for payment, arena_name, player_name in payments_raw

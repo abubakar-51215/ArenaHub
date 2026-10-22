@@ -32,9 +32,12 @@ type Period = "" | "this" | "last";
 /** The status shown in the badge: the coarse status now reaches "refunded"
  *  itself once a payment is fully refunded, but this also checks the
  *  lifecycle in case either field is read from an older cached row. A
- *  partial refund cannot be told apart from the API's fields today. */
+ *  partial refund keeps the coarse status at "completed" by design (money is
+ *  still owed for the rest), so partially_refunded is checked separately. */
 function shownStatus(p: AdminPayment): string {
-  return p.lifecycle_status === "refunded" ? "refunded" : p.status;
+  if (p.lifecycle_status === "refunded") return "refunded";
+  if (p.partially_refunded) return "partially_refunded";
+  return p.status;
 }
 
 /** Month bounds as Asia/Karachi wall-clock times (how payment times are stored). */

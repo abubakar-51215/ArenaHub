@@ -390,6 +390,9 @@ export interface AdminPayment {
   refund_pending?: boolean;
   /** fine-grained lifecycle; "refunded" once refunds reach the amount */
   lifecycle_status?: string;
+  /** some money was refunded but not the full amount yet -- status alone still
+   *  reads "completed" for this */
+  partially_refunded?: boolean;
   id: string;
   player_id: string;
   player_name: string;

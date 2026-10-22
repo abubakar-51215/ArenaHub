@@ -112,12 +112,17 @@ class AdminPaymentResponse(BaseModel):
     payment_method: PaymentMethod
     gateway_transaction_id: str | None
     status: PayStatus
-    # the fine-grained lifecycle ("refunded" once refunds reach the amount;
-    # status stays "completed" then)
+    # the fine-grained lifecycle (also reaches "refunded" once refunds reach the
+    # amount — status does too, at the same moment; see payment/service.py's
+    # _mark_refunded_if_fully)
     lifecycle_status: PaymentLifecycleStatus
     created_at: datetime
     # a refund against this payment is still waiting (gateway retry, or manual)
     refund_pending: bool = False
+    # some money was refunded but not the whole amount yet -- status alone still
+    # reads "completed" for this (only a *full* refund flips it), so the admin UI
+    # needs this flag to tell the two apart
+    partially_refunded: bool = False
 
 
 # ---- dashboard --------------------------------------------------

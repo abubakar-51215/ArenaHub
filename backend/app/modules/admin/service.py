@@ -12,7 +12,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
@@ -36,7 +36,7 @@ from app.modules.auth import sessions, tokens
 from app.modules.booking import service as booking_service
 from app.modules.booking.model import BookingStatus
 from app.modules.complaint import service as complaint_service
-from app.modules.payment.model import PaymentMethod, Refund, RefundStatus
+from app.modules.payment.model import Payment, PaymentMethod, Refund, RefundStatus
 from app.modules.payment.model import PaymentStatus as PayStatus
 from app.modules.user.model import User, UserRole
 from app.shared.audit import audit
@@ -387,6 +387,23 @@ async def list_bookings(
     return paginated(items, total, params)
 
 
+async def _partially_refunded_ids(db: AsyncSession, payment_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+    """Payments with some money refunded against them that have not reached the full
+    amount yet — a partial refund (a reschedule overpayment, one slot of a group
+    cancelled) does not flip the coarse ``status`` to "refunded" (only a full one
+    does, see ``payment/service.py::_mark_refunded_if_fully``), so without this a
+    partly-refunded payment reads exactly like an untouched one."""
+    if not payment_ids:
+        return set()
+    rows = await db.execute(
+        select(Payment.id, func.sum(Refund.amount), Payment.amount)
+        .join(Refund, Refund.payment_id == Payment.id)
+        .where(Payment.id.in_(payment_ids), Payment.status == PayStatus.completed)
+        .group_by(Payment.id, Payment.amount)
+    )
+    return {pid for pid, refunded, amount in rows if refunded and refunded < amount}
+
+
 async def list_payments(
     db: AsyncSession,
     *,
@@ -407,7 +424,9 @@ async def list_payments(
         offset=params.offset,
         limit=params.page_size,
     )
-    waiting = await _pending_refund_ids(db, Refund.payment_id, [p.id for p, *_ in rows])
+    payment_ids = [p.id for p, *_ in rows]
+    waiting = await _pending_refund_ids(db, Refund.payment_id, payment_ids)
+    partial = await _partially_refunded_ids(db, payment_ids)
     items = [
         AdminPaymentResponse(
             id=p.id,
@@ -423,6 +442,7 @@ async def list_payments(
             lifecycle_status=p.lifecycle_status,
             created_at=p.created_at,
             refund_pending=p.id in waiting,
+            partially_refunded=p.id in partial,
         )
         for p, an, pn in rows
     ]
