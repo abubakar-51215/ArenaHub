@@ -159,6 +159,16 @@ async def get_booking(
     return success(data=booking, message="Booking retrieved.")
 
 
+@router.get("/{booking_id}/pass", summary="The booking pass (QR included)")
+async def get_booking_pass(
+    booking_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    pass_ = await service.get_booking_pass(db, user, booking_id)
+    return success(data=pass_, message="Pass retrieved.")
+
+
 @router.post("/{booking_id}/cancel", summary="Cancel a booking")
 async def cancel_booking(
     booking_id: uuid.UUID,

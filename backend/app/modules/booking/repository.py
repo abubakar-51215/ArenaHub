@@ -20,6 +20,15 @@ async def get_booking(db: AsyncSession, booking_id: uuid.UUID) -> Booking | None
     return await db.get(Booking, booking_id)
 
 
+async def get_booking_by_pass_token(db: AsyncSession, pass_token: str) -> Booking | None:
+    """The one booking a scanned QR names — verifying a pass is this lookup, nothing
+    else; a token not found here was never issued by this server. No owner-facing
+    route calls this yet (no scan screen exists); it exists so the claim "only the
+    arena owner's system can verify a pass" is actually true and testable."""
+    result = await db.execute(select(Booking).where(Booking.pass_token == pass_token))
+    return result.scalar_one_or_none()
+
+
 async def list_future_live_bookings_for_update(
     db: AsyncSession, arena_id: uuid.UUID, statuses: tuple, now: datetime
 ) -> list[Booking]:

@@ -59,7 +59,7 @@ from app.shared.audit import audit
 from app.shared.notify import booking_when, notify_user
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.phone import phone_key
-from app.shared.qr import generate_booking_qr
+from app.shared.qr import generate_booking_qr, make_pass_token
 from app.websocket.manager import broadcast_slot_status
 
 log = structlog.get_logger()
@@ -311,7 +311,8 @@ async def _confirm_group(db: AsyncSession, payment: Payment) -> None:
     for booking in bookings:
         booking.status = BookingStatus.confirmed
         booking.payment_status = PaymentStatus.completed
-        booking.qr_code_url = generate_booking_qr(booking.id)
+        booking.pass_token = make_pass_token()
+        booking.qr_code_url = generate_booking_qr(booking.pass_token)
         slot = await slot_repo.get_slot(db, booking.slot_id)
         if slot is not None:
             slot.status = SlotStatus.booked

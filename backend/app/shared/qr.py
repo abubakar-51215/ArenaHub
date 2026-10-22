@@ -1,24 +1,30 @@
 """QR code generation for confirmed bookings.
 
-The QR encodes the booking id only (already an unguessable UUID4); whoever
-scans it (arena staff at check-in) still looks the booking up server-side
-and checks its status, so the code itself doesn't need to be cryptographically
-signed — same trust model as a plain ticket barcode. Reuses ``shared.storage``
-so the image goes through the same local/Cloudinary seam as arena photos.
+The QR encodes a random pass token (``Booking.pass_token``, set once per booking at
+confirmation), never the booking's own id. The token has no mathematical relationship
+to the id — it can't be derived from it, and nothing about it can be read without a
+database lookup, which only ArenaHub's own server can do. Reuses ``shared.storage`` so
+the image goes through the same local/Cloudinary seam as arena photos.
 """
 
 import io
 import json
-import uuid
+import secrets
 
 import qrcode
 
 from app.shared.storage import save_image
 
+PASS_TOKEN_BYTES = 24  # 48 hex characters
 
-def generate_booking_qr(booking_id: uuid.UUID) -> str:
-    """Generate a QR PNG for a booking and return its stored URL."""
-    payload = json.dumps({"type": "arenahub_booking", "booking_id": str(booking_id)})
+
+def make_pass_token() -> str:
+    return secrets.token_hex(PASS_TOKEN_BYTES)
+
+
+def generate_booking_qr(pass_token: str) -> str:
+    """Generate a QR PNG carrying this pass token and return its stored URL."""
+    payload = json.dumps({"type": "arenahub_booking_pass", "token": pass_token})
     img = qrcode.make(payload)
     buf = io.BytesIO()
     img.save(buf, format="PNG")

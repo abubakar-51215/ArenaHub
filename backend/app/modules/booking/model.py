@@ -79,6 +79,7 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             unique=True,
             postgresql_where=text("status NOT IN ('cancelled', 'rejected')"),
         ),
+        Index("uq_bookings_pass_token", "pass_token", unique=True),
         CheckConstraint("total_amount > 0", name="ck_bookings_total_amount_positive"),
         CheckConstraint("advance_amount >= 0", name="ck_bookings_advance_amount_nonneg"),
         CheckConstraint("remaining_amount >= 0", name="ck_bookings_remaining_amount_nonneg"),
@@ -129,6 +130,10 @@ class Booking(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Set once the payment module confirms the booking (payment webhook or
     # owner bank_transfer approval); not in doc 09.
     qr_code_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # A random, unguessable value with no relationship to this row's id — what the QR
+    # actually encodes. Verifying a scan means looking this up, nothing else; there is
+    # no way to derive it from the booking id or anything else about the booking.
+    pass_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     refund_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

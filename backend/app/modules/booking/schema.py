@@ -59,6 +59,22 @@ class BookingResponse(BaseModel):
     refund_percentage: int | None = None
 
 
+class BookingPassResponse(BaseModel):
+    """What the player's "View pass" screen shows: enough to display the pass and the
+    QR, nothing about anyone else's booking. ``qr_code_url`` carries a signed token,
+    never the raw booking id (``shared.qr``)."""
+
+    booking_id: uuid.UUID
+    booking_code: str
+    arena_name: str
+    court_name: str
+    booking_date: date
+    start_time: time
+    end_time: time
+    status: BookingStatus
+    qr_code_url: str | None = None
+
+
 class BookingGroupResponse(BaseModel):
     booking_group_id: uuid.UUID
     bookings: list[BookingResponse]

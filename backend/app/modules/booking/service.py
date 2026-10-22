@@ -28,6 +28,7 @@ from app.modules.booking.schema import (
     BookingCreateRequest,
     BookingGroupDetails,
     BookingGroupResponse,
+    BookingPassResponse,
     BookingPreviewRequest,
     BookingPreviewResponse,
     BookingResponse,
@@ -393,6 +394,32 @@ async def _visible_booking(db: AsyncSession, user: User, booking_id: uuid.UUID) 
 async def get_booking(db: AsyncSession, user: User, booking_id: uuid.UUID) -> BookingResponse:
     booking = await _visible_booking(db, user, booking_id)
     return BookingResponse.model_validate(booking)
+
+
+async def get_booking_pass(
+    db: AsyncSession, user: User, booking_id: uuid.UUID
+) -> BookingPassResponse:
+    """The "View pass" data: only for the player who owns this booking, and only once
+    it is confirmed — never for a pending, cancelled or someone else's booking. A
+    booking that isn't the caller's own answers exactly like one that doesn't exist."""
+    booking = await repo.get_booking(db, booking_id)
+    if booking is None or user.role != UserRole.player or booking.player_id != user.id:
+        raise NotFoundError("Booking not found.")
+    if booking.status != BookingStatus.confirmed:
+        raise ValidationError("This booking has no pass yet.")
+    arena = await arena_repo.get_arena(db, booking.arena_id)
+    court = await court_repo.get_court(db, booking.court_id)
+    return BookingPassResponse(
+        booking_id=booking.id,
+        booking_code=booking_code_for(booking.booking_group_id),
+        arena_name=arena.name if arena else "",
+        court_name=court.name if court else "",
+        booking_date=booking.booking_date,
+        start_time=booking.start_time,
+        end_time=booking.end_time,
+        status=booking.status,
+        qr_code_url=booking.qr_code_url,
+    )
 
 
 async def list_my_bookings(
