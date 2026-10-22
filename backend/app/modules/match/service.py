@@ -227,11 +227,16 @@ async def join_match(
     match = await repo.get_match_for_update(db, match_id)
     if match is None:
         raise NotFoundError("Match not found.")
+    if match.status == MatchStatus.cancelled:
+        raise ConflictError(MSG_CANCELLED)
+    # Suspending or removing an arena already cancels every match on it (the
+    # admin arena-suspend/remove flow cascades to this), so the check above
+    # covers the normal path with its own clear message. This is a second,
+    # defensive check for an arena that stops being live some other way
+    # without the match's own status catching up.
     arena = await arena_repo.get_arena(db, match.arena_id)
     if arena is None or not arena.is_live:
         raise ConflictError(MSG_ARENA_UNAVAILABLE)
-    if match.status == MatchStatus.cancelled:
-        raise ConflictError(MSG_CANCELLED)
     if match.creator_id == user.id:
         raise ConflictError(MSG_OWN)
     if await repo.get_participant(db, match_id, user.id) is not None:
