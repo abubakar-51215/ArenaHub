@@ -34,7 +34,7 @@ from app.shared.display import (
 
 ReportFormat = Literal["csv", "pdf"]
 AdminReportType = Literal["users", "bookings", "revenue", "arenas", "system"]
-OwnerReportType = Literal["bookings", "occupancy"]
+OwnerReportType = Literal["bookings", "payment", "occupancy"]
 
 _LIMIT = 5000  # a report is a bulk export, not a paginated view
 # a payment status in words ("completed" reads "Paid" on every screen)
@@ -148,6 +148,13 @@ async def owner_report(
         body = _render("Occupancy & Peak Usage", headers, rows, fmt)
         return body, _media_type(fmt), _filename("owner-occupancy-report", fmt)
 
+    if report_type == "payment":
+        headers, rows = await _owner_payment_rows(
+            db, arena_ids, date_from=date_from, date_to=date_to
+        )
+        body = _render("Payment Report", headers, rows, fmt)
+        return body, _media_type(fmt), _filename("owner-payment-report", fmt)
+
     rows_raw, _ = await booking_repo.list_owner_bookings_with_names(
         db,
         arena_ids,
@@ -186,6 +193,54 @@ async def owner_report(
     ]
     body = _render("Owner Bookings & Revenue", headers, rows, fmt)
     return body, _media_type(fmt), _filename("owner-report", fmt)
+
+
+async def _owner_payment_rows(
+    db: AsyncSession,
+    arena_ids: list[uuid.UUID],
+    *,
+    date_from: date | None,
+    date_to: date | None,
+) -> tuple[list[str], list[list[str]]]:
+    """One row per payment on the owner's own arenas (FR-O-10's payment report) — the
+    booking report is one row per booking, grouped payments collapse to the single row
+    the booking screen's own "Payment" line already shows."""
+    from app.modules.payment import repository as payment_repo
+
+    rows_raw, _ = await booking_repo.list_owner_bookings_with_names(
+        db,
+        arena_ids,
+        court_id=None,
+        status=None,
+        date_from=date_from,
+        date_to=date_to,
+        offset=0,
+        limit=_LIMIT,
+    )
+    seen: set[uuid.UUID] = set()
+    headers = ["Date", "Arena", "Player", "Booking", "Method", "Status", "Amount"]
+    rows: list[list[str]] = []
+    for booking, _court_name, arena_name, player_name in rows_raw:
+        if booking.booking_group_id in seen:
+            continue
+        seen.add(booking.booking_group_id)
+        payment = await payment_repo.get_payment_by_group(db, booking.booking_group_id)
+        if payment is None:
+            continue
+        rows.append(
+            [
+                web_date(payment.created_at),
+                arena_name or "-",
+                player_name,
+                booking_code_for(booking.booking_group_id),
+                PAYMENT_METHOD_NAMES.get(
+                    payment.payment_method.value, payment.payment_method.value
+                ),
+                web_status(_PAID.get(payment.status.value, payment.status.value)),
+                web_rupees(payment.amount),
+            ]
+        )
+    return headers, rows
 
 
 async def _owner_occupancy_rows(

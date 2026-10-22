@@ -3,7 +3,7 @@ import { downloadFile } from "@/services/api";
 
 export type ReportFormat = "csv" | "pdf";
 export type AdminReportType = "users" | "bookings" | "revenue" | "arenas" | "system";
-export type OwnerReportType = "bookings" | "occupancy";
+export type OwnerReportType = "bookings" | "payment" | "occupancy";
 
 export interface DateRange {
   dateFrom?: string;

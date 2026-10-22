@@ -43,6 +43,11 @@ const REPORTS: { type: OwnerReportType; title: string; description: string }[] =
     description: "Every booking in the period with its court, customer, status and amount.",
   },
   {
+    type: "payment",
+    title: "Payments",
+    description: "Every payment in the period with its method, status and amount.",
+  },
+  {
     type: "occupancy",
     title: "Occupancy & peak usage",
     description: "How full each court was, and which hours are busiest.",

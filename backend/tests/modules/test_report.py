@@ -125,6 +125,32 @@ async def test_owner_report_lists_bookings_across_arenas(
     _no_raw_values(resp.text)
 
 
+async def test_owner_payment_report(client: AsyncClient, db_session: AsyncSession) -> None:
+    """FR-O-10's payment report: one row per payment, not per booking."""
+    _, owner, _ = await _make_confirmed_booking(client, db_session, "payrep1")
+
+    csv_resp = await client.get(
+        "/api/v1/owner/reports",
+        headers=auth_header(owner),
+        params={"type": "payment", "format": "csv"},
+    )
+    assert csv_resp.status_code == 200
+    head, first = csv_resp.text.splitlines()[:2]
+    assert head == "Date,Arena,Player,Booking,Method,Status,Amount"
+    assert _web_day(date.today()) in first  # the payment's created_at, today in this test
+    assert "AHB-" in first and "Card" in first and "Paid" in first and "Rs. " in first
+    _no_raw_values(csv_resp.text)
+
+    pdf_resp = await client.get(
+        "/api/v1/owner/reports",
+        headers=auth_header(owner),
+        params={"type": "payment", "format": "pdf"},
+    )
+    assert pdf_resp.status_code == 200
+    assert pdf_resp.headers["content-type"] == "application/pdf"
+    assert pdf_resp.content.startswith(b"%PDF")
+
+
 async def test_owner_report_forbidden_for_players(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
