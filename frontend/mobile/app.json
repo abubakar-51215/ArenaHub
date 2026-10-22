@@ -53,7 +53,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "ArenaHub uses your location to find arenas near you."
+          "locationWhenInUsePermission": "ArenaHub uses your location to show how far arenas are and sort results by distance. Your location is never stored or shared."
         }
       ],
       [

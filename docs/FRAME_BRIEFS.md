@@ -245,34 +245,32 @@ rather than guessing a city, no change needed there either.
 **Who sees it:** player, on Search/Home (`app/(tabs)/index.tsx`, the search results screen) and
 the existing Filters sheet.
 
-**What's missing (the actual gap — everything above already exists or is built):**
-1. The "Near me" sort chip/option in the existing Filters UI, wired to resend the search with
-   `sort=near` plus the device's current `lat`/`lon`.
-2. The location-permission flow itself: request permission (Expo `Location.requestForeground
-   PermissionsAsync`), show the three states above (prompt / denied / unavailable) using the
-   exact existing frame wording, and cache the player's answer for the session only (per the
-   prototype's own "we only use it while you use the app" promise — never persisted).
-3. Distance on cards: **already built** — `components/venue.tsx`'s `Where` sub-component already
-   renders `arena.distance_km` when present (`formatKm`). Nothing to do here.
+**Correction (2026-10-22): nothing is missing here — this was fully built already.** An earlier
+pass of this brief said the sort chip and permission flow still needed building; re-checking the
+actual mobile code found all of it already in place:
+- `store/location.ts` — the full Zustand location store (`detect()`, three-state `status`,
+  session-only, never persisted).
+- `app/filters.tsx` — the "Near me" sort chip, gated on `coords` via `needLocation()`.
+- `app/(tabs)/results.tsx` — all three banner states (prompt/denied/unavailable+outside), wording
+  matching this brief's own cited frames exactly, plus the sort-chip row.
+- `services/arenas.ts` / `hooks/useArenas.ts` — `lat`/`lon`/`radius_km`/`sort=near` already
+  threaded to `GET /arenas`, matching the backend's existing query params.
+- `components/venue.tsx`'s `Where` sub-component — distance on cards (`formatKm`).
+- `app.json`'s `expo-location` plugin config — the iOS/Android permission string, updated
+  2026-10-22 to: "ArenaHub uses your location to show how far arenas are and sort results by
+  distance. Your location is never stored or shared." (previously a shorter line that didn't
+  carry the privacy assurance the rest of this feature already promises).
 
-**States:** the three already named above (prompt, denied, unavailable), plus the normal
-loading/empty/error states the results list already has.
+**States:** prompt, denied, unavailable/outside — all already implemented.
 
-**Wording needed:** none — all of it already exists in the cited prototype frames and should be
-used verbatim, including the iOS location permission text below.
-
-**iOS permission text, for approval** (goes in `app.json`'s
-`ios.infoPlist.NSLocationWhenInUseUsageDescription`, shown by the OS the first time permission
-is requested — this is the one piece of wording not already in a prototype frame, since it's an
-OS-level string, not an app screen):
-> "ArenaHub uses your location to show how far arenas are and sort results by distance. Your
-> location is never stored or shared."
+No build work remains for this item.
 
 ---
 
 ## Summary: what to draw
 
 Frames still needed, in priority order matching how often a player/owner would hit the gap:
-**F** (near-me permission flow — prototype text exists, just needs the screen built),
 **B** (view pass), **E** (get directions block), **D** (force-refund dialog, admin-only, rare),
-**A** (blocked-dates list, owner-only, rare), and the optional map-picker under **C**.
+**A** (blocked-dates list, owner-only, rare), and **C** (owner photo upload, plus the optional
+"use my current location" button on the arena form). **F** (near-me) needed no frame — it was
+already fully built; see the correction in its section above.
