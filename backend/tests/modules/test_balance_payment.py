@@ -405,3 +405,23 @@ async def test_the_booking_shows_how_much_balance_was_paid(
     assert Decimal((await _group(client, player, gid))["balance_paid"]) == 0
     await _settle_by_card(client, player, gid)
     assert Decimal((await _group(client, player, gid))["balance_paid"]) == Decimal("1000")
+
+
+async def test_the_owner_bookings_table_lets_the_owner_act_on_a_balance_receipt(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, group, *_ = await _advance_booking(client, db_session, "bal16")
+    gid = group["booking_group_id"]
+    owner = OWNERS["bal16"]
+    payment = (await _pay_balance(client, player, gid, "bank_transfer")).json()["data"]["payment"]
+    await client.post(
+        f"/api/v1/payments/{payment['id']}/receipt",
+        headers=auth_header(player),
+        json={"receipt_proof_url": RECEIPT},
+    )
+    rows = (
+        await client.get("/api/v1/owner/dashboard/bookings", headers=auth_header(owner))
+    ).json()["data"]["items"]
+    [row] = rows
+    assert row["status"] == "confirmed" and row["balance_receipt"] is True
+    assert row["payment_id"] == payment["id"] and row["receipt_proof_url"]

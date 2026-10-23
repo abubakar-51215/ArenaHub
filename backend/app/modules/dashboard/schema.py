@@ -149,6 +149,8 @@ class OwnerBookingRow(BaseModel):
     payment_status: PaymentStatus | None = None
     payment_lifecycle_status: PaymentLifecycleStatus | None = None
     receipt_proof_url: ReceiptLink = None
+    # the payment above is a balance receipt waiting for the owner (the booking is confirmed)
+    balance_receipt: bool = False
     # "Awaiting payment" and the slot still ahead: the owner may send a reminder
     can_remind: bool = False
     # minutes until another reminder may be sent, while one went out in the last hour

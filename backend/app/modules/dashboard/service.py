@@ -485,11 +485,17 @@ async def list_owner_bookings(
     )
 
     payments_by_group = {}
+    balance_receipts: dict[uuid.UUID, Payment] = {}
     for booking, _, _, _ in rows:
         if booking.booking_group_id not in payments_by_group:
             payments_by_group[booking.booking_group_id] = await payment_repo.get_payment_by_group(
                 db, booking.booking_group_id
             )
+            waiting = await payment_repo.get_pending_balance_payment(db, booking.booking_group_id)
+            if waiting is not None and waiting.receipt_proof_url:
+                # a balance receipt is with the owner: the row's payment is that one, so the
+                # View / Approve / Reject buttons act on it (the booking itself stays confirmed)
+                balance_receipts[booking.booking_group_id] = waiting
 
     phones: dict[uuid.UUID, str] = {}
     player_ids = {booking.player_id for booking, _, _, _ in rows}
@@ -502,7 +508,8 @@ async def list_owner_bookings(
 
     items = []
     for booking, court_name, arena_name, player_name in rows:
-        payment = payments_by_group.get(booking.booking_group_id)
+        balance_receipt = balance_receipts.get(booking.booking_group_id)
+        payment = balance_receipt or payments_by_group.get(booking.booking_group_id)
         sent_at = reminders.get(str(booking.id))
         items.append(
             OwnerBookingRow(
@@ -526,6 +533,7 @@ async def list_owner_bookings(
                 receipt_proof_url=payment.receipt_proof_url if payment else None,
                 can_remind=can_remind(booking, now),
                 remind_wait_minutes=_minutes_left(sent_at, now) if sent_at else None,
+                balance_receipt=balance_receipt is not None,
             )
         )
     return paginated(items, total, params)
