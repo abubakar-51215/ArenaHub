@@ -7,7 +7,7 @@ Nothing here has been changed; this is only the list.
 2. **NEXT_PUBLIC_SITE_URL** (web). Environment variable of the Next.js app, read in `frontend/web/app/layout.tsx` (`metadataBase`). Without it the share card and icons are addressed as `http://localhost:3000`. Set it to the public web address.
 3. **NEXT_PUBLIC_API_URL** (web) and **EXPO_PUBLIC_API_URL** (mobile). Read in `frontend/web/config/index.ts` and `frontend/mobile/lib/config.ts`. The mobile one must be an https address in a release build.
 4. **ENVIRONMENT** in `backend/.env` is `dev`; set it to `prod`.
-5. **STRIPE_SECRET_KEY** / **STRIPE_WEBHOOK_SECRET** in `backend/.env` are placeholders (`sk_test_xxx`, `whsec_xxx`). Card payments answer "Card payments are not available yet" until a real key is set. JazzCash and EasyPaisa are "coming soon" until their gateway work is done.
+5. **STRIPE_SECRET_KEY** / **STRIPE_WEBHOOK_SECRET** in `backend/.env` must be real keys (a placeholder such as `sk_test_xxx` counts as no key). Card payments answer "Card payments are not available yet" until a real key is set. JazzCash and EasyPaisa are "coming soon" until their gateway work is done. **Check what is set without showing any value:** `cd backend` then `uv run python -m scripts.check_integrations` prints `SET` or `MISSING` for Google, Cloudinary, Sentry, Stripe, SMTP, the support email, JazzCash and EasyPaisa. Before launch every line you need must say `SET`.
 6. **Must do: send email through a proper transactional email service on the real sending domain.** Every 6-digit code (sign-up, admin sign-in, password reset, change of email or password) is emailed, so sign-up and sign-in stop working when mail does. A personal Gmail account is fine for testing only (low daily limits, mail can land in spam). The service and the sending domain are chosen at the very end, together with the domain and the name (see "Decide at the very end"); then set the **EMAIL_*** settings in `backend/.env` (host, port, username, password, from) to that service and check them with `uv run python scripts/send_test_email.py <address>`. At start-up the server prints one line, `email_mode mode=smtp host=... port=...` or `mode=console reason=...`; production must say `mode=smtp`.
 7. **Must do: set CODE_HASH_SECRET** in `backend/.env` (setting `code_hash_secret` in `backend/app/core/config.py`) to a random value of 32+ characters, kept secret like the JWT secrets. Codes are stored only as an HMAC keyed by it. Outside dev the server refuses to start without it. Changing it later makes every code that is waiting unusable (people ask for a new one); nothing else.
 8. Dev-only helpers: the payment `simulate-confirm` route must stay disabled outside dev. The code line in the server log (`code_dev_delivery`, with the code) is written only when `ENVIRONMENT=dev`; outside dev neither the code nor its hash is ever logged.
@@ -33,7 +33,9 @@ Open decisions only. Nothing here is chosen, and nothing for them is built in th
    3. **Web client id** (type "Web application"): this is the audience the server checks. Put it in
       `GOOGLE_CLIENT_IDS` (backend) and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (phone build).
    4. **Android client id** (type "Android"): needs the package name (item 1) and the SHA-1 of the signing key (the EAS
-      build credentials, and the Play App Signing key once on Google Play). Add it to `GOOGLE_CLIENT_IDS` too.
+      build credentials, and the Play App Signing key once on Google Play). Google uses it to recognise the app; the
+      sign-in token itself is issued for the Web client id, so the server only needs the Web id in `GOOGLE_CLIENT_IDS`
+      (adding the Android id as well is harmless).
    5. **iOS client id** (type "iOS"): needs the bundle id (item 1). Add it to `GOOGLE_CLIENT_IDS`, set
       `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, and give the build its reversed form as `GOOGLE_IOS_URL_SCHEME`
       (`app.config.js` adds the Google sign-in config plugin only when that is set).
@@ -163,4 +165,16 @@ This does not expose anything (the file sits at the same kind of address any sav
 2. **A `DELETE /uploads/image` route**, called by the picker itself the moment a photo is removed before save — simpler to reason about (no orphan ever accumulates) but is a new authenticated endpoint that has to be scoped so an owner can only delete files from their own just-uploaded batch, not an arbitrary URL.
 
 Either way: **do this before storage costs matter**, since nothing currently reclaims this space.
+
+## Added in the mobile round (2026-10-23)
+
+1. **Production values for the phone build.** `EXPO_PUBLIC_API_URL` (https, no trailing slash, no `/api/v1`) and, once Google is set up, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, are given to the EAS build with `eas env:create` (see "First APK" in `docs/DEV_BUILD_AND_GOOGLE_PUSH.md`). Never put a secret in an `EXPO_PUBLIC_*` value: it is inside the app.
+2. **Push needs Firebase.** `google-services.json` (kept out of git, or the EAS file secret `GOOGLE_SERVICES_JSON`) and the FCM service-account key uploaded to EAS. Without them the build works but push does not reach Android. Later hardening: check Expo's *receipts* and switch off phones they report gone (only the immediate answer is read today).
+3. **Amenities need a decision.** The "Must have" filter lists only amenities some live arena has, but nothing in the product lets an owner choose amenities (the table is filled by the seed script only). Decide the standard list (parking, floodlights, changing room, ...) and build an owner picker, or drop the row.
+4. **Mail.** The SMTP user and password on this machine are a Gmail test account. Move to a transactional service on the real sending domain (Brevo or Resend) before launch (item 6 at the top).
+5. **Real gateway keys.** Stripe keys exist here, but card payments are not proven end to end until the public https webhook address is registered with Stripe and PKR is enabled on the account (the "Paying by card and mobile wallet" section). JazzCash and EasyPaisa still need merchant accounts.
+6. **Terms and Privacy** text and the support email and hours are still open ("Decide at the very end", items 2 and 3); the Profile row and the "Contact us" block stay out until then.
+7. **A balance payment nobody finishes** (a card page or wallet request left open) is closed by the scheduler after 24 hours so a new one can be started; a bank-transfer balance with a receipt waits for the owner and is never closed by it.
+8. **Android permissions were trimmed** (no storage read or write, no developer-menu overlay in preview and store builds; the camera is now allowed for Take photo). On the first real phone, check both Take photo and Choose from gallery on an older and a newer Android.
+9. **Sentry for the phone** is pinned to the version Expo SDK 54 expects (`~7.2.0`). When Expo is upgraded, run `npx expo-doctor` again.
 
