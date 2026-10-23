@@ -245,7 +245,7 @@ function Board() {
           >
             <ul className="ah-attn">
               {pending.map((p) => (
-                <li key={p.booking_id}>
+                <li key={p.payment_id ?? p.booking_id}>
                   <div className="min-w-0">
                     <b className="truncate">{p.player_name}</b>
                     <span>
@@ -253,7 +253,9 @@ function Board() {
                       {p.arena_name}
                     </span>
                   </div>
-                  <AdminBadge tone="wait">Receipt to review</AdminBadge>
+                  <AdminBadge tone="wait">
+                    {p.purpose === "balance" ? "Balance receipt to review" : "Receipt to review"}
+                  </AdminBadge>
                 </li>
               ))}
             </ul>

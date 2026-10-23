@@ -201,6 +201,9 @@ export interface PendingApproval {
   payment_id: string | null;
   payment_method: string | null;
   receipt_proof_url: string | null;
+  /** "balance": the receipt pays what was still owed on an already confirmed booking */
+  purpose?: "booking" | "balance";
+  payment_amount?: string | null;
 }
 
 export interface CalendarBooking {
@@ -280,6 +283,8 @@ export interface OwnerBookingRow {
   payment_status?: PaymentStatus | null;
   payment_lifecycle_status?: string | null;
   receipt_proof_url: string | null;
+  /** the payment above is a balance receipt waiting for the owner (the booking is confirmed) */
+  balance_receipt?: boolean;
   /** "Awaiting payment" with the slot still ahead: the owner may send a reminder */
   can_remind?: boolean;
   /** minutes until another reminder may go out, while one went out in the last hour */

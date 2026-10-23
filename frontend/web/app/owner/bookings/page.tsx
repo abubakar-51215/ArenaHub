@@ -228,7 +228,8 @@ function Bookings() {
           View
         </Button>
       )}
-      {row.status === "pending_approval" && row.payment_id && (
+      {row.balance_receipt && <AdminBadge tone="wait">Balance receipt</AdminBadge>}
+      {(row.status === "pending_approval" || row.balance_receipt) && row.payment_id && (
         <>
           <ActionButton
             tone="positive"
