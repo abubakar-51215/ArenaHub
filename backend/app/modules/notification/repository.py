@@ -80,6 +80,21 @@ async def deactivate_device_token(db: AsyncSession, user_id: uuid.UUID, token: s
     )
 
 
+async def deactivate_tokens(db: AsyncSession, tokens: list[str]) -> None:
+    """Stop using these tokens (Expo said the devices are gone)."""
+    if tokens:
+        await db.execute(
+            update(DeviceToken).where(DeviceToken.token.in_(tokens)).values(is_active=False)
+        )
+
+
+async def deactivate_all_tokens(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Every device of a user stops receiving pushes (account deleted)."""
+    await db.execute(
+        update(DeviceToken).where(DeviceToken.user_id == user_id).values(is_active=False)
+    )
+
+
 async def list_active_tokens(db: AsyncSession, user_id: uuid.UUID) -> list[str]:
     result = await db.execute(
         select(DeviceToken.token).where(

@@ -142,3 +142,8 @@ RETURN_ADDRESS_REFUSED = "This return address is not allowed."
 
 # Owner blocked dates (approved by the owner on 2026-10-22)
 BLOCKED_DATE_IN_PAST = "You can't block a date that has already passed."
+
+
+# The test push the server owner sends before a real-phone check (backend/scripts/send_test_push.py)
+TEST_PUSH_TITLE = "ArenaHub test notification"
+TEST_PUSH_BODY = "Push notifications are working on this phone."

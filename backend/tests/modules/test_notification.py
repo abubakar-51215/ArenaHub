@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from pytest import MonkeyPatch
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.integrations.push import PushResult
 from app.modules.notification import repository as notif_repo
 from app.modules.notification import service as notif_service
 from tests.helpers import auth_header, make_user
@@ -49,8 +50,9 @@ async def test_notify_respects_disabled_push_preference(
 
     async def _fake_send_push(
         tokens: list[str], title: str, body: str, data: dict[str, str]
-    ) -> None:
+    ) -> PushResult:
         sent.append(title)
+        return PushResult()
 
     monkeypatch.setattr("app.modules.notification.service.send_push", _fake_send_push)
 
@@ -72,8 +74,9 @@ async def test_push_payload_includes_event_name(
 
     async def _fake_send_push(
         tokens: list[str], title: str, body: str, data: dict[str, str]
-    ) -> None:
+    ) -> PushResult:
         captured.update(data)
+        return PushResult()
 
     monkeypatch.setattr("app.modules.notification.service.send_push", _fake_send_push)
 

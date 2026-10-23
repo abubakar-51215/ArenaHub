@@ -132,6 +132,10 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     user.deleted_at = _now()
     user.is_active = False
     await sessions.revoke_all(db, user.id)
+    # no more pushes to this person's phones
+    from app.modules.notification import repository as notification_repo
+
+    await notification_repo.deactivate_all_tokens(db, user.id)
     await db.commit()
     await tokens.bump_session_epoch(str(user.id))
 

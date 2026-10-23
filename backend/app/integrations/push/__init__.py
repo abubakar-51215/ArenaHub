@@ -1,5 +1,5 @@
 """Push notification delivery integration."""
 
-from app.integrations.push.expo_push import send_push
+from app.integrations.push.expo_push import PushResult, send_push
 
-__all__ = ["send_push"]
+__all__ = ["PushResult", "send_push"]

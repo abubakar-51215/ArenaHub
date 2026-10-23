@@ -14,11 +14,12 @@ from datetime import UTC, date, datetime, time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
 from app.core.exceptions import NotFoundError
 from app.integrations.email import send_email
 from app.integrations.email.smtp import EmailSendError
 from app.integrations.email.templates import notification_email
-from app.integrations.push import send_push
+from app.integrations.push import PushResult, send_push
 from app.modules.notification import repository as repo
 from app.modules.notification.model import Notification
 from app.modules.notification.schema import NotificationResponse
@@ -275,7 +276,9 @@ async def notify(
     if _channel_enabled(user, "push", category):
         tokens = await repo.list_active_tokens(db, user_id)
         push_data = {"event": event, **{k: str(v) for k, v in context.items()}}
-        await send_push(tokens, title, body, push_data)
+        sent = await send_push(tokens, title, body, push_data)
+        # Expo says these devices are gone (app removed, token expired): stop using them
+        await repo.deactivate_tokens(db, sent.dead_tokens)
 
     if _channel_enabled(user, "email", category):
         subject, text, html = notification_email(title, body)
@@ -318,6 +321,18 @@ async def mark_all_read(db: AsyncSession, user: User) -> None:
 async def register_device(db: AsyncSession, user: User, token: str, platform: str) -> None:
     await repo.upsert_device_token(db, user.id, token, platform)
     await db.commit()
+
+
+async def send_test_push(db: AsyncSession, user: User) -> PushResult:
+    """One test push to this user's registered devices, through the same sender as every real
+    notice. Saves no notice and sends no email. A tap opens the notification list."""
+    tokens = await repo.list_active_tokens(db, user.id)
+    sent = await send_push(
+        tokens, messages.TEST_PUSH_TITLE, messages.TEST_PUSH_BODY, {"event": "test_push"}
+    )
+    await repo.deactivate_tokens(db, sent.dead_tokens)
+    await db.commit()
+    return sent
 
 
 async def unregister_device(db: AsyncSession, user: User, token: str) -> None:
