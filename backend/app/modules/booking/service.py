@@ -503,6 +503,12 @@ async def cancel_booking(
         )
 
     await _apply_cancellation(db, booking, reason=reason, refund_percentage=refund_percentage)
+    if not any(
+        b.status in _CANCELLABLE for b in await repo.list_group(db, booking.booking_group_id)
+    ):
+        from app.modules.payment.service import close_open_balance_payment
+
+        await close_open_balance_payment(db, booking, reason)
 
     await db.commit()
     return BookingResponse.model_validate(booking)
@@ -625,7 +631,10 @@ async def cancel_future_bookings_for_arena(
                 db, members, 100, reason
             )
         await _close_pending_payment(db, group_id, "Arena suspended before payment.")
+        balance_refund = await payment_service.close_open_balance_payment(db, members[0], reason)
         if refund is not None and refund.status == RefundStatus.pending:
+            pending += 1
+        if balance_refund is not None and balance_refund.status == RefundStatus.pending:
             pending += 1
     return len(bookings), pending
 
@@ -755,6 +764,13 @@ async def auto_cancel_stale_bookings(db: AsyncSession, now: datetime | None = No
                 await state_machine.advance(
                     db, payment, Lifecycle.expired, note="Payment window elapsed (auto-cancel)."
                 )
+    # a balance payment nobody finished (booking stays confirmed) ends the same way, so the
+    # player can start a new one
+    for open_balance in await payment_repo.list_stale_open_balance_payments(db, cutoff):
+        open_balance.status = GatewayPaymentStatus.failed
+        await state_machine.advance(
+            db, open_balance, Lifecycle.expired, note="Balance payment window elapsed."
+        )
     await db.commit()
     for slot in freed_slots:
         await broadcast_slot_status(
@@ -879,19 +895,32 @@ async def get_group_details(
     total = sum((b.total_amount for b in bookings), Decimal("0"))
     pay_now = sum((b.advance_amount for b in bookings), Decimal("0"))
     refund_amount, refund_status = Decimal("0"), None
-    if payment is not None:
-        refunds = await payment_repo.list_refunds_for_payment(db, payment.id)
+    refunds = await payment_repo.list_refunds_for_group(db, group_id)
+    if refunds:
         refund_amount = sum((r.amount for r in refunds), Decimal("0"))
         states = {r.status.value for r in refunds}
         refund_status = (
-            None
-            if not refunds
-            else (
-                "failed"
-                if "failed" in states
-                else "pending" if "pending" in states else "processed"
-            )
+            "failed" if "failed" in states else "pending" if "pending" in states else "processed"
         )
+    confirmed = [b for b in bookings if b.status == BookingStatus.confirmed]
+    unsettled = any(
+        b.status in (BookingStatus.pending_payment, BookingStatus.pending_approval)
+        for b in bookings
+    )
+    balance_due = (
+        sum((b.remaining_amount for b in confirmed), Decimal("0"))
+        if confirmed and not unsettled
+        else Decimal("0")
+    )
+    open_balance = await payment_repo.get_pending_balance_payment(db, group_id)
+    balance_payment = None
+    if open_balance is not None:
+        balance_payment = "awaiting_approval" if open_balance.receipt_proof_url else "in_progress"
+        if (
+            balance_payment == "in_progress"
+            and open_balance.payment_method.value == "bank_transfer"
+        ):
+            balance_payment = None  # not sent yet: the player carries on from the bank screen
     live = [b for b in bookings if b.status in _CANCELLABLE]
     not_started = bool(live) and _booking_start(live[0]) > datetime.now()
     can_cancel = not_started
@@ -932,6 +961,9 @@ async def get_group_details(
         refund_status=refund_status,
         can_cancel=can_cancel,
         can_reschedule=can_reschedule,
+        balance_due=balance_due,
+        balance_payment=balance_payment,
+        can_pay_balance=balance_due > 0 and balance_payment is None,
     )
 
 

@@ -44,6 +44,7 @@ from app.modules.dashboard.schema import (
 )
 from app.modules.notification.model import Notification
 from app.modules.payment import repository as payment_repo
+from app.modules.payment.model import Payment
 from app.modules.slot import repository as slot_repo
 from app.modules.user.model import User
 from app.shared.display import karachi_date, time_12h
@@ -140,7 +141,7 @@ async def get_summary(db: AsyncSession, user: User) -> DashboardSummaryResponse:
     )
     pending_approvals = await booking_repo.count_by_status_for_arenas(
         db, arena_ids, BookingStatus.pending_approval
-    )
+    ) + len(await payment_repo.list_pending_balance_receipts_for_arenas(db, arena_ids))
 
     return DashboardSummaryResponse(
         total_arenas=len(arena_ids),
@@ -153,9 +154,29 @@ async def get_summary(db: AsyncSession, user: User) -> DashboardSummaryResponse:
 
 async def list_pending_approvals(db: AsyncSession, user: User, params: PaginationParams) -> dict:
     arena_ids = await arena_repo.list_owner_arena_ids(db, user.id)
-    bookings, total = await booking_repo.list_pending_approval_for_arenas(
-        db, arena_ids, offset=params.offset, limit=params.page_size
-    )
+    balance_rows = await payment_repo.list_pending_balance_receipts_for_arenas(db, arena_ids)
+    if balance_rows:
+        # a balance receipt belongs in the same queue as a first receipt; the queue is short, so
+        # the two are merged oldest first and then cut to the page
+        everything, _ = await booking_repo.list_pending_approval_for_arenas(
+            db, arena_ids, offset=0, limit=1000
+        )
+        first_receipts: list[tuple[datetime, Booking, Payment | None]] = [
+            (b.created_at, b, None) for b in everything
+        ]
+        balances: list[tuple[datetime, Booking, Payment | None]] = [
+            (p.created_at, b, p) for p, b in balance_rows
+        ]
+        merged = sorted(first_receipts + balances, key=lambda row: row[0])
+        total = len(merged)
+        window = merged[params.offset : params.offset + params.page_size]
+        bookings = [b for _, b, _ in window]
+        balance_by_booking = {b.id: p for _, b, p in window if p is not None}
+    else:
+        bookings, total = await booking_repo.list_pending_approval_for_arenas(
+            db, arena_ids, offset=params.offset, limit=params.page_size
+        )
+        balance_by_booking = {}
 
     arena_rows = [await arena_repo.get_arena(db, aid) for aid in arena_ids]
     arenas = {a.id: a for a in arena_rows if a is not None}
@@ -175,7 +196,8 @@ async def list_pending_approvals(db: AsyncSession, user: User, params: Paginatio
     for booking in bookings:
         arena = arenas.get(booking.arena_id)
         player = players.get(booking.player_id)
-        payment = payments_by_group.get(booking.booking_group_id)
+        balance = balance_by_booking.get(booking.id)
+        payment = balance or payments_by_group.get(booking.booking_group_id)
         items.append(
             PendingApprovalItem(
                 booking_id=booking.id,
@@ -191,6 +213,8 @@ async def list_pending_approvals(db: AsyncSession, user: User, params: Paginatio
                 payment_id=payment.id if payment else None,
                 payment_method=payment.payment_method.value if payment else None,
                 receipt_proof_url=payment.receipt_proof_url if payment else None,
+                purpose="balance" if balance is not None else "booking",
+                payment_amount=payment.amount if payment else None,
             )
         )
     return paginated(items, total, params)

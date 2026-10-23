@@ -90,8 +90,6 @@ async def list_groups(
     total = len(picked)
     window = picked[(page - 1) * page_size : page * page_size]
 
-    from app.modules.payment import repository as payment_repo
-
     out: list[dict] = []
     arenas: dict = {}
     courts: dict = {}
@@ -103,8 +101,7 @@ async def list_groups(
             courts[first.court_id] = await court_repo.get_court(db, first.court_id)
         arena, court = arenas[first.arena_id], courts[first.court_id]
         shown = [b for b in items if b.status in _ACTIVE] or items
-        payment = await payment_repo.get_payment_by_group(db, gid)
-        refund_amount, refund_status = await _refund_summary(db, payment)
+        refund_amount, refund_status = await _refund_summary(db, gid)
         total_amount = sum((b.total_amount for b in shown), Decimal("0"))
         pay_now = sum((b.advance_amount for b in shown), Decimal("0"))
         out.append(
@@ -146,12 +143,10 @@ async def _my_rating(db: AsyncSession, rows: list[Booking]) -> int | None:
     return None
 
 
-async def _refund_summary(db: AsyncSession, payment: Any) -> tuple[Decimal, str | None]:
-    if payment is None:
-        return Decimal("0"), None
+async def _refund_summary(db: AsyncSession, group_id: uuid.UUID) -> tuple[Decimal, str | None]:
     from app.modules.payment import repository as payment_repo
 
-    refunds = await payment_repo.list_refunds_for_payment(db, payment.id)
+    refunds = await payment_repo.list_refunds_for_group(db, group_id)
     if not refunds:
         return Decimal("0"), None
     states = {r.status.value for r in refunds}
@@ -180,15 +175,18 @@ async def _cancel_figures(
         return 100, full, full
     hours = Decimal((_booking_start(live[0]) - datetime.now()).total_seconds()) / 3600
     pct = resolve_refund_percentage(arena.refund_policy if arena else [], max(hours, Decimal("0")))
-    payment = await payment_repo.get_payment_by_group(db, live[0].booking_group_id)
-    if payment is None or payment.status != PaymentStatus.completed:
+    payments = await payment_repo.list_completed_payments_for_group(db, live[0].booking_group_id)
+    if not payments:
         return pct, Decimal("0"), Decimal("0")
     siblings = await repo.list_group(db, live[0].booking_group_id)
     group_adv = sum((b.advance_amount for b in siblings), Decimal("0"))
     live_adv = sum((b.advance_amount for b in live), Decimal("0"))
     share = live_adv / group_adv if group_adv > 0 else Decimal("1")
-    paid = (payment.amount * share).quantize(_CENT)
-    refundable = payment.amount - await payment_repo.sum_refunds_for_payment(db, payment.id)
+    captured = sum((p.amount for p in payments), Decimal("0"))
+    paid = (captured * share).quantize(_CENT)
+    refundable = Decimal("0")
+    for p in payments:
+        refundable += p.amount - await payment_repo.sum_refunds_for_payment(db, p.id)
     amount = min(paid * Decimal(pct) / Decimal(100), refundable).quantize(_CENT)
     return pct, paid, max(amount, Decimal("0"))
 
@@ -249,6 +247,7 @@ async def cancel_group(
     else:
         await payment_service.create_refund_for_cancelled_group(db, live, pct, reason)
     await _close_pending_payment(db, group_id, "Booking cancelled by the player.")
+    await payment_service.close_open_balance_payment(db, live[0], reason)
     await db.commit()
     return await get_group_details(db, user, group_id)
 

@@ -39,6 +39,10 @@ class PendingApprovalItem(BaseModel):
     payment_id: uuid.UUID | None = None
     payment_method: str | None = None
     receipt_proof_url: ReceiptLink = None
+    # "balance" when the receipt pays what was still owed on a confirmed booking (the booking
+    # itself is already confirmed); "booking" for a first payment. payment_amount is the receipt's.
+    purpose: str = "booking"
+    payment_amount: Decimal | None = None
 
 
 class BookingReminderResponse(BaseModel):

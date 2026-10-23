@@ -82,14 +82,22 @@ async def initiate_payment(
     return await idempotency.run_once(request, user.id, "payment", data, action)
 
 
-@router.post("/initiate-balance", summary="Pay an outstanding balance online")
+@router.post(
+    "/initiate-balance",
+    summary="Pay an outstanding balance online",
+    dependencies=[Depends(abuse.per_user("payment", 30, 3600))],
+)
 async def initiate_balance_payment(
+    request: Request,
     data: PaymentInitiateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    result = await service.initiate_balance_payment(db, user, data)
-    return success(data=result, message="Balance payment initiated.")
+    async def action() -> dict[str, Any]:
+        result = await service.initiate_balance_payment(db, user, data)
+        return success(data=result, message="Balance payment initiated.")
+
+    return await idempotency.run_once(request, user.id, "payment-balance", data, action)
 
 
 @router.post(

@@ -10,11 +10,12 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.arena.model import Arena
-from app.modules.booking.model import Booking, PaymentStatus
+from app.modules.booking.model import Booking, BookingStatus, PaymentStatus
 from app.modules.court.model import Court
 from app.modules.payment.model import (
     Payment,
     PaymentEvent,
+    PaymentLifecycleStatus,
     PaymentPurpose,
     Refund,
     RefundStatus,
@@ -54,6 +55,96 @@ async def get_pending_balance_payment(
         .order_by(Payment.created_at.desc())
     )
     return result.scalars().first()
+
+
+async def list_balance_payments_for_group(
+    db: AsyncSession, booking_group_id: uuid.UUID
+) -> list[Payment]:
+    """The balance top-ups of a group that went somewhere (not the ones that failed or ended
+    unpaid), oldest first."""
+    result = await db.execute(
+        select(Payment)
+        .where(
+            Payment.booking_group_id == booking_group_id,
+            Payment.purpose == PaymentPurpose.balance,
+            Payment.status != PaymentStatus.failed,
+        )
+        .order_by(Payment.created_at.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_pending_balance_receipts_for_arenas(
+    db: AsyncSession, arena_ids: list[uuid.UUID]
+) -> list[tuple[Payment, Booking]]:
+    """Balance receipts waiting for an owner's approval, oldest first, each with the first
+    confirmed booking of its group (the booking itself stays confirmed meanwhile, so these never
+    show in the booking-status approval queue)."""
+    if not arena_ids:
+        return []
+    rows = await db.execute(
+        select(Payment, Booking)
+        .join(Booking, Booking.booking_group_id == Payment.booking_group_id)
+        .where(
+            Payment.purpose == PaymentPurpose.balance,
+            Payment.status == PaymentStatus.pending,
+            Payment.lifecycle_status == PaymentLifecycleStatus.pending_approval,
+            Booking.arena_id.in_(arena_ids),
+            Booking.status == BookingStatus.confirmed,
+        )
+        .order_by(Payment.created_at.asc(), Booking.start_time.asc())
+    )
+    seen: set[uuid.UUID] = set()
+    out: list[tuple[Payment, Booking]] = []
+    for payment, booking in rows.all():
+        if payment.id not in seen:
+            seen.add(payment.id)
+            out.append((payment, booking))
+    return out
+
+
+async def list_stale_open_balance_payments(db: AsyncSession, cutoff: datetime) -> list[Payment]:
+    """Balance payments started before ``cutoff`` that nothing finished: no receipt sent (a receipt
+    with the owner is waiting on them, not on the player), so an abandoned card page or wallet
+    request does not block the next attempt for ever."""
+    result = await db.execute(
+        select(Payment)
+        .where(
+            Payment.purpose == PaymentPurpose.balance,
+            Payment.status == PaymentStatus.pending,
+            Payment.receipt_proof_url.is_(None),
+            Payment.created_at < cutoff,
+        )
+        .with_for_update()
+    )
+    return list(result.scalars().all())
+
+
+async def list_completed_payments_for_group(
+    db: AsyncSession, booking_group_id: uuid.UUID
+) -> list[Payment]:
+    """Every captured payment of a group (the first payment and any balance top-ups), newest
+    first -- what a refund can be drawn from."""
+    result = await db.execute(
+        select(Payment)
+        .where(
+            Payment.booking_group_id == booking_group_id,
+            Payment.status == PaymentStatus.completed,
+        )
+        .order_by(Payment.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_refunds_for_group(db: AsyncSession, booking_group_id: uuid.UUID) -> list[Refund]:
+    """Every refund against any payment of the group (first payment and balance top-ups)."""
+    result = await db.execute(
+        select(Refund)
+        .join(Payment, Payment.id == Refund.payment_id)
+        .where(Payment.booking_group_id == booking_group_id)
+        .order_by(Refund.created_at.asc())
+    )
+    return list(result.scalars().all())
 
 
 async def list_payments_for_player(

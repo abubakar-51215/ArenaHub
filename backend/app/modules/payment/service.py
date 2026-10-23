@@ -249,21 +249,41 @@ async def initiate_balance_payment(
     db: AsyncSession, user: User, data: PaymentInitiateRequest
 ) -> PaymentInitiateResponse:
     """Pay an outstanding balance on an already-confirmed booking online
-    (e.g. the difference after rescheduling to a pricier slot). Gateway
-    methods only — a balance is otherwise settled in person at the venue."""
+    (e.g. the difference after rescheduling to a pricier slot), by any of the
+    ways a first payment can be made. The amount is the booking's own
+    outstanding balance, worked out here: the request never carries one. A
+    bank-transfer balance waits for the arena owner to approve its receipt,
+    exactly like a first payment, but the booking stays confirmed meanwhile."""
     if user.role != UserRole.player:
         raise ForbiddenError("Only players can pay for bookings.")
-    if data.payment_method == PaymentMethod.bank_transfer:
-        raise ValidationError("Pay the remaining balance online, or in person at the venue.")
 
     bookings = await _group_bookings_for_player(db, user, data.booking_group_id, lock=True)
-    if any(b.status != BookingStatus.confirmed for b in bookings):
+    # an hour of the booking cancelled on its own does not stop the others' balance being paid
+    live = [b for b in bookings if b.status == BookingStatus.confirmed]
+    if not live or any(
+        b.status in (BookingStatus.pending_payment, BookingStatus.pending_approval)
+        for b in bookings
+    ):
         raise ValidationError("Only a confirmed booking can have its balance paid online.")
     methods.ensure_usable(data.payment_method)
-    outstanding = sum((b.remaining_amount for b in bookings), Decimal("0"))
+    outstanding = sum((b.remaining_amount for b in live), Decimal("0"))
     if outstanding <= 0:
         raise ValidationError("This booking has no outstanding balance.")
-    if await repo.get_pending_balance_payment(db, data.booking_group_id) is not None:
+    open_balance = await repo.get_pending_balance_payment(db, data.booking_group_id)
+    if open_balance is not None:
+        # back on the bank screen after leaving it: carry on with the same payment, never a
+        # second one. Anything else already under way (a card page, a wallet request, a receipt
+        # waiting for the owner) must finish first.
+        if (
+            data.payment_method == PaymentMethod.bank_transfer
+            and open_balance.payment_method == PaymentMethod.bank_transfer
+            and open_balance.receipt_proof_url is None
+        ):
+            return PaymentInitiateResponse(
+                payment=PaymentResponse.model_validate(open_balance),
+                client_secret=None,
+                redirect_url=None,
+            )
         raise ConflictError("A balance payment is already in progress for this booking.")
 
     wallet, return_url = _gateway_details(data)
@@ -289,9 +309,10 @@ async def initiate_balance_payment(
     )
     await repo.add_payment(db, payment)
     await state_machine.record_created(db, payment, note="Balance payment created.")
-    await state_machine.advance(
-        db, payment, Lifecycle.initiated, note="Balance charge initiated with gateway."
-    )
+    if data.payment_method != PaymentMethod.bank_transfer:
+        await state_machine.advance(
+            db, payment, Lifecycle.initiated, note="Balance charge initiated with gateway."
+        )
     await db.commit()
     return PaymentInitiateResponse(
         payment=PaymentResponse.model_validate(payment),
@@ -375,7 +396,13 @@ async def _settle_balance(db: AsyncSession, payment: Payment) -> None:
     """A balance top-up captured: zero the outstanding on the group's
     (already-confirmed) bookings and mark them fully paid. Does NOT re-confirm
     or re-broadcast — the bookings/slots are unchanged."""
-    bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
+    bookings = [
+        b
+        for b in await booking_repo.list_group_for_update(db, payment.booking_group_id)
+        if b.status == BookingStatus.confirmed
+    ]
+    if not bookings:
+        return  # cancelled meanwhile: the cancel already closed this payment
     payment.status = PaymentStatus.completed
     await state_machine.advance(db, payment, Lifecycle.paid, note="Balance captured.")
     await state_machine.advance(db, payment, Lifecycle.confirmed, note="Balance settled.")
@@ -383,7 +410,8 @@ async def _settle_balance(db: AsyncSession, payment: Payment) -> None:
         booking.advance_amount = booking.total_amount
         booking.remaining_amount = Decimal("0.00")
         booking.payment_status = PaymentStatus.completed
-        await notify_user(db, booking.player_id, "balance_paid", booking_id=str(booking.id))
+    # one booking is one event: one notice, however many hours it has
+    await notify_user(db, bookings[0].player_id, "balance_paid", booking_id=str(bookings[0].id))
 
 
 async def _fail_balance(db: AsyncSession, payment: Payment) -> None:
@@ -392,6 +420,26 @@ async def _fail_balance(db: AsyncSession, payment: Payment) -> None:
     or via another online attempt)."""
     payment.status = PaymentStatus.failed
     await state_machine.advance(db, payment, Lifecycle.failed, note="Balance payment failed.")
+
+
+async def _reject_balance(
+    db: AsyncSession, payment: Payment, bookings: list[Booking], reason: str
+) -> None:
+    """The owner did not accept a balance receipt: the payment ends, the booking stays confirmed
+    and the balance is simply still owed (it can be paid again, or at the arena)."""
+    payment.status = PaymentStatus.failed
+    await state_machine.advance(db, payment, Lifecycle.rejected, note="Receipt rejected by owner.")
+    first = bookings[0]
+    arena = await arena_repo.get_arena(db, first.arena_id)
+    await notify_user(
+        db,
+        first.player_id,
+        "receipt_rejected",
+        booking_id=str(first.id),
+        booking_code=booking_code_for(first.booking_group_id),
+        arena_name=arena.name if arena else "The arena",
+        reason=reason,
+    )
 
 
 async def handle_webhook(
@@ -521,8 +569,11 @@ async def upload_receipt(
         db, payment, Lifecycle.pending_approval, note="Bank-transfer receipt uploaded."
     )
     bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
-    for booking in bookings:
-        booking.status = BookingStatus.pending_approval
+    if payment.purpose != PaymentPurpose.balance:
+        # a first payment holds the booking until the owner checks it; a balance receipt does
+        # not: the booking is already confirmed and stays so
+        for booking in bookings:
+            booking.status = BookingStatus.pending_approval
     # the owner has to approve it: one notice per receipt, opening the first hour
     arena = await arena_repo.get_arena(db, bookings[0].arena_id) if bookings else None
     if arena is not None:
@@ -565,7 +616,10 @@ async def approve_bank_transfer(
     db: AsyncSession, user: User, payment_id: uuid.UUID
 ) -> PaymentResponse:
     payment = await _owned_bank_transfer_payment(db, user, payment_id)
-    await _confirm_group(db, payment)
+    if payment.purpose == PaymentPurpose.balance:
+        await _settle_balance(db, payment)
+    else:
+        await _confirm_group(db, payment)
     await audit(
         db, "payment.approve", actor=user, target_type="payment", target_id=payment.id,
         details={"amount": str(payment.amount)},
@@ -579,9 +633,12 @@ async def reject_bank_transfer(
 ) -> PaymentResponse:
     payment = await _owned_bank_transfer_payment(db, user, payment_id)
     bookings = await booking_repo.list_group_for_update(db, payment.booking_group_id)
-    for booking in bookings:
-        booking.cancellation_reason = reason
-    await _fail_group(db, payment, rejected=True, bookings=bookings)
+    if payment.purpose == PaymentPurpose.balance:
+        await _reject_balance(db, payment, bookings, reason)
+    else:
+        for booking in bookings:
+            booking.cancellation_reason = reason
+        await _fail_group(db, payment, rejected=True, bookings=bookings)
     await audit(
         db, "payment.reject", actor=user, target_type="payment", target_id=payment.id,
         details={"amount": str(payment.amount)},
@@ -838,26 +895,85 @@ async def create_refund_for_cancelled_booking(db: AsyncSession, booking: Booking
     group. Returns None if there's nothing to refund."""
     if not booking.refund_eligible or not booking.refund_percentage:
         return None
-    payment = await repo.get_payment_by_group(db, booking.booking_group_id)
-    if payment is None or payment.status != PaymentStatus.completed:
+    payments = await repo.list_completed_payments_for_group(db, booking.booking_group_id)
+    if not payments:
         return None
-    # Base the tier on what was actually captured (payment.amount, which for
-    # advance-payment bookings is less than total_amount) — _issue_refund then
-    # caps it at the still-refundable balance.
+    # Base the tier on what was actually captured (the payments' amounts, which for
+    # advance-payment bookings is less than total_amount; a balance paid later counts too)
+    # — _issue_refund then caps each draw at what is still refundable on that payment.
     # This booking's share of the payment: a group is paid once, so cancelling
     # one slot of three must refund a third, never the whole payment.
     siblings = await booking_repo.list_group(db, booking.booking_group_id)
     group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
     share = booking.advance_amount / group_advance if group_advance > 0 else Decimal("1")
-    computed = payment.amount * Decimal(booking.refund_percentage) / Decimal(100) * share
-    return await _issue_refund(
+    captured = sum((p.amount for p in payments), Decimal("0"))
+    computed = captured * Decimal(booking.refund_percentage) / Decimal(100) * share
+    return await _issue_refund_across(
         db,
         booking=booking,
-        payment=payment,
+        payments=payments,
         requested_amount=computed,
         reason=booking.cancellation_reason or "Booking cancelled.",
         kind="cancellation",
     )
+
+
+async def _issue_refund_across(
+    db: AsyncSession,
+    *,
+    booking: Booking,
+    payments: list[Payment],
+    requested_amount: Decimal,
+    reason: str,
+    kind: str,
+) -> Refund | None:
+    """Draw a refund from a group's captured payments, newest first (a balance paid later
+    before the first payment), each draw capped at what is still refundable on that payment.
+    Returns the first refund made, or None when nothing was left to refund."""
+    remaining = requested_amount
+    first: Refund | None = None
+    for payment in payments:
+        if remaining <= 0:
+            break
+        refund = await _issue_refund(
+            db,
+            booking=booking,
+            payment=payment,
+            requested_amount=remaining,
+            reason=reason,
+            kind=kind,
+        )
+        if refund is None:
+            continue
+        remaining -= refund.amount
+        first = first or refund
+    return first
+
+
+async def close_open_balance_payment(
+    db: AsyncSession, booking: Booking, reason: str | None
+) -> Refund | None:
+    """The booking was cancelled while a balance payment was still open. A balance receipt that
+    is with the arena may mean the money arrived, so all of it becomes a pending refund (as for a
+    first payment); either way the open payment ends. Does nothing when none is open."""
+    open_payment = await repo.get_pending_balance_payment(db, booking.booking_group_id)
+    if open_payment is None:
+        return None
+    refund = None
+    if open_payment.receipt_proof_url:
+        refund = await _issue_refund(
+            db,
+            booking=booking,
+            payment=open_payment,
+            requested_amount=open_payment.amount,
+            reason=reason or "Cancelled while the balance receipt was waiting.",
+            kind="cancellation",
+        )
+    open_payment.status = PaymentStatus.failed
+    await state_machine.advance(
+        db, open_payment, Lifecycle.expired, note="Booking cancelled before the balance was paid."
+    )
+    return refund
 
 
 async def create_refund_for_cancelled_group(
@@ -868,18 +984,19 @@ async def create_refund_for_cancelled_group(
     refund, at what is still refundable on the payment."""
     if refund_percentage <= 0 or not bookings:
         return None
-    payment = await repo.get_payment_by_group(db, bookings[0].booking_group_id)
-    if payment is None or payment.status != PaymentStatus.completed:
+    payments = await repo.list_completed_payments_for_group(db, bookings[0].booking_group_id)
+    if not payments:
         return None
     siblings = await booking_repo.list_group(db, bookings[0].booking_group_id)
     group_advance = sum((b.advance_amount for b in siblings), Decimal("0"))
     cancelled_advance = sum((b.advance_amount for b in bookings), Decimal("0"))
     share = cancelled_advance / group_advance if group_advance > 0 else Decimal("1")
-    computed = payment.amount * Decimal(refund_percentage) / Decimal(100) * share
-    return await _issue_refund(
+    captured = sum((p.amount for p in payments), Decimal("0"))
+    computed = captured * Decimal(refund_percentage) / Decimal(100) * share
+    return await _issue_refund_across(
         db,
         booking=bookings[0],
-        payment=payment,
+        payments=payments,
         requested_amount=computed,
         reason=reason or "Booking cancelled.",
         kind="cancellation",
@@ -1002,13 +1119,13 @@ async def refund_reschedule_overpayment(
     live booking, so it is not gated on ``refund_eligible``."""
     if amount <= 0:
         return None
-    payment = await repo.get_payment_by_group(db, booking.booking_group_id)
-    if payment is None or payment.status != PaymentStatus.completed:
+    payments = await repo.list_completed_payments_for_group(db, booking.booking_group_id)
+    if not payments:
         return None
-    return await _issue_refund(
+    return await _issue_refund_across(
         db,
         booking=booking,
-        payment=payment,
+        payments=payments,
         requested_amount=amount,
         reason="Rescheduled to a lower-priced slot.",
         kind="reschedule overpayment",
@@ -1035,8 +1152,10 @@ async def force_refund(
         PaymentStatus.completed,
         PaymentStatus.refunded,
     ):
-        already = await repo.sum_refunds_for_payment(db, existing_payment.id)
-        if already >= existing_payment.amount:
+        left = Decimal("0")
+        for paid in await repo.list_completed_payments_for_group(db, booking.booking_group_id):
+            left += paid.amount - await repo.sum_refunds_for_payment(db, paid.id)
+        if left <= 0:
             raise ConflictError("This payment has already been fully refunded.")
 
     booking.refund_eligible = True

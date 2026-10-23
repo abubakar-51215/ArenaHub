@@ -147,6 +147,14 @@ class BookingGroupDetails(BaseModel):
     refund_status: str | None = None
     can_cancel: bool = False
     can_reschedule: bool = False
+    # what is still owed on a confirmed booking (an advance booking's rest, or the price
+    # difference after moving to a dearer time); 0 once settled or when the booking is not live
+    balance_due: Decimal = Decimal("0")
+    # a balance payment under way: "in_progress" (card page or wallet request not finished) or
+    # "awaiting_approval" (a bank-transfer receipt is with the arena owner); None when none is open
+    balance_payment: str | None = None
+    # the "Pay balance" button: confirmed, something owed, and no payment already in flight
+    can_pay_balance: bool = False
 
 
 class CancelPreview(BaseModel):
