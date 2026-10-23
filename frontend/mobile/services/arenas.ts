@@ -13,8 +13,8 @@ export interface ArenaSearchParams {
   lat?: number;
   lon?: number;
   radius_km?: number;
-  /** Only arenas that have ALL of these amenities. */
-  amenity_ids?: string[];
+  /** Only arenas that have ALL of these amenities (standard keys). */
+  amenities?: string[];
   /** Only arenas with a free slot in this part of the day (today unless `date` is given). */
   time_of_day?: "morning" | "afternoon" | "evening" | "night";
   date?: string;
@@ -27,7 +27,7 @@ function toQuery(params: object): string {
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === "") continue;
     if (Array.isArray(value)) {
-      // a list is sent as the same name repeated: amenity_ids=a&amenity_ids=b
+      // a list is sent as the same name repeated: amenities=a&amenities=b
       for (const item of value) parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`);
       continue;
     }
@@ -45,7 +45,7 @@ export function searchArenas(
   return api.get<Page<Arena>>(`/arenas${toQuery(params)}`, opts);
 }
 
-/** The amenities at least one live arena has: what the "Must have" row can offer. */
+/** The standard amenity list: what the "Must have" row offers. */
 export function listFilterAmenities(): Promise<Amenity[]> {
   return api.get<Amenity[]>("/arenas/amenities");
 }

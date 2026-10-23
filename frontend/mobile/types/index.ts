@@ -53,6 +53,8 @@ export interface RefundTier {
 }
 
 export interface Amenity {
+  /** the stable key on the standard list: what the filter sends */
+  key: string;
   id: string;
   name: string;
   icon: string | null;
@@ -80,6 +82,8 @@ export interface Arena {
   refund_policy: RefundTier[];
   is_active: boolean;
   amenities: Amenity[];
+  /** older typed amenities that match nothing on the standard list (shown as plain text) */
+  extra_amenities?: string[];
   created_at: string;
   /** Only the list endpoints send these three (the card hides what is missing). */
   /** km from the position sent with the search (only when one was sent). */

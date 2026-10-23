@@ -36,12 +36,11 @@ import { TapBox } from '@/components/ui/tap-box';
 // arena shows "This arena is not available".
 const AMENITY_ICON: Record<string, IconName> = {
   parking: 'park',
-  changing: 'shirt',
-  'changing room': 'shirt',
+  changing_room: 'shirt',
   floodlights: 'light',
-  cafe: 'cafe',
+  cafeteria: 'cafe',
 };
-const amenityIcon = (name: string): IconName => AMENITY_ICON[name.trim().toLowerCase()] ?? 'tick'; // unknown amenities get a plain tick
+const amenityIcon = (key: string): IconName => AMENITY_ICON[key] ?? 'tick'; // the rest get a plain tick
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -254,15 +253,23 @@ export default function ArenaDetailsScreen() {
             </View>
           ) : null}
 
-          {a.amenities.length ? (
+          {a.amenities.length || a.extra_amenities?.length ? (
             <>
               <SectionLabel>What you get</SectionLabel>
               <View style={styles.amen}>
                 {a.amenities.map((m) => (
                   <View key={m.id} style={styles.amenCell}>
-                    <Icon name={amenityIcon(m.name)} size={16} color={Colors.light.limeDeep} />
+                    <Icon name={amenityIcon(m.key)} size={16} color={Colors.light.limeDeep} />
                     <Text style={styles.amenText} numberOfLines={1}>
                       {m.name}
+                    </Text>
+                  </View>
+                ))}
+                {(a.extra_amenities ?? []).map((t) => (
+                  <View key={`extra-${t}`} style={styles.amenCell}>
+                    <Icon name="tick" size={16} color={Colors.light.limeDeep} />
+                    <Text style={styles.amenText} numberOfLines={1}>
+                      {t}
                     </Text>
                   </View>
                 ))}

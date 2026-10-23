@@ -54,7 +54,7 @@ export function useResults(opts: { pageSize?: number; drop?: ChipKind[] } = {}) 
     // the position goes with the search only to work out distances; the server does not keep it
     ...(coords ? { lat: coords.lat, lon: coords.lon } : {}),
     ...(coords && f.radiusKm ? { radius_km: f.radiusKm } : {}),
-    ...(f.amenityIds.length ? { amenity_ids: f.amenityIds } : {}),
+    ...(f.amenityKeys.length ? { amenities: f.amenityKeys } : {}),
     ...(f.timeOfDay ? { time_of_day: f.timeOfDay } : {}),
   };
   // the plain arena search is needed only without words, or when the words were not understood

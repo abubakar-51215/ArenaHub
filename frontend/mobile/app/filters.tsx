@@ -135,7 +135,7 @@ export default function FiltersScreen() {
               </Text>
               <View style={styles.tags}>
                 {amenities.data.map((a) => (
-                  <Tag key={a.id} label={a.name} on={f.amenityIds.includes(a.id)} onPress={() => f.toggleAmenity(a.id)} />
+                  <Tag key={a.key} label={a.name} on={f.amenityKeys.includes(a.key)} onPress={() => f.toggleAmenity(a.key)} />
                 ))}
               </View>
             </>
