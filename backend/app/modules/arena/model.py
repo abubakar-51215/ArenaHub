@@ -107,6 +107,10 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     operating_hours: Mapped[dict] = mapped_column(JSONB, nullable=False)
     sports_offered: Mapped[list] = mapped_column(JSONB, nullable=False)
     images: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    # older typed amenities that match nothing on the standard list: kept, shown, removable
+    extra_amenities: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
 
     status: Mapped[ArenaStatus] = mapped_column(
         Enum(ArenaStatus, name="arena_status"),
@@ -188,6 +192,7 @@ class Arena(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class Amenity(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "amenities"
 
+    key: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
