@@ -30,7 +30,6 @@
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
         "android.permission.READ_MEDIA_VIDEO"
       ]
     },
@@ -67,7 +66,7 @@
         "expo-image-picker",
         {
           "photosPermission": "ArenaHub needs your photos so you can send a payment receipt and set your profile picture.",
-          "cameraPermission": false,
+          "cameraPermission": "ArenaHub uses your camera so you can take a photo of your payment receipt or your profile picture.",
           "microphonePermission": false
         }
       ]

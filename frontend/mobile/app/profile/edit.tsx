@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { pickPhoto } from '@/lib/pick-photo';
+import { usePhotoPicker } from '@/hooks/usePhotoPicker';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -40,9 +40,10 @@ export default function PersonalInformationScreen() {
 
   const changed = fullName.trim() !== (user?.full_name ?? '') || city !== user?.preferred_locations?.[0] || !!pickedUri;
 
+  const picker = usePhotoPicker({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
   async function pick() {
     tapHaptic();
-    const picked = await pickPhoto({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    const picked = await picker.choose();
     if (!picked) return;
     const problem = photoProblem(picked);
     if (problem) return showToast(problem.title);
@@ -79,6 +80,7 @@ export default function PersonalInformationScreen() {
 
   return (
     <FormScreen title="Personal information" footer={<Button title="Save changes" loading={save.isPending} disabled={!changed} onPress={submit} />}>
+      {picker.sheet}
       <View style={styles.avatarWrap}>
         <Pressable onPress={pick} accessibilityRole="button" accessibilityLabel="Change profile photo">
           <ArenaImage

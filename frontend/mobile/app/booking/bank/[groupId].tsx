@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
-import { pickPhoto } from '@/lib/pick-photo';
+import { usePhotoPicker } from '@/hooks/usePhotoPicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -52,6 +52,7 @@ export default function BankTransferScreen() {
   const [bad, setBad] = useState<PhotoProblem | null>(null);
   const [stopSheet, setStopSheet] = useState(false);
   const sending = useRef(false);
+  const picker = usePhotoPicker({ quality: 0.7 });
   const abort = useRef<AbortController | null>(null);
 
   // already sent, confirmed or let go: open the screen that matches
@@ -70,7 +71,7 @@ export default function BankTransferScreen() {
   async function choose() {
     if (sending.current) return;
     tapHaptic();
-    const a = await pickPhoto({ quality: 0.7 });
+    const a = await picker.choose();
     if (a) {
       const problem = photoProblem(a, 'receipt');
       if (problem) {
@@ -206,6 +207,7 @@ export default function BankTransferScreen() {
         <Button title="Send receipt" offlineLabel="Send needs a connection" disabled={!ready || !photo || phase === 'uploading' || phase === 'failed'} onPress={send} />
       </StickyBar>
       {sheet}
+      {picker.sheet}
       <ConfirmSheet
         visible={stopSheet}
         title="Stop uploading?"
