@@ -1376,9 +1376,12 @@ html[data-theme="dark"] [data-admin] .ah-toast {
   align-items: flex-end;
   gap: 5px;
   height: 132px;
+  /* a phone has no room for every hour label: the chart scrolls instead of clipping the last one */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 [data-admin] .ah-bar-col {
-  flex: 1;
+  flex: 1 0 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1950,10 +1953,12 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   border-top: 1px solid var(--line-soft);
   font-size: 12.5px;
   color: var(--muted-foreground);
+  flex-wrap: wrap;
 }
 [data-admin] .ah-pager {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 [data-admin] .ah-pager button {
@@ -2335,6 +2340,12 @@ html[data-theme="dark"] [data-admin] .ah-court-vis {
   background: transparent;
   border-bottom: 1px solid var(--line);
   justify-content: flex-start;
+  /* seven tabs do not fit a phone: the strip scrolls instead of being cut off */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+[data-admin] .ah-tabs::-webkit-scrollbar {
+  display: none;
 }
 [data-admin] [data-slot="tabs-trigger"],
 [data-admin] .ah-tab {
