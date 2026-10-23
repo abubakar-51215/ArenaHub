@@ -94,7 +94,7 @@ function lanes(list: Booking[]): Map<string, { lane: number; of: number }> {
 }
 
 function Schedule() {
-  const { data: arenaPage } = useMyArenas();
+  const { data: arenaPage, isError: arenasError, refetch: refetchArenas } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
   const [pickedId] = useArenaParam();
   const picked = arenas.find((a) => a.id === pickedId);
@@ -128,7 +128,7 @@ function Schedule() {
     queries: scope.map((a) => ({ queryKey: ["courts", a.id], queryFn: () => listCourts(a.id) })),
   });
   const loading = calendarQueries.some((q) => q.isLoading);
-  const failed = calendarQueries.some((q) => q.isError);
+  const failed = arenasError || calendarQueries.some((q) => q.isError);
   const bookings = calendarQueries.flatMap((q) => q.data ?? []);
   const courts: Court[] = courtQueries.flatMap((q) => q.data ?? []);
   const courtById = new Map(courts.map((c) => [c.id, c]));
@@ -292,7 +292,11 @@ function Schedule() {
                 <button
                   type="button"
                   className="ah-link"
-                  onClick={() => calendarQueries.forEach((q) => void q.refetch())}
+                  onClick={() =>
+                    [{ refetch: refetchArenas }, ...calendarQueries].forEach(
+                      (q) => void q.refetch(),
+                    )
+                  }
                 >
                   Try again
                 </button>

@@ -62,7 +62,12 @@ interface TaggedReview extends Review {
 
 function ReviewsInner() {
   const qc = useQueryClient();
-  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
+  const {
+    data: arenaPage,
+    isLoading: arenasLoading,
+    isError: arenasError,
+    refetch: refetchArenas,
+  } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
   const [arenaId] = useArenaParam();
   const picked = arenas.find((a) => a.id === arenaId);
@@ -94,7 +99,7 @@ function ReviewsInner() {
   });
 
   const loading = arenasLoading || reviewQueries.some((q) => q.isLoading);
-  const failed = reviewQueries.some((q) => q.isError);
+  const failed = arenasError || reviewQueries.some((q) => q.isError);
   const merged = reviewQueries
     .flatMap((q) => q.data?.items ?? [])
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -249,7 +254,11 @@ function ReviewsInner() {
                   <button
                     type="button"
                     className="ah-link"
-                    onClick={() => reviewQueries.forEach((q) => void q.refetch())}
+                    onClick={() =>
+                      [{ refetch: refetchArenas }, ...reviewQueries].forEach(
+                        (q) => void q.refetch(),
+                      )
+                    }
                   >
                     Try again
                   </button>

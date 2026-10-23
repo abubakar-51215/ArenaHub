@@ -42,7 +42,12 @@ interface Row {
 
 function Pricing() {
   const qc = useQueryClient();
-  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
+  const {
+    data: arenaPage,
+    isLoading: arenasLoading,
+    isError: arenasError,
+    refetch: refetchArenas,
+  } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
   const [pickedId] = useArenaParam();
   const picked = arenas.find((a) => a.id === pickedId);
@@ -66,7 +71,7 @@ function Pricing() {
     return court ? [{ court, arenaName: arenaName.get(court.arena_id) ?? "", rule }] : [];
   });
   const loading = arenasLoading || courtQueries.some((q) => q.isLoading) || ruleQuery.isLoading;
-  const failed = courtQueries.some((q) => q.isError) || ruleQuery.isError;
+  const failed = arenasError || courtQueries.some((q) => q.isError) || ruleQuery.isError;
 
   const [error, setError] = useState<string | null>(null);
   const del = useMutation({
@@ -189,7 +194,11 @@ function Pricing() {
                 <button
                   type="button"
                   className="ah-link"
-                  onClick={() => [...courtQueries, ruleQuery].forEach((q) => void q.refetch())}
+                  onClick={() =>
+                    [{ refetch: refetchArenas }, ...courtQueries, ruleQuery].forEach(
+                      (q) => void q.refetch(),
+                    )
+                  }
                 >
                   Try again
                 </button>

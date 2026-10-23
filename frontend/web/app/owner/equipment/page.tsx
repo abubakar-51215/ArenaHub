@@ -33,7 +33,12 @@ import type { Equipment } from "@/types";
 
 function EquipmentInner() {
   const qc = useQueryClient();
-  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
+  const {
+    data: arenaPage,
+    isLoading: arenasLoading,
+    isError: arenasError,
+    refetch: refetchArenas,
+  } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
   const [pickedId] = useArenaParam();
   const picked = arenas.find((a) => a.id === pickedId);
@@ -47,7 +52,7 @@ function EquipmentInner() {
     })),
   });
   const loading = arenasLoading || queries.some((q) => q.isLoading);
-  const failed = queries.some((q) => q.isError);
+  const failed = arenasError || queries.some((q) => q.isError);
   const items = queries.flatMap((q) => q.data ?? []);
 
   const [formOpen, setFormOpen] = useFormDialog();
@@ -178,7 +183,9 @@ function EquipmentInner() {
                 <button
                   type="button"
                   className="ah-link"
-                  onClick={() => queries.forEach((q) => void q.refetch())}
+                  onClick={() =>
+                    [{ refetch: refetchArenas }, ...queries].forEach((q) => void q.refetch())
+                  }
                 >
                   Try again
                 </button>

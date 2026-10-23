@@ -91,7 +91,12 @@ function Policy({ arena }: { arena: Arena }) {
 
 function PaymentsInner() {
   const qc = useQueryClient();
-  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
+  const {
+    data: arenaPage,
+    isLoading: arenasLoading,
+    isError: arenasError,
+    refetch: refetchArenas,
+  } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
   const [pickedId, setPickedId] = useArenaParam();
   const picked = arenas.find((a) => a.id === pickedId);
@@ -237,7 +242,15 @@ function PaymentsInner() {
           </div>
 
           {arenasLoading && <p className="ah-empty-line ah-pitch-note">Loading…</p>}
-          {!arenasLoading && arenas.length === 0 && (
+          {!arenasLoading && arenasError && (
+            <div className="ah-card-error" role="alert">
+              <span>Could not load your arenas.</span>
+              <button type="button" className="ah-link" onClick={() => void refetchArenas()}>
+                Try again
+              </button>
+            </div>
+          )}
+          {!arenasLoading && !arenasError && arenas.length === 0 && (
             <AdminEmpty>Register an arena first, then set up its payments here.</AdminEmpty>
           )}
 

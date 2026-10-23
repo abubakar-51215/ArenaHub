@@ -35,7 +35,12 @@ function titleCase(s: string) {
 
 function CourtsInner() {
   const qc = useQueryClient();
-  const { data: arenaPage, isLoading: arenasLoading } = useMyArenas();
+  const {
+    data: arenaPage,
+    isLoading: arenasLoading,
+    isError: arenasError,
+    refetch: refetchArenas,
+  } = useMyArenas();
   const arenas = useMemo(() => arenaPage?.items ?? [], [arenaPage]);
   const [pickedId] = useArenaParam();
   const picked = arenas.find((a) => a.id === pickedId);
@@ -46,7 +51,7 @@ function CourtsInner() {
     queries: scope.map((a) => ({ queryKey: ["courts", a.id], queryFn: () => listCourts(a.id) })),
   });
   const loading = arenasLoading || courtQueries.some((q) => q.isLoading);
-  const failed = courtQueries.some((q) => q.isError);
+  const failed = arenasError || courtQueries.some((q) => q.isError);
   const courts = courtQueries.flatMap((q) => q.data ?? []);
 
   const [sport, setSport] = useState("");
@@ -136,7 +141,9 @@ function CourtsInner() {
                 <button
                   type="button"
                   className="ah-link"
-                  onClick={() => courtQueries.forEach((q) => void q.refetch())}
+                  onClick={() =>
+                    [{ refetch: refetchArenas }, ...courtQueries].forEach((q) => void q.refetch())
+                  }
                 >
                   Try again
                 </button>
