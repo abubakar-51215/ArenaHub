@@ -153,6 +153,47 @@ export async function fixture(tag, { advance = 50, policy = [{ hours_before: 24,
   return { owner, player, admin, ownerTok, playerTok, adminTok, arenaId: arena.id, courtId: court.id, date };
 }
 
+/** One more approved arena (one court, slots on the fixture's day) for the fixture's owner. */
+export async function makeArena(f, { name, hours, advance = 50, lat = "31.5204", lon = "74.3587" }) {
+  const allWeek = Object.fromEntries(
+    ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((d) => [d, hours || { open: "08:00", close: "23:59" }]),
+  );
+  const arena = await api("/owner/arenas", f.ownerTok, {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      description: "Verification fixture",
+      address: "2 Verify Road",
+      city: "Lahore",
+      area: "Gulberg",
+      latitude: lat,
+      longitude: lon,
+      contact_phone: "0421234567",
+      contact_email: "arena@example.com",
+      operating_hours: allWeek,
+      sports_offered: ["futsal"],
+      images: [],
+      amenity_ids: [],
+      advance_percentage: advance,
+      require_full_payment: advance >= 100,
+      refund_policy: [{ hours_before: 24, refund_percentage: 100 }],
+    }),
+  });
+  await api(`/admin/arenas/${arena.id}/approve`, f.adminTok, { method: "POST" });
+  const court = await api(`/owner/arenas/${arena.id}/courts`, f.ownerTok, {
+    method: "POST",
+    body: JSON.stringify({ name: "Court A", sport_types: ["futsal"], base_price: "2000.00" }),
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  for (const day of [today, f.date]) {
+    await api(`/owner/courts/${court.id}/slots/generate`, f.ownerTok, {
+      method: "POST",
+      body: JSON.stringify({ start_date: day, end_date: day }),
+    }).catch(() => {});
+  }
+  return { arenaId: arena.id, courtId: court.id };
+}
+
 export async function freeSlots(courtId, date, token) {
   const slots = await api(`/courts/${courtId}/slots?date=${date}`, token);
   return slots.filter((s) => s.status === "available");
