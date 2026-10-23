@@ -38,6 +38,7 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | PATCH | `/admin/users/{user_id}/reactivate` | admin |
 | PATCH | `/admin/users/{user_id}/suspend` | admin |
 | GET | `/arenas` | nobody (public) |
+| GET | `/arenas/amenities` | nobody (public) |
 | GET | `/arenas/liked` | any signed-in user |
 | GET | `/arenas/trending` | nobody (public) |
 | GET | `/arenas/{arena_id}` | nobody (public) |
