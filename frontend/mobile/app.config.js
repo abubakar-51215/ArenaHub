@@ -23,5 +23,11 @@ module.exports = ({ config }) => {
   if (googleServicesFile) {
     config.android = { ...config.android, googleServicesFile };
   }
+
+  // SYSTEM_ALERT_WINDOW is only for the developer menu: a preview or store build does not ask for it
+  if (['preview', 'production'].includes(process.env.EAS_BUILD_PROFILE ?? '')) {
+    const blocked = config.android?.blockedPermissions ?? [];
+    config.android = { ...config.android, blockedPermissions: [...blocked, 'android.permission.SYSTEM_ALERT_WINDOW'] };
+  }
   return config;
 };
