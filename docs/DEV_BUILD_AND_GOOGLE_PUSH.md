@@ -26,6 +26,39 @@ and `android.package` (in `app.json`). **Changing them later also means redoing 
 Google and Firebase setup** (the Android OAuth client and the Firebase app are tied
 to the package name), so decide the final identifier before the first real build.
 
+## First APK: what the owner of the Expo account types, in order
+
+Do this once, on the computer, from the repo. It makes an installable test APK (the `preview`
+profile) with nothing from the Expo or Google accounts written in the code. Android only. Allow
+about 20 minutes for the first cloud build.
+
+1. `npm install -g eas-cli` (once), then `eas login` and sign in as the Expo account that owns the
+   project (`owner` in `frontend/mobile/app.json`; check with `eas whoami`).
+2. `cd frontend/mobile`
+3. Give the build its public values (plain text; these are not secrets). Run
+   `eas env:create` once for each name below and answer the questions it asks (the value, then
+   the environment: choose **preview**, and visibility **plain text**):
+   * `EXPO_PUBLIC_API_URL` — the **https** address of the API, with no trailing slash and no
+     `/api/v1` (the app adds that itself). A release build refuses a plain `http` address.
+   * `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` — only when Google sign-in is set up (step 3 below).
+4. Push needs Firebase's file (step 4 below). Either keep `google-services.json` in
+   `frontend/mobile/` while you build (git ignores it), or store it as an EAS file secret:
+   `eas env:create` with name `GOOGLE_SERVICES_JSON`, type **file**, visibility **secret**,
+   environment **preview**.
+5. `eas build --profile preview --platform android`
+   When it ends, EAS prints a link to the `.apk`. Open the link on the phone and install it
+   (allow "install unknown apps" when the phone asks).
+6. On the server, check what is set up: `cd backend` then
+   `uv run python -m scripts.check_integrations` (it prints only SET or MISSING).
+7. Sign in on the phone, then from the server send one test push:
+   `uv run python -m scripts.send_test_push you@example.com` (it prints "Sent." or the reason; it
+   never prints a token). Then follow `docs/REAL_PHONE_TEST.md`.
+
+The `development` profile (a dev client, see section 1) is for trying changes against the dev
+server; `preview` is the build to hand to testers; `production` makes the store bundle (an AAB)
+and is not used until the store accounts exist. `production` has no development-only settings: it
+is not a dev client, and it asks for no developer-menu permission.
+
 ## 0. One-time tools
 
 1. Create a free **Expo** account at expo.dev.
@@ -69,8 +102,11 @@ Signing SHA-1 from the Play Console.)
    - backend `.env`: `GOOGLE_CLIENT_IDS=<web client id>`
    - phone `.env`: `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<web client id>`
 4. **Create credentials → OAuth client ID → Android.** It needs the package name
-   `com.arenahub.app` and the **SHA-1** from step 2. Add this id to
-   `GOOGLE_CLIENT_IDS` too (comma-separated with the Web one).
+   `com.arenahub.app` and the **SHA-1** from step 2. Google uses it to recognise the
+   app, so it must exist in the same project, but the sign-in token the phone sends is
+   issued for the **Web** client id (that is what the app asks with), so the server's
+   `GOOGLE_CLIENT_IDS` needs the Web id. Adding the Android id next to it
+   (comma-separated) is harmless. The phone needs no Android id in its settings.
 5. Restart the backend so it reads the new `GOOGLE_CLIENT_IDS`. The Google button
    in the dev build now signs in for real.
 
@@ -82,8 +118,11 @@ real Android build needs FCM credentials uploaded to EAS.
 1. In console.firebase.google.com create a project (you can reuse the Google
    Cloud project).
 2. **Add an Android app** with package name `com.arenahub.app`. Download the
-   `google-services.json` it gives you and put it in `frontend/mobile/`
-   (referenced by the build; do not commit a real one).
+   `google-services.json` it gives you and put it in `frontend/mobile/`, or store it
+   as the EAS file secret `GOOGLE_SERVICES_JSON` (see "First APK", step 4).
+   `frontend/mobile/app.config.js` hands the file to the build when it exists; git
+   ignores it, so a real one is never committed. Without the file the build still
+   works but push does not reach Android.
 3. In Firebase **Project settings → Service accounts → Generate new private key**
    — this downloads a service-account JSON for FCM V1.
 4. Upload it to EAS:
@@ -105,23 +144,29 @@ real Android build needs FCM credentials uploaded to EAS.
 - Build with `eas build --profile development --platform ios` (needs the Apple
   account). Everything else mirrors Android.
 
-## What is missing in the backend push-sending code (for later)
+## What the backend push-sending code does now, and what is left
 
-`backend/app/integrations/push/expo_push.py` works (it posts to Expo's push API),
-but for production it is thin:
+`backend/app/integrations/push/expo_push.py` posts to Expo's push API.
 
-1. **No receipt check / dead-token cleanup.** Expo returns a *ticket* per message
-   and, a little later, a *receipt* that can say `DeviceNotRegistered`. We ignore
-   both, so tokens for uninstalled apps are never removed and pile up. Add: read
-   the tickets, fetch receipts, and delete `device_tokens` rows that come back
-   `DeviceNotRegistered`.
-2. **No chunking.** Expo accepts at most 100 messages per request; a large fan-out
-   should be split into batches of 100.
-3. **The module comment overstates it.** It says "no Firebase project or server key
-   needed" — true only for Expo Go. A real Android build needs the FCM credentials
-   from step 4 above.
-4. **No access token.** Optionally send an Expo access token header for stricter
-   delivery security (not required).
+Done (tested in `backend/tests/test_push_delivery.py`):
 
-None of these stop push from working in a dev build today; they are hardening for
-real traffic.
+1. Expo's answer for each message is read. A device it says is gone
+   (`DeviceNotRegistered`) is switched off in `device_tokens` and never tried again.
+2. At most 100 messages go to Expo in one request; a bigger send is split.
+3. Each message names the Android channel the app creates (`default`) and carries the
+   event name, so a tap opens the right screen.
+4. A push token is never written to a log (a failed send logs only how many devices
+   and the error's name).
+5. Signing out removes the phone's token; deleting the account switches off all of
+   that person's tokens; one phone belongs to one account at a time.
+6. The player's notification preferences are respected (a notice switched off sends no
+   push; the in-app notice is still saved).
+
+Left for later (hardening, not needed for a first test):
+
+1. **Receipts.** Expo also gives a *receipt* a few minutes after a send, which can say
+   `DeviceNotRegistered` for a phone that looked fine at send time. Only the
+   immediate answer is read today. Add a scheduled job that fetches receipts and
+   switches off those tokens.
+2. An Expo access token header, for stricter delivery security (optional).
+

@@ -2,8 +2,9 @@
 
 The mobile app is a managed Expo project (no native android/ios folders),
 so device tokens are Expo push tokens (``ExponentPushToken[...]``), not raw
-FCM/APNs tokens — Expo's own push API fans those out to FCM/APNs for us, no
-Firebase project or server key needed.
+FCM/APNs tokens — Expo's own push API fans those out to FCM/APNs for us. Expo Go cannot receive
+push at all (removed in SDK 53); a real Android build needs Firebase's google-services.json inside
+the build and the FCM service-account key uploaded to EAS (docs/DEV_BUILD_AND_GOOGLE_PUSH.md, step 4).
 
 Dev has no tokens registered yet (nothing to send to) -> this just logs;
 once a device registers, requests go out for real. The request runs in a
