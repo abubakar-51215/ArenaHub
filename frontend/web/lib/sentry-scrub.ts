@@ -19,7 +19,7 @@ const RECEIPT = /\/(?:api\/v1\/media|uploads)\/receipts\/[^\s"'<>]*/g;
 // URL as free text — this catches a near-me search's lat/lon/radius there (request.query_string
 // is dropped wholesale below, but breadcrumbs are a separate code path).
 const LOCATION_QUERY_PARAM =
-  /\b(lat|lon|latitude|longitude|radius_km|amenity_ids|time_of_day)=[^&\s"'<>]*/gi;
+  /\b(lat|lon|latitude|longitude|radius_km|amenity_ids|amenities|time_of_day)=[^&\s"'<>]*/gi;
 const SECRET_KEY = /password|token|secret|authorization|cookie|api[_-]?key|otp|code|session/i;
 
 export function redactText(text: string): string {

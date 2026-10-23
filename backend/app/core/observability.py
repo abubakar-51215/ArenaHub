@@ -35,7 +35,7 @@ _RECEIPT = re.compile(r"/(?:api/v1/media|uploads)/receipts/[^\s\"'<>]*")
 # near-me request to the API) with the full URL as free text — this catches the lat/lon/radius
 # there too.
 _LOCATION_QUERY_PARAM = re.compile(
-    r"(?i)\b(lat|lon|latitude|longitude|radius_km|amenity_ids|time_of_day)=[^&\s\"'<>]*"
+    r"(?i)\b(lat|lon|latitude|longitude|radius_km|amenity_ids|amenities|time_of_day)=[^&\s\"'<>]*"
 )
 
 # Parts of a Sentry request interface we never keep anything from.

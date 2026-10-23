@@ -51,6 +51,7 @@ from app.modules.arena.model import (
     DiscountType,
     arena_amenities,
 )
+from app.modules.arena.repository import ensure_standard_amenities
 from app.modules.booking.model import Booking, BookingStatus, PaymentPlan, PaymentStatus
 from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintStatus
 from app.modules.court.model import Court, CourtPricingRule
@@ -413,30 +414,20 @@ OWNERS: list[dict[str, Any]] = [
     },
 ]
 
-AMENITIES = [
-    ("Parking", "car"),
-    ("Floodlights", "lightbulb"),
-    ("Washrooms", "shower"),
-    ("Drinking Water", "droplet"),
-    ("Cafeteria", "coffee"),
-    ("First Aid", "cross"),
-    ("Changing Rooms", "shirt"),
-    ("WiFi", "wifi"),
-]
 # arena name -> amenity names
 ARENA_AMENITIES = {
-    "Arena Hub DHA Lahore": ["Parking", "Floodlights", "Washrooms", "Cafeteria", "WiFi"],
-    "Arena Hub Gulberg Lahore": ["Parking", "Floodlights", "Drinking Water", "Changing Rooms"],
+    "Arena Hub DHA Lahore": ["Parking", "Floodlights", "Washrooms", "Cafeteria", "Wi-Fi"],
+    "Arena Hub Gulberg Lahore": ["Parking", "Floodlights", "Drinking water", "Changing room"],
     "Arena Hub Clifton Karachi": ["Parking", "Washrooms"],
-    "Arena Hub Bahria Town Lahore": ["Parking", "Floodlights", "First Aid"],
-    "Arena Hub Johar Town Lahore": ["Drinking Water"],
+    "Arena Hub Bahria Town Lahore": ["Parking", "Floodlights", "First aid"],
+    "Arena Hub Johar Town Lahore": ["Drinking water"],
     "Multan Sports Complex": ["Parking", "Floodlights", "Washrooms"],
-    "Multan Football Arena": ["Parking", "Drinking Water"],
-    "Lahore Arena": ["Parking", "Changing Rooms", "WiFi"],
+    "Multan Football Arena": ["Parking", "Drinking water"],
+    "Lahore Arena": ["Parking", "Changing room", "Wi-Fi"],
     "DHA Sports Club": ["Parking", "Floodlights", "Cafeteria"],
-    "Karachi Indoor Arena": ["Parking", "Washrooms", "WiFi"],
-    "Karachi Padel Club": ["Parking", "Changing Rooms", "Drinking Water"],
-    "Islamabad Sports Center": ["Parking", "Floodlights", "First Aid", "Cafeteria"],
+    "Karachi Indoor Arena": ["Parking", "Washrooms", "Wi-Fi"],
+    "Karachi Padel Club": ["Parking", "Changing room", "Drinking water"],
+    "Islamabad Sports Center": ["Parking", "Floodlights", "First aid", "Cafeteria"],
     "Islamabad Cricket Hub": ["Parking", "Floodlights", "Washrooms"],
 }
 
@@ -666,15 +657,9 @@ async def _get_or_create_admin(db: AsyncSession) -> User:
 
 
 async def _get_or_create_amenities(db: AsyncSession) -> dict[str, Amenity]:
-    result = await db.execute(select(Amenity))
-    by_name = {a.name: a for a in result.scalars().all()}
-    for name, icon in AMENITIES:
-        if name not in by_name:
-            amenity = Amenity(name=name, icon=icon)
-            db.add(amenity)
-            by_name[name] = amenity
-    await db.flush()
-    return by_name
+    """The standard amenity rows (core/amenities.py), by display name."""
+    rows = await ensure_standard_amenities(db)
+    return {a.name: a for a in rows}
 
 
 async def _seed_arenas(

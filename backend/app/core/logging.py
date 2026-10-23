@@ -38,6 +38,7 @@ _HIDE_LOCATION = {
     "radius_km",
     "near",
     "amenity_ids",
+    "amenities",
     "time_of_day",
 }
 HIDDEN = "[hidden]"
@@ -64,7 +65,7 @@ def redact_secrets(_: Any, __: str, event: MutableMapping[str, Any]) -> MutableM
 # straight to stdout for every request — it never goes through structlog or redact_secrets
 # above. A near-me search's lat/lon/radius_km would otherwise sit in that log in plain text.
 _LOCATION_QUERY_PARAM = re.compile(
-    r"(?i)\b(lat|lon|latitude|longitude|radius_km|amenity_ids|time_of_day)=[^&\s\"]*"
+    r"(?i)\b(lat|lon|latitude|longitude|radius_km|amenity_ids|amenities|time_of_day)=[^&\s\"]*"
 )
 
 
