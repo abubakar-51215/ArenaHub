@@ -223,7 +223,7 @@ export const consoleErrors = [];
 export const failedRequests = [];
 
 /** A new page. Mobile pages get the CORS answer the Expo web dev server needs for the API. */
-export async function newPage(browser, { width, height = 900, mobile = false, ...ctxOpts }, label) {
+export async function newPage(browser, { width, height = 900, mobile = false, expectErrors = false, ...ctxOpts }, label) {
   const ctx = await browser.newContext({ viewport: { width, height }, ...ctxOpts });
   if (mobile) {
     const CORS = {
@@ -245,8 +245,9 @@ export async function newPage(browser, { width, height = 900, mobile = false, ..
     });
   }
   const page = await ctx.newPage();
+  page.setDefaultNavigationTimeout(90000); // the first visit to a page makes the dev server build it
   page.on("console", (m) => {
-    if (m.type() !== "error") return;
+    if (m.type() !== "error" || expectErrors) return; // expectErrors: the check cuts the server off on purpose
     const text = m.text();
     // a 4xx the test itself provoked is reported by the test, not as a page error
     if (/Failed to load resource: the server responded with a status of 4\d\d/.test(text)) return;
@@ -255,7 +256,7 @@ export async function newPage(browser, { width, height = 900, mobile = false, ..
   page.on("pageerror", (e) => consoleErrors.push(`${label}@${width}: pageerror ${e.message.slice(0, 300)}`));
   page.on("requestfailed", (r) => {
     const failure = r.failure()?.errorText ?? "";
-    if (failure.includes("ERR_ABORTED")) return;
+    if (failure.includes("ERR_ABORTED") || expectErrors) return;
     failedRequests.push(`${label}@${width}: ${r.method()} ${r.url()} ${failure}`);
   });
   return { page, ctx };
