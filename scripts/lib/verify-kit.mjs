@@ -44,14 +44,26 @@ export function lastOtpFor(email) {
 
 // /auth/* has a tight request budget (20 a minute); every call to it paces itself.
 export async function api(p, token, opts = {}) {
-  const r = await fetch(API + p, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opts.headers || {}),
-    },
-  });
+  const send = () =>
+    fetch(API + p, {
+      ...opts,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(opts.headers || {}),
+      },
+    });
+  // a connection that sat idle while a slow step ran can be closed by the server just as it is reused
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      r = await send();
+      break;
+    } catch (e) {
+      if (attempt >= 2) throw e;
+      await sleep(500);
+    }
+  }
   let body;
   try {
     body = await r.json();
