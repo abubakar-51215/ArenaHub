@@ -223,7 +223,7 @@ export default function ArenaDetailsScreen() {
                 <Icon name="pin" size={12} color={Colors.light.muted} />
                 <Text style={styles.muted}>{a.area ? `${a.area}, ${a.city}` : a.city}</Text>
               </View>
-              <TapBox onPress={() => openDirections(a)} slop={10} style={styles.directions} inner={styles.directionsInner} accessibilityRole="button" accessibilityLabel="Get directions">
+              <TapBox onPress={() => openDirections(a)} slop={{ x: 10, y: 14 }} style={styles.directions} inner={styles.directionsInner} accessibilityRole="button" accessibilityLabel="Get directions">
                 <Icon name="pin" size={12} color={Colors.light.limeText} />
                 <Text style={styles.directionsText}>Get Directions</Text>
               </TapBox>
