@@ -229,18 +229,17 @@ async def _owner_payment_rows(
         if payment is None:
             continue
         # the first payment, then any balance paid later: each is its own row, once
-        for paid in [payment, *await payment_repo.list_balance_payments_for_group(
-            db, booking.booking_group_id
-        )]:
+        for paid in [
+            payment,
+            *await payment_repo.list_balance_payments_for_group(db, booking.booking_group_id),
+        ]:
             rows.append(
                 [
                     web_date(paid.created_at),
                     arena_name or "-",
                     player_name,
                     booking_code_for(booking.booking_group_id),
-                    PAYMENT_METHOD_NAMES.get(
-                        paid.payment_method.value, paid.payment_method.value
-                    ),
+                    PAYMENT_METHOD_NAMES.get(paid.payment_method.value, paid.payment_method.value),
                     web_status(_PAID.get(paid.status.value, paid.status.value)),
                     web_rupees(paid.amount),
                 ]
