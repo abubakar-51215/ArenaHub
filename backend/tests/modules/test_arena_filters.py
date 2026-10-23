@@ -8,9 +8,9 @@ from typing import Any
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.amenities import STANDARD_AMENITIES
 from app.core.time_of_day import BANDS, TimeOfDay, covers
 from app.modules.arena import repository as arena_repo
-from app.modules.arena.model import Amenity
 from tests.helpers import arena_payload, auth_header, make_admin, make_user
 
 ME = (31.5204, 74.3587)
@@ -23,10 +23,10 @@ MORNING_ONLY = {d: {"open": "08:00", "close": "12:00"} for d in ALL_WEEK}
 
 
 async def _amenity(db: AsyncSession, name: str) -> str:
-    row = Amenity(name=name)
-    db.add(row)
+    """The id of a standard amenity, by its display name."""
+    rows = await arena_repo.ensure_standard_amenities(db)
     await db.commit()
-    return str(row.id)
+    return str(next(a.id for a in rows if a.name == name))
 
 
 async def _arena(
@@ -112,16 +112,12 @@ async def test_must_have_amenities_keeps_only_arenas_that_have_all_of_them(
     assert (await client.get("/api/v1/arenas?amenity_ids=not-an-id")).status_code == 422
 
 
-async def test_the_amenity_list_offers_only_amenities_a_live_arena_has(
+async def test_the_amenity_list_offers_the_whole_standard_list(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    empty = await client.get("/api/v1/arenas/amenities")
-    assert empty.status_code == 200 and empty.json()["data"] == []
-    parking = await _amenity(db_session, "Parking")
-    await _amenity(db_session, "Cafe")  # nobody has it
-    await _arena(client, db_session, "a", amenity_ids=[parking], with_slots=False)
-    names = [a["name"] for a in (await client.get("/api/v1/arenas/amenities")).json()["data"]]
-    assert names == ["Parking"]
+    got = await client.get("/api/v1/arenas/amenities")
+    assert got.status_code == 200
+    assert [a["key"] for a in got.json()["data"]] == [k for k, _ in STANDARD_AMENITIES]
 
 
 # ---- time of day ---------------------------------------------------------------------------------

@@ -204,11 +204,21 @@ def test_a_near_me_latitude_or_longitude_is_hidden_even_in_development(
         "longitude": 74.3587,
         "radius_km": 5,
         "amenity_ids": ["7d5b7c52-0000-0000-0000-000000000001"],
+        "amenities": ["parking", "wifi"],
         "time_of_day": "evening",
         "booking_code": "AH-1234",
     }
     out = redact_secrets(None, "info", dict(event))
-    for key in ("lat", "lon", "latitude", "longitude", "radius_km", "amenity_ids", "time_of_day"):
+    for key in (
+        "lat",
+        "lon",
+        "latitude",
+        "longitude",
+        "radius_km",
+        "amenity_ids",
+        "amenities",
+        "time_of_day",
+    ):
         assert out[key] == HIDDEN, key
     assert out["booking_code"] == "AH-1234"
 
