@@ -84,9 +84,9 @@ def upgrade() -> None:
             groups.setdefault(key, []).append(row)
 
     merged = 0
-    for key, members in groups.items():
+    for std_key, members in groups.items():
         # keep the row that already carries the standard name, else the first
-        members.sort(key=lambda r: r.name != NAME_BY_KEY[key])
+        members.sort(key=lambda r: r.name != NAME_BY_KEY[std_key])
         keeper, extras = members[0], members[1:]
         for dup in extras:
             conn.execute(
@@ -101,7 +101,7 @@ def upgrade() -> None:
             merged += 1
         conn.execute(
             sa.text("UPDATE amenities SET key = :key, name = :name WHERE id = :id"),
-            {"key": key, "name": NAME_BY_KEY[key], "id": keeper.id},
+            {"key": std_key, "name": NAME_BY_KEY[std_key], "id": keeper.id},
         )
 
     moved = 0
