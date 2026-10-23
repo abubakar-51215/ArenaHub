@@ -439,18 +439,22 @@ async def claim_discount_release(
     return [d for d in result.scalars().all() if d is not None]
 
 
-async def player_has_unpaid_booking_at_arena(
+async def player_owes_money_at_arena(
     db: AsyncSession, player_id: uuid.UUID, arena_id: uuid.UUID
 ) -> bool:
     """True while this player has a booking at the arena that still waits for payment or for the
-    owner to check the receipt: the only time the arena's bank details are theirs to see."""
+    owner to check the receipt, or a confirmed one with a balance still owed: the only times the
+    arena's bank details are theirs to see."""
     count = await db.scalar(
         select(func.count())
         .select_from(Booking)
         .where(
             Booking.player_id == player_id,
             Booking.arena_id == arena_id,
-            Booking.status.in_([BookingStatus.pending_payment, BookingStatus.pending_approval]),
+            or_(
+                Booking.status.in_([BookingStatus.pending_payment, BookingStatus.pending_approval]),
+                and_(Booking.status == BookingStatus.confirmed, Booking.remaining_amount > 0),
+            ),
         )
     )
     return bool(count)

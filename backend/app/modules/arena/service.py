@@ -652,8 +652,9 @@ async def get_bank_details_for_checkout(
     """Who may see an arena's bank account: the arena's own owner, an admin, or a player who is
     paying for a booking at that arena right now (unpaid, or waiting for the owner to check the
     receipt). Anyone else gets the same "not found" as an arena that does not exist, so the
-    accounts of arenas cannot be read by walking through arena ids. Active accounts, default
-    first, so the player can pick which to transfer to."""
+    accounts of arenas cannot be read by walking through arena ids. A confirmed booking with a
+    balance still owed counts: that balance can be paid by bank transfer too. Active accounts,
+    default first, so the player can pick which to transfer to."""
     from app.modules.booking import repository as booking_repo
 
     arena = await repo.get_arena(db, arena_id)
@@ -665,7 +666,7 @@ async def get_bank_details_for_checkout(
             or arena.owner_id == user.id
             or (
                 user.role == UserRole.player
-                and await booking_repo.player_has_unpaid_booking_at_arena(db, user.id, arena_id)
+                and await booking_repo.player_owes_money_at_arena(db, user.id, arena_id)
             )
         )
     )

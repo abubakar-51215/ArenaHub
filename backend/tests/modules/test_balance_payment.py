@@ -425,3 +425,36 @@ async def test_the_owner_bookings_table_lets_the_owner_act_on_a_balance_receipt(
     [row] = rows
     assert row["status"] == "confirmed" and row["balance_receipt"] is True
     assert row["payment_id"] == payment["id"] and row["receipt_proof_url"]
+
+
+async def test_a_player_with_a_balance_owed_can_read_the_arenas_bank_account(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from app.modules.user.model import User
+    from app.shared.otp import OtpPurpose
+    from tests.helpers import last_code
+
+    player, group, *_ = await _advance_booking(client, db_session, "bal17")
+    gid = group["booking_group_id"]
+    owner = OWNERS["bal17"]
+    arena_id = (await _group(client, player, gid))["arena_id"]
+    stranger, _ = await make_user(client, db_session, "bal17-stranger@example.com", "player")
+
+    account = {"bank_name": "Meezan Bank", "account_title": "Arena", "account_number": "1111111111"}
+    url = f"/api/v1/owner/arenas/{arena_id}/bank-details"
+    await client.post(url, headers=auth_header(owner), json=account)
+    owner_row = (
+        await db_session.execute(select(User).where(User.email == "gco-bal17@example.com"))
+    ).scalar_one()
+    code = last_code(owner_row.id, OtpPurpose.bank_details_change)
+    await client.post(url + "/verify", headers=auth_header(owner), json={"code": code})
+
+    read = f"/api/v1/arenas/{arena_id}/bank-details"
+    ok = await client.get(read, headers=auth_header(player))
+    assert ok.status_code == 200 and ok.json()["data"][0]["bank_name"] == "Meezan Bank"
+    assert (await client.get(read, headers=auth_header(stranger))).status_code == 404
+
+    await _settle_by_card(
+        client, player, gid
+    )  # nothing owed any more: the account is private again
+    assert (await client.get(read, headers=auth_header(player))).status_code == 404
