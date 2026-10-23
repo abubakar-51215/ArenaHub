@@ -912,6 +912,14 @@ async def get_group_details(
         if confirmed and not unsettled
         else Decimal("0")
     )
+    balance_paid = sum(
+        (
+            p.amount
+            for p in await payment_repo.list_balance_payments_for_group(db, group_id)
+            if p.status == PaymentStatus.completed
+        ),
+        Decimal("0"),
+    )
     open_balance = await payment_repo.get_pending_balance_payment(db, group_id)
     balance_payment = None
     if open_balance is not None:
@@ -964,6 +972,7 @@ async def get_group_details(
         balance_due=balance_due,
         balance_payment=balance_payment,
         can_pay_balance=balance_due > 0 and balance_payment is None,
+        balance_paid=balance_paid,
     )
 
 

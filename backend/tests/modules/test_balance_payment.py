@@ -395,3 +395,13 @@ async def test_an_abandoned_balance_payment_expires_so_a_new_one_can_start(
     assert row.status.value == "failed"
     fresh = await _pay_balance(client, player, gid, "bank_transfer")
     assert fresh.status_code == 200
+
+
+async def test_the_booking_shows_how_much_balance_was_paid(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    player, group, *_ = await _advance_booking(client, db_session, "bal15")
+    gid = group["booking_group_id"]
+    assert Decimal((await _group(client, player, gid))["balance_paid"]) == 0
+    await _settle_by_card(client, player, gid)
+    assert Decimal((await _group(client, player, gid))["balance_paid"]) == Decimal("1000")

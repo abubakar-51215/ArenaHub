@@ -155,6 +155,8 @@ class BookingGroupDetails(BaseModel):
     balance_payment: str | None = None
     # the "Pay balance" button: confirmed, something owed, and no payment already in flight
     can_pay_balance: bool = False
+    # what has been paid online as a balance so far (the "Balance paid" line)
+    balance_paid: Decimal = Decimal("0")
 
 
 class CancelPreview(BaseModel):
