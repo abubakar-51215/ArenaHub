@@ -56,7 +56,7 @@ function buildRows(items: PaymentHistoryItem[]): Row[] {
 function RowCard({ row, onReceipt, receiptBusy }: { row: Row; onReceipt: (p: PaymentHistoryItem) => void; receiptBusy: boolean }) {
   const { p } = row;
   const refund = row.kind === 'refund';
-  const sub = refund ? 'Refund' : dotJoin([formatDate(row.date), METHOD[p.payment_method]]);
+  const sub = refund ? 'Refund' : dotJoin([formatDate(row.date), p.purpose === 'balance' ? 'Balance' : null, METHOD[p.payment_method]]);
   return (
     <View style={styles.card}>
       <Pressable

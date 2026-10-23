@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { pickPhoto } from '@/lib/pick-photo';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -22,6 +22,7 @@ import { useLeaveCheckout } from '@/hooks/useLeaveCheckout';
 import { ApiError } from '@/lib/api';
 import { errorHaptic, tapHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
+import { BALANCE_TEXT } from '@/lib/payment-text';
 import { getBankDetails } from '@/services/arenas';
 import { getBookingGroup } from '@/services/bookings';
 import { uploadReceipt } from '@/services/payments';
@@ -33,12 +34,15 @@ import { photoProblem, uploadImage, UploadAbortedError, UploadNetworkError, type
 // arena to confirm. Receipts are photos (JPG or PNG, up to 5 MB): the server
 // does not take PDFs yet.
 export default function BankTransferScreen() {
-  const { groupId, paymentId, arenaId } = useLocalSearchParams<{ groupId: string; paymentId: string; arenaId: string }>();
+  const { groupId, paymentId, arenaId, balance } = useLocalSearchParams<{ groupId: string; paymentId: string; arenaId: string; balance?: string }>();
+  // paying the balance of a booking that is already confirmed: that booking is never given up here
+  const balanceMode = balance === '1';
+  const qc = useQueryClient();
   const group = useQuery({ queryKey: ['booking-group', groupId], queryFn: () => getBookingGroup(groupId), retry: false });
   const arena = group.data?.arena_id ?? arenaId;
   const banks = useQuery({ queryKey: ['bank-details', arena], queryFn: () => getBankDetails(arena), enabled: !!arena, retry: false });
   const account = banks.data?.find((a) => a.is_default) ?? banks.data?.[0];
-  const { back, sheet } = useLeaveCheckout(groupId, arena);
+  const { back, sheet } = useLeaveCheckout(balanceMode ? undefined : groupId, arena);
 
   const [photo, setPhoto] = useState<{ uri: string; name: string } | null>(null);
   // what the receipt box shows: ready, uploading (with a percentage), stopped, failed, or a photo that cannot be used
@@ -54,10 +58,14 @@ export default function BankTransferScreen() {
   useEffect(() => {
     const g = group.data;
     if (!g) return;
+    if (balanceMode) {
+      if (g.balance_payment === 'awaiting_approval' || !(Number(g.balance_due) > 0)) router.dismissTo({ pathname: '/booking/detail/[groupId]', params: { groupId } });
+      return;
+    }
     if (g.status === 'pending_approval') router.replace({ pathname: '/booking/awaiting/[groupId]', params: { groupId } });
     else if (g.status === 'confirmed') router.replace({ pathname: '/booking/confirmed/[groupId]', params: { groupId } });
     else if (g.status === 'cancelled' || g.status === 'rejected') router.replace({ pathname: '/booking/failed/[groupId]', params: { groupId, arenaId: g.arena_id, courtId: g.court_id } });
-  }, [group.data, groupId]);
+  }, [group.data, groupId, balanceMode]);
 
   async function choose() {
     if (sending.current) return;
@@ -96,6 +104,13 @@ export default function BankTransferScreen() {
     try {
       const url = await uploadImage(photo.uri, 'receipts', { signal: controller.signal, onProgress: setPct });
       await uploadReceipt(paymentId, url);
+      if (balanceMode) {
+        qc.invalidateQueries({ queryKey: ['booking-group', groupId] });
+        qc.invalidateQueries({ queryKey: ['booking-groups'] });
+        showToast(BALANCE_TEXT.receiptSent);
+        router.dismissTo({ pathname: '/booking/detail/[groupId]', params: { groupId } });
+        return;
+      }
       router.replace({ pathname: '/booking/awaiting/[groupId]', params: { groupId } });
     } catch (e) {
       if (e instanceof UploadAbortedError) {
@@ -153,11 +168,11 @@ export default function BankTransferScreen() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.pad}>
           <Note>
-            Your time is booked once the arena confirms your receipt. Send the exact amount, then upload the receipt.
+            {balanceMode ? BALANCE_TEXT.bankNote : 'Your time is booked once the arena confirms your receipt. Send the exact amount, then upload the receipt.'}
             {account.payment_instructions ? ` ${account.payment_instructions}` : ''}
           </Note>
           <Card style={styles.details}>
-            <Line label="Amount" value={formatRs(group.data.pay_now)} />
+            <Line label="Amount" value={formatRs(balanceMode ? group.data.balance_due : group.data.pay_now)} />
             <Line label="Bank" value={account.bank_name} />
             <Line label="Account title" value={account.account_title} />
             <Line label="Account no." value={account.account_number} />

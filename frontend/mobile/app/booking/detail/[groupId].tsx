@@ -24,6 +24,7 @@ import { ApiError } from '@/lib/api';
 import { dayAndMonth, hoursLabel, longDate, timeRange } from '@/lib/checkout';
 import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
+import { BALANCE_TEXT } from '@/lib/payment-text';
 import { cancelBookingGroup, getBookingGroup, getCancelPreview } from '@/services/bookings';
 
 import { hasStarted } from '@/lib/karachi';
@@ -133,8 +134,22 @@ export default function BookingDetailScreen() {
             <Line label={`Slots (${hoursLabel(g.slot_count)})`} value={formatRs(g.total)} />
             <Line label="Paid with" value={unpaid ? 'Not paid yet' : g.payment_method ? (METHOD[g.payment_method] ?? '—') : '—'} />
             <Line label="Total paid" value={formatRs(paid)} bold />
-            {active && Number(g.due_at_arena) > 0 ? <Line label="Pay at the arena" value={formatRs(g.due_at_arena)} /> : null}
+            {Number(g.balance_paid) > 0 ? <Line label={BALANCE_TEXT.paid} value={<StatusPill tone="ok" label={BALANCE_TEXT.paidPill} />} /> : null}
+            {active && Number(g.balance_due) > 0 ? (
+              <Line label={BALANCE_TEXT.due} value={formatRs(g.balance_due)} />
+            ) : active && Number(g.due_at_arena) > 0 ? (
+              <Line label="Pay at the arena" value={formatRs(g.due_at_arena)} />
+            ) : null}
+            {active && g.balance_payment ? (
+              <Line
+                label="Balance"
+                value={<StatusPill tone="wait" label={g.balance_payment === 'awaiting_approval' ? BALANCE_TEXT.awaitingPill : BALANCE_TEXT.inProgressPill} />}
+              />
+            ) : null}
           </Card>
+          {active && g.balance_payment ? (
+            <Text style={styles.refundNote}>{g.balance_payment === 'awaiting_approval' ? BALANCE_TEXT.awaitingNote : BALANCE_TEXT.inProgressNote}</Text>
+          ) : null}
 
           {refundPending && g ? (
             <Text style={styles.refundNote}>{`Your ${formatRs(g.refund_amount)} refund is pending. The arena sends it to your bank.`}</Text>
@@ -192,6 +207,12 @@ export default function BookingDetailScreen() {
 
       {g && active ? (
         <StickyBar>
+          {g.can_pay_balance ? (
+            <Button
+              title={BALANCE_TEXT.button}
+              onPress={() => router.push({ pathname: '/booking/payment', params: { groupId, arenaId: g.arena_id, courtId: g.court_id, balance: '1' } })}
+            />
+          ) : null}
           {g.status === 'confirmed' ? (
             <Button
               title="View Pass"

@@ -26,8 +26,8 @@ import { hoursLabel, parseEquipment, parseSlots } from '@/lib/checkout';
 import { errorHaptic } from '@/lib/haptics';
 import { formatRs } from '@/lib/money';
 import { createBooking, getBookingGroup, previewBooking } from '@/services/bookings';
-import { localMobile, maskMobile, PAY_TEXT, type WalletName } from '@/lib/payment-text';
-import { getPaymentByGroup, initiatePayment, listPaymentMethods } from '@/services/payments';
+import { BALANCE_TEXT, localMobile, maskMobile, newIdempotencyKey, PAY_TEXT, type WalletName } from '@/lib/payment-text';
+import { getPaymentByGroup, initiateBalancePayment, initiatePayment, listPaymentMethods } from '@/services/payments';
 import { useAuthStore } from '@/store/auth';
 import { checkoutKey, useCheckout } from '@/store/checkout';
 import type { PayMethodInfo } from '@/types';
@@ -91,9 +91,13 @@ function MethodRow({ m, on, onPress }: { m: PayMethodInfo; on: boolean; onPress:
 }
 
 export default function PaymentScreen() {
-  const { courtId, arenaId, slots: slotsParam, equipment: equipParam, groupId: resumeId } = useLocalSearchParams<{ courtId: string; arenaId: string; slots?: string; equipment?: string; groupId?: string }>();
-  // "Pay now" on an unpaid booking opens this screen for the same booking (no second booking is made)
+  const { courtId, arenaId, slots: slotsParam, equipment: equipParam, groupId: resumeId, balance } = useLocalSearchParams<{ courtId: string; arenaId: string; slots?: string; equipment?: string; groupId?: string; balance?: string }>();
+  // "Pay now" on an unpaid booking opens this screen for the same booking (no second booking is made).
+  // "Pay balance" opens it for a confirmed booking with the amount fixed to what is still owed.
   const resume = !!resumeId;
+  const balanceMode = resume && balance === '1';
+  // one key per visit to this screen, so a second tap is the same request and never a second charge
+  const keys = useRef<Record<string, string>>({});
   const slots = useMemo(() => parseSlots(slotsParam), [slotsParam]);
   const picked = useMemo(() => parseEquipment(equipParam), [equipParam]);
   const equipmentList = useMemo(
@@ -136,9 +140,15 @@ export default function PaymentScreen() {
   const rg = resumed.data;
   const p = resume
     ? rg
-      ? { slots_subtotal: rg.total, equipment_total: '0', discount_amount: '0', total: rg.total, payment_type: rg.payment_type, pay_now: rg.pay_now, due_at_arena: rg.due_at_arena, discount_status: 'none' as const, discount_message: null, cancellation_note: rg.cancellation_note }
+      ? balanceMode
+        ? { slots_subtotal: rg.balance_due, equipment_total: '0', discount_amount: '0', total: rg.balance_due, payment_type: 'full' as const, pay_now: rg.balance_due, due_at_arena: '0', discount_status: 'none' as const, discount_message: null, cancellation_note: rg.cancellation_note }
+        : { slots_subtotal: rg.total, equipment_total: '0', discount_amount: '0', total: rg.total, payment_type: rg.payment_type, pay_now: rg.pay_now, due_at_arena: rg.due_at_arena, discount_status: 'none' as const, discount_message: null, cancellation_note: rg.cancellation_note }
       : undefined
     : preview.data;
+  // nothing (left) to pay: back to the booking
+  useEffect(() => {
+    if (balanceMode && rg && !(Number(rg.balance_due) > 0)) router.dismissTo({ pathname: '/booking/detail/[groupId]', params: { groupId: resumeId as string } });
+  }, [balanceMode, rg, resumeId]);
   const slotCount = resume ? (rg?.slot_count ?? 1) : slots.length;
 
   const slotLost = (start?: string) =>
@@ -197,6 +207,44 @@ export default function PaymentScreen() {
     setBusy(true);
     let gid = groupId;
     try {
+      if (balanceMode && gid) {
+        const returnUrl = Linking.createURL('booking/return');
+        keys.current[method.method] ??= newIdempotencyKey();
+        let started;
+        try {
+          started = await initiateBalancePayment(gid, method.method, keys.current[method.method], {
+            wallet_number: walletLocal ? walletLocal.replace(/\s/g, '') : undefined,
+            return_url: method.method === 'card' ? returnUrl : undefined,
+          });
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 422 && wallet) {
+            setWalletError(e.message || PAY_TEXT.walletInvalid);
+            errorHaptic();
+            return;
+          }
+          // already open, nothing owed, or not payable: say what the server said, then go back
+          if (e instanceof ApiError && (e.status === 409 || e.status === 422)) {
+            errorHaptic();
+            showToast(e.message || 'Could not start the payment.');
+            qc.invalidateQueries({ queryKey: ['booking-group', gid] });
+            router.dismissTo({ pathname: '/booking/detail/[groupId]', params: { groupId: gid } });
+            return;
+          }
+          throw e;
+        }
+        delete keys.current[method.method];
+        const balancePaymentId = started.payment.id;
+        if (method.method === 'bank_transfer') {
+          router.push({ pathname: '/booking/bank/[groupId]', params: { groupId: gid, paymentId: balancePaymentId, arenaId, balance: '1' } });
+          return;
+        }
+        if (method.method === 'card' && started.redirect_url) await WebBrowser.openAuthSessionAsync(started.redirect_url, returnUrl);
+        router.push({
+          pathname: '/booking/processing/[groupId]',
+          params: { groupId: gid, paymentId: balancePaymentId, arenaId, courtId, method: method.method, page: started.redirect_url ?? '', masked: walletLocal ? maskMobile(walletLocal) : '', balance: '1' },
+        });
+        return;
+      }
       if (!gid) {
         const made = await createBooking({
           court_id: courtId,
@@ -277,7 +325,7 @@ export default function PaymentScreen() {
   return (
     <SafeAreaView style={styles.page} edges={['bottom']}>
       <ScreenHead
-        title="Payment"
+        title={balanceMode ? BALANCE_TEXT.title : 'Payment'}
         onBack={back}
         right={<SecureBadge />}
       />
@@ -362,12 +410,18 @@ export default function PaymentScreen() {
 
         {showTotals ? (
           <Card style={styles.totals}>
-            <Line label={`Slots (${hoursLabel(slotCount)})`} value={formatRs(p.slots_subtotal)} />
-            {Number(p.equipment_total) > 0 ? <Line label="Extras" value={formatRs(p.equipment_total)} /> : null}
-            {applied && Number(p.discount_amount) > 0 ? <Line label={`Promo ${applied}`} value={`− ${formatRs(p.discount_amount)}`} tone="lime" /> : null}
-            {advance ? <Line label="Total" value={formatRs(p.total)} /> : null}
-            <Line label="Pay now" value={formatRs(p.pay_now)} bold />
-            {advance ? <Line label="Pay at the arena" value={formatRs(p.due_at_arena)} /> : null}
+            {balanceMode ? (
+              <>
+                <Line label={BALANCE_TEXT.due} value={formatRs(p.pay_now)} bold />
+                <Text style={styles.muted}>{BALANCE_TEXT.fixedHint}</Text>
+              </>
+            ) : null}
+            {balanceMode ? null : <Line label={`Slots (${hoursLabel(slotCount)})`} value={formatRs(p.slots_subtotal)} />}
+            {!balanceMode && Number(p.equipment_total) > 0 ? <Line label="Extras" value={formatRs(p.equipment_total)} /> : null}
+            {!balanceMode && applied && Number(p.discount_amount) > 0 ? <Line label={`Promo ${applied}`} value={`− ${formatRs(p.discount_amount)}`} tone="lime" /> : null}
+            {!balanceMode && advance ? <Line label="Total" value={formatRs(p.total)} /> : null}
+            {balanceMode ? null : <Line label="Pay now" value={formatRs(p.pay_now)} bold />}
+            {!balanceMode && advance ? <Line label="Pay at the arena" value={formatRs(p.due_at_arena)} /> : null}
           </Card>
         ) : (resume ? resumed.isLoading : preview.isLoading || preview.isFetching) ? (
           <View style={{ marginTop: 16 }}>
