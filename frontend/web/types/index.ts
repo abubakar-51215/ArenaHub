@@ -50,6 +50,8 @@ export interface RefundTier {
 
 export interface Amenity {
   id: string;
+  /** the stable key on the standard list (what the apps send back) */
+  key: string;
   name: string;
   icon: string | null;
 }
@@ -76,6 +78,8 @@ export interface Arena {
   refund_policy: RefundTier[];
   is_active: boolean;
   amenities: Amenity[];
+  /** older typed amenities that match nothing on the standard list; the owner can only remove them */
+  extra_amenities: string[];
   created_at: string;
   /** set by an admin; players never see a suspended or removed arena */
   suspended_at?: string | null;

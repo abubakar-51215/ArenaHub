@@ -1,6 +1,6 @@
 /** Owner arena management API calls (backend modules/arena). */
 import { api } from "@/services/api";
-import type { Arena, ArenaCity, OperatingHours, Page, RefundTier } from "@/types";
+import type { Amenity, Arena, ArenaCity, OperatingHours, Page, RefundTier } from "@/types";
 
 export interface ArenaInput {
   name: string;
@@ -15,10 +15,18 @@ export interface ArenaInput {
   operating_hours: OperatingHours;
   sports_offered: string[];
   images?: string[];
-  amenity_ids?: string[];
+  /** standard amenity keys; the server refuses any other */
+  amenities?: string[];
+  /** older text can only be taken off */
+  extra_amenities?: string[];
   advance_percentage: number;
   require_full_payment: boolean;
   refund_policy?: RefundTier[];
+}
+
+/** The standard amenity list (public): the owner form ticks from it. */
+export function listAmenities(): Promise<Amenity[]> {
+  return api.get<Amenity[]>("/arenas/amenities");
 }
 
 export function listMyArenas(page = 1, pageSize = 50): Promise<Page<Arena>> {

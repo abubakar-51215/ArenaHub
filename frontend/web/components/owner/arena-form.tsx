@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/services/api";
 import type { ArenaInput } from "@/services/arenas";
 import { useCreateArena, useUpdateArena } from "@/hooks/useArenas";
+import { AmenityChecks } from "@/components/owner/amenity-checks";
 import { SportChecks } from "@/components/owner/sport-checks";
 import {
   ARENA_CITIES,
@@ -75,6 +76,8 @@ export function ArenaForm({
   const [emailContact, setEmailContact] = useState(arena?.contact_email ?? "");
   const [sports, setSports] = useState<string[]>(arena?.sports_offered ?? []);
   const [images, setImages] = useState<string[]>(arena?.images ?? []);
+  const [amenities, setAmenities] = useState<string[]>(arena?.amenities.map((a) => a.key) ?? []);
+  const [extraAmenities, setExtraAmenities] = useState<string[]>(arena?.extra_amenities ?? []);
   const [advance, setAdvance] = useState(String(arena?.advance_percentage ?? 100));
   const [fullPayment, setFullPayment] = useState(arena?.require_full_payment ?? true);
   const [days, setDays] = useState<Record<string, DayRow>>(() =>
@@ -151,6 +154,9 @@ export function ArenaForm({
       contact_email: emailContact || null,
       operating_hours: openHours,
       sports_offered: sportsList,
+      amenities,
+      // older typed amenities can only be taken off, so they are sent back only when editing
+      ...(editing ? { extra_amenities: extraAmenities } : {}),
       images,
       advance_percentage: Number(advance),
       require_full_payment: fullPayment,
@@ -271,6 +277,16 @@ export function ArenaForm({
           <div>
             <Label>Sports Offered</Label>
             <SportChecks idPrefix="a-sport" value={sports} onChange={setSports} />
+          </div>
+          <div>
+            <Label>Amenities</Label>
+            <AmenityChecks
+              idPrefix="a-amenity"
+              value={amenities}
+              onChange={setAmenities}
+              extra={extraAmenities}
+              onExtraChange={setExtraAmenities}
+            />
           </div>
 
           <div>

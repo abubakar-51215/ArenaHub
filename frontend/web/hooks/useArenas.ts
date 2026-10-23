@@ -7,10 +7,16 @@ import {
   deactivateArena,
   listMyArenas,
   resubmitArena,
+  listAmenities,
   updateArena,
 } from "@/services/arenas";
 
 const KEY = ["arenas"] as const;
+
+export function useAmenityList() {
+  // the list only changes with a release, so it is fetched once per visit
+  return useQuery({ queryKey: ["amenity-list"], queryFn: listAmenities, staleTime: Infinity });
+}
 
 export function useMyArenas() {
   return useQuery({ queryKey: KEY, queryFn: () => listMyArenas() });
