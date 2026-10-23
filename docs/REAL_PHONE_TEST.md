@@ -97,12 +97,14 @@ Test mode only. Do not use a real card.
 | 8.4 | Owner approves on the web | The booking shows **Balance paid**. A notification arrives. | ☐ PASS ☐ FAIL |
 | 8.5 | Tap Back or close the app in the middle of paying | When you return, you are not charged twice and the screen shows the real state. | ☐ PASS ☐ FAIL |
 
-## 9. Light and dark mode
+## 9. Light look, even when the phone is in dark mode
+
+The phone app has one look (light) on purpose. It must stay readable when the phone itself is set to dark.
 
 | # | Do this | You should see | Result |
 |---|---|---|---|
-| 9.1 | Set the phone to **dark** mode, open Home, Search, Bookings, Play, Profile and one arena page | Every screen is readable: no white text on a white card, no black text on black. | ☐ PASS ☐ FAIL |
-| 9.2 | Set the phone to **light** mode and repeat | Same, readable. | ☐ PASS ☐ FAIL |
+| 9.1 | Set the phone to **dark** mode, open Home, Search, Bookings, Play, Profile and one arena page | The app keeps its light look. Every screen is readable: no white text on a white card. The status bar icons are visible. | ☐ PASS ☐ FAIL |
+| 9.2 | Set the phone to **light** mode and repeat | Same look, readable. | ☐ PASS ☐ FAIL |
 | 9.3 | Open the Filters sheet and the photo sheet in dark mode | Both are readable and the buttons are visible. | ☐ PASS ☐ FAIL |
 
 ## 10. Android Back button

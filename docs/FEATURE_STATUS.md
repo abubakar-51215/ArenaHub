@@ -26,9 +26,9 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR K
 
 | Status | Count |
 |---|---|
-| DONE | 102 |
+| DONE | 103 |
 | PARTIAL | 6 |
-| NOT BUILT | 1 |
+| NOT BUILT | 0 |
 | SKIPPED | 4 |
 | WAITING FOR KEY | 5 |
 | WAITING FOR REAL PHONE | 4 |
@@ -61,7 +61,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR K
   concentrated in: (a) real payment gateway credentials and a public webhook address (WAITING FOR
   KEY), (b) a production mail service (WAITING FOR KEY), (c) device-only proof: push delivery,
   the camera, Google sign-in on a real build (WAITING FOR REAL PHONE), and (d) one real gap found
-  while building the filters: nothing lets an owner choose amenities (NOT BUILT, needs a decision).
+  while building the filters, now closed: owners choose amenities from one standard list (DONE).
 - Two features were **built ahead of the guideline and are now confirmed in scope**: Google
   sign-in (deviation #6 rewritten to accept it; `ADR-009`) and the support **assistant**
   (deviation #3 rewritten to carve it out; `ADR-010`). Both conflicts (C2, C3) are now resolved.
@@ -240,7 +240,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Revenue / earnings + pending settlements | DONE | `/owner/dashboard/revenue`, `/analytics`; web `owner/revenue/page.tsx` | FR-O-09 | No payout/commission data (left out by decision). |
 | Owner slot screen (generate/block/edit) + blocked dates | PARTIAL | generate in Courts dialog; blocked dates: `components/owner/blocked-dates.tsx`, wired into the arena form | FR-O-02 ("blocked dates"), FEATURE_GAP_REPORT §A1/§D | Blocked dates (whole-day holiday) got a dedicated UI 2026-10-22, including a past-date guard (backend + inline message) and an app Dialog for "Unblock" (no `window.confirm`). Block/edit/delete of an **individual slot** still has no screen — narrower remaining gap than before. |
 | Notification center + unread badge | DONE | web `owner/notifications/page.tsx` | FR-O-11 | |
-| Choose amenities for an arena (owner form) | NOT BUILT | `POST /owner/arenas` takes `amenity_ids`; there is no list-amenities route for owners and no picker in `owner/arena-form`; the `amenities` table is filled only by `backend/scripts/seed_dummy_data.py` | FR-P-06 (arena shows amenities) | Found 2026-10-23 while building the Must have filter: nothing in the product lets an owner pick amenities, so a live arena has none unless seeded. Needs a decision: the standard list of amenities, and an owner picker. |
+| Choose amenities for an arena (owner form) | DONE | `backend/app/core/amenities.py` (the one standard list of 14), `GET /arenas/amenities`, migration `e1b9c7a4d2f6`; web `components/owner/amenity-checks.tsx` in `arena-form.tsx`; phone arena page and "Must have" row; `tests/modules/test_amenity_list.py`, `scripts/verify_amenities.mjs` | FR-P-06 (arena shows amenities) | Built 2026-10-23 after the decision: owners tick boxes from the standard list (same look as Sports offered), the server refuses any key not on it, the "Must have" filter takes keys and offers the whole list. Older typed amenities were mapped to keys by name (case, dashes and a plural s ignored); any that match nothing are kept as extra text on the arena page and the owner can remove it. |
 | "Use my current location" button (arena form) | DONE | web `components/owner/arena-form.tsx` (`useMyLocation`, `navigator.geolocation`) | optional item approved 2026-10-22 | Fills the existing latitude/longitude fields, rounded to 6 decimals; no new library. Found and fixed a real bug during verification: `next.config.ts`'s Permissions-Policy was blocking geolocation site-wide (`geolocation=()` → `geolocation=(self)`). |
 
 ### Admin (Web)
