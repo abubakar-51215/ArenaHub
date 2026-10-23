@@ -184,7 +184,7 @@ export function ArenaForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="min-w-0 space-y-4">
           <div>
             <Label htmlFor="a-name">Arena Name</Label>
             <Input id="a-name" value={name} onChange={(e) => setName(e.target.value)} required />
