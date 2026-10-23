@@ -30,7 +30,16 @@ _HIDE_CONTAINING = ("password", "secret", "token", "authorization", "cookie", "a
 _HIDE_EXACT = {"code", "otp", "pin", "cvv", "card"}
 # A player's exact position. Hidden in every environment (not just outside dev, unlike the
 # secrets below) — there is no "it's fine, it's only local dev" case for someone's coordinates.
-_HIDE_LOCATION = {"lat", "lon", "latitude", "longitude", "radius_km", "near"}
+_HIDE_LOCATION = {
+    "lat",
+    "lon",
+    "latitude",
+    "longitude",
+    "radius_km",
+    "near",
+    "amenity_ids",
+    "time_of_day",
+}
 HIDDEN = "[hidden]"
 
 
@@ -54,7 +63,9 @@ def redact_secrets(_: Any, __: str, event: MutableMapping[str, Any]) -> MutableM
 # Uvicorn's own access logger prints the raw request line (method, path, and query string)
 # straight to stdout for every request — it never goes through structlog or redact_secrets
 # above. A near-me search's lat/lon/radius_km would otherwise sit in that log in plain text.
-_LOCATION_QUERY_PARAM = re.compile(r"(?i)\b(lat|lon|latitude|longitude|radius_km)=[^&\s\"]*")
+_LOCATION_QUERY_PARAM = re.compile(
+    r"(?i)\b(lat|lon|latitude|longitude|radius_km|amenity_ids|time_of_day)=[^&\s\"]*"
+)
 
 
 class _RedactLocationFromAccessLog(logging.Filter):

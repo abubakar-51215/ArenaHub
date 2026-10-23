@@ -79,7 +79,7 @@ def test_a_near_me_lat_or_lon_in_a_fetch_breadcrumb_is_redacted() -> None:
             {
                 "category": "fetch",
                 "data": {
-                    "url": "https://api.arenahub.pk/api/v1/arenas?sort=near&lat=31.5204&lon=74.3587&radius_km=5",
+                    "url": "https://api.arenahub.pk/api/v1/arenas?sort=near&lat=31.5204&lon=74.3587&radius_km=5&amenity_ids=7d5b7c52-0000&time_of_day=evening",
                     "method": "GET",
                 },
             }
@@ -91,6 +91,8 @@ def test_a_near_me_lat_or_lon_in_a_fetch_breadcrumb_is_redacted() -> None:
     assert "74.3587" not in blob
     assert "lat=[redacted]" in blob
     assert "lon=[redacted]" in blob
+    assert "7d5b7c52" not in blob and "evening" not in blob
+    assert "amenity_ids=[redacted]" in blob and "time_of_day=[redacted]" in blob
 
 
 def test_redact_text_handles_each_kind() -> None:

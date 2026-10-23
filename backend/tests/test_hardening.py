@@ -203,10 +203,12 @@ def test_a_near_me_latitude_or_longitude_is_hidden_even_in_development(
         "latitude": 31.5204,
         "longitude": 74.3587,
         "radius_km": 5,
+        "amenity_ids": ["7d5b7c52-0000-0000-0000-000000000001"],
+        "time_of_day": "evening",
         "booking_code": "AH-1234",
     }
     out = redact_secrets(None, "info", dict(event))
-    for key in ("lat", "lon", "latitude", "longitude", "radius_km"):
+    for key in ("lat", "lon", "latitude", "longitude", "radius_km", "amenity_ids", "time_of_day"):
         assert out[key] == HIDDEN, key
     assert out["booking_code"] == "AH-1234"
 
@@ -223,7 +225,8 @@ def test_the_access_log_never_prints_a_near_me_lat_or_lon() -> None:
         args=(
             "127.0.0.1:54321",
             "GET",
-            "/api/v1/arenas?sort=near&lat=31.5204&lon=74.3587&radius_km=5",
+            "/api/v1/arenas?sort=near&lat=31.5204&lon=74.3587&radius_km=5"
+            "&amenity_ids=7d5b7c52-0000-0000-0000-000000000001&time_of_day=evening",
             "1.1",
             200,
         ),
@@ -231,7 +234,7 @@ def test_the_access_log_never_prints_a_near_me_lat_or_lon() -> None:
     )
     assert _RedactLocationFromAccessLog().filter(record) is True
     rendered = record.getMessage()
-    for leak in ("31.5204", "74.3587", "radius_km=5"):
+    for leak in ("31.5204", "74.3587", "radius_km=5", "7d5b7c52", "evening"):
         assert leak not in rendered, rendered
     assert "lat=[hidden]" in rendered
     assert "lon=[hidden]" in rendered
