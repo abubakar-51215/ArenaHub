@@ -178,3 +178,6 @@ Either way: **do this before storage costs matter**, since nothing currently rec
 8. **Android permissions were trimmed** (no storage read or write, no developer-menu overlay in preview and store builds; the camera is now allowed for Take photo). On the first real phone, check both Take photo and Choose from gallery on an older and a newer Android.
 9. **Sentry for the phone** is pinned to the version Expo SDK 54 expects (`~7.2.0`). When Expo is upgraded, run `npx expo-doctor` again.
 
+10. **The final phone test.** Do `docs/REAL_PHONE_TEST.md` on one small and one large Android phone, with the development build, before anything is shown to real people. It lists only what a browser cannot prove, with an expected result and a PASS or FAIL box for each step.
+11. **The dev-only "Backend Health" screen** (`/health` in the phone app) is a developer page with the system header. Hide it or remove it from the store build; it is not linked from any screen.
+12. **Run the browser checks again against the staging site** (not only the scratch stack) after deployment: `scripts/verify_all_screens.mjs`, `scripts/verify_roles_security.mjs` and `scripts/verify_journey_extra.mjs`. Each has its usage at the top of the file.

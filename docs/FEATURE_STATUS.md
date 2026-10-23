@@ -22,7 +22,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR K
 
 ## 1. Summary
 
-**Total feature rows audited: 121** (recounted 2026-10-23 from the tables below; each number in the two tables here is a count of the rows).
+**Total feature rows audited: 122** (recounted 2026-10-23 from the tables below; each number in the two tables here is a count of the rows).
 
 | Status | Count |
 |---|---|
@@ -31,7 +31,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR K
 | NOT BUILT | 1 |
 | SKIPPED | 4 |
 | WAITING FOR KEY | 5 |
-| WAITING FOR REAL PHONE | 3 |
+| WAITING FOR REAL PHONE | 4 |
 
 | Area | Rows |
 |---|---|
@@ -50,7 +50,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR K
 | Admin (Web) | 9 |
 | Admin (Mobile) | 4 |
 | Reports | 5 |
-| System / Infra / Deployment | 10 |
+| System / Infra / Deployment | 11 |
 
 **Headline findings**
 
@@ -283,6 +283,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Standard response envelope + error handler | DONE | `shared/response.py`, `core/handlers.py` | guidelines §Standard API response | |
 | OpenAPI `/docs` + pagination | DONE | FastAPI app; `shared/pagination.py` | FR (API), MASTER | |
 | Real-phone helper scripts (`send_test_push.py`, `check_integrations.py`) | DONE | `backend/scripts/send_test_push.py`, `backend/scripts/check_integrations.py`; `test_push_delivery.py`, `test_check_integrations.py` | real-phone checklist | Added 2026-10-23. The test push prints only "Sent." or the reason, never a token; the integration check prints only SET or MISSING for each service (Google, Cloudinary, Sentry, Stripe, SMTP, support email, JazzCash, EasyPaisa), never a value. |
+| Real-phone test sheet (`REAL_PHONE_TEST.md`) | WAITING FOR REAL PHONE | `docs/REAL_PHONE_TEST.md`; browser checks `scripts/verify_*.mjs` | final QA pass | Written 2026-10-23: install, Google sign-in, push and tap, location and radius, Get Directions, camera and gallery, pass QR, payments, pay balance, light and dark, Back button, small and large phone, slow network and airplane mode, sign out and in, account deletion. Each step has an expected result and a PASS or FAIL box. Everything a browser can prove (every screen at every width, roles and privacy, error and empty states) was run on the scratch stack the same day. |
 | Structured logging (structlog) | DONE | `core/logging.py` | dev #16 | |
 | One migration per module, reversible | DONE | `backend/alembic/versions/*` | dev §Migration policy | |
 | Cloudinary image upload (prod) | DONE | `shared/storage.py` `_configure_cloudinary()` + `_upload_to_cloudinary()` fully implemented | dev #9, FR-P-03/FR-O-02 | Code complete; `CLOUDINARY_URL` is SET on this machine. Local `/uploads/` is the by-design dev fallback when it is unset (dev #9). |
