@@ -7,6 +7,7 @@ Two routers:
 """
 
 import uuid
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -14,6 +15,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ServiceUnavailableError, ValidationError
+from app.core.time_of_day import TimeOfDay
 from app.database.session import get_db
 from app.modules.arena import service
 from app.modules.arena.model import ArenaCity
@@ -53,6 +55,9 @@ async def search_arenas(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lon: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
+    amenity_ids: list[uuid.UUID] | None = Query(default=None, max_length=20),
+    time_of_day: TimeOfDay | None = None,
+    on_date: date | None = Query(default=None, alias="date"),
     params: PaginationParams = Depends(pagination_params),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -73,9 +78,18 @@ async def search_arenas(
         sort=sort,
         near=near,
         radius_km=radius_km,
+        amenity_ids=amenity_ids,
+        time_of_day=time_of_day,
+        day=on_date,
         params=params,
     )
     return success(data=data, message="Arenas retrieved.")
+
+
+@router.get("/amenities", summary="Amenities the arena filter can offer")
+async def list_filter_amenities(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+    data = await service.list_filter_amenities(db)
+    return success(data=data, message="Amenities retrieved.")
 
 
 @router.get("/trending", summary="Arenas trending by recent booking volume")

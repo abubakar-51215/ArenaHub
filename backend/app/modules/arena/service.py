@@ -8,8 +8,9 @@ so the state machine has a single implementation.
 
 import json
 import uuid
+from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cache import redis as redis_cache
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.messages import BLOCKED_DATE_IN_PAST
+from app.core.time_of_day import TimeOfDay
 from app.modules.arena import repository as repo
 from app.modules.arena.model import (
     Arena,
@@ -28,6 +30,7 @@ from app.modules.arena.model import (
     DiscountType,
 )
 from app.modules.arena.schema import (
+    AmenityResponse,
     ArenaBankDetailsCreate,
     ArenaBankDetailsResponse,
     ArenaBankDetailsUpdate,
@@ -49,7 +52,7 @@ from app.shared.notify import notify_admins
 from app.shared.otp import OtpPurpose
 from app.shared.pagination import PaginationParams, paginated
 from app.shared.storage import delete_image
-from app.shared.timezone import platform_today
+from app.shared.timezone import PLATFORM_TZ, platform_today
 
 # Fields that map 1:1 from the update schema onto the model.
 _SCALAR_UPDATE_FIELDS = (
@@ -236,8 +239,12 @@ async def search_arenas(
     sort: str = "newest",
     near: tuple[float, float] | None = None,
     radius_km: float | None = None,
+    amenity_ids: Collection[uuid.UUID] | None = None,
+    time_of_day: TimeOfDay | None = None,
+    day: date | None = None,
     params: PaginationParams,
 ) -> dict:
+    now = datetime.now(PLATFORM_TZ).replace(tzinfo=None)
     arenas, total = await repo.search_public_arenas(
         db,
         q=q,
@@ -250,6 +257,10 @@ async def search_arenas(
         limit=params.page_size,
         near=near,
         radius_km=radius_km,
+        amenity_ids=amenity_ids,
+        time_of_day=time_of_day,
+        day=day or now.date(),
+        now=now,
     )
     items = await list_items(db, arenas)
     if near:
@@ -286,6 +297,11 @@ async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaRespon
     if arena is None or not arena.is_live:
         raise NotFoundError("Arena not found.")
     return ArenaResponse.model_validate(arena)
+
+
+async def list_filter_amenities(db: AsyncSession) -> list[AmenityResponse]:
+    """The amenities the "Must have" filter can offer: only ones some live arena has."""
+    return [AmenityResponse.model_validate(a) for a in await repo.list_amenities_in_use(db)]
 
 
 # ---- liked arenas (FR-P-12) ----------------------------------------------

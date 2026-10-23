@@ -8,14 +8,17 @@ serialization never triggers a lazy load on the async session.
 import math
 import uuid
 from collections.abc import Collection
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, NamedTuple, cast
 
 from sqlalchemy import (
+    ColumnElement,
     CursorResult,
     Float,
     Select,
+    and_,
+    exists,
     func,
     literal_column,
     or_,
@@ -26,6 +29,7 @@ from sqlalchemy import cast as sa_cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.time_of_day import BANDS, TimeOfDay
 from app.modules.arena.model import (
     Amenity,
     Arena,
@@ -35,10 +39,12 @@ from app.modules.arena.model import (
     ArenaLike,
     ArenaStatus,
     DiscountCode,
+    arena_amenities,
 )
 from app.modules.booking.model import Booking, BookingStatus
 from app.modules.court.model import Court, CourtPricingRule
 from app.modules.review.model import Review
+from app.modules.slot.model import SlotStatus, TimeSlot
 
 # ---- arenas -------------------------------------------------------------
 
@@ -191,6 +197,53 @@ def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(min(1.0, a)))
 
 
+def _starts_in(band: TimeOfDay) -> ColumnElement[bool]:
+    """A slot whose start time is in the part of the day (Night wraps past midnight)."""
+    first, after = BANDS[band]
+    if first < after:
+        return and_(TimeSlot.start_time >= first, TimeSlot.start_time < after)
+    return or_(TimeSlot.start_time >= first, TimeSlot.start_time < after)
+
+
+def _has_free_slot(band: TimeOfDay, day: date, now: datetime) -> ColumnElement[bool]:
+    """The arena has a slot a player could book on ``day`` in that part of the day: free, on a
+    court that takes bookings, not on a day the arena blocked, and not already started."""
+    return exists(
+        select(TimeSlot.id)
+        .join(Court, Court.id == TimeSlot.court_id)
+        .where(
+            Court.arena_id == Arena.id,
+            Court.is_available.is_(True),
+            TimeSlot.date == day,
+            TimeSlot.status == SlotStatus.available,
+            _starts_in(band),
+            or_(TimeSlot.date > now.date(), TimeSlot.start_time > now.time()),
+            ~exists(
+                select(ArenaBlockedDate.id).where(
+                    ArenaBlockedDate.arena_id == Arena.id,
+                    ArenaBlockedDate.blocked_date == TimeSlot.date,
+                )
+            ),
+        )
+    )
+
+
+async def list_amenities_in_use(db: AsyncSession) -> list[Amenity]:
+    """The amenities at least one live arena has, A to Z: what the "Must have" filter can offer."""
+    result = await db.execute(
+        select(Amenity)
+        .where(
+            Amenity.id.in_(
+                select(arena_amenities.c.amenity_id)
+                .join(Arena, Arena.id == arena_amenities.c.arena_id)
+                .where(*Arena.live_conditions())
+            )
+        )
+        .order_by(Amenity.name.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def search_public_arenas(
     db: AsyncSession,
     *,
@@ -206,11 +259,19 @@ async def search_public_arenas(
     radius_km: float | None = None,
     area: str | None = None,
     only_ids: Collection[uuid.UUID] | None = None,
+    amenity_ids: Collection[uuid.UUID] | None = None,
+    time_of_day: TimeOfDay | None = None,
+    day: date | None = None,
+    now: datetime | None = None,
 ) -> tuple[list[Arena], int]:
     """Approved + active arenas only — the public discovery query.
 
     ``area`` (smart search's place) matches an arena whose area or address holds that text;
     ``only_ids`` keeps only those arenas (smart search's free-slot filter).
+
+    ``amenity_ids`` keeps arenas that have ALL of those amenities; ``time_of_day`` keeps arenas
+    with a free, bookable slot in that part of the day on ``day`` (``now`` is the Pakistan wall
+    clock, used so a slot that has already started is not counted).
 
     ``price_min``/``price_max`` filter on each arena's cheapest court (a
     price-range slider filters "arenas with something in this range", not
@@ -242,6 +303,18 @@ async def search_public_arenas(
     if sport:
         # sports_offered is a JSONB array of strings.
         base = base.where(Arena.sports_offered.contains([sport]))
+    wanted = set(amenity_ids or ())
+    if wanted:
+        base = base.where(
+            Arena.id.in_(
+                select(arena_amenities.c.arena_id)
+                .where(arena_amenities.c.amenity_id.in_(wanted))
+                .group_by(arena_amenities.c.arena_id)
+                .having(func.count(arena_amenities.c.amenity_id) == len(wanted))
+            )
+        )
+    if time_of_day is not None and day is not None and now is not None:
+        base = base.where(_has_free_slot(time_of_day, day, now))
     dist = distance_km_expr(*near) if near else None
     if dist is not None and radius_km is not None:
         # an arena with no coordinates is not shown when a radius is set
