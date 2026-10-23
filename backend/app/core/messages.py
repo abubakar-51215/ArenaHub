@@ -150,3 +150,7 @@ TEST_PUSH_BODY = "Push notifications are working on this phone."
 
 # Joining a match at an arena that is suspended, removed or not live
 ARENA_UNAVAILABLE = "This arena is not available right now."
+
+# The standard amenity list (a key that is not on it, or text an owner tries to add)
+AMENITY_NOT_ON_LIST = "One or more amenities are not on the standard list."
+AMENITY_EXTRA_CANNOT_ADD = "Older amenity text can be removed but not added."

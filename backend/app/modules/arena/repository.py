@@ -29,6 +29,7 @@ from sqlalchemy import cast as sa_cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.amenities import STANDARD_AMENITIES
 from app.core.time_of_day import BANDS, TimeOfDay
 from app.modules.arena.model import (
     Amenity,
@@ -72,6 +73,21 @@ async def get_amenities_by_ids(db: AsyncSession, ids: list[uuid.UUID]) -> list[A
         return []
     result = await db.execute(select(Amenity).where(Amenity.id.in_(ids)))
     return list(result.scalars().all())
+
+
+async def ensure_standard_amenities(db: AsyncSession) -> list[Amenity]:
+    """Every standard amenity as a row, in the standard order (a missing one is added first).
+
+    The migration puts them there, so this adds nothing on a real database; it keeps a fresh one
+    (a test database, a new install) correct without a seed step.
+    """
+    rows = {a.key: a for a in (await db.execute(select(Amenity))).scalars().all()}
+    for key, name in STANDARD_AMENITIES:
+        if key not in rows:
+            rows[key] = Amenity(key=key, name=name)
+            db.add(rows[key])
+    await db.flush()
+    return [rows[key] for key, _ in STANDARD_AMENITIES]
 
 
 async def list_owner_arenas(
@@ -226,22 +242,6 @@ def _has_free_slot(band: TimeOfDay, day: date, now: datetime) -> ColumnElement[b
             ),
         )
     )
-
-
-async def list_amenities_in_use(db: AsyncSession) -> list[Amenity]:
-    """The amenities at least one live arena has, A to Z: what the "Must have" filter can offer."""
-    result = await db.execute(
-        select(Amenity)
-        .where(
-            Amenity.id.in_(
-                select(arena_amenities.c.amenity_id)
-                .join(Arena, Arena.id == arena_amenities.c.arena_id)
-                .where(*Arena.live_conditions())
-            )
-        )
-        .order_by(Amenity.name.asc())
-    )
-    return list(result.scalars().all())
 
 
 async def search_public_arenas(

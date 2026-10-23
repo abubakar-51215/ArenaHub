@@ -56,6 +56,7 @@ async def search_arenas(
     lon: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
     amenity_ids: list[uuid.UUID] | None = Query(default=None, max_length=20),
+    amenities: list[str] | None = Query(default=None, max_length=20),
     time_of_day: TimeOfDay | None = None,
     on_date: date | None = Query(default=None, alias="date"),
     params: PaginationParams = Depends(pagination_params),
@@ -79,6 +80,7 @@ async def search_arenas(
         near=near,
         radius_km=radius_km,
         amenity_ids=amenity_ids,
+        amenity_keys=amenities,
         time_of_day=time_of_day,
         day=on_date,
         params=params,
@@ -86,7 +88,7 @@ async def search_arenas(
     return success(data=data, message="Arenas retrieved.")
 
 
-@router.get("/amenities", summary="Amenities the arena filter can offer")
+@router.get("/amenities", summary="The standard amenity list")
 async def list_filter_amenities(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     data = await service.list_filter_amenities(db)
     return success(data=data, message="Amenities retrieved.")

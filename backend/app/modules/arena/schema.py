@@ -12,6 +12,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
+from app.core.amenities import STANDARD_AMENITIES
 from app.modules.arena.model import ArenaCity, ArenaStatus, DiscountType
 from app.shared.request_model import RequestModel, ShortName
 
@@ -91,6 +92,8 @@ class ArenaCreate(RequestModel):
     sports_offered: list[ShortName] = Field(min_length=1, max_length=20)
     images: list[str] = Field(default_factory=list, max_length=20)
     amenity_ids: list[uuid.UUID] = Field(default_factory=list, max_length=50)
+    # the standard keys (see core/amenities.py); the server refuses any other
+    amenities: list[str] = Field(default_factory=list, max_length=50)
     advance_percentage: int = Field(default=100, ge=1, le=100)
     require_full_payment: bool = True
     refund_policy: list[RefundTier] = Field(default_factory=list, max_length=10)
@@ -122,6 +125,9 @@ class ArenaUpdate(RequestModel):
     sports_offered: list[ShortName] | None = Field(default=None, min_length=1, max_length=20)
     images: list[str] | None = Field(default=None, max_length=20)
     amenity_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
+    amenities: list[str] | None = Field(default=None, max_length=50)
+    # older free text can only be taken off, never added
+    extra_amenities: list[str] | None = Field(default=None, max_length=50)
     advance_percentage: int | None = Field(default=None, ge=1, le=100)
     require_full_payment: bool | None = None
     refund_policy: list[RefundTier] | None = Field(default=None, max_length=10)
@@ -141,10 +147,14 @@ class ArenaUpdate(RequestModel):
         return self
 
 
+_AMENITY_ORDER = {key: i for i, (key, _) in enumerate(STANDARD_AMENITIES)}
+
+
 class AmenityResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    key: str
     name: str
     icon: str | None = None
 
@@ -173,7 +183,15 @@ class ArenaResponse(BaseModel):
     refund_policy: list
     is_active: bool
     amenities: list[AmenityResponse] = Field(default_factory=list)
+    extra_amenities: list[str] = Field(default_factory=list)
     created_at: datetime
+
+    @field_validator("amenities")
+    @classmethod
+    def _amenities_in_list_order(cls, v: list[AmenityResponse]) -> list[AmenityResponse]:
+        """Always in the standard list's order, whatever order the database returned them in."""
+        return sorted(v, key=lambda a: _AMENITY_ORDER.get(a.key, len(_AMENITY_ORDER)))
+
     # set by an admin: shown to the owner and in the admin panel (players
     # never see a suspended or removed arena)
     suspended_at: datetime | None = None

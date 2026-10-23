@@ -16,8 +16,13 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import redis as redis_cache
+from app.core.amenities import AMENITY_KEYS
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.core.messages import BLOCKED_DATE_IN_PAST
+from app.core.messages import (
+    AMENITY_EXTRA_CANNOT_ADD,
+    AMENITY_NOT_ON_LIST,
+    BLOCKED_DATE_IN_PAST,
+)
 from app.core.time_of_day import TimeOfDay
 from app.modules.arena import repository as repo
 from app.modules.arena.model import (
@@ -92,16 +97,33 @@ async def _editable_owned_arena(db: AsyncSession, arena_id: uuid.UUID, user: Use
     return arena
 
 
-async def _resolve_amenities(db: AsyncSession, amenity_ids: list[uuid.UUID]) -> list:
-    unique = list(dict.fromkeys(amenity_ids))
-    amenities = await repo.get_amenities_by_ids(db, unique)
-    if len(amenities) != len(unique):
-        raise ValidationError("One or more amenity ids are invalid.")
-    return amenities
+async def _resolve_amenities(
+    db: AsyncSession, amenity_ids: list[uuid.UUID] | None = None, keys: list[str] | None = None
+) -> list:
+    """The amenity rows for standard keys and/or ids; anything off the standard list is refused."""
+    unique_keys = list(dict.fromkeys(keys or []))
+    if any(k not in AMENITY_KEYS for k in unique_keys):
+        raise ValidationError(AMENITY_NOT_ON_LIST)
+    standard = await repo.ensure_standard_amenities(db)
+    by_key = {a.key: a for a in standard}
+    by_id = {a.id: a for a in standard}
+    unique_ids = list(dict.fromkeys(amenity_ids or []))
+    if any(i not in by_id for i in unique_ids):
+        raise ValidationError(AMENITY_NOT_ON_LIST)
+    chosen = {by_key[k].id for k in unique_keys} | set(unique_ids)
+    return [a for a in standard if a.id in chosen]
+
+
+def _kept_extras(current: list | None, wanted: list[str]) -> list[str]:
+    """Older amenity text may only be taken off: what is asked for must already be on the arena."""
+    have = list(current or [])
+    if any(w not in have for w in wanted):
+        raise ValidationError(AMENITY_EXTRA_CANNOT_ADD)
+    return [h for h in have if h in wanted]
 
 
 async def create_arena(db: AsyncSession, user: User, data: ArenaCreate) -> ArenaResponse:
-    amenities = await _resolve_amenities(db, data.amenity_ids)
+    amenities = await _resolve_amenities(db, data.amenity_ids, data.amenities)
     arena = Arena(
         owner_id=user.id,
         name=data.name,
@@ -162,8 +184,10 @@ async def update_arena(
         arena.images = data.images
     if data.refund_policy is not None:
         arena.refund_policy = [t.model_dump() for t in data.refund_policy]
-    if data.amenity_ids is not None:
-        arena.amenities = await _resolve_amenities(db, data.amenity_ids)
+    if data.amenity_ids is not None or data.amenities is not None:
+        arena.amenities = await _resolve_amenities(db, data.amenity_ids, data.amenities)
+    if data.extra_amenities is not None:
+        arena.extra_amenities = _kept_extras(arena.extra_amenities, data.extra_amenities)
 
     await db.commit()
     refreshed = await repo.get_arena(db, arena.id)
@@ -240,10 +264,14 @@ async def search_arenas(
     near: tuple[float, float] | None = None,
     radius_km: float | None = None,
     amenity_ids: Collection[uuid.UUID] | None = None,
+    amenity_keys: Collection[str] | None = None,
     time_of_day: TimeOfDay | None = None,
     day: date | None = None,
     params: PaginationParams,
 ) -> dict:
+    wanted_amenities = set(amenity_ids or ())
+    if amenity_keys:
+        wanted_amenities |= {a.id for a in await _resolve_amenities(db, None, list(amenity_keys))}
     now = datetime.now(PLATFORM_TZ).replace(tzinfo=None)
     arenas, total = await repo.search_public_arenas(
         db,
@@ -257,7 +285,7 @@ async def search_arenas(
         limit=params.page_size,
         near=near,
         radius_km=radius_km,
-        amenity_ids=amenity_ids,
+        amenity_ids=wanted_amenities,
         time_of_day=time_of_day,
         day=day or now.date(),
         now=now,
@@ -300,8 +328,10 @@ async def get_public_arena(db: AsyncSession, arena_id: uuid.UUID) -> ArenaRespon
 
 
 async def list_filter_amenities(db: AsyncSession) -> list[AmenityResponse]:
-    """The amenities the "Must have" filter can offer: only ones some live arena has."""
-    return [AmenityResponse.model_validate(a) for a in await repo.list_amenities_in_use(db)]
+    """The standard list in its order: what the owner form ticks and the filter offers."""
+    rows = await repo.ensure_standard_amenities(db)
+    await db.commit()
+    return [AmenityResponse.model_validate(a) for a in rows]
 
 
 # ---- liked arenas (FR-P-12) ----------------------------------------------
