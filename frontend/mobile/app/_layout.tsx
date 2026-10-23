@@ -223,6 +223,8 @@ function RootNavigator() {
         <Stack.Screen name="booking/bank/[groupId]" options={{ headerShown: false }} />
         <Stack.Screen name="booking/awaiting/[groupId]" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="booking/failed/[groupId]" options={{ headerShown: false }} />
+        <Stack.Screen name="booking/processing/[groupId]" options={{ headerShown: false }} />
+        <Stack.Screen name="booking/return" options={{ headerShown: false }} />
         <Stack.Screen name="booking/slot-lost" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="booking/confirmed/[groupId]" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen
