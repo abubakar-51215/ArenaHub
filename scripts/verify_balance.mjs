@@ -135,7 +135,11 @@ async function main() {
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
         "base64",
       );
-      const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByText("Upload a photo", { exact: true }).click()]);
+      await page.getByText("Upload a photo", { exact: true }).click();
+      const [chooser] = await Promise.all([
+        page.waitForEvent("filechooser"),
+        page.getByRole("button", { name: "Choose from gallery", exact: true }).filter({ visible: true }).first().click(),
+      ]);
       await chooser.setFiles({ name: "receipt.png", mimeType: "image/png", buffer: png });
       await page.getByText("Send receipt", { exact: true }).click();
       await see(page, "Awaiting approval", 25000);
