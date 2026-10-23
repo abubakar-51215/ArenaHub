@@ -72,10 +72,12 @@ async function rawRequest(
   body: unknown,
   token: string | null,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  idempotencyKey?: string,
 ): Promise<Response> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -120,13 +122,13 @@ async function tryRefresh(timeoutMs?: number): Promise<string | null> {
 }
 
 /** Authed request against /api/v1. Throws {@link ApiError} on a failure envelope. */
-export async function apiRequest<T>(method: Method, path: string, body?: unknown, opts?: { timeoutMs?: number }): Promise<T> {
+export async function apiRequest<T>(method: Method, path: string, body?: unknown, opts?: { timeoutMs?: number; idempotencyKey?: string }): Promise<T> {
   const token = useAuthStore.getState().accessToken;
-  let res = await rawRequest(method, path, body, token, opts?.timeoutMs);
+  let res = await rawRequest(method, path, body, token, opts?.timeoutMs, opts?.idempotencyKey);
 
   if (res.status === 401 && token) {
     const fresh = await tryRefresh(opts?.timeoutMs);
-    if (fresh) res = await rawRequest(method, path, body, fresh, opts?.timeoutMs);
+    if (fresh) res = await rawRequest(method, path, body, fresh, opts?.timeoutMs, opts?.idempotencyKey);
   }
 
   const env = await parse<T>(res);
@@ -138,7 +140,7 @@ export async function apiRequest<T>(method: Method, path: string, body?: unknown
 
 export const api = {
   get: <T>(path: string, opts?: { timeoutMs?: number }) => apiRequest<T>('GET', path, undefined, opts),
-  post: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => apiRequest<T>('POST', path, body, opts),
+  post: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number; idempotencyKey?: string }) => apiRequest<T>('POST', path, body, opts),
   patch: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => apiRequest<T>('PATCH', path, body, opts),
   put: <T>(path: string, body?: unknown, opts?: { timeoutMs?: number }) => apiRequest<T>('PUT', path, body, opts),
   del: <T>(path: string, opts?: { timeoutMs?: number }) => apiRequest<T>('DELETE', path, undefined, opts),

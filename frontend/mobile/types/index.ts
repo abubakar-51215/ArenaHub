@@ -187,6 +187,7 @@ export interface Payment {
   gateway_transaction_id: string | null;
   status: PaymentStatus;
   payment_type: PaymentPlan;
+  purpose?: 'booking' | 'balance';
   receipt_proof_url: string | null;
   created_at: string;
 }
@@ -348,6 +349,12 @@ export interface BookingGroupDetails {
   refund_status: 'pending' | 'processed' | 'failed' | null;
   can_cancel: boolean;
   can_reschedule: boolean;
+  /** what is still owed on a confirmed booking (0 once settled) */
+  balance_due: string;
+  /** a balance payment under way: a card page or wallet request not finished, or a receipt with the owner */
+  balance_payment: 'in_progress' | 'awaiting_approval' | null;
+  can_pay_balance: boolean;
+  balance_paid: string;
 }
 
 /** The "View pass" screen's data. ``start_time``/``end_time`` span the whole

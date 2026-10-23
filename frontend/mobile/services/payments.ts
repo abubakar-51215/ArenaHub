@@ -20,6 +20,21 @@ export function initiatePayment(
   });
 }
 
+/** Pay what is still owed on a confirmed booking. The amount is never sent: the server works it
+ * out. The key makes a repeated tap the same request, so the player is never charged twice. */
+export function initiateBalancePayment(
+  bookingGroupId: string,
+  paymentMethod: PaymentMethod,
+  idempotencyKey: string,
+  extra: { wallet_number?: string; return_url?: string } = {},
+): Promise<PaymentInitiateResult> {
+  return api.post<PaymentInitiateResult>(
+    '/payments/initiate-balance',
+    { booking_group_id: bookingGroupId, payment_method: paymentMethod, ...extra },
+    { idempotencyKey },
+  );
+}
+
 /** Development only: stands in for approving (or declining) in the wallet app. */
 export function simulatePayment(paymentId: string, success: boolean): Promise<Payment> {
   return api.post<Payment>(`/payments/${paymentId}/simulate-confirm?success=${success}`, {});
