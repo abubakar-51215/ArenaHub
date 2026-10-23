@@ -1,6 +1,6 @@
 /** Player-facing arena discovery API calls. */
 import { api } from "../lib/api";
-import type { Arena, ArenaCity, BankDetails, Page, RatingSummary } from "../types";
+import type { Amenity, Arena, ArenaCity, BankDetails, Page, RatingSummary } from "../types";
 
 export interface ArenaSearchParams {
   q?: string;
@@ -13,6 +13,11 @@ export interface ArenaSearchParams {
   lat?: number;
   lon?: number;
   radius_km?: number;
+  /** Only arenas that have ALL of these amenities. */
+  amenity_ids?: string[];
+  /** Only arenas with a free slot in this part of the day (today unless `date` is given). */
+  time_of_day?: "morning" | "afternoon" | "evening" | "night";
+  date?: string;
   page?: number;
   page_size?: number;
 }
@@ -21,6 +26,11 @@ function toQuery(params: object): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === "") continue;
+    if (Array.isArray(value)) {
+      // a list is sent as the same name repeated: amenity_ids=a&amenity_ids=b
+      for (const item of value) parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`);
+      continue;
+    }
     parts.push(
       `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
     );
@@ -33,6 +43,11 @@ export function searchArenas(
   opts?: { timeoutMs?: number },
 ): Promise<Page<Arena>> {
   return api.get<Page<Arena>>(`/arenas${toQuery(params)}`, opts);
+}
+
+/** The amenities at least one live arena has: what the "Must have" row can offer. */
+export function listFilterAmenities(): Promise<Amenity[]> {
+  return api.get<Amenity[]>("/arenas/amenities");
 }
 
 export function getArena(arenaId: string): Promise<Arena> {

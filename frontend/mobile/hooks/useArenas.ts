@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getArena, getRatingSummary, searchArenas, type ArenaSearchParams } from '../services/arenas';
+import { getArena, getRatingSummary, listFilterAmenities, searchArenas, type ArenaSearchParams } from '../services/arenas';
 import { listCourts } from '../services/courts';
 
 export function useArenaSearch(params: ArenaSearchParams, opts?: { timeoutMs?: number; enabled?: boolean }) {
@@ -9,6 +9,10 @@ export function useArenaSearch(params: ArenaSearchParams, opts?: { timeoutMs?: n
     queryFn: () => searchArenas(params, { timeoutMs: opts?.timeoutMs }),
     enabled: opts?.enabled ?? true,
   });
+}
+
+export function useFilterAmenities() {
+  return useQuery({ queryKey: ['filter-amenities'], queryFn: listFilterAmenities, staleTime: 5 * 60_000, retry: 1 });
 }
 
 export function useArena(arenaId: string | undefined) {
