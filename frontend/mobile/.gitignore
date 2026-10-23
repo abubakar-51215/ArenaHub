@@ -30,6 +30,10 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Firebase / Google push files (never committed; see docs/DEV_BUILD_AND_GOOGLE_PUSH.md)
+google-services.json
+GoogleService-Info.plist
+
 # local env files
 .env
 .env*.local
