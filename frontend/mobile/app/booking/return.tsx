@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useRootNavigationState } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect } from 'react';
 
@@ -9,10 +9,12 @@ import { useEffect } from 'react';
 const finished = WebBrowser.maybeCompleteAuthSession();
 
 export default function PaymentReturn() {
+  // when the link starts the app, the screens are not ready on the first pass: moving then is an error
+  const ready = !!useRootNavigationState()?.key;
   useEffect(() => {
-    if (finished.type === 'success') return; // the pop-up closes itself
+    if (!ready || finished.type === 'success') return; // the pop-up closes itself
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/bookings');
-  }, []);
+  }, [ready]);
   return null;
 }
