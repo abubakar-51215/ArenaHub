@@ -48,11 +48,11 @@ export function usePhotoPicker(options: ImagePicker.ImagePickerOptions = {}): { 
       destructive={false}
       title={PHOTO_TEXT.title}
       message={PHOTO_TEXT.message}
-      confirmLabel={PHOTO_TEXT.take}
+      confirmLabel={PHOTO_TEXT.gallery}
       cancelLabel={PHOTO_TEXT.cancel}
-      onConfirm={() => void pickFrom('camera')}
+      onConfirm={() => void pickFrom('library')}
       onCancel={() => finish(null)}>
-      <Button title={PHOTO_TEXT.gallery} variant="ghost" onPress={() => void pickFrom('library')} />
+      <Button title={PHOTO_TEXT.take} variant="ink" onPress={() => void pickFrom('camera')} />
     </ConfirmSheet>
   );
   return { choose, sheet };
