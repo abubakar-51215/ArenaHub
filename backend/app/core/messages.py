@@ -147,3 +147,6 @@ BLOCKED_DATE_IN_PAST = "You can't block a date that has already passed."
 # The test push the server owner sends before a real-phone check (backend/scripts/send_test_push.py)
 TEST_PUSH_TITLE = "ArenaHub test notification"
 TEST_PUSH_BODY = "Push notifications are working on this phone."
+
+# Joining a match at an arena that is suspended, removed or not live
+ARENA_UNAVAILABLE = "This arena is not available right now."

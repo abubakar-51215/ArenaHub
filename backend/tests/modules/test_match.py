@@ -11,6 +11,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
 from app.modules.arena.model import Arena
 from app.modules.booking import repository as booking_repo
 from app.modules.match import service as match_service
@@ -265,14 +266,14 @@ async def test_joining_a_match_at_a_suspended_or_deleted_arena_is_refused(
     joiner, _ = await make_user(client, db_session, "mjoin-susp1@example.com", "player")
     res = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
     assert res.status_code == 409
-    assert res.json()["message"] == match_service.MSG_ARENA_UNAVAILABLE
+    assert res.json()["message"] == messages.ARENA_UNAVAILABLE
 
     arena.suspended_at = None
     arena.deleted_at = datetime.now()
     await db_session.flush()
     res2 = await client.post(f"/api/v1/matches/{match_id}/join", headers=auth_header(joiner))
     assert res2.status_code == 409
-    assert res2.json()["message"] == match_service.MSG_ARENA_UNAVAILABLE
+    assert res2.json()["message"] == messages.ARENA_UNAVAILABLE
 
 
 async def test_listing_filters_by_city_and_sport_and_hides_started_matches(

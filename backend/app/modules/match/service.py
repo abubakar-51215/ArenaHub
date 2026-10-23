@@ -20,6 +20,7 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import ArenaCity
@@ -43,7 +44,6 @@ MSG_CANCELLED = "This match was cancelled."
 MSG_OWN = "You are already in your own match."
 MSG_PAST = "This match has already started."
 MSG_TWICE = "You have already joined this match."
-MSG_ARENA_UNAVAILABLE = "This arena is not available right now."
 
 
 def _to_response(
@@ -236,7 +236,7 @@ async def join_match(
     # without the match's own status catching up.
     arena = await arena_repo.get_arena(db, match.arena_id)
     if arena is None or not arena.is_live:
-        raise ConflictError(MSG_ARENA_UNAVAILABLE)
+        raise ConflictError(messages.ARENA_UNAVAILABLE)
     if match.creator_id == user.id:
         raise ConflictError(MSG_OWN)
     if await repo.get_participant(db, match_id, user.id) is not None:
