@@ -37,11 +37,11 @@ const idOf = (rows, name) => new RegExp(`UUID\\('([0-9a-f-]+)'\\), '${name}'`).e
 
 async function main() {
   const f = await fixture(TAG);
-  sql("INSERT INTO amenities (id, name) VALUES (gen_random_uuid(), 'Parking'), (gen_random_uuid(), 'Floodlights'), (gen_random_uuid(), 'Cafe') ON CONFLICT (name) DO NOTHING");
+  sql("INSERT INTO amenities (id, name) VALUES (gen_random_uuid(), 'Parking'), (gen_random_uuid(), 'Floodlights'), (gen_random_uuid(), 'Helipad') ON CONFLICT (name) DO NOTHING");
   const rows = sql("SELECT id, name FROM amenities");
   const parking = idOf(rows, "Parking");
   const lights = idOf(rows, "Floodlights");
-  // the fixture's arena is "A" (parking + floodlights); "B" is morning-only with parking alone; "Cafe" is nobody's
+  // the fixture's arena is "A" (parking + floodlights); "B" is morning-only with parking alone; "Helipad" is nobody's
   sql(`INSERT INTO arena_amenities (arena_id, amenity_id) VALUES ('${f.arenaId}', '${parking}'), ('${f.arenaId}', '${lights}') ON CONFLICT DO NOTHING`);
   const b = await makeArena(f, { name: `Verify Arena ${TAG} B`, hours: { open: "08:00", close: "12:00" } });
   sql(`INSERT INTO arena_amenities (arena_id, amenity_id) VALUES ('${b.arenaId}', '${parking}') ON CONFLICT DO NOTHING`);
@@ -61,7 +61,7 @@ async function main() {
         await page.goto(`${MOBILE}/filters`, { waitUntil: "load", timeout: 30000 });
         await dismissNearMe(page);
         for (const t of ["How far", "Time of day", "Must have", "Parking", "Floodlights", "Morning", "Afternoon", "Evening", "Night", "2 km", "25 km"]) await see(page, t);
-        if ((await page.getByText("Cafe", { exact: true }).count()) > 0) throw new Error("an amenity no arena has is offered");
+        if ((await page.getByText("Helipad", { exact: true }).count()) > 0) throw new Error("an amenity no arena has is offered");
         for (const km of ["2 km", "5 km", "10 km", "25 km"]) {
           const disabled = await page.getByRole("button", { name: km, exact: true }).first().getAttribute("aria-disabled");
           if (disabled !== "true") throw new Error(`${km} should be greyed out with location off`);
