@@ -169,3 +169,18 @@ async def test_the_test_push_script_says_only_whether_it_worked(
     assert "no longer registered" in gone and "good-token" not in gone
     assert await notification_repo.list_active_tokens(db_session, user.id) == []
     assert "good-token" not in capsys.readouterr().out
+
+
+async def test_more_than_a_hundred_phones_are_sent_in_batches_of_a_hundred(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sizes: list[int] = []
+
+    def post(messages: list[dict]) -> dict[str, Any]:
+        sizes.append(len(messages))
+        return {"data": [{"status": "ok", "id": "x"} for _ in messages]}
+
+    monkeypatch.setattr(expo_push, "_post_sync", post)
+    tokens = [f"ExponentPushToken[t{i:04d}]" for i in range(230)]
+    result = await expo_push.send_push(tokens, "t", "b", {"event": "x"})
+    assert sizes == [100, 100, 30] and result.delivered == 230
