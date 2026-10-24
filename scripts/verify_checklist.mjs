@@ -192,6 +192,9 @@ async function withMobilePage(fn, label) {
     const resp = await route.fetch();
     await route.fulfill({ response: resp, headers: { ...resp.headers(), ...CORS } });
   });
+  // The app decides it is online by sending HEAD / to its own server and wanting a 200; the Expo dev server
+  // answers that with an error, which shows "You are offline" and pauses every request. A real phone does not.
+  await ctx.route(MOBILE + "/", (route) => (route.request().method() === "HEAD" ? route.fulfill({ status: 200 }) : route.continue()));
   const page = await ctx.newPage();
   const errors = [];
   const failed = [];

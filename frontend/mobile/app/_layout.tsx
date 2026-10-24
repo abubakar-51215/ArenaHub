@@ -112,6 +112,13 @@ function RootNavigator() {
     void initSentry(); // error tracking, a no-op unless EXPO_PUBLIC_SENTRY_DSN is set
   }, []);
 
+  // where the app is now, read by the "reopen the kept link" steps below
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
   // a link opened before the account is loaded (signed out, or a saved sign-in still being checked) is kept: it opens
   // after Log in, or after "Try again" when the server could not be reached at start (lib/deeplink.ts)
   useEffect(() => {
@@ -119,18 +126,24 @@ function RootNavigator() {
       const { accessToken: token, user: who } = useAuthStore.getState();
       if (!token || !who) rememberLink(pathFromUrl(url));
     };
-    Linking.getInitialURL().then(keep).catch(() => {});
+    Linking.getInitialURL()
+      .then((url) => {
+        keep(url);
+        // the account may have loaded before the link was read: then there is nothing to wait for, open it now
+        const { accessToken: token, user: who } = useAuthStore.getState();
+        const link = pathFromUrl(url);
+        if (token && who && link && linkFitsRole(link, who.role)) {
+          setTimeout(() => {
+            if (pathnameRef.current !== link.split(/[?#]/)[0]) router.push(link as Href);
+          }, 350);
+        }
+      })
+      .catch(() => {});
     const sub = Linking.addEventListener("url", (e) => keep(e.url));
     return () => sub.remove();
   }, []);
 
   const everReady = useRef(false);
-  // where the app is now, read by the "reopen the kept link" step below
-  const pathname = usePathname();
-  const pathnameRef = useRef(pathname);
-  useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: () => fetchMe({ timeoutMs: STARTUP_CALL_TIMEOUT_MS }),
