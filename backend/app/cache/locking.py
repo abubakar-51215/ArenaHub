@@ -16,8 +16,11 @@ import uuid
 from datetime import date, time
 
 import structlog
+from redis.exceptions import RedisError
 
 from app.cache import redis as redis_cache
+from app.core import messages
+from app.core.exceptions import ServiceUnavailableError
 
 logger = structlog.get_logger(__name__)
 
@@ -39,7 +42,12 @@ async def acquire_slot_lock(
     """
     key = slot_lock_key(court_id, booking_date, start_time)
     token = uuid.uuid4().hex
-    acquired = bool(await redis_cache.get_redis().set(key, token, nx=True, px=LOCK_TTL_MS))
+    try:
+        acquired = bool(await redis_cache.get_redis().set(key, token, nx=True, px=LOCK_TTL_MS))
+    except (RedisError, OSError) as exc:
+        # No lock means no safe booking: refuse with "try again", never book without it
+        logger.error("slot_lock.redis_unavailable", error=type(exc).__name__)
+        raise ServiceUnavailableError(messages.BOOKING_TEMPORARILY_UNAVAILABLE) from exc
     if acquired:
         logger.info("slot_lock.acquired", lock_key=key)
     else:
@@ -49,9 +57,13 @@ async def acquire_slot_lock(
 
 async def release_slot_lock(lock_key: str, token: str) -> None:
     redis = redis_cache.get_redis()
-    current = await redis.get(lock_key)
-    if current == token:
-        await redis.delete(lock_key)
-        logger.info("slot_lock.released", lock_key=lock_key)
-    else:
-        logger.info("slot_lock.release_skipped", lock_key=lock_key)
+    try:
+        current = await redis.get(lock_key)
+        if current == token:
+            await redis.delete(lock_key)
+            logger.info("slot_lock.released", lock_key=lock_key)
+        else:
+            logger.info("slot_lock.release_skipped", lock_key=lock_key)
+    except (RedisError, OSError) as exc:
+        # the lock expires by itself after LOCK_TTL_MS; a failed release must not hide the result
+        logger.warning("slot_lock.release_failed", error=type(exc).__name__)
