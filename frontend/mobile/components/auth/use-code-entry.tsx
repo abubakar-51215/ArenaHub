@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { DevDetail } from '@/components/dev-detail';
 import { CodeBoxes } from '@/components/ui/code-boxes';
 import { Text } from '@/components/ui/text';
 import { showToast } from '@/components/ui/toast';
@@ -129,6 +130,7 @@ export function useCodeEntry({
           {error}
         </Text>
       ) : null}
+      <DevDetail keys={['/auth/verify-otp', '/auth/resend-otp', '/auth/admin/verify-code', '/auth/admin/resend-code']} />
     </View>
   );
   const resendLink = wait.running ? (

@@ -3,6 +3,7 @@ import { Link, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
+import { DevDetail } from '@/components/dev-detail';
 import { ScreenLoader } from '@/components/brand/screen-loader';
 import { GoogleButton, useGoogleSignIn } from '@/components/auth/google-button';
 import { OrRule } from '@/components/auth/or-rule';
@@ -178,6 +179,7 @@ export default function LoginScreen() {
           accessibilityLabel="Password"
         />
         {error ? <FieldMessage>{error}</FieldMessage> : null}
+        <DevDetail keys={['/auth/login']} />
         <View style={styles.forgotRow}>
           <Link href="/(auth)/forgot-password" style={styles.forgot} accessibilityRole="link">
             Forgot password?

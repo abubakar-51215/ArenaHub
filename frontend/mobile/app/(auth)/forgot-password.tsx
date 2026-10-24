@@ -3,6 +3,7 @@ import { Link, router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { DevDetail } from '@/components/dev-detail';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { FieldMessage } from '@/components/auth/field-message';
 import { Button, useButtonStatus } from '@/components/ui/button';
@@ -72,6 +73,7 @@ export default function ForgotPasswordScreen() {
           accessibilityLabel="Email"
         />
         {error ? <FieldMessage>{error}</FieldMessage> : null}
+        <DevDetail keys={['/auth/forgot-password']} />
         <Button title="Send reset code" loading={mutation.isPending} status={btnStatus} onPress={submit} />
       </View>
       <View style={styles.footer}>

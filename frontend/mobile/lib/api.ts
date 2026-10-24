@@ -12,6 +12,7 @@
 import { API_BASE } from './config';
 import { useAuthStore } from '../store/auth';
 import type { Tokens } from '../types';
+import { clearDevFailure, noteDevFailure } from '@/lib/dev-detail';
 
 export interface FieldError {
   field: string;
@@ -123,6 +124,19 @@ async function tryRefresh(timeoutMs?: number): Promise<string | null> {
 
 /** Authed request against /api/v1. Throws {@link ApiError} on a failure envelope. */
 export async function apiRequest<T>(method: Method, path: string, body?: unknown, opts?: { timeoutMs?: number; idempotencyKey?: string }): Promise<T> {
+  if (!__DEV__ || !path.startsWith('/auth/')) return send<T>(method, path, body, opts);
+  // development build only: remember which sign-in call failed and how (see lib/dev-detail.ts)
+  try {
+    const out = await send<T>(method, path, body, opts);
+    clearDevFailure(path);
+    return out;
+  } catch (err) {
+    noteDevFailure(path, err);
+    throw err;
+  }
+}
+
+async function send<T>(method: Method, path: string, body?: unknown, opts?: { timeoutMs?: number; idempotencyKey?: string }): Promise<T> {
   const token = useAuthStore.getState().accessToken;
   let res = await rawRequest(method, path, body, token, opts?.timeoutMs, opts?.idempotencyKey);
 

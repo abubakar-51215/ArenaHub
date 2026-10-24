@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { Platform } from 'react-native';
 
+import { clearDevFailure, noteDevFailure } from '@/lib/dev-detail';
 import { isExpoGo } from '@/lib/expo-go';
 
 // Continue with Google (players only). The native Google sign-in library works only in a development or store
@@ -48,6 +49,7 @@ export type GoogleResult =
 export async function getGoogleIdToken(): Promise<GoogleResult> {
   const G = load();
   if (!G) return { kind: 'not-available' };
+  clearDevFailure('native:google');
   try {
     await G.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const res = await G.GoogleSignin.signIn();
@@ -55,11 +57,15 @@ export async function getGoogleIdToken(): Promise<GoogleResult> {
     const idToken = res.data.idToken;
     // the picker shows again next time, so "Use a different account" can choose another one
     await G.GoogleSignin.signOut().catch(() => undefined);
+    if (!idToken) noteDevFailure('native:google', { code: 'no-id-token' });
     return idToken ? { kind: 'token', idToken } : { kind: 'failed' };
   } catch (err) {
     if (G.isErrorWithCode(err)) {
       if (err.code === G.statusCodes.SIGN_IN_CANCELLED || err.code === G.statusCodes.IN_PROGRESS) return { kind: 'cancelled' };
+      noteDevFailure('native:google', { code: err.code }); // development build only; '10' is DEVELOPER_ERROR
       if (err.code === G.statusCodes.PLAY_SERVICES_NOT_AVAILABLE) return { kind: 'failed' };
+    } else {
+      noteDevFailure('native:google', err);
     }
     return { kind: 'failed' };
   }

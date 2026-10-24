@@ -2,6 +2,7 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Image, StyleSheet } from 'react-native';
 
+import { DevDetail } from '@/components/dev-detail';
 import { Button } from '@/components/ui/button';
 import { showToast } from '@/components/ui/toast';
 import { ApiError } from '@/lib/api';
@@ -51,6 +52,7 @@ export function useGoogleSignIn(onRefused: (message: string) => void) {
 
 export function GoogleButton({ title, busy, disabled, onPress }: { title: string; busy: boolean; disabled?: boolean; onPress: () => void }) {
   return (
+    <>
     <Button
       variant="ghost"
       haptic
@@ -62,6 +64,8 @@ export function GoogleButton({ title, busy, disabled, onPress }: { title: string
       // Google's own "G" (from Google's sign-in branding assets), never redrawn
       leading={<Image source={LOGO} style={styles.logo} accessibilityIgnoresInvertColors />}
     />
+    <DevDetail keys={['native:google', '/auth/google']} />
+    </>
   );
 }
 

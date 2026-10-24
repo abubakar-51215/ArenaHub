@@ -3,6 +3,7 @@ import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
 
+import { DevDetail } from '@/components/dev-detail';
 import { GoogleButton, useGoogleSignIn } from '@/components/auth/google-button';
 import { OrRule } from '@/components/auth/or-rule';
 import { AuthScreen } from '@/components/auth/auth-screen';
@@ -200,6 +201,7 @@ export default function RegisterScreen() {
         </View>
         {codeSent ? null : <PasswordRules password={password} />}
         {formError ? <FieldMessage>{formError}</FieldMessage> : null}
+        <DevDetail keys={['/auth/register']} />
         <View style={styles.button}>
           <Button title={codeSent ? 'Continue' : 'Create account'} loading={mutation.isPending} disabled={google.busy} status={btnStatus} onPress={submit} />
         </View>
