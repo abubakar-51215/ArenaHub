@@ -5,7 +5,7 @@ Cross-references every feature **decided** in a planning/spec document against w
 Each row's status was verified against real source, not against another document's claim of
 completion (several status docs are stale — see Conflicts).
 
-- **Verified:** 2026-10-23, branch `abubakar`.
+- **Verified:** 2026-10-23, branch `abubakar`; the payment rows were re-verified on 2026-10-25 (Stripe test-mode run, SafePay foundation).
 - **Authoritative order when docs disagree:** `MASTER_DEVELOPMENT_PLAN.md` wins, unless
   `docs/PROJECT_GUIDELINES.md` explicitly overrides it (it records 23 deliberate deviations).
 - **Ground truth for "what routes exist":** `docs/ROUTES_AND_ROLES.md` (auto-generated from the
@@ -23,7 +23,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `DEFERRED` · 
 
 ## 1. Summary
 
-**Total feature rows audited: 122** (recounted 2026-10-24 from the tables below; each number in the two tables here is a count of the rows).
+**Total feature rows audited: 123** (recounted 2026-10-25 from the tables below; each number in the two tables here is a count of the rows).
 
 | Status | Count |
 |---|---|
@@ -32,7 +32,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `DEFERRED` · 
 | NOT BUILT | 0 |
 | SKIPPED | 5 |
 | DEFERRED | 1 |
-| WAITING FOR KEY | 5 |
+| WAITING FOR KEY | 6 |
 | WAITING FOR REAL PHONE | 4 |
 
 | Area | Rows |
@@ -42,7 +42,7 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `DEFERRED` · 
 | Search, Discovery & AI | 9 |
 | Arena Details | 4 |
 | Booking Engine | 12 |
-| Payments & Refunds | 12 |
+| Payments & Refunds | 13 |
 | Equipment | 3 |
 | Reviews | 6 |
 | Notifications | 7 |
@@ -169,10 +169,11 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 |---|---|---|---|---|
 | Payment-provider abstraction layer | DONE | `integrations/payments/` (`PaymentProvider` interface) | dev #2, ADR-008 | Swappable: stripe/jazzcash/easypaisa/manual/mock. |
 | Bank transfer (manual receipt → owner verify) | DONE | `/payments/{id}/receipt`, `/owner/payments/{id}/approve|reject`; mobile `booking/bank/[groupId].tsx` | dev #2, #2b | The only method that actually completes a payment today. |
-| Card payment (Stripe test mode) | WAITING FOR KEY | `integrations/payments/stripe_provider.py`; `GET /payments/methods` | FR-P-09, dev #2 | Clean 503 "not available yet" without a real key (not a 500 anymore, MOBILE_REQUIREMENTS #62). Both Stripe keys are SET on this machine. Needed to prove it end to end: the public https API address registered as the Stripe webhook (`API_PUBLIC_URL`, `docs/BEFORE_GOING_LIVE.md`) and PKR enabled on the Stripe account. |
+| Card payment (Stripe test mode) | WAITING FOR KEY | `integrations/payments/stripe_provider.py`; `GET /payments/methods`; `scripts/qa_stripe_e2e.mjs`, `scripts/qa_stripe_app_e2e.mjs` | FR-P-09, dev #2 | **Verified end to end in Stripe TEST mode on 2026-10-24/25** (browser, Stripe's real hosted page, Stripe CLI forwarding signed events; evidence in `docs/PAYMENT_SANDBOXES.md`): good card confirms the booking, declined card does not, an expired session cancels it, and a cancellation makes a refund that Stripe processes; PKR is accepted by the test account. Clean 503 "not available yet" without a real key. Still needed for real money: a live Stripe PKR account and keys, and the public https API address as the webhook (`API_PUBLIC_URL`, `docs/BEFORE_GOING_LIVE.md`). Not yet tried on a real phone (`docs/PHONE_PAYMENT_TEST.md`, `docs/PHONE_TEST_RESULTS.md`).
 | JazzCash payment | WAITING FOR KEY | `integrations/payments/jazzcash.py` (simulator) | FR-P-09, dev #2 | Listed "coming soon" outside development. Needed: a JazzCash merchant account (merchant id, password, webhook secret). |
 | EasyPaisa payment | WAITING FOR KEY | `integrations/payments/easypaisa.py` (simulator) | FR-P-09, dev #2 | Needed: an EasyPaisa merchant account (merchant id, webhook secret). |
-| Webhook auto-confirm (card/wallets) | WAITING FOR KEY | `POST /webhooks/{method}`; `payment/service.py _confirm_group` | dev #2b, ADR-008 | Logic built + signed. Needed: a public https webhook address and a live gateway. |
+| SafePay card provider (second card gateway) | WAITING FOR KEY | `integrations/payments/safepay.py`; `CARD_PROVIDER`; `test_card_provider.py`; `docs/SAFEPAY_INTEGRATION.md` | dev #2 ("a local PSP like Safepay") | Foundation only (2026-10-25): settings, provider selection, the provider recorded on each payment, refunds and webhooks routed by that record, production checks. Stripe stays the default. SafePay itself refuses safely (no checkout, no webhook confirmation, no refund) until its contract is confirmed in a SafePay **sandbox account** (checkout address, amount unit, signature, refund path; the list is in `docs/SAFEPAY_INTEGRATION.md`). Not needed for the demo.
+| Webhook auto-confirm (card/wallets) | WAITING FOR KEY | `POST /webhooks/{method}`; `payment/service.py _confirm_group` | dev #2b, ADR-008 | Logic built + signed. Stripe's real signed events were confirmed through the Stripe CLI on 2026-10-24 (bad signature, wrong amount and duplicates refused; a signed non-Stripe body is a 422, `test_payment_hardening.py`); a payment's webhook and refund go to the provider recorded on it. JazzCash and EasyPaisa are still simulators. Needed for live: a public https webhook address and live gateways.
 | Full vs advance payment | DONE | `modules/payment`; arena advance %; mobile checkout "Pay now" | FR-P-09, FR-O-05 | |
 | Owner approve/reject bank-transfer | DONE | `/owner/payments/{id}/approve|reject`; web `owner/bookings` verify dialog | FR-O-06, dev #2b | Receipt dialog image URL is relative in dev (WEB_COMPLETENESS §7 — prod Cloudinary fixes it). |
 | Digital receipt (PDF) | DONE | `/payments/{id}/receipt.pdf`; mobile booking detail | FR-P-09, FR-P-17 | |

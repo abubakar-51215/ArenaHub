@@ -155,6 +155,7 @@ Built: card on Stripe's hosted card page and JazzCash / EasyPaisa by wallet numb
 2. **`API_PUBLIC_URL`:** the public https address of the API; Stripe's card page sends the player back to the app through `/api/v1/payments/return`, which forwards only to app addresses (`arenahub://...`, and the web address in `WEB_PUBLIC_URL`).
 3. **JazzCash and EasyPaisa:** merchant accounts, then connect their "mobile account" payment request APIs in `backend/app/integrations/payments/jazzcash.py` and `easypaisa.py` (the `initiate` method, which receives the wallet number) and their signed callbacks (already verified with `JAZZCASH_WEBHOOK_SECRET` / `EASYPAISA_WEBHOOK_SECRET`). Until then they show "coming soon" outside development.
 4. The phone app's own link scheme (`arenahub://`) must be kept when the app identifiers are decided, or the return address list updated.
+5. **Card provider switch (added 2026-10-25).** `CARD_PROVIDER` is `stripe` by default. Stripe was proven end to end in TEST mode (`docs/PAYMENT_SANDBOXES.md`); real PKR payments need a live Stripe account that is allowed to accept PKR, or SafePay. SafePay is only a switched-off foundation (`docs/SAFEPAY_INTEGRATION.md`): it needs a SafePay sandbox account and the unconfirmed API details settled before it can be used. With `CARD_PROVIDER=safepay` and `ENVIRONMENT=prod` the server refuses to start without its three credentials and `SAFEPAY_ENV=production`. Each payment records its provider, so a switch never strands an old payment.
 
 ## Go-live task: orphan photo uploads (2026-10-22)
 
