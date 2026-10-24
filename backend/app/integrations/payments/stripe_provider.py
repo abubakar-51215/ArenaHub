@@ -103,11 +103,20 @@ class StripeProvider:
             )
         except (stripe.error.SignatureVerificationError, ValueError) as exc:
             raise ValidationError("Invalid Stripe webhook signature.") from exc
+        except AttributeError as exc:
+            # a correctly signed body that is not a Stripe event (no "object" field): refused
+            # as a bad request, never a server error
+            log.warning("stripe_webhook_malformed_event")
+            raise ValidationError("Invalid Stripe webhook payload.") from exc
 
         # event["data"]["object"] is a StripeObject, not a dict — it supports [] but not .get(),
         # so this converts it once up front rather than changing every .get() call below (already
         # a plain dict when a test fakes the event, where it needs no converting).
-        raw_object = event["data"]["object"]
+        try:
+            raw_object = event["data"]["object"]
+        except (KeyError, TypeError) as exc:
+            log.warning("stripe_webhook_malformed_event")
+            raise ValidationError("Invalid Stripe webhook payload.") from exc
         session = raw_object.to_dict() if hasattr(raw_object, "to_dict") else raw_object
         kind = event["type"]
         paid_now = kind == "checkout.session.completed" and session.get("payment_status") == "paid"

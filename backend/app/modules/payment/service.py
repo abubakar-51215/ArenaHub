@@ -709,8 +709,10 @@ async def _issue_refund(
         details={"booking_id": str(booking.id), "amount": str(amount), "kind": kind},
     )  # fmt: skip
 
-    provider = get_provider(payment.payment_provider)
     try:
+        # resolved inside the try: an unknown provider name on a payment becomes a failed try
+        # (pending, retried, then flagged for manual handling), never a failed cancellation
+        provider = get_provider(payment.payment_provider)
         result = await provider.refund(
             gateway_transaction_id=payment.gateway_transaction_id or "",
             amount=amount,
@@ -1079,8 +1081,8 @@ async def retry_pending_refunds(db: AsyncSession, now: datetime | None = None) -
         booking = await booking_repo.get_booking(db, refund.booking_id)
         if payment is None or booking is None:
             continue
-        provider = get_provider(payment.payment_provider)
         try:
+            provider = get_provider(payment.payment_provider)
             result = await provider.refund(
                 gateway_transaction_id=payment.gateway_transaction_id or "",
                 amount=refund.amount,
