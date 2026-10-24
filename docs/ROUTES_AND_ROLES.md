@@ -21,6 +21,7 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | GET | `/admin/complaints` | admin |
 | GET | `/admin/complaints/{complaint_id}` | admin |
 | PUT | `/admin/complaints/{complaint_id}` | admin |
+| PATCH | `/admin/complaints/{complaint_id}/status` | admin |
 | GET | `/admin/dashboard` | admin |
 | GET | `/admin/dashboard/overview` | admin |
 | GET | `/admin/payments` | admin |
@@ -35,6 +36,7 @@ wrong role = 403, another person's thing = 404, same as a missing one).
 | GET | `/admin/users` | admin |
 | DELETE | `/admin/users/{user_id}` | admin |
 | GET | `/admin/users/{user_id}` | admin |
+| GET | `/admin/users/{user_id}/bookings` | admin |
 | PATCH | `/admin/users/{user_id}/reactivate` | admin |
 | PATCH | `/admin/users/{user_id}/suspend` | admin |
 | GET | `/arenas` | nobody (public) |

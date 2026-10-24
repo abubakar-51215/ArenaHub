@@ -9,7 +9,7 @@ completion (several status docs are stale — see Conflicts).
 - **Authoritative order when docs disagree:** `MASTER_DEVELOPMENT_PLAN.md` wins, unless
   `docs/PROJECT_GUIDELINES.md` explicitly overrides it (it records 23 deliberate deviations).
 - **Ground truth for "what routes exist":** `docs/ROUTES_AND_ROLES.md` (auto-generated from the
-  running app — 178 routes). Most recent code-level audit: `docs/BACKEND_COMPLETENESS.md` (2026-10-15).
+  running app — 180 routes). Most recent code-level audit: `docs/BACKEND_COMPLETENESS.md` (2026-10-15).
 
 Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `DEFERRED` · `WAITING FOR KEY` ·
 `WAITING FOR REAL PHONE`.
@@ -23,12 +23,12 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `DEFERRED` · 
 
 ## 1. Summary
 
-**Total feature rows audited: 122** (recounted 2026-10-23 from the tables below; each number in the two tables here is a count of the rows).
+**Total feature rows audited: 122** (recounted 2026-10-24 from the tables below; each number in the two tables here is a count of the rows).
 
 | Status | Count |
 |---|---|
-| DONE | 103 |
-| PARTIAL | 4 |
+| DONE | 107 |
+| PARTIAL | 0 |
 | NOT BUILT | 0 |
 | SKIPPED | 5 |
 | DEFERRED | 1 |
@@ -150,7 +150,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 
 | Feature | Status | Evidence (code) | Source(s) | Notes |
 |---|---|---|---|---|
-| Time-slot generation from operating hours | PARTIAL | `POST /owner/courts/{id}/slots/generate`; called from the owner Courts slots dialog | MASTER §S3, FR-S | Generate is reachable in the Courts dialog (BACKEND_COMPLETENESS). Block/edit/delete-slot and blocked-dates have no dedicated screen (see Owner Web). |
+| Time-slot generation from operating hours | DONE | `POST /owner/courts/{id}/slots/generate`; owner Courts slots dialog | MASTER §S3, FR-S | Generate and the single-slot actions (block with a reason, unblock, edit price, delete) are in the Courts slots dialog; blocked dates have their own UI. |
 | Redis distributed locking (key + 30s TTL) | DONE | `cache/locking.py` (`LOCK_TTL_MS=30_000`); `test_booking` concurrency test | FR-P-08, FR-S-01 | Key format matches FR-S-01 verbatim. |
 | Double-booking prevention (exactly one wins) | DONE | `test_booking::test_concurrent_booking_attempts_exactly_one_succeeds` | MASTER §S3 must-pass | |
 | Booking create (preview → lock → confirm) | DONE | `POST /bookings/preview`, `POST /bookings`; mobile `booking/[courtId].tsx`, `payment.tsx` | FR-P-08 | Booking is created at Pay, not Continue (MOBILE_REQUIREMENTS #60). |
@@ -218,7 +218,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Player files + views own complaints | DONE | `POST /complaints`, `/complaints/my`, `/complaints/{id}`; mobile `support/new.tsx`, `support/index.tsx`, `support/[id].tsx` | FR-A-06 | Was the A1 "real hole" in the older gap report; mobile screens now exist (MOBILE_SCREEN_INVENTORY 2026-10-12). |
 | Admin view/respond/resolve | DONE | `/admin/complaints` (+`/{id}`); web `admin/complaints/page.tsx`; mobile admin `complaints/[id].tsx` | FR-A-06 | Statuses open → resolved. |
 | Auto-assign on first response | DONE | `complaints.assigned_to`; `PUT /admin/complaints/{id}` | dev #23 | No picker (single-admin deployment). |
-| Complaint statuses Open/Under-Review/Resolved | PARTIAL | `modules/complaint/model.py` | FR-A-06 | Open/Resolved implemented; "Under Review" intermediate state is thin (admin UI toggles Open↔Resolved). |
+| Complaint statuses Open/Under-Review/Resolved | DONE | `modules/complaint`; `PATCH /admin/complaints/{id}/status`; admin complaints dialog step buttons | FR-A-06 | Open → Under review → Resolved, and back from Under review to Open; a resolved complaint stays resolved. Admin only. The player sees the status (web admin and phone) and gets a "complaint_status" notice on each move. Owners do not see complaints in this app. |
 
 ### Matchmaking (Play)
 
@@ -240,7 +240,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Calendar / schedule (day/week/month) | DONE | `/owner/.../bookings/calendar`; web `owner/calendar/page.tsx` | FR-O-07 | |
 | Live Board (courts×hours, "now" line) | DONE | web `owner/page.tsx` | SESSION_HANDOFF item 4, RESTYLE_LOG | Built from the calendar endpoint; no new backend. |
 | Revenue / earnings + pending settlements | DONE | `/owner/dashboard/revenue`, `/analytics`; web `owner/revenue/page.tsx` | FR-O-09 | No payout/commission data (left out by decision). |
-| Owner slot screen (generate/block/edit) + blocked dates | PARTIAL | generate in Courts dialog; blocked dates: `components/owner/blocked-dates.tsx`, wired into the arena form | FR-O-02 ("blocked dates"), FEATURE_GAP_REPORT §A1/§D | Blocked dates (whole-day holiday) got a dedicated UI 2026-10-22, including a past-date guard (backend + inline message) and an app Dialog for "Unblock" (no `window.confirm`). Block/edit/delete of an **individual slot** still has no screen — narrower remaining gap than before. |
+| Owner slot screen (generate/block/edit) + blocked dates | DONE | Courts slots dialog (`components/owner/slots-dialog.tsx`, `slot-actions.tsx`); `PATCH/DELETE /owner/courts/{id}/slots/{id}`; blocked dates `components/owner/blocked-dates.tsx` | FR-O-02 ("blocked dates"), FEATURE_GAP_REPORT §A1/§D | Per day: time, price, status chip (Free, Held, Booked, Blocked). Free: Block (optional reason), Edit price, Delete (never-booked slots only). Blocked: Unblock. Booked: View booking (that day's bookings). Held: no actions. Every change is audited and repeating it changes nothing. Blocked dates: whole-day holiday UI with a past-date guard. |
 | Notification center + unread badge | DONE | web `owner/notifications/page.tsx` | FR-O-11 | |
 | Choose amenities for an arena (owner form) | DONE | `backend/app/core/amenities.py` (the one standard list of 14), `GET /arenas/amenities`, migration `e1b9c7a4d2f6`; web `components/owner/amenity-checks.tsx` in `arena-form.tsx`; phone arena page and "Must have" row; `tests/modules/test_amenity_list.py`, `scripts/verify_amenities.mjs` | FR-P-06 (arena shows amenities) | Built 2026-10-23 after the decision: owners tick boxes from the standard list (same look as Sports offered), the server refuses any key not on it, the "Must have" filter takes keys and offers the whole list. Older typed amenities were mapped to keys by name (case, dashes and a plural s ignored); any that match nothing are kept as extra text on the arena page and the owner can remove it. |
 | "Use my current location" button (arena form) | DONE | web `components/owner/arena-form.tsx` (`useMyLocation`, `navigator.geolocation`) | optional item approved 2026-10-22 | Fills the existing latitude/longitude fields, rounded to 6 decimals; no new library. Found and fixed a real bug during verification: `next.config.ts`'s Permissions-Policy was blocking geolocation site-wide (`geolocation=()` → `geolocation=(self)`). |
@@ -252,7 +252,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Metrics dashboard + decision queue | DONE | `/admin/dashboard/overview`; web `admin/page.tsx` | FR-A-07, MASTER §S5 | 13 KPI cards ship without sparklines (no time-series endpoint). |
 | Arena verification (approve / reject w/ reason) | DONE | `/admin/arenas/{id}/approve|reject`; web `admin/arenas/page.tsx` | FR-A-03 | Owner now notified of the result (notice added). |
 | Arena moderation (suspend/reactivate/remove) | DONE | `/admin/arenas/{id}/suspend|reactivate`, `DELETE`; web `admin/arenas/all/page.tsx` | FEATURE_GAP_REPORT §F1 | Cancels upcoming bookings with full refund; audited. |
-| User & owner management (suspend/reactivate/delete) | PARTIAL | `/admin/users/*`; web `admin/users`, `admin/owners` | FR-A-02 | Detail shows a booking **count**, not full booking history. |
+| User & owner management (suspend/reactivate/delete) | DONE | `/admin/users/*`; `GET /admin/users/{id}/bookings`; web `admin/users`, `admin/owners` | FR-A-02 | The detail dialog now shows a read-only, paged booking history: a player's bookings, or an owner's arenas and bookings received (booker's first name only). |
 | Admin delete = scrubbing soft-delete | DONE | `DELETE /admin/users/{id}`; `modules/admin` | dev #22 | Anonymizes PII, keeps financial rows; admins can't be deleted (403). |
 | Booking monitoring | DONE | `/admin/bookings`; web `admin/bookings/page.tsx` | FR-A-04 | |
 | Payment monitoring | DONE | `/admin/payments`; web `admin/payments/page.tsx` | FR-A-05 | Reads Completed, Part refunded or Refunded in the list, the status filter and the CSV (`test_admin_force_refund.py`). |
