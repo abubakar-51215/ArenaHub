@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 
 import { useCodeStep } from '@/components/g6/code-step';
 import { FormScreen } from '@/components/g6/form-screen';
@@ -26,7 +26,7 @@ export default function ChangeEmailScreen() {
   const [password, setPassword] = useState('');
   const [sent, setSent] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const send = useMutation({
     mutationFn: () => requestEmailChange(email.trim(), password),

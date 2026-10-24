@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
+import { StyleSheet, View, type TextInputInstance } from 'react-native';
 
 import { DevDetail } from '@/components/dev-detail';
 import { GoogleButton, useGoogleSignIn } from '@/components/auth/google-button';
@@ -37,9 +37,9 @@ export default function RegisterScreen() {
   const [refused, setRefused] = useState<string | null>(null);
   const google = useGoogleSignIn(setRefused);
   const [btnStatus, flash] = useButtonStatus();
-  const emailRef = useRef<RNTextInput>(null);
-  const phoneRef = useRef<RNTextInput>(null);
-  const passwordRef = useRef<RNTextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const phoneRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const clear = (key: keyof Errors) => setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 

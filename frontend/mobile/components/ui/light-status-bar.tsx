@@ -1,4 +1,4 @@
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';

@@ -5,14 +5,13 @@ import {
   InterTight_600SemiBold,
   InterTight_700Bold,
 } from "@expo-google-fonts/inter-tight";
-import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
-import { router, Stack, type Href } from "expo-router";
+import { DefaultTheme, router, Stack, ThemeProvider, usePathname, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { Pressable, Text as RNText, View } from "react-native";
+import { LogBox, Pressable, Text as RNText, View } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 
@@ -64,6 +63,13 @@ export const unstable_settings = {
 };
 
 SplashScreen.preventAutoHideAsync();
+
+// Development builds only (LogBox does nothing in a release build). When the signed-in state changes, the router
+// swaps the groups of screens in the root Stack (Stack.Protected below) and tells the old tab bar about it a moment
+// after it was replaced. Expo Router 58 then reports "was not handled by any navigator" for two housekeeping actions
+// that have no effect; it is not a fault, and a red error box for it hides real ones. Any other unhandled action
+// (a NAVIGATE to a route that does not exist, say) is still shown.
+LogBox.ignoreLogs([/The action '(ROUTE_NAMES_CHANGED|REMOVE_ROUTES)'[\s\S]*was not handled by any navigator/]);
 
 const NavigationTheme = {
   ...DefaultTheme,
@@ -119,6 +125,12 @@ function RootNavigator() {
   }, []);
 
   const everReady = useRef(false);
+  // where the app is now, read by the "reopen the kept link" step below
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
   const currentUserQuery = useQuery({
     queryKey: ["current-user"],
     queryFn: () => fetchMe({ timeoutMs: STARTUP_CALL_TIMEOUT_MS }),
@@ -151,9 +163,15 @@ function RootNavigator() {
       startupLog("saved sign-in is valid");
       setUser(currentUserQuery.data);
       const link = takePendingLink();
-      if (failedOnce.current && link && linkFitsRole(link, currentUserQuery.data.role)) {
-        startupLog(`reopening ${link} after Try again`);
-        setTimeout(() => router.push(link as Href), 350);
+      // A link opened while the saved sign-in was still being checked (a push notification tapped with the app
+      // closed, arenahub://arena/abc) is opened now, after Try again or after the check worked. Expo Router 58
+      // drops such a link while the signed-in screens are not there yet, so it is opened here; if the router
+      // did keep it and is already on that screen, nothing is pushed a second time.
+      if (link && linkFitsRole(link, currentUserQuery.data.role)) {
+        startupLog(`reopening ${link}`);
+        setTimeout(() => {
+          if (pathnameRef.current !== link.split(/[?#]/)[0]) router.push(link as Href);
+        }, 350);
       }
     }
   }, [currentUserQuery.data, setUser]);
@@ -193,7 +211,6 @@ function RootNavigator() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.light.background }}>
     <NetworkShell>
-    {waiting ? null : (
     <Stack>
       <Stack.Protected guard={!accessToken || !user}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -257,7 +274,6 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Screen name="health" options={{ title: "Backend Health" }} />
     </Stack>
-    )}
     </NetworkShell>
     <AnimatedSplash ready={ready} />
     </View>
@@ -273,13 +289,9 @@ export default function RootLayout() {
     InterTight_600SemiBold,
     InterTight_700Bold,
   });
-  const [fontsGaveUp, setFontsGaveUp] = useState(false);
-  const fontsSettled = fontsLoaded || !!fontError || fontsGaveUp;
-
   useEffect(() => {
     const t = setTimeout(() => {
       if (!fontsLoaded) startupLog(`fonts not loaded after ${FONTS_MAX_MS / 1000} s: using the system fonts`);
-      setFontsGaveUp(true);
     }, FONTS_MAX_MS);
     return () => clearTimeout(t);
   }, [fontsLoaded]);
@@ -302,9 +314,8 @@ export default function RootLayout() {
 
   // The native splash (the still dark mark) is hidden by AnimatedSplash once it has drawn its first frame.
 
-  // A font failure or a slow font falls through to system fonts rather than blocking the app.
-  if (!fontsSettled) return null;
-
+  // Keep the router mounted while fonts load. The splash covers the first frame,
+  // and React Native falls back to system fonts until the custom faces are ready.
   return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider value={NavigationTheme}>

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PhotoGallery } from '@/components/arena/photo-gallery';
@@ -98,7 +98,7 @@ export default function ArenaDetailsScreen() {
   const today = useSlotsToday(id);
   const rating = useArenaRating(id);
   const reviews = useQuery({ queryKey: ['arena-reviews-preview', id], queryFn: () => listArenaReviews(id as string), enabled: !!id });
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const darkTop = useDarkTop(120); // the photo is about 200 px tall
   const courtsY = useRef(0);
 

@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { View, type TextInput as RNTextInput } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 
 import { PasswordRules, passwordMeetsRules } from '@/components/auth/password-rules';
 import { useCodeStep } from '@/components/g6/code-step';
@@ -21,8 +21,8 @@ const note = { fontSize: 14, lineHeight: 20, color: Colors.light.muted } as cons
 export default function ChangePasswordScreen() {
   const clear = useAuthStore((s) => s.clear);
   const user = useAuthStore((s) => s.user);
-  const newRef = useRef<RNTextInput>(null);
-  const repeatRef = useRef<RNTextInput>(null);
+  const newRef = useRef<TextInputInstance>(null);
+  const repeatRef = useRef<TextInputInstance>(null);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
+import { StyleSheet, View, type TextInputInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { CountBadge } from '@/components/ui/count-badge';
@@ -28,7 +28,7 @@ export function SearchBar({
   onFilters?: () => void;
   filterCount?: number;
   autoFocus?: boolean;
-  inputRef?: React.Ref<RNTextInput>;
+  inputRef?: React.Ref<TextInputInstance>;
 }) {
   const [focused, setFocused] = useState(false);
   return (

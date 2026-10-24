@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
+import { Pressable, StyleSheet, View, type TextInputInstance } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
@@ -40,7 +40,7 @@ export function CodeBoxes({
   onSubmit,
   accessibilityLabel = 'Verification code',
 }: CodeBoxesProps) {
-  const ref = useRef<RNTextInput>(null);
+  const ref = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
   const current = Math.min(value.length, length - 1);
 
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   // Covers the row, so a tap anywhere lands in it; invisible but not
   // display:none, which would stop it taking focus.
   input: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0,
     backgroundColor: 'transparent',
     borderWidth: 0,

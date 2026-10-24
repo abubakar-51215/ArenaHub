@@ -3,9 +3,7 @@ import {
   Pressable,
   StyleSheet,
   View,
-  type TextInput as RNTextInput,
-  type TextInputProps,
-} from 'react-native';
+  type TextInputProps, type TextInputInstance } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -29,14 +27,14 @@ interface FieldProps extends TextInputProps {
   error?: boolean;
 }
 
-export const Field = forwardRef<RNTextInput, FieldProps>(function Field(
+export const Field = forwardRef<TextInputInstance, FieldProps>(function Field(
   { icon, revealable, error, style, onFocus, onBlur, value, secureTextEntry, ...props },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const inner = useRef<RNTextInput>(null);
-  useImperativeHandle(ref, () => inner.current as RNTextInput);
+  const inner = useRef<TextInputInstance>(null);
+  useImperativeHandle(ref, () => inner.current as TextInputInstance);
   const reduceMotion = useReducedMotion();
 
   // the eye and the crossed-out eye (frame 4 of the auth-2 prototype) swap by

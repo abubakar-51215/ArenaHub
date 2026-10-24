@@ -1,6 +1,7 @@
-import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import { PlatformPressable } from '@react-navigation/elements';
-import { Redirect, Tabs, useSegments, type Href } from 'expo-router';
+import type { BottomTabBarButtonProps } from 'expo-router/js-tabs';
+import { PlatformPressable } from 'expo-router/react-navigation';
+import { Redirect, useSegments, type Href } from 'expo-router';
+import { Tabs } from 'expo-router/js-tabs';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui/icon';

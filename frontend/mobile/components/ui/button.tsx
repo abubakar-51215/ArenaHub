@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   hidden: { opacity: 0 },
   faded: { opacity: 0.45 },
-  overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   // 650 isn't a value RN's TextStyle['fontWeight'] union accepts, but it's
   // what the prototype declares and components/ui/text.tsx's
   // normalizeWeight() reads the raw string directly (Number('650') >= 650 ->

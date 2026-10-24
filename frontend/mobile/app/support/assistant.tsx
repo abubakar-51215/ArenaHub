@@ -1,6 +1,6 @@
 import { router, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type ScrollView } from 'react-native';
+import { Pressable, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -40,7 +40,7 @@ export default function AssistantScreen() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
 
   useEffect(() => {
     const t = setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 60);

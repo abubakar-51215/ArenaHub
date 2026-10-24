@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, type StyleProp, type ViewStyle, type TextInputInstance } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -201,7 +201,7 @@ export function MenuRow({ icon, tone = 'idle', title, sub, last, onPress, right 
 }
 
 export function SearchBox({ value, onChange, placeholder, label }: { value: string; onChange: (v: string) => void; placeholder: string; label: string }) {
-  const ref = useRef<TextInput>(null);
+  const ref = useRef<TextInputInstance>(null);
   return (
     <Pressable onPress={() => ref.current?.focus()} style={styles.search} accessible={false}>
       <AIcon name="search" size={18} color={Colors.light.muted} />

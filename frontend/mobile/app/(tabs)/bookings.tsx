@@ -122,7 +122,7 @@ export default function BookingsScreen() {
               ) : null}
             </View>
           }
-          ListFooterComponent={tab === 'past' && items.length > 0 ? <Text style={styles.footer}>That is all your past bookings.</Text> : null}
+          ListFooterComponent={tab === 'past' && items.length > 0 ? <Text style={styles.footer}>That is all your past bookings.</Text> : undefined}
         />
       )}
     </SafeAreaView>

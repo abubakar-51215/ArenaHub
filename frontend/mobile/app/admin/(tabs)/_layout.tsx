@@ -1,6 +1,6 @@
-import { PlatformPressable } from '@react-navigation/elements';
-import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import { Tabs } from 'expo-router';
+import { PlatformPressable } from 'expo-router/react-navigation';
+import type { BottomTabBarButtonProps } from 'expo-router/js-tabs';
+import { Tabs } from 'expo-router/js-tabs';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type TextInput as RNTextInput, type TextInputProps } from 'react-native';
+import { Pressable, StyleSheet, View, type TextInputProps, type TextInputInstance } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 
@@ -55,7 +55,7 @@ interface TextFieldProps extends TextInputProps {
   error?: string | null;
   kind?: TextFieldKind;
   /** The box that comes next: the action key says "Next" and moves there. Without it the key says "Done" and closes the keyboard. */
-  nextRef?: React.RefObject<RNTextInput | null>;
+  nextRef?: React.RefObject<TextInputInstance | null>;
   /** Run when the action key is pressed on the last box (Done / Send / Search). */
   onSubmit?: () => void;
   /** A link at the right end of the box (Change). At least 44 high. */
@@ -69,7 +69,7 @@ interface TextFieldProps extends TextInputProps {
  * border and a soft lime ring while it has focus, a red border with a message under it on error, and a Show/Hide
  * link for passwords.
  */
-export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextField(
+export const TextField = forwardRef<TextInputInstance, TextFieldProps>(function TextField(
   { label, error, style, kind = 'text', nextRef, onSubmit, onSubmitEditing, action, hint, editable, onFocus, onBlur, ...props },
   ref,
 ) {

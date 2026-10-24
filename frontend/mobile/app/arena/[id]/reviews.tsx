@@ -268,7 +268,7 @@ export default function ArenaReviewsScreen() {
               keyExtractor={(r) => r.id}
               contentContainerStyle={styles.list}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.ink} colors={[Colors.light.ink]} />}
-              ListHeaderComponent={items.length > 0 ? <Summary average={average} count={count} breakdown={breakdown} /> : null}
+              ListHeaderComponent={items.length > 0 ? <Summary average={average} count={count} breakdown={breakdown} /> : undefined}
               renderItem={({ item }) => (
                 <ReviewCard
                   review={item}

@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ComponentRef, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated as RNAnimated, Easing as RNEasing, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -26,7 +26,7 @@ export function BottomSheet({ visible, title, onClose, children, label }: { visi
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(0);
   const drag = useSharedValue(0);
-  const root = useRef<View>(null);
+  const root = useRef<ComponentRef<typeof View>>(null);
   const lift = useRef(new RNAnimated.Value(0)).current;
 
   useEffect(() => {

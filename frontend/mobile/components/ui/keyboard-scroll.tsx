@@ -1,6 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import {
-  createContext,
+import { type ComponentRef, createContext,
   forwardRef,
   useCallback,
   useContext,
@@ -9,8 +8,7 @@ import {
   useMemo,
   useRef,
   type ReactNode,
-  type RefObject,
-} from 'react';
+  type RefObject, } from 'react';
 import {
   Animated,
   Easing,
@@ -24,8 +22,7 @@ import {
   type NativeSyntheticEvent,
   type ScrollViewProps,
   type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+  type ViewStyle, type ScrollViewInstance } from 'react-native';
 
 import { keyboardNow, keyboardOverlap, onKeyboardChange, scrollDeltaToReveal, scrollDeltaToRevealTop } from '@/lib/keyboard';
 
@@ -90,7 +87,7 @@ interface AreaProps {
 }
 
 export function KeyboardArea({ scrollRef, children, footer, wrapStyle, onScroll }: AreaProps) {
-  const wrap = useRef<View>(null);
+  const wrap = useRef<ComponentRef<typeof View>>(null);
   const offset = useRef(0);
   const inset = useRef(new Animated.Value(0)).current;
 
@@ -202,12 +199,12 @@ interface Props extends Omit<ScrollViewProps, 'keyboardShouldPersistTaps' | 'key
   wrapStyle?: StyleProp<ViewStyle>;
 }
 
-export const KeyboardScroll = forwardRef<ScrollView, Props>(function KeyboardScroll(
+export const KeyboardScroll = forwardRef<ScrollViewInstance, Props>(function KeyboardScroll(
   { children, footer, wrapStyle, onScroll, ...props },
   ref,
 ) {
-  const scroll = useRef<ScrollView>(null);
-  useImperativeHandle(ref, () => scroll.current as ScrollView);
+  const scroll = useRef<ScrollViewInstance>(null);
+  useImperativeHandle(ref, () => scroll.current as ScrollViewInstance);
   return (
     <KeyboardArea scrollRef={scroll} footer={footer} wrapStyle={wrapStyle} onScroll={onScroll}>
       {(sp) => (

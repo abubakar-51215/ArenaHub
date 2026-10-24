@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import { StyleSheet, TextInput as RNTextInput, type TextInputProps, type TextStyle } from 'react-native';
+import { StyleSheet, TextInput as RNTextInput, type TextInputProps, type TextStyle, type TextInputInstance } from 'react-native';
 
 import { useKeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { BodyLetterSpacing, Font } from '@/constants/theme';
@@ -29,9 +29,9 @@ function bodyFace(weight: number): string {
 // underlying RNTextInput — needed for G1's autofocus-first-field and
 // return-key-moves-to-next-field, neither of which works without a ref to
 // call .focus() on.
-export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, onFocus, ...rest }, ref) {
-  const inner = useRef<RNTextInput>(null);
-  useImperativeHandle(ref, () => inner.current as RNTextInput);
+export const TextInput = forwardRef<TextInputInstance, TextInputProps>(function TextInput({ style, onFocus, ...rest }, ref) {
+  const inner = useRef<TextInputInstance>(null);
+  useImperativeHandle(ref, () => inner.current as TextInputInstance);
   // a focused field scrolls itself into view above the keyboard (see components/ui/keyboard-scroll.tsx)
   const keyboard = useKeyboardScroll();
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;

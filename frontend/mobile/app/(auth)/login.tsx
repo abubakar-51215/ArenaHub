@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type TextInput as RNTextInput } from 'react-native';
+import { Pressable, StyleSheet, View, type TextInputInstance } from 'react-native';
 
 import { DevDetail } from '@/components/dev-detail';
 import { ScreenLoader } from '@/components/brand/screen-loader';
@@ -37,7 +37,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [btnStatus, flash] = useButtonStatus();
-  const passwordRef = useRef<RNTextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
   const setSession = useAuthStore((s) => s.setSession);
   // the saved sign-in could not be checked because the server could not be reached (see the root layout)
   const unreachable = useStartup((s) => s.unreachable);
@@ -217,7 +217,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   // the sign-in wait: a full-screen loader over the form, only after half a second
-  loading: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.light.paper, alignItems: 'center', justifyContent: 'center', zIndex: 50 },
+  loading: { ...StyleSheet.absoluteFill, backgroundColor: Colors.light.paper, alignItems: 'center', justifyContent: 'center', zIndex: 50 },
   // .note.info of the auth-2 frames
   note: { backgroundColor: '#EEF6D6', borderColor: '#D9EBA0', borderWidth: 1, borderRadius: 13, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
   retry: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
