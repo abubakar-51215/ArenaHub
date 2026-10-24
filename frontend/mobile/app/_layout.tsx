@@ -119,6 +119,18 @@ function RootNavigator() {
     pathnameRef.current = pathname;
   }, [pathname]);
 
+  // Open a kept link unless the app is already on it. The path the router reports can still be the one from before the
+  // signed-in screens appeared (on the web it then falls back to Home a moment later), so it is checked twice: a second
+  // time after the screens have settled, and the link is opened then if the app did not end up on it.
+  const openKeptLink = (link: string) => {
+    const path = link.split(/[?#]/)[0];
+    const open = () => {
+      if (pathnameRef.current !== path) router.push(link as Href);
+    };
+    setTimeout(open, 350);
+    setTimeout(open, 1400);
+  };
+
   // a link opened before the account is loaded (signed out, or a saved sign-in still being checked) is kept: it opens
   // after Log in, or after "Try again" when the server could not be reached at start (lib/deeplink.ts)
   useEffect(() => {
@@ -133,9 +145,7 @@ function RootNavigator() {
         const { accessToken: token, user: who } = useAuthStore.getState();
         const link = pathFromUrl(url);
         if (token && who && link && linkFitsRole(link, who.role)) {
-          setTimeout(() => {
-            if (pathnameRef.current !== link.split(/[?#]/)[0]) router.push(link as Href);
-          }, 350);
+          openKeptLink(link);
         }
       })
       .catch(() => {});
@@ -182,9 +192,7 @@ function RootNavigator() {
       // did keep it and is already on that screen, nothing is pushed a second time.
       if (link && linkFitsRole(link, currentUserQuery.data.role)) {
         startupLog(`reopening ${link}`);
-        setTimeout(() => {
-          if (pathnameRef.current !== link.split(/[?#]/)[0]) router.push(link as Href);
-        }, 350);
+        openKeptLink(link);
       }
     }
   }, [currentUserQuery.data, setUser]);
