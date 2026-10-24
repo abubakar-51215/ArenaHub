@@ -21,6 +21,7 @@ const WEB = process.env.WEB || "http://localhost:3000";
 const MOBILE = process.env.MOBILE || "http://localhost:8082";
 const API = process.env.API || "http://localhost:8001/api/v1";
 const LOG = process.env.BACKEND_LOG || "/tmp/backend-scratch.log";
+const PFX = process.env.CHK_PREFIX || "chk5"; // a new prefix gives a clean set of fake accounts on a used scratch database
 const OUT = path.resolve("scripts/.ui_verify");
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -255,14 +256,14 @@ async function main() {
   }
 
   // ---- 1. Register, OTP, Login ----
-  const playerEmail = "chk5-player@example.com";
-  const player2Email = "chk5-player2@example.com";
-  const ownerEmail = "chk5-owner@example.com";
-  const adminEmail = "chk5-admin@example.com";
+  const playerEmail = `${PFX}-player@example.com`;
+  const player2Email = `${PFX}-player2@example.com`;
+  const ownerEmail = `${PFX}-owner@example.com`;
+  const adminEmail = `${PFX}-admin@example.com`;
   // A dedicated account for the mobile browser checks (Get Directions, Pass
   // screen, WebSocket) so they never depend on the change-email/change-password
   // chain above succeeding first.
-  const mobileEmail = "chk5-mobile@example.com";
+  const mobileEmail = `${PFX}-mobile@example.com`;
   const mobilePassword = "Verify@12345";
 
   let playerTok, player2Tok, ownerTok, mobileTok;
@@ -326,7 +327,7 @@ async function main() {
     record("Change password", "N/A", "FAIL", e.message.slice(0, 200));
   }
 
-  const newEmail = "chk5-player-new@example.com";
+  const newEmail = `${PFX}-player-new@example.com`;
   let currentPlayerEmail = playerEmail;
   try {
     await api("/users/me/email", playerTok, {
@@ -758,7 +759,7 @@ async function main() {
 
   // ---- 19. Account deletion with OTP ----
   try {
-    const delEmail = "chk5-delete-me@example.com";
+    const delEmail = `${PFX}-delete-me@example.com`;
     const delTok = await registerAndVerify(delEmail, "player", "DeleteMe");
     await api("/users/me/delete", delTok, { method: "POST" });
     await new Promise((r) => setTimeout(r, 400));
