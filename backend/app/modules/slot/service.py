@@ -8,6 +8,7 @@ from datetime import date, datetime, time, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.messages import SLOT_DELETE_ONLY_FREE, SLOT_STATUS_NOT_SETTABLE
 from app.modules.arena import repository as arena_repo
 from app.modules.arena.model import Arena
 from app.modules.court import repository as court_repo
@@ -17,6 +18,7 @@ from app.modules.slot.model import SlotStatus, TimeSlot
 from app.modules.slot.schema import (
     CourtToday,
     DayAvailability,
+    OwnerSlotResponse,
     SlotGenerateRequest,
     SlotGenerateResult,
     SlotResponse,
@@ -171,10 +173,14 @@ async def generate_slots(
 
 async def list_owner_slots(
     db: AsyncSession, user: User, court_id: uuid.UUID, target_date: date
-) -> list[SlotResponse]:
+) -> list[OwnerSlotResponse]:
     await _owned_court_and_arena(db, court_id, user)
     rows = await repo.list_slots(db, court_id, target_date)
-    return [SlotResponse.model_validate(r) for r in rows]
+    booking_ids = await repo.active_booking_ids(db, [r.id for r in rows])
+    return [
+        OwnerSlotResponse.model_validate(r).model_copy(update={"booking_id": booking_ids.get(r.id)})
+        for r in rows
+    ]
 
 
 async def list_public_slots(
@@ -200,7 +206,7 @@ async def list_public_slots(
     return [
         SlotResponse.model_validate(r)
         for r in rows
-        if datetime.combine(r.date, r.start_time) > current
+        if datetime.combine(r.date, r.start_time) > current and r.status != SlotStatus.maintenance
     ]
 
 
@@ -265,43 +271,75 @@ async def _owned_slot(
     db: AsyncSession, user: User, court_id: uuid.UUID, slot_id: uuid.UUID
 ) -> TimeSlot:
     await _owned_court_and_arena(db, court_id, user)
-    slot = await repo.get_slot(db, slot_id)
+    # row-locked, so a booking that lands at the same moment cannot slip past the checks below
+    slot = await repo.get_slot_for_update(db, slot_id)
     if slot is None or slot.court_id != court_id:
         raise NotFoundError("Slot not found.")
     return slot
 
 
 _HAS_BOOKING_STATUSES = (SlotStatus.booked, SlotStatus.reserved)
+# the only two states an owner can put a slot in; held and booked belong to the booking engine
+_OWNER_SETTABLE = (SlotStatus.available, SlotStatus.maintenance)
 
 
 async def update_slot(
     db: AsyncSession, user: User, court_id: uuid.UUID, slot_id: uuid.UUID, data: SlotUpdate
 ) -> SlotResponse:
+    """Block, unblock or re-price one free slot. Asking for what is already true changes nothing
+    and writes nothing, so a second click is harmless."""
     slot = await _owned_slot(db, user, court_id, slot_id)
     if slot.status in _HAS_BOOKING_STATUSES:
         raise ValidationError("Cannot edit a slot that has an active booking.")
-    fields = data.model_dump(exclude_unset=True)
-    for field, value in fields.items():
-        setattr(slot, field, value)
-    await audit(
-        db,
-        "slot.update",
-        actor=user,
-        target_type="slot",
-        target_id=slot.id,
-        details=data.model_dump(exclude_unset=True, mode="json"),
-    )
-    await db.commit()
-    await broadcast_slot_status(court_id, slot.id, slot.date, slot.start_time, slot.status.value)
+    if data.status is not None and data.status not in _OWNER_SETTABLE:
+        raise ValidationError(SLOT_STATUS_NOT_SETTABLE)
+    changed = False
+    if data.status is not None and data.status != slot.status:
+        blocking = data.status == SlotStatus.maintenance
+        slot.status = data.status
+        await audit(
+            db,
+            "slot.block" if blocking else "slot.unblock",
+            actor=user,
+            target_type="slot",
+            target_id=slot.id,
+            details={"reason": data.reason} if blocking and data.reason else None,
+        )
+        changed = True
+    if data.price is not None and data.price != slot.price:
+        before = slot.price
+        slot.price = data.price  # the slot only: a booking keeps the amount it was made at
+        await audit(
+            db,
+            "slot.update",
+            actor=user,
+            target_type="slot",
+            target_id=slot.id,
+            details={"price_from": str(before), "price_to": str(data.price)},
+        )
+        changed = True
+    if changed:
+        await db.commit()
+        await broadcast_slot_status(
+            court_id, slot.id, slot.date, slot.start_time, slot.status.value
+        )
     return SlotResponse.model_validate(slot)
 
 
 async def delete_slot(
     db: AsyncSession, user: User, court_id: uuid.UUID, slot_id: uuid.UUID
 ) -> None:
-    slot = await _owned_slot(db, user, court_id, slot_id)
+    """Delete a free slot that never had a booking. A slot that is already gone is not an error."""
+    await _owned_court_and_arena(db, court_id, user)
+    slot = await repo.get_slot_for_update(db, slot_id)
+    if slot is None:
+        return
+    if slot.court_id != court_id:
+        raise NotFoundError("Slot not found.")
     if slot.status in _HAS_BOOKING_STATUSES:
         raise ValidationError("Cannot delete a slot that has an active booking.")
+    if slot.status != SlotStatus.available or await repo.has_booking_history(db, slot.id):
+        raise ValidationError(SLOT_DELETE_ONLY_FREE)
     slot_id_, slot_date, start_time = slot.id, slot.date, slot.start_time
     await audit(
         db,

@@ -55,6 +55,8 @@ class CourtToday(BaseModel):
 class SlotUpdate(RequestModel):
     status: SlotStatus | None = None
     price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    # why the owner is blocking the slot; kept in the audit trail only
+    reason: str | None = Field(default=None, max_length=200)
 
 
 class SlotResponse(BaseModel):
@@ -67,3 +69,9 @@ class SlotResponse(BaseModel):
     end_time: time
     status: SlotStatus
     price: Decimal
+
+
+class OwnerSlotResponse(SlotResponse):
+    """A slot as its owner sees it: also the booking using it, so the screen can link to it."""
+
+    booking_id: uuid.UUID | None = None

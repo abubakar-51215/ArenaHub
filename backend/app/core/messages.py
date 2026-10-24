@@ -154,3 +154,8 @@ ARENA_UNAVAILABLE = "This arena is not available right now."
 # The standard amenity list (a key that is not on it, or text an owner tries to add)
 AMENITY_NOT_ON_LIST = "One or more amenities are not on the standard list."
 AMENITY_EXTRA_CANNOT_ADD = "Older amenity text can be removed but not added."
+
+
+# Owner single-slot management (wording for the owner's approval)
+SLOT_STATUS_NOT_SETTABLE = "A slot can only be blocked or unblocked."
+SLOT_DELETE_ONLY_FREE = "Only a free slot that never had a booking can be deleted."

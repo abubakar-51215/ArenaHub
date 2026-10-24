@@ -10,6 +10,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.booking.model import Booking, BookingStatus
 from app.modules.court.model import Court
 from app.modules.slot.model import SlotStatus, TimeSlot
 
@@ -176,3 +177,24 @@ async def occupancy_by_court(
         (cid, an, cn, int(total or 0), int(booked or 0))
         for cid, an, cn, total, booked in result.all()
     ]
+
+
+async def has_booking_history(db: AsyncSession, slot_id: uuid.UUID) -> bool:
+    """Any booking row at all, even a cancelled one: the booking keeps pointing at its slot."""
+    found = await db.execute(select(Booking.id).where(Booking.slot_id == slot_id).limit(1))
+    return found.first() is not None
+
+
+async def active_booking_ids(
+    db: AsyncSession, slot_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, uuid.UUID]:
+    """slot id -> the live booking on it (cancelled and rejected ones do not count)."""
+    if not slot_ids:
+        return {}
+    rows = await db.execute(
+        select(Booking.slot_id, Booking.id).where(
+            Booking.slot_id.in_(slot_ids),
+            Booking.status.notin_([BookingStatus.cancelled, BookingStatus.rejected]),
+        )
+    )
+    return {row[0]: row[1] for row in rows.all()}  # noqa: C416

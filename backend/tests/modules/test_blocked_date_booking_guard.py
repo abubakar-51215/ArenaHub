@@ -110,7 +110,7 @@ async def test_editing_or_deleting_a_booked_slot_is_audited_when_allowed(
         json={"status": "maintenance"},
     )
     assert edited.status_code == 200
-    assert await _audit_count(db_session, "slot.update", slot_id) == 1
+    assert await _audit_count(db_session, "slot.block", slot_id) == 1
 
     deleted = await client.delete(
         f"/api/v1/owner/courts/{court_id}/slots/{slots[1]['id']}", headers=h
