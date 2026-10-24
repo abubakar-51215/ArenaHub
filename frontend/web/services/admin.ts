@@ -5,6 +5,7 @@ import type {
   AdminBooking,
   AdminPayment,
   AdminUser,
+  AdminBookingHistory,
   AdminUserDetail,
   Arena,
   ArenaStatus,
@@ -83,6 +84,16 @@ export function listUsers(params: {
 
 export function getUserDetail(userId: string): Promise<AdminUserDetail> {
   return api.get<AdminUserDetail>(`/admin/users/${userId}`);
+}
+
+export function getUserBookingHistory(
+  userId: string,
+  page: number,
+  pageSize: number,
+): Promise<AdminBookingHistory> {
+  return api.get<AdminBookingHistory>(
+    `/admin/users/${userId}/bookings?page=${page}&page_size=${pageSize}`,
+  );
 }
 
 export function suspendUser(userId: string, reason: string): Promise<AdminUser> {

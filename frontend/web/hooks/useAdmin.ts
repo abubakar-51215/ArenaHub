@@ -7,6 +7,7 @@ import {
   fetchDashboardMetrics,
   fetchPlatformSettings,
   forceRefund,
+  getUserBookingHistory,
   getUserDetail,
   listAllBookings,
   listAllPayments,
@@ -158,6 +159,13 @@ export function useUserDetail(userId: string | null) {
     queryKey: ["admin-user", userId],
     queryFn: () => getUserDetail(userId as string),
     enabled: !!userId,
+  });
+}
+
+export function useUserBookingHistory(userId: string, page: number, pageSize: number) {
+  return useQuery({
+    queryKey: ["admin-user-bookings", userId, page, pageSize],
+    queryFn: () => getUserBookingHistory(userId, page, pageSize),
   });
 }
 

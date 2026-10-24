@@ -374,6 +374,26 @@ export interface AdminUserDetail extends AdminUser {
   total_bookings: number;
 }
 
+/** One line of a person's booking history (admin, read-only). */
+export interface AdminHistoryBooking {
+  id: string;
+  booking_code: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  arena_name: string;
+  court_name: string;
+  status: BookingStatus;
+  total_amount: string;
+  /** an owner's history only: who booked, first name only */
+  player_first_name: string | null;
+}
+
+export interface AdminBookingHistory extends Page<AdminHistoryBooking> {
+  role: UserRole;
+  arenas: { id: string; name: string }[];
+}
+
 export interface AdminBooking {
   /** AHB-xxxxxx, the reference the player and the owner see */
   booking_code?: string;

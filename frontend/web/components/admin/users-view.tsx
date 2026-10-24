@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { BookingHistory } from "@/components/admin/booking-history";
 import { PageHeader } from "@/components/admin/page-header";
 import {
   AdminBadge,
@@ -366,6 +367,9 @@ export function UsersView({
                     : (detail.data?.total_bookings ?? 0).toLocaleString("en-US")}
               </dd>
             </dl>
+          )}
+          {viewing && viewing.role !== "admin" && (
+            <BookingHistory userId={viewing.id} isOwner={viewing.role === "owner"} />
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewing(null)}>
