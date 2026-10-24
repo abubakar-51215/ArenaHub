@@ -1,0 +1,572 @@
+[
+ {
+  "id": "R01",
+  "role": "all",
+  "title": "Which roles exist",
+  "expected": "Role inventory from code and database",
+  "actual": "Roles in the database: owner, player, admin. No arena staff role.",
+  "status": "PASS",
+  "evidence": "UserRole enum (player, owner, admin) in backend/app/modules/user/model.py",
+  "severity": ""
+ },
+ {
+  "id": "S01",
+  "role": "arena staff",
+  "title": "Arena Admin/Staff role",
+  "expected": "Document it as not implemented",
+  "actual": "There is no staff role: UserRole has only player/owner/admin and registering with role \"staff\" is refused (HTTP 422).",
+  "status": "NOT IMPLEMENTED",
+  "evidence": "No staff routes in docs/ROUTES_AND_ROLES.md",
+  "severity": ""
+ },
+ {
+  "id": "U01a",
+  "role": "player",
+  "title": "Duplicate email is refused, one account only",
+  "expected": "A second sign-up with a verified email is refused and no second row is made",
+  "actual": "Refused with HTTP 409; rows for that email: 1",
+  "status": "PASS",
+  "evidence": "{\"success\":false,\"message\":\"Email is already registered.\",\"data\":null,\"errors\":null}",
+  "severity": ""
+ },
+ {
+  "id": "U01b",
+  "role": "player",
+  "title": "Wrong OTP rejected, right OTP accepted",
+  "expected": "000000 refused; the real code works",
+  "actual": "Wrong code HTTP 422; real code HTTP 200",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U01c",
+  "role": "player",
+  "title": "Wrong password, logout, password reset",
+  "expected": "401 for wrong password; the refresh token dies after logout; reset code changes the password",
+  "actual": "Wrong password 401; refresh after logout 401; reset 200; old password 401; new password 200",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U02a",
+  "role": "player",
+  "title": "Arena search, sport filter, empty result",
+  "expected": "Real arena found; filters work; no-match is an empty list not an error",
+  "actual": "Search found the arena (1 hit); sport filter HTTP 200; no-match HTTP 200 with 0 items",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U02b",
+  "role": "player",
+  "title": "Availability filter and near-me",
+  "expected": "date filter and lat/lon radius answer 200 and include the test arena",
+  "actual": "Both filters answer 200 and list the arena",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U02c",
+  "role": "player",
+  "title": "Smart search and assistant",
+  "expected": "Supported request answers; nonsense and unsupported filter are handled",
+  "actual": "nlp 200, assistant 200, nonsense 200, indoor 200 (no crash)",
+  "status": "PASS",
+  "evidence": "{\"intent\":\"not_sure\",\"answer\":\"I am not sure about that one. You can ask me about bookings, refunds, payments or matches, or write to support.\",\"actions\":[{\"kind\":\"open_new_complaint\",\"label\":\"New complaint\",\"target\":null}],\"sugge",
+  "severity": ""
+ },
+ {
+  "id": "U02d",
+  "role": "player",
+  "title": "Indoor/outdoor filter",
+  "expected": "Recorded as a known limitation",
+  "actual": "Arena has no indoor/outdoor field, so there is nothing to filter on (known limitation, not a defect).",
+  "status": "NOT IMPLEMENTED",
+  "evidence": "Arena keys: id, owner_id, name, description, address, city, area, latitude, longitude, contact_phone, contact_email, operating_hours, sports_offered, images, status, rejection_reason, advance_percentage, require_",
+  "severity": ""
+ },
+ {
+  "id": "U03",
+  "role": "player",
+  "title": "Book, pay, see it as player/owner/admin",
+  "expected": "One consistent record across the three roles; slot no longer bookable",
+  "actual": "Player: confirmed, amount 2000.00; owner list and admin list show the same booking and amount; a second player is refused (HTTP 409). Price preview []",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U03b",
+  "role": "player",
+  "title": "Booking pass has a QR and a code, not the secret token",
+  "expected": "Pass shows booking_code; no pass_token is displayed",
+  "actual": "Pass HTTP 200; booking_code present; QR is an in-memory data image",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U03c",
+  "role": "player",
+  "title": "Other player cannot read or cancel my booking",
+  "expected": "404 for another player's booking",
+  "actual": "All three answered 404",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U06a",
+  "role": "player",
+  "title": "Notifications after a booking",
+  "expected": "Player and owner each have a notice that mentions the booking",
+  "actual": "Player has 1 notices, owner 2",
+  "status": "PASS",
+  "evidence": "{\"id\":\"7d17da85-5217-45d4-9d14-98df36c206a1\",\"event\":\"booking_confirmed\",\"title\":\"Booking confirmed\",\"body\":\"Your booking is confirmed. See you on the court!\",\"data\":{\"booking_id\":\"c20ebb76-4f26-4769-a116-9992185bf263\"},\"read_at\":",
+  "severity": ""
+ },
+ {
+  "id": "U04",
+  "role": "player",
+  "title": "Eight simultaneous bookings for one slot",
+  "expected": "Exactly one 201, the rest 409; one active booking row; no duplicate payment",
+  "actual": "Responses: 200,409,409,409,409,409,409,409. Active rows for the slot: 1. Slot status now ('reserved',)",
+  "status": "PASS",
+  "evidence": "Redis lock plus the unique index uq_bookings_active_slot_id",
+  "severity": ""
+ },
+ {
+  "id": "U04b",
+  "role": "player",
+  "title": "Two players, two devices, same slot, same instant",
+  "expected": "Exactly one wins",
+  "actual": "Responses 200/409",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U04c",
+  "role": "player",
+  "title": "Abandoned checkout holds the slot, then it is released",
+  "expected": "Held slot refuses others (409); after release it is bookable",
+  "actual": "Hold 200; other player while held 409; release 200; other player after 200",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "C01",
+  "role": "all",
+  "title": "Unpaid hold expires; late payment callback cannot resurrect it",
+  "expected": "After the payment window the booking is cancelled; a late signed 'paid' callback changes nothing",
+  "actual": "After the sweep: cancelled. Late paid callback HTTP 200; booking still cancelled; slot was ('available',) and another player could book it (HTTP 200)",
+  "status": "PASS",
+  "evidence": "backend/scripts/run_sweeps.py --advance-hours 25",
+  "severity": ""
+ },
+ {
+  "id": "U05a",
+  "role": "player",
+  "title": "Stripe (card): signed webhook confirms; bad signature, duplicate, wrong amount",
+  "expected": "Only a valid signed event confirms, once",
+  "actual": "Bad signature HTTP 422 (still pending_payment); wrong amount HTTP 422 (still pending_payment); valid event 200 -> confirmed; duplicate 200; payment rows 1",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U05b",
+  "role": "player",
+  "title": "Stripe: cancelled/expired checkout does not pay",
+  "expected": "Expired event fails the payment, booking not confirmed",
+  "actual": "Expired event HTTP 200; booking cancelled; payment ('failed', 'failed')",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U05-jazzcash",
+  "role": "player",
+  "title": "JazzCash (simulator): signed callback, bad signature, duplicate, wrong route",
+  "expected": "Valid callback confirms once; the rest change nothing",
+  "actual": "Bad signature 422; callback on the other gateway's address 422; unknown transaction 404; still pending_payment. Valid 200 -> confirmed; duplicate 200; completed payments 1",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U05-easypaisa",
+  "role": "player",
+  "title": "EasyPaisa (simulator): signed callback, bad signature, duplicate, wrong route",
+  "expected": "Valid callback confirms once; the rest change nothing",
+  "actual": "Bad signature 422; callback on the other gateway's address 422; unknown transaction 404; still pending_payment. Valid 200 -> confirmed; duplicate 200; completed payments 1",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U05d",
+  "role": "player",
+  "title": "Browser return page / frontend success cannot mark a payment paid",
+  "expected": "GET /payments/return and another player's simulate-confirm do not confirm",
+  "actual": "Return page HTTP 422; other player's simulate-confirm HTTP 404; booking still pending_payment",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U05e",
+  "role": "player+owner",
+  "title": "Bank transfer: receipt keeps it pending; owner approves",
+  "expected": "pending_approval until the owner approves, then confirmed",
+  "actual": "After initiate pending_payment; receipt HTTP 200 -> pending_approval; player approving own 403; other owner approving 404; real owner 200 -> confirmed",
+  "status": "PASS",
+  "evidence": "{\"success\":true,\"message\":\"Receipt uploaded, awaiting owner approval.\",\"data\":{\"id\":\"29a8eaf0-ea78-4346-89e4-de5b1f73db8f\",\"booking_group_id\":\"8d282d0b-4e2b-4daf-95b2-6b74bcb7ba44\",\"player_id\":\"4a6d9cc2-85ae-4219-8754-f5b95d8879d0",
+  "severity": ""
+ },
+ {
+  "id": "U05f",
+  "role": "player+owner",
+  "title": "Bank transfer: owner rejects",
+  "expected": "Rejected, never shown as paid, slot freed",
+  "actual": "Reject HTTP 200; booking rejected; payment ('failed',); approving afterwards HTTP 422",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U06b",
+  "role": "player",
+  "title": "Cancel a paid booking: refund recorded, slot reopened, double cancel makes one refund",
+  "expected": "One refund; slot available again",
+  "actual": "Preview HTTP 200; two simultaneous cancels answered 200,422; refunds 1 (('pending',)); booking cancelled; slot ('available',)",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "A03-first",
+  "role": "admin",
+  "title": "Force refund once, repeated and simultaneous (first run, before the fix)",
+  "expected": "One refund only; the second attempt is refused",
+  "actual": "Three simultaneous force-refunds all answered 200 and three refund rows of 2000 were made against one payment of 2000 (6000 refunded on a 2000 payment). Owner 403, player 403.",
+  "status": "FAIL",
+  "evidence": "Scratch database query: 3 refund rows with the same payment_id, each 2000.00 pending; payment amount 2000.00",
+  "severity": "Critical"
+ },
+ {
+  "id": "A03",
+  "role": "admin",
+  "title": "Force refund once, repeated and simultaneous (after the fix)",
+  "expected": "One refund only; the second attempt is refused",
+  "actual": "Three simultaneous force-refunds answered 200,409,409; refund rows 1; owner 403; player 403",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "C02",
+  "role": "player",
+  "title": "Old booking id, past slot, passed date",
+  "expected": "404 for a made-up id; a started slot cannot be booked",
+  "actual": "Made-up booking id HTTP 404; started slot none today in this arena, covered by tests/modules/test_slot_past.py",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U07a",
+  "role": "player",
+  "title": "Review: eligible, invalid, duplicate",
+  "expected": "One review per booking; 1-5 only",
+  "actual": "Rating 9 -> 422; valid -> 201; duplicate -> 409; another player's booking -> 404",
+  "status": "PASS",
+  "evidence": "(the booking was marked completed with SQL on the scratch database to stand in for the game being played)",
+  "severity": ""
+ },
+ {
+  "id": "U07b",
+  "role": "player",
+  "title": "Match: create, join, leave",
+  "expected": "Creator, joiner and counts follow the rules",
+  "actual": "Create 201; join 200; join twice 409; match on someone else's booking 404; leave 200",
+  "status": "PASS",
+  "evidence": "{\"success\":true,\"message\":\"Match created.\",\"data\":{\"id\":\"c2bd171a-3596-4e26-bc28-658131c312a3\",\"creator_id\":\"4a6d9cc2-85ae-4219-8754-f5b95d8879d0\",\"creator_name\":\"Verify Player\",\"arena_id\":\"cf0be9b3-dc88-4fa1-97c9-4d43373b7731\",\"a",
+  "severity": ""
+ },
+ {
+  "id": "U07c",
+  "role": "player+owner",
+  "title": "Equipment rental: list and price",
+  "expected": "Owner adds equipment; player sees it",
+  "actual": "Add 201; player list 200 contains it",
+  "status": "PASS",
+  "evidence": "{\"success\":true,\"message\":\"Equipment created.\",\"data\":{\"id\":\"40efc306-a332-49db-9b79-51c55f0b9dfd\",\"arena_id\":\"cf0be9b3-dc88-4fa1-97c9-4d43373b7731\",\"name\":\"QA Football\",\"description\":null,\"rental_price\":\"300.00\",\"quantity_total\":",
+  "severity": ""
+ },
+ {
+  "id": "U07d",
+  "role": "player",
+  "title": "Complaint submitted, admin moves it, player sees the status",
+  "expected": "Status visible to the player",
+  "actual": "Create 201; admin move 200; player sees \"under_review\"; another player 404",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "U07e",
+  "role": "player",
+  "title": "Location validation and directions data",
+  "expected": "Missing, swapped and out-of-country coordinates are refused",
+  "actual": "Swapped 422; outside Pakistan 422; one coordinate only 422",
+  "status": "PASS",
+  "evidence": "[{\"field\":\"\",\"message\":\"Value error, Latitude and longitude look swapped.\"}]",
+  "severity": ""
+ },
+ {
+  "id": "O01",
+  "role": "owner",
+  "title": "Owner dashboard, logout, protected page",
+  "expected": "Dashboard answers; after logout the token's refresh is dead",
+  "actual": "Dashboard 200; no token 401; invalid token 401",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O02a",
+  "role": "owner",
+  "title": "Edit arena and court, then search sees it",
+  "expected": "Edits persist and reach player search",
+  "actual": "Arena PATCH 200; reload shows new name; player search finds it; court price PATCH 200",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O02b",
+  "role": "owner",
+  "title": "Invalid price, hours, required fields",
+  "expected": "422 from the backend for each",
+  "actual": "negative 422; zero 422; missing name 422; closing before opening 422; text price 422",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O02c",
+  "role": "owner",
+  "title": "Edit does not change an existing booking's price",
+  "expected": "Booked amount stays the same after a court price change",
+  "actual": "Amount stayed 2000 after the price edit",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O03",
+  "role": "owner",
+  "title": "Tenant isolation: owner B against owner A's data",
+  "expected": "404/403 on every read and write",
+  "actual": "Owner B got 404,404,404,404,404,404,404,404,404,404,404,404 on 12 attempts; arena name unchanged",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O03b",
+  "role": "owner",
+  "title": "Owner lists only their own bookings, payments, reports",
+  "expected": "Owner B sees none of arena A's data",
+  "actual": "Statuses 200,200,200; none of arena A's ids appear",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O04",
+  "role": "owner",
+  "title": "Owner payment report reconciles with the database",
+  "expected": "Rows and total equal the payments on this owner's arena",
+  "actual": "Report has 12 payment rows totalling 25000; database has 12 payments totalling 25000",
+  "status": "PASS",
+  "evidence": "header: Date,Arena,Player,Booking,Method,Status,Amount",
+  "severity": ""
+ },
+ {
+  "id": "O05",
+  "role": "owner",
+  "title": "Photo upload: invalid type and oversized file",
+  "expected": "Backend refuses a text file and a >5 MB file",
+  "actual": "Text file HTTP 422; 6 MB image HTTP 413",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "O06",
+  "role": "owner",
+  "title": "Blocked date: block, cannot book, unblock",
+  "expected": "A blocked day cannot be booked; a past day cannot be blocked",
+  "actual": "Block 201; a past date 422",
+  "status": "PASS",
+  "evidence": "{\"success\":false,\"message\":\"You can't block a date that has already passed.\",\"data\":null,\"errors\":null}",
+  "severity": ""
+ },
+ {
+  "id": "A01",
+  "role": "admin",
+  "title": "Admin access control",
+  "expected": "Admin pages refuse no token, player and owner; admin gets in",
+  "actual": "All 8 admin routes: admin 200, no token 401, player 403, owner 403",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "A01b",
+  "role": "admin",
+  "title": "Owner-only routes with an admin or player token",
+  "expected": "Role mismatch refused",
+  "actual": "Admin on /owner/arenas 403; player 403. Admin on GET /bookings (any signed-in user) 200",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "A02",
+  "role": "admin",
+  "title": "Role escalation attempts",
+  "expected": "A user cannot make themself admin",
+  "actual": "Register as admin HTTP 422; PUT /users/me with role admin 422; role is still \"player\"",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "A02b",
+  "role": "admin",
+  "title": "Suspend and reactivate a user",
+  "expected": "Suspended user is refused sign-in; reactivation restores it",
+  "actual": "Suspend 200; sign-in 401; old token 401; reactivate 200; sign-in 200; audit log mentions it: true",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "A02c",
+  "role": "admin",
+  "title": "Arena approval, rejection and suspension",
+  "expected": "Status changes persist and hide/show the arena",
+  "actual": "Suspend 200: arena in search false; reactivate 200: arena in search true",
+  "status": "PASS",
+  "evidence": "{\"success\":true,\"message\":\"Arena suspended.\",\"data\":{\"id\":\"231d0f0e-818e-4bff-b430-e77d486c048c\",\"owner_id\":\"fd1f2fbe-e596-4f99-8368-c2d2975bf56b\",\"name\":\"QA Arena B qa8\",\"description\":\"Verification fixture\",\"address\":\"2 Verify Ro",
+  "severity": ""
+ },
+ {
+  "id": "A03b",
+  "role": "admin",
+  "title": "Admin views match player and owner views",
+  "expected": "Same booking and payment amounts",
+  "actual": "Admin payment amount 2000.00 = player history amount 2000.00",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "A04",
+  "role": "admin",
+  "title": "Reports, filters, empty and wrong dates",
+  "expected": "Export answers; an empty period is header-only; junk date refused",
+  "actual": "Normal 200 (80 rows); empty period 200 (0 rows); backwards range 200 (0 rows); junk date 422",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "X01",
+  "role": "all",
+  "title": "Player A cannot touch player B's payments and receipts",
+  "expected": "404",
+  "actual": "Statuses 404,404,404,404",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "X02",
+  "role": "all",
+  "title": "Hostile input",
+  "expected": "Odd bodies are refused without a 500",
+  "actual": "Statuses 422,422,404,404,422,422 (all 4xx, none 500)",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "X03",
+  "role": "all",
+  "title": "Errors do not leak internals",
+  "expected": "No stack trace, SQL or file path in error bodies",
+  "actual": "No internals in the sampled errors; wrong password and unknown email give the same message",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "X04",
+  "role": "all",
+  "title": "Backend health and Redis lock cleanup",
+  "expected": "Health ok; no lock keys left behind after the concurrency tests",
+  "actual": "Health api/db/redis ok; lock keys left in Redis db 5: 0",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "X05",
+  "role": "all",
+  "title": "Rate limiting and brute force",
+  "expected": "Repeated wrong logins get slowed or blocked",
+  "actual": "After 25 quick wrong logins the answer is HTTP 429",
+  "status": "PASS",
+  "evidence": "",
+  "severity": ""
+ },
+ {
+  "id": "C03",
+  "role": "all",
+  "title": "Backend restart while a payment is pending",
+  "expected": "After the restart the pending booking and payment are still there; the late signed callback confirms once",
+  "actual": "After restart: booking pending_payment, payment found (yes). Signed callback 200, repeat 200 -> booking confirmed; completed payments (1,); slot ('booked',)",
+  "status": "PASS",
+  "evidence": "Backend process stopped and started between the two scripts",
+  "severity": ""
+ },
+ {
+  "id": "C04-first",
+  "role": "all",
+  "title": "Redis unavailable (second backend, closed Redis port) (first run, before the fix)",
+  "expected": "Health says degraded; no double booking and no 500 when the slot lock cannot be taken",
+  "actual": "Health HTTP 503 (redis: error); booking answered HTTP 500 \"Internal server error\" because the sign-in check (token sign-out list) raised on the dead Redis; nothing was booked (0 active bookings).",
+  "status": "FAIL",
+  "evidence": "scratch backend on :8002 with REDIS_URL pointing at a closed port",
+  "severity": "Medium"
+ },
+ {
+  "id": "C04",
+  "role": "all",
+  "title": "Redis unavailable (second backend, closed Redis port) (after the fix)",
+  "expected": "Health says degraded; no double booking and no 500 when the slot lock cannot be taken",
+  "actual": "Health HTTP 503 (redis: error); sign-in 200; arena search 200; booking 503 \"This service is not available right now\"; active bookings on that slot afterwards: (0,)",
+  "status": "PASS",
+  "evidence": "scratch backend on :8002 with REDIS_URL pointing at a closed port",
+  "severity": ""
+ }
+]
