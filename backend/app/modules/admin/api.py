@@ -200,6 +200,17 @@ async def get_user(
     return success(data=data, message="User retrieved.")
 
 
+@router.get("/users/{user_id}/bookings", summary="A player's or owner's booking history")
+async def user_booking_history(
+    user_id: uuid.UUID,
+    params: PaginationParams = Depends(pagination_params),
+    _user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    data = await service.user_booking_history(db, user_id, params)
+    return success(data=data, message="Booking history retrieved.")
+
+
 @router.patch("/users/{user_id}/suspend", summary="Suspend a user account")
 async def suspend_user(
     user_id: uuid.UUID,

@@ -77,6 +77,27 @@ class AdminUserDetailResponse(AdminUserResponse):
     suspended_reason: str | None = None
 
 
+class AdminHistoryBooking(BaseModel):
+    """One line of a person's booking history. ``player_first_name`` is filled for an owner's
+    history only (who booked), and is the first name and nothing else."""
+
+    id: uuid.UUID
+    booking_code: str
+    booking_date: date
+    start_time: time
+    end_time: time
+    arena_name: str
+    court_name: str
+    status: BookingStatus
+    total_amount: Decimal
+    player_first_name: str | None = None
+
+
+class AdminHistoryArena(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
 # ---- booking / payment monitoring --------------------------------------------------
 
 

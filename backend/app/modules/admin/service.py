@@ -20,6 +20,8 @@ from app.modules.admin import repository as repo
 from app.modules.admin.model import PlatformSettings
 from app.modules.admin.schema import (
     AdminBookingResponse,
+    AdminHistoryArena,
+    AdminHistoryBooking,
     AdminPaymentResponse,
     AdminUserDetailResponse,
     AdminUserResponse,
@@ -257,6 +259,43 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> AdminUserDeta
         total_complaints=await repo.count_user_complaints(db, user_id),
         suspended_reason=None if user.is_active else await repo.last_suspend_reason(db, user_id),
     )
+
+
+async def user_booking_history(
+    db: AsyncSession, user_id: uuid.UUID, params: PaginationParams
+) -> dict:
+    """Read-only, newest first. A player sees their bookings; an owner their arenas and the
+    bookings received, with the booker's first name only."""
+    user = await repo.get_user(db, user_id)
+    if user is None:
+        raise NotFoundError("User not found.")
+    rows, total = await repo.list_booking_history(
+        db, user, offset=params.offset, limit=params.page_size
+    )
+    is_owner = user.role == UserRole.owner
+    items = [
+        AdminHistoryBooking(
+            id=b.id,
+            booking_code=booking_service.booking_code_for(b.booking_group_id),
+            booking_date=b.booking_date,
+            start_time=b.start_time,
+            end_time=b.end_time,
+            arena_name=arena_name,
+            court_name=court_name,
+            status=b.status,
+            total_amount=b.total_amount,
+            player_first_name=(
+                (player_name.split()[0] if player_name.split() else "") if is_owner else None
+            ),
+        )
+        for b, arena_name, court_name, player_name in rows
+    ]
+    arenas = (
+        [AdminHistoryArena(id=a.id, name=a.name) for a in await repo.list_owner_arenas(db, user.id)]
+        if is_owner
+        else []
+    )
+    return {"role": user.role.value, "arenas": arenas, **paginated(items, total, params)}
 
 
 async def suspend_user(

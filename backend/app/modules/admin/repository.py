@@ -108,6 +108,41 @@ async def list_all_bookings(
     return [(b, an, cn, pn) for b, an, cn, pn in result.all()], total
 
 
+async def list_owner_arenas(db: AsyncSession, owner_id: uuid.UUID) -> list[Arena]:
+    result = await db.execute(
+        select(Arena)
+        .where(Arena.owner_id == owner_id, Arena.deleted_at.is_(None))
+        .order_by(Arena.name.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_booking_history(
+    db: AsyncSession, user: User, *, offset: int, limit: int
+) -> tuple[list[tuple[Booking, str, str, str]], int]:
+    """A player's own bookings, or the bookings on an owner's arenas (newest day first).
+    Any other role has none. Each row: booking, arena name, court name, player's full name."""
+    if user.role not in (UserRole.player, UserRole.owner):
+        return [], 0
+    base = (
+        select(Booking, Arena.name, Court.name, User.full_name)
+        .join(Arena, Arena.id == Booking.arena_id)
+        .join(Court, Court.id == Booking.court_id)
+        .join(User, User.id == Booking.player_id)
+    )
+    if user.role == UserRole.player:
+        base = base.where(Booking.player_id == user.id)
+    else:
+        base = base.where(Arena.owner_id == user.id)
+    total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    result = await db.execute(
+        base.order_by(Booking.booking_date.desc(), Booking.start_time.desc(), Booking.id.asc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return [(b, an, cn, pn) for b, an, cn, pn in result.all()], total
+
+
 # ---- platform-wide payments --------------------------------------------------
 
 
