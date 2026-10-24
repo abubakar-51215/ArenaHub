@@ -21,7 +21,7 @@ export function noticeTarget(n: Pick<AppNotification, 'event' | 'data'>): Notice
     const matchId = str(d.match_id);
     return matchId ? { kind: 'match', matchId } : { kind: 'none' };
   }
-  if (n.event === 'complaint_reply') {
+  if (n.event === 'complaint_reply' || n.event === 'complaint_status') {
     const complaintId = str(d.complaint_id);
     return complaintId ? { kind: 'complaint', complaintId } : { kind: 'none' };
   }
@@ -80,6 +80,7 @@ export function noticeLook(event: string): { tone: NoticeTone; icon: NoticeIcon 
     case 'match_full':
       return { tone: 'ok', icon: 'people' };
     case 'complaint_reply':
+    case 'complaint_status':
       return { tone: 'ok', icon: 'lifebuoy' };
     default:
       return { tone: 'idle', icon: 'bell' };
