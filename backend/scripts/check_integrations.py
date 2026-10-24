@@ -28,6 +28,7 @@ def report(settings: Any) -> list[str]:
         ("SENTRY_DSN", _set(settings.sentry_dsn)),
         ("STRIPE_SECRET_KEY", bool(settings.stripe_configured)),
         ("STRIPE_WEBHOOK_SECRET", _set(settings.stripe_webhook_secret)),
+        ("SAFEPAY (api key, secret key, webhook secret)", bool(settings.safepay_configured)),
         ("SMTP_USER (EMAIL_USERNAME)", _set(settings.email_username)),
         ("SMTP_PASSWORD (EMAIL_PASSWORD)", _set(settings.email_password)),
         (

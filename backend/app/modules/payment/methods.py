@@ -6,7 +6,7 @@ provider name; ``method`` is the value to send as ``payment_method`` when
 starting a payment.
 """
 
-from app.core.config import PaymentMode, get_settings
+from app.core.config import CardProvider, PaymentMode, get_settings
 from app.core.exceptions import ServiceUnavailableError
 from app.modules.payment.model import PaymentMethod
 
@@ -39,11 +39,23 @@ _ORDER = (
 )
 
 
+def _key(method: PaymentMethod) -> str:
+    """The provider name shown to the apps: for card it is the active card provider."""
+    if method == PaymentMethod.card:
+        return get_settings().card_provider.value
+    return _KEYS[method]
+
+
 def method_state(method: PaymentMethod) -> str:
     settings = get_settings()
     if method == PaymentMethod.bank_transfer:
         return AVAILABLE
     if method == PaymentMethod.card:
+        if settings.card_provider == CardProvider.safepay:
+            # no development stand-in: SafePay is offered only when it is configured AND real
+            # checkout has been switched on (SAFEPAY_CHECKOUT_ENABLED, after sandbox sign-off)
+            ready = settings.safepay_configured and settings.safepay_checkout_enabled
+            return AVAILABLE if ready else UNAVAILABLE
         # development has a built-in test card page when there is no Stripe key
         return AVAILABLE if settings.stripe_configured or settings.is_dev else UNAVAILABLE
     # The two wallets have no merchant account yet: a simulator in development only.
@@ -56,7 +68,7 @@ def list_methods() -> list[dict[str, str | None]]:
         state = method_state(method)
         out.append(
             {
-                "key": _KEYS[method],
+                "key": _key(method),
                 "method": method.value,
                 "label": _LABELS[method],
                 "state": state,

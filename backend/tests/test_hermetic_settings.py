@@ -20,6 +20,13 @@ def test_no_real_service_setting_leaked_into_this_test_run() -> None:
     assert settings.email_send_in_dev is False, "EMAIL_SEND_IN_DEV must be off in a test run"
     assert not settings.stripe_secret_key, "STRIPE_SECRET_KEY must be unset in a test run"
     assert not settings.stripe_webhook_secret, "STRIPE_WEBHOOK_SECRET must be unset in a test run"
+    assert (
+        settings.card_provider.value == "stripe"
+    ), "CARD_PROVIDER must be the default in a test run"
+    assert not settings.safepay_api_key, "SAFEPAY_API_KEY must be unset in a test run"
+    assert not settings.safepay_secret_key, "SAFEPAY_SECRET_KEY must be unset in a test run"
+    assert not settings.safepay_webhook_secret, "SAFEPAY_WEBHOOK_SECRET must be unset in a test run"
+    assert settings.safepay_checkout_enabled is False, "SafePay checkout must be off in a test run"
     assert not settings.cloudinary_url, "CLOUDINARY_URL must be unset in a test run"
     assert not settings.sentry_dsn, "SENTRY_DSN must be unset in a test run"
     assert not settings.google_client_ids_raw, "GOOGLE_CLIENT_IDS must be unset in a test run"

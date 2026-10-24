@@ -110,11 +110,19 @@ async def _record_failed_try(
 
 
 _PROVIDER_NAME = {
-    PaymentMethod.card: "stripe",
+    PaymentMethod.card: "stripe",  # the default card provider; see _provider_name
     PaymentMethod.jazzcash: "jazzcash",
     PaymentMethod.easypaisa: "easypaisa",
     PaymentMethod.bank_transfer: "manual",
 }
+
+
+def _provider_name(method: PaymentMethod) -> str:
+    """The provider name recorded on a NEW payment. Card is Stripe or SafePay (CARD_PROVIDER);
+    the record then decides who handles that payment's webhook, status check and refund."""
+    if method == PaymentMethod.card:
+        return get_settings().card_provider.value
+    return _PROVIDER_NAME[method]
 
 
 async def _group_bookings_for_player(
@@ -222,7 +230,7 @@ async def initiate_payment(
         amount=amount,
         currency="PKR",
         payment_method=data.payment_method,
-        payment_provider=_PROVIDER_NAME[data.payment_method],
+        payment_provider=_provider_name(data.payment_method),
         gateway_transaction_id=result.gateway_transaction_id,
         status=PaymentStatus.pending,
         payment_type=bookings[0].payment_type,
@@ -301,7 +309,7 @@ async def initiate_balance_payment(
         amount=outstanding,
         currency="PKR",
         payment_method=data.payment_method,
-        payment_provider=_PROVIDER_NAME[data.payment_method],
+        payment_provider=_provider_name(data.payment_method),
         gateway_transaction_id=result.gateway_transaction_id,
         status=PaymentStatus.pending,
         payment_type=bookings[0].payment_type,
@@ -458,7 +466,7 @@ async def handle_webhook(
     # route the request arrived on (jazzcash/easypaisa/card) actually matches
     # the provider this payment was initiated with, so a signed callback from
     # one gateway can't be replayed against a payment from another.
-    if _PROVIDER_NAME.get(payment.payment_method) != payment_method:
+    if payment.payment_provider != payment_method:
         raise ValidationError("Webhook provider does not match this payment's method.")
     if payment.status != PaymentStatus.pending:
         return  # already processed — webhooks can be retried by the gateway
@@ -701,7 +709,7 @@ async def _issue_refund(
         details={"booking_id": str(booking.id), "amount": str(amount), "kind": kind},
     )  # fmt: skip
 
-    provider = get_provider(payment.payment_method.value)
+    provider = get_provider(payment.payment_provider)
     try:
         result = await provider.refund(
             gateway_transaction_id=payment.gateway_transaction_id or "",
@@ -1071,7 +1079,7 @@ async def retry_pending_refunds(db: AsyncSession, now: datetime | None = None) -
         booking = await booking_repo.get_booking(db, refund.booking_id)
         if payment is None or booking is None:
             continue
-        provider = get_provider(payment.payment_method.value)
+        provider = get_provider(payment.payment_provider)
         try:
             result = await provider.refund(
                 gateway_transaction_id=payment.gateway_transaction_id or "",

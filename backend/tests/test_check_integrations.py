@@ -27,6 +27,7 @@ def _settings(**over: object) -> SimpleNamespace:
         "stripe_configured": True,
         "stripe_secret_key": SECRETS["stripe"],
         "stripe_webhook_secret": SECRETS["stripe_hook"],
+        "safepay_configured": True,
         "email_username": SECRETS["user"],
         "email_password": SECRETS["password"],
         "support_email": SECRETS["support"],
@@ -42,7 +43,7 @@ def _settings(**over: object) -> SimpleNamespace:
 
 def test_every_line_is_a_name_and_set_or_missing_and_nothing_else() -> None:
     lines = report(_settings())
-    assert len(lines) == 10
+    assert len(lines) == 11
     for line in lines:
         assert re.fullmatch(r"[A-Z_ ()a-z,]+: (SET|MISSING)", line), line
     assert all(line.endswith(": SET") for line in lines)
@@ -74,6 +75,7 @@ def test_missing_and_placeholder_values_say_missing() -> None:
                 sentry_dsn="",
                 stripe_configured=False,  # a placeholder key is not a key
                 stripe_webhook_secret=None,
+                safepay_configured=False,
                 email_username=None,
                 email_password=None,
                 support_email=check_integrations._DEFAULT_SUPPORT_EMAIL,

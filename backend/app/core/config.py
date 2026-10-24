@@ -45,6 +45,26 @@ class PaymentMode(StrEnum):
     mock = "mock"
 
 
+class CardProvider(StrEnum):
+    """Which gateway takes the ``card`` payment method for NEW payments. Each payment records the
+    provider it was made with (``Payment.payment_provider``), and that record, not this setting,
+    decides who handles its webhook, status check and refund, so switching never strands an old
+    payment."""
+
+    stripe = "stripe"
+    safepay = "safepay"
+
+
+class SafepayEnvironment(StrEnum):
+    sandbox = "sandbox"
+    production = "production"
+
+
+# SafePay's two API hosts, as documented on its developer docs (Express Checkout page).
+SAFEPAY_SANDBOX_URL = "https://sandbox.api.getsafepay.com"
+SAFEPAY_PRODUCTION_URL = "https://api.getsafepay.com"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Resolve the developer env file from the backend package rather than
@@ -138,6 +158,43 @@ class Settings(BaseSettings):
     # Which provider backs the gateway payment methods — see PaymentMode.
     payment_mode: PaymentMode = Field(default=PaymentMode.auto, alias="PAYMENT_MODE")
 
+    # Card payments: stripe (default) or safepay — see CardProvider.
+    card_provider: CardProvider = Field(default=CardProvider.stripe, alias="CARD_PROVIDER")
+    # SafePay. The API key is the public merchant key; the secret key and the webhook secret
+    # never leave the backend. Empty = SafePay is "not configured".
+    safepay_env: SafepayEnvironment = Field(default=SafepayEnvironment.sandbox, alias="SAFEPAY_ENV")
+    safepay_api_key: str | None = Field(default=None, alias="SAFEPAY_API_KEY")
+    safepay_secret_key: str | None = Field(default=None, alias="SAFEPAY_SECRET_KEY")
+    safepay_webhook_secret: str | None = Field(default=None, alias="SAFEPAY_WEBHOOK_SECRET")
+    # the secret before the last rotation: its signatures are still accepted (events already on
+    # their way), see integrations/payments/safepay.py
+    safepay_webhook_secret_previous: str | None = Field(
+        default=None, alias="SAFEPAY_WEBHOOK_SECRET_PREVIOUS"
+    )
+    # Real checkout stays OFF until the SafePay contract items listed in
+    # docs/SAFEPAY_INTEGRATION.md are confirmed in the sandbox (checkout address, amount unit,
+    # sign-in scheme). With it off, choosing safepay answers "not available yet".
+    safepay_checkout_enabled: bool = Field(default=False, alias="SAFEPAY_CHECKOUT_ENABLED")
+
+    @property
+    def safepay_base_url(self) -> str:
+        if self.safepay_env == SafepayEnvironment.production:
+            return SAFEPAY_PRODUCTION_URL
+        return SAFEPAY_SANDBOX_URL
+
+    @property
+    def safepay_configured(self) -> bool:
+        """The three credentials are set and none is an obvious placeholder."""
+
+        def real(value: str | None) -> bool:
+            v = (value or "").strip().lower()
+            return len(v) >= 8 and "xxx" not in v and "placeholder" not in v and "changeme" not in v
+
+        return all(
+            real(v)
+            for v in (self.safepay_api_key, self.safepay_secret_key, self.safepay_webhook_secret)
+        )
+
     # Error tracking (Sentry). Empty = off: no SDK init, no network call.
     # See app/core/observability.py for the scrubber.
     sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
@@ -212,6 +269,16 @@ class Settings(BaseSettings):
             problems.append("DEBUG must be off")
         if self.payment_mode == PaymentMode.mock:
             problems.append("PAYMENT_MODE=mock is for development and tests only")
+        if self.card_provider == CardProvider.safepay:
+            if not self.safepay_configured:
+                problems.append(
+                    "CARD_PROVIDER=safepay needs SAFEPAY_API_KEY, SAFEPAY_SECRET_KEY "
+                    "and SAFEPAY_WEBHOOK_SECRET"
+                )
+            if self.environment == Environment.prod and self.safepay_env != (
+                SafepayEnvironment.production
+            ):
+                problems.append("SAFEPAY_ENV must be production when ENVIRONMENT=prod")
         if not self.cloudinary_url:
             # Without it, uploads fall back to this server's own disk, which most
             # hosts wipe on restart (see docs/BEFORE_GOING_LIVE.md).
