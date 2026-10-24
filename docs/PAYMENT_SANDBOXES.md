@@ -64,6 +64,19 @@ forwarding Stripe's real signed events to the backend. All five checks passed:
 | Session expired by Stripe | Webhook `checkout.session.expired` cancels the booking |
 | Cancel the paid booking (24 h or more ahead) | Refund created and **processed** by Stripe's test API (100%) |
 
+**Through the phone app itself (Expo web build), `scripts/qa_stripe_app_e2e.mjs`:** the app's Pay button opens
+Stripe's real page in a pop-up and the app's own payment screen is used. Three checks passed on a warm dev
+server: (A1) a good card: Stripe sends the player back to the app's return address, and once that window is
+closed the app moves by itself to "Booking confirmed" (the booking was confirmed by Stripe's webhook, the
+app learns it by polling); (A2) a declined card: Stripe shows the decline, the booking stays unpaid and the
+app sits on its waiting screen; (A3) cancelling the paid booking: refund processed (Rs 2,000.00).
+
+Known limit of the **web build only**: after paying, the Stripe pop-up lands on the app's return page but does
+not close by itself (the check that normally closes it fails there), so on the web the player closes that
+window and the app carries on. A first visit to a page after the dev server starts can also be slow enough
+to time out a check; run it again. How the real phone behaves (the system browser window closing when the
+app address is reached) is **not tested**: it needs a real device.
+
 PKR is accepted by this Stripe test account. Not covered: Android/iOS app on a real phone, and
 Stripe's 3-D Secure challenge cards. To repeat: start the Stripe CLI with `--events ...` (above),
 start the scratch backend with the CLI's webhook secret, then

@@ -1,0 +1,17 @@
+[
+ {
+  "id": "A1",
+  "status": "PASS",
+  "text": "Pay opened Stripe: true; sent back to the app's return address: true; pop-up closed by itself: false (opener link lost: false); after the window closed the app moved to Booking confirmed by itself: true; booking confirmed"
+ },
+ {
+  "id": "A2",
+  "status": "PASS",
+  "text": "Stripe showed the decline: true; booking pending_payment then pending_payment; the app is on its waiting screen: true"
+ },
+ {
+  "id": "A3",
+  "status": "PASS",
+  "text": "cancel 200; booking cancelled; refund 2000.00 (processed)"
+ }
+]
