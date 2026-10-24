@@ -101,12 +101,17 @@ function Bookings() {
   const setCourtId = (v: string) => setScoped({ arena: arenaId, courtId: v, page: 1 });
   const setPage = (p: number) => setScoped({ arena: arenaId, courtId, page: p });
 
-  const askedStatus = useSearchParams().get("status") ?? "";
+  const asked = useSearchParams();
+  const askedStatus = asked.get("status") ?? "";
+  const askedDate = (key: string) => {
+    const v = asked.get(key) ?? "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
+  };
   const [status, setStatus] = useState(
     STATUSES.includes(askedStatus as BookingStatus) ? askedStatus : "",
   );
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(askedDate("from"));
+  const [dateTo, setDateTo] = useState(askedDate("to"));
 
   // court options: the chosen arena's courts, or every court for "All arenas"
   const courtScope = arenaId ? arenas.filter((a) => a.id === arenaId) : arenas;

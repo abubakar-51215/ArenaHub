@@ -11,6 +11,8 @@ export interface Slot {
   end_time: string;
   status: SlotStatus;
   price: string;
+  /** the live booking using this slot (held or booked), for the "View booking" link */
+  booking_id: string | null;
 }
 
 export interface GenerateSlotsResult {
@@ -31,10 +33,17 @@ export function generateSlots(
   return api.post<GenerateSlotsResult>(`/owner/courts/${courtId}/slots/generate`, range);
 }
 
-export function setSlotStatus(
-  courtId: string,
-  slotId: string,
-  status: "available" | "maintenance",
-): Promise<Slot> {
-  return api.patch<Slot>(`/owner/courts/${courtId}/slots/${slotId}`, { status });
+export interface SlotChange {
+  status?: "available" | "maintenance";
+  price?: string;
+  /** why a slot is being blocked (optional, kept in the audit trail) */
+  reason?: string;
+}
+
+export function updateSlot(courtId: string, slotId: string, change: SlotChange): Promise<Slot> {
+  return api.patch<Slot>(`/owner/courts/${courtId}/slots/${slotId}`, change);
+}
+
+export function deleteSlot(courtId: string, slotId: string): Promise<unknown> {
+  return api.del(`/owner/courts/${courtId}/slots/${slotId}`);
 }

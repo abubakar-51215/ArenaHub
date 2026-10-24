@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useGenerateSlots, useOwnerSlots, useSetSlotStatus } from "@/hooks/useSlots";
+import { SlotActionDialog, type SlotAction } from "@/components/owner/slot-actions";
+import { useGenerateSlots, useOwnerSlots, useUpdateSlot } from "@/hooks/useSlots";
 import { formatDate, formatRs, formatTime, toDateInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/services/api";
@@ -23,7 +25,7 @@ import type { Court } from "@/types";
 const MAX_DAYS = 30;
 
 const STATUS_LABEL: Record<SlotStatus, string> = {
-  available: "Open",
+  available: "Free",
   reserved: "Held",
   booked: "Booked",
   maintenance: "Blocked",
@@ -84,7 +86,8 @@ export function SlotsDialog({
   const [result, setResult] = useState<GenerateSlotsResult | null>(null);
 
   const generate = useGenerateSlots(court.id);
-  const setStatus = useSetSlotStatus(court.id);
+  const unblock = useUpdateSlot(court.id);
+  const [action, setAction] = useState<SlotAction | null>(null);
   const { data: slots, isLoading, isError, error, refetch } = useOwnerSlots(court.id, viewDate);
 
   const rangeError =
@@ -224,50 +227,85 @@ export function SlotsDialog({
             </div>
           )}
 
-          {setStatus.isError && (
+          {unblock.isError && (
             <p role="alert" className="text-sm text-destructive">
-              {errorText(setStatus.error)}
+              {errorText(unblock.error)}
             </p>
           )}
 
           {slots && slots.length > 0 && (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {slots.map((slot) => {
-                const locked = slot.status === "booked" || slot.status === "reserved";
-                const blocked = slot.status === "maintenance";
-                const busy = setStatus.isPending && setStatus.variables?.slotId === slot.id;
+                const busy = unblock.isPending && unblock.variables?.slotId === slot.id;
                 return (
-                  <li key={slot.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{formatRs(slot.price)}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                  <li
+                    key={slot.id}
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 max-sm:flex-col max-sm:items-stretch"
+                  >
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{formatRs(slot.price)}</p>
+                      </div>
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                          "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium",
                           STATUS_STYLE[slot.status],
                         )}
                       >
                         {STATUS_LABEL[slot.status]}
                       </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={locked || setStatus.isPending}
-                        title={locked ? "A booking is using this slot" : undefined}
-                        onClick={() =>
-                          setStatus.mutate({
-                            slotId: slot.id,
-                            status: blocked ? "available" : "maintenance",
-                          })
-                        }
-                      >
-                        {busy && <Loader2 className="size-4 animate-spin" />}
-                        {blocked ? "Unblock" : "Block"}
-                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {slot.status === "available" && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAction({ kind: "block", slot })}
+                          >
+                            Block
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAction({ kind: "price", slot })}
+                          >
+                            Edit price
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => setAction({ kind: "delete", slot })}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                      {slot.status === "maintenance" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={unblock.isPending}
+                          onClick={() =>
+                            unblock.mutate({ slotId: slot.id, change: { status: "available" } })
+                          }
+                        >
+                          {busy && <Loader2 className="size-4 animate-spin" />}
+                          Unblock
+                        </Button>
+                      )}
+                      {slot.status === "booked" && (
+                        <Link
+                          href={`/owner/bookings?from=${slot.date}&to=${slot.date}`}
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                        >
+                          View booking
+                        </Link>
+                      )}
                     </div>
                   </li>
                 );
@@ -275,6 +313,7 @@ export function SlotsDialog({
             </ul>
           )}
         </section>
+        <SlotActionDialog courtId={court.id} action={action} onClose={() => setAction(null)} />
       </DialogContent>
     </Dialog>
   );
