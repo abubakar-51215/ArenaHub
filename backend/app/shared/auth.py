@@ -10,9 +10,10 @@ import uuid
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.core.exceptions import ForbiddenError, ServiceUnavailableError, UnauthorizedError
 from app.core.security import TokenType, decode_token
 from app.database.session import get_db
 from app.modules.auth import tokens
@@ -32,12 +33,16 @@ async def get_current_user(
 
     payload = decode_token(credentials.credentials, TokenType.access)
     jti = payload.get("jti", "")
-    if jti and await tokens.is_access_denied(jti):
-        raise UnauthorizedError("Token has been revoked.")
-
     user_id = payload["sub"]
-    if await tokens.is_session_stale(user_id, payload):
-        raise UnauthorizedError("Session expired, please log in again.")
+    try:
+        if jti and await tokens.is_access_denied(jti):
+            raise UnauthorizedError("Token has been revoked.")
+        if await tokens.is_session_stale(user_id, payload):
+            raise UnauthorizedError("Session expired, please log in again.")
+    except (RedisError, OSError) as exc:
+        # The sign-out list lives in Redis. Without it a signed-out token cannot be told from a
+        # good one, so the request is refused (closed, not open), but as "not available", not a 500.
+        raise ServiceUnavailableError() from exc
 
     user = await db.get(User, uuid.UUID(user_id))
     if user is None or not user.is_active or user.deleted_at is not None:

@@ -68,3 +68,24 @@ async def test_a_booking_without_redis_is_503_and_books_nothing(
 
     monkeypatch.undo()
     assert (await _slots(client, court, day))[0]["status"] == "available"  # nothing was held
+
+
+async def test_a_signed_in_request_without_redis_is_503_not_500(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The sign-out list lives in Redis. With it unreachable a signed-out token cannot be told
+    from a good one, so the request is refused (closed), but as "not available", not a 500."""
+    from app.modules.auth import tokens
+
+    player, _ = await make_user(client, db_session, "norediss@example.com")
+    monkeypatch.setattr(
+        tokens, "redis_cache", types.SimpleNamespace(get_redis=lambda: _DeadRedis())
+    )
+
+    class _Exists(_DeadRedis):
+        async def exists(self, *args: object) -> None:
+            raise RedisConnectionError("down")
+
+    monkeypatch.setattr(tokens, "redis_cache", types.SimpleNamespace(get_redis=lambda: _Exists()))
+    res = await client.get("/api/v1/users/me", headers=auth_header(player))
+    assert res.status_code == 503, res.text
