@@ -2,7 +2,7 @@
 Only an admin moves a complaint; the player is told; a resolved complaint stays resolved."""
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +22,7 @@ async def _complaint(client: AsyncClient, db: AsyncSession, tag: str) -> tuple[d
     return player, made.json()["data"]["id"], admin
 
 
-async def _move(client: AsyncClient, admin: dict, cid: str, status: str):
+async def _move(client: AsyncClient, admin: dict, cid: str, status: str) -> Response:
     return await client.patch(
         f"/api/v1/admin/complaints/{cid}/status",
         headers=auth_header(admin),
