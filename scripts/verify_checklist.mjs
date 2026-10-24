@@ -935,6 +935,7 @@ async function main() {
   // independent of the change-email/change-password chain above.
   await withMobilePage(async (page) => {
     await page.goto(MOBILE + "/login", { waitUntil: "load", timeout: 30000 });
+    await page.waitForTimeout(8000); // the first splash re-draws the form and would wipe what is typed
     await page.getByPlaceholder("Email or phone").fill(mobileEmail);
     await page.getByPlaceholder("Password").fill(mobilePassword);
     await page.getByText("Log in", { exact: true }).last().click();
@@ -949,6 +950,7 @@ async function main() {
 
   await withMobilePage(async (page) => {
     await page.goto(MOBILE + "/login", { waitUntil: "load", timeout: 30000 });
+    await page.waitForTimeout(8000); // the first splash re-draws the form and would wipe what is typed
     await page.getByPlaceholder("Email or phone").fill(mobileEmail);
     await page.getByPlaceholder("Password").fill(mobilePassword);
     await page.getByText("Log in", { exact: true }).last().click();
@@ -978,7 +980,8 @@ async function main() {
   try {
     const wsResult = await withMobilePage(async (page) => {
       await page.goto(MOBILE + "/login", { waitUntil: "load", timeout: 30000 });
-      await page.getByPlaceholder("Email or phone").fill(mobileEmail);
+      await page.waitForTimeout(8000); // the first splash re-draws the form and would wipe what is typed
+    await page.getByPlaceholder("Email or phone").fill(mobileEmail);
       await page.getByPlaceholder("Password").fill(mobilePassword);
       await page.getByText("Log in", { exact: true }).last().click();
       await page.waitForURL((u) => !u.pathname.includes("login"), { timeout: 20000 });

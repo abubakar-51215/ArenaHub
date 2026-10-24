@@ -120,15 +120,28 @@ function RootNavigator() {
   }, [pathname]);
 
   // Open a kept link unless the app is already on it. The path the router reports can still be the one from before the
-  // signed-in screens appeared (on the web it then falls back to Home a moment later), so it is checked twice: a second
-  // time after the screens have settled, and the link is opened then if the app did not end up on it.
+  // signed-in screens appeared (on the web it then falls back to Home a moment later), so it is checked again and again: the link
+  // is opened if the app did not end up on it. It is looked at
+  // every 0.4 s until the app has stayed on the link for a little over a second (at most 5.6 s).
   const openKeptLink = (link: string) => {
     const path = link.split(/[?#]/)[0];
-    const open = () => {
-      if (pathnameRef.current !== path) router.push(link as Href);
-    };
-    setTimeout(open, 350);
-    setTimeout(open, 1400);
+    let ticks = 0;
+    let stable = 0;
+    let pushes = 0;
+    const timer = setInterval(() => {
+      ticks += 1;
+      if (pathnameRef.current === path) {
+        stable += 1;
+      } else {
+        stable = 0;
+        // give the router the first tick to get there by itself, then open it (at most twice)
+        if (ticks > 1 && pushes < 2) {
+          pushes += 1;
+          router.push(link as Href);
+        }
+      }
+      if (stable >= 3 || ticks >= 14) clearInterval(timer);
+    }, 400);
   };
 
   // a link opened before the account is loaded (signed out, or a saved sign-in still being checked) is kept: it opens
