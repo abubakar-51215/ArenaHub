@@ -122,6 +122,14 @@ EVENT_META: dict[str, dict[str, str]] = {
         "body": "ArenaHub support replied to your complaint. Open it to read the reply.",
         "category": "account",
     },
+    "complaint_status": {
+        "title": "Your complaint was updated",
+        "body": (
+            "ArenaHub support set your complaint to {status_label}. "
+            "Open it to see where it stands."
+        ),
+        "category": "account",
+    },
     "rate_your_game": {
         "title": "Rate your last game",
         "body": "How was {arena_name}? Tell other players in a quick review.",

@@ -159,3 +159,6 @@ AMENITY_EXTRA_CANNOT_ADD = "Older amenity text can be removed but not added."
 # Owner single-slot management (wording for the owner's approval)
 SLOT_STATUS_NOT_SETTABLE = "A slot can only be blocked or unblocked."
 SLOT_DELETE_ONLY_FREE = "Only a free slot that never had a booking can be deleted."
+
+# Complaint status steps (wording for the owner's approval)
+COMPLAINT_MOVE_NOT_ALLOWED = "This complaint cannot be moved to that status."

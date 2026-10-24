@@ -15,7 +15,11 @@ from app.database.session import get_db
 from app.modules.admin import service as admin_service
 from app.modules.complaint import service
 from app.modules.complaint.model import ComplaintCategory, ComplaintStatus
-from app.modules.complaint.schema import ComplaintCreate, ComplaintRespondRequest
+from app.modules.complaint.schema import (
+    ComplaintCreate,
+    ComplaintRespondRequest,
+    ComplaintStatusRequest,
+)
 from app.modules.user.model import User
 from app.shared import abuse
 from app.shared.auth import get_current_user, require_role
@@ -99,4 +103,25 @@ async def respond_to_complaint(
         db, user, "complaint.respond", "complaint", str(complaint_id), {"status": data.status.value}
     )
     await db.commit()
+    return success(data=complaint, message="Complaint updated.")
+
+
+@admin_router.patch("/{complaint_id}/status", summary="Move a complaint to another status")
+async def set_complaint_status(
+    complaint_id: uuid.UUID,
+    data: ComplaintStatusRequest,
+    user: User = Depends(_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    complaint, changed = await service.set_status(db, user, complaint_id, data.status)
+    if changed:
+        await admin_service.record_audit(
+            db,
+            user,
+            "complaint.status",
+            "complaint",
+            str(complaint_id),
+            {"status": data.status.value},
+        )
+        await db.commit()
     return success(data=complaint, message="Complaint updated.")

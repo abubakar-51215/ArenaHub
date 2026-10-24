@@ -35,3 +35,7 @@ class ComplaintResponse(BaseModel):
     created_at: datetime
     # when the complaint last changed: the time of the admin's latest reply
     updated_at: datetime | None = None
+
+
+class ComplaintStatusRequest(RequestModel):
+    status: ComplaintStatus

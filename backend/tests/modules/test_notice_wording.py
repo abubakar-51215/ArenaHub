@@ -55,6 +55,10 @@ RAW: dict[str, dict[str, object]] = {
         "slot": "Tue 13 Oct, 7:00 PM - 8:00 PM",
     },
     "complaint_reply": {"complaint_id": "86cb83ec-8293-445e-8f1a-05e69ed97a1a"},
+    "complaint_status": {
+        "complaint_id": "86cb83ec-8293-445e-8f1a-05e69ed97a1a",
+        "status_label": "Under review",
+    },
     "rate_your_game": {"arena_name": "Goal Line Arena", "booking_id": BID},
     "match_joined": {"player_name": "Sara", "sport": "futsal", **MATCH},
     "match_left": {"player_name": "Sara", "sport": "football", **MATCH},

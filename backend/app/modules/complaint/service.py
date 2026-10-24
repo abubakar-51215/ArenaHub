@@ -5,13 +5,39 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.messages import COMPLAINT_MOVE_NOT_ALLOWED
 from app.modules.complaint import repository as repo
 from app.modules.complaint.model import Complaint, ComplaintCategory, ComplaintStatus
 from app.modules.complaint.schema import ComplaintCreate, ComplaintResponse
 from app.modules.user.model import User
 from app.shared.notify import notify_admins, notify_user
 from app.shared.pagination import PaginationParams, paginated
+
+# Where a complaint may go next: forward one step or straight to resolved, and back from under
+# review to open. A resolved complaint stays resolved.
+ALLOWED_MOVES: dict[ComplaintStatus, frozenset[ComplaintStatus]] = {
+    ComplaintStatus.open: frozenset({ComplaintStatus.under_review, ComplaintStatus.resolved}),
+    ComplaintStatus.under_review: frozenset({ComplaintStatus.open, ComplaintStatus.resolved}),
+    ComplaintStatus.resolved: frozenset(),
+}
+_STATUS_LABEL = {
+    ComplaintStatus.open: "Open",
+    ComplaintStatus.under_review: "Under review",
+    ComplaintStatus.resolved: "Resolved",
+}
+
+
+def _move(complaint: Complaint, new: ComplaintStatus) -> bool:
+    """Put the complaint in ``new`` if that is a legal step. True when the status changed; asking
+    for the status it already has is fine and changes nothing."""
+    if new == complaint.status:
+        return False
+    if new not in ALLOWED_MOVES[complaint.status]:
+        raise ValidationError(COMPLAINT_MOVE_NOT_ALLOWED)
+    complaint.status = new
+    complaint.resolved_at = datetime.now() if new == ComplaintStatus.resolved else None
+    return True
 
 
 def _to_response(complaint: Complaint) -> ComplaintResponse:
@@ -89,8 +115,7 @@ async def respond_to_complaint(
         raise NotFoundError("Complaint not found.")
     first_reply = not complaint.admin_response
     complaint.admin_response = admin_response
-    complaint.status = status
-    complaint.resolved_at = datetime.now() if status == ComplaintStatus.resolved else None
+    changed = _move(complaint, status)
     # Assign on first response — single-admin deployment, so there's no
     # routing decision to make, just a record of who's handling it. Setting
     # the relationship (not just the raw FK) keeps `assigned_admin` in sync
@@ -104,10 +129,41 @@ async def respond_to_complaint(
         await notify_user(
             db, complaint.player_id, "complaint_reply", complaint_id=str(complaint.id)
         )
+    elif changed:
+        await _tell_player(db, complaint)
     await db.commit()
     saved = await repo.get_complaint(db, complaint_id)
     assert saved is not None
     return _to_response(saved)
+
+
+async def _tell_player(db: AsyncSession, complaint: Complaint) -> None:
+    await notify_user(
+        db,
+        complaint.player_id,
+        "complaint_status",
+        complaint_id=str(complaint.id),
+        status_label=_STATUS_LABEL[complaint.status],
+    )
+
+
+async def set_status(
+    db: AsyncSession, admin: User, complaint_id: uuid.UUID, status: ComplaintStatus
+) -> tuple[ComplaintResponse, bool]:
+    """Move a complaint along without writing a reply. The player is told when it really moved."""
+    complaint = await repo.get_complaint(db, complaint_id)
+    if complaint is None:
+        raise NotFoundError("Complaint not found.")
+    changed = _move(complaint, status)
+    if changed:
+        if complaint.assigned_to is None:
+            complaint.assigned_admin = admin
+            complaint.assigned_to = admin.id
+        await _tell_player(db, complaint)
+        await db.commit()
+    saved = await repo.get_complaint(db, complaint_id)
+    assert saved is not None
+    return _to_response(saved), changed
 
 
 async def get_my_complaint(
