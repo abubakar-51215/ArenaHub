@@ -22,7 +22,7 @@ import {
   suspendUser,
   updatePlatformSettings,
 } from "@/services/admin";
-import { listComplaints, respondToComplaint } from "@/services/complaints";
+import { listComplaints, respondToComplaint, setComplaintStatus } from "@/services/complaints";
 import { deleteReview, dismissReviewReport, listReportedReviews } from "@/services/reviews";
 import type {
   ArenaStatus,
@@ -247,7 +247,12 @@ export function useComplaintActions() {
     }) => respondToComplaint(complaintId, adminResponse, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-complaints"] }),
   });
-  return { respond };
+  const move = useMutation({
+    mutationFn: ({ complaintId, status }: { complaintId: string; status: ComplaintStatus }) =>
+      setComplaintStatus(complaintId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-complaints"] }),
+  });
+  return { respond, move };
 }
 
 export function useReportedReviews(page: number) {

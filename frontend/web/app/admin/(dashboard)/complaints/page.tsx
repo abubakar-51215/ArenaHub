@@ -44,6 +44,12 @@ const CATEGORIES: ComplaintCategory[] = [
   "other",
 ];
 const STATUSES: ComplaintStatus[] = ["open", "under_review", "resolved"];
+/** The steps the server allows: forward, and back from under review to open. Resolved stays. */
+const MOVES: Record<ComplaintStatus, ComplaintStatus[]> = {
+  open: ["under_review", "resolved"],
+  under_review: ["open", "resolved"],
+  resolved: [],
+};
 
 /** Short ticket reference, in the same style as the booking reference (#BK-…). */
 function ticketRef(id: string): string {
@@ -65,11 +71,11 @@ export default function AdminComplaintsPage() {
     category: category || undefined,
     page,
   });
-  const { respond } = useComplaintActions();
+  const { respond, move } = useComplaintActions();
 
   const [responding, setResponding] = useState<Complaint | null>(null);
   const [response, setResponse] = useState("");
-  const [nextStatus, setNextStatus] = useState<ComplaintStatus>("under_review");
+  const [current, setCurrent] = useState<ComplaintStatus>("open");
   const [error, setError] = useState<string | null>(null);
 
   const complaints = data?.items ?? [];
@@ -78,8 +84,19 @@ export default function AdminComplaintsPage() {
   function openRespond(c: Complaint) {
     setResponding(c);
     setResponse(c.admin_response ?? "");
-    setNextStatus(c.status === "open" ? "under_review" : c.status);
+    setCurrent(c.status);
     setError(null);
+  }
+
+  async function onMove(to: ComplaintStatus) {
+    if (!responding) return;
+    setError(null);
+    try {
+      const saved = await move.mutateAsync({ complaintId: responding.id, status: to });
+      setCurrent(saved.status);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update the complaint.");
+    }
   }
 
   async function onRespond() {
@@ -89,7 +106,7 @@ export default function AdminComplaintsPage() {
       await respond.mutateAsync({
         complaintId: responding.id,
         adminResponse: response.trim(),
-        status: nextStatus,
+        status: current === "open" ? "under_review" : current,
       });
       setResponding(null);
     } catch (err) {
@@ -228,18 +245,30 @@ export default function AdminComplaintsPage() {
           </p>
 
           <div className="ah-field">
-            <Label htmlFor="complaint-status">Status</Label>
-            <Select
-              id="complaint-status"
-              value={nextStatus}
-              onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}
+            <Label id="complaint-status-label">Status</Label>
+            <div
+              role="group"
+              aria-labelledby="complaint-status-label"
+              className="flex flex-wrap gap-2"
             >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {statusLabel(s)}
-                </option>
-              ))}
-            </Select>
+              {STATUSES.map((s) => {
+                const here = s === current;
+                const allowed = MOVES[current].includes(s);
+                return (
+                  <Button
+                    key={s}
+                    type="button"
+                    variant={here ? "default" : "outline"}
+                    size="sm"
+                    aria-pressed={here}
+                    disabled={here || !allowed || move.isPending}
+                    onClick={() => void onMove(s)}
+                  >
+                    {statusLabel(s)}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
 
           <Textarea

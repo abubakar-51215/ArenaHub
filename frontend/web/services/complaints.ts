@@ -26,3 +26,10 @@ export function respondToComplaint(
     status,
   });
 }
+
+export function setComplaintStatus(
+  complaintId: string,
+  status: ComplaintStatus,
+): Promise<Complaint> {
+  return api.patch<Complaint>(`/admin/complaints/${complaintId}/status`, { status });
+}
