@@ -28,6 +28,7 @@ from email.message import EmailMessage
 import structlog
 
 from app.core.config import get_settings
+from app.integrations.email.templates import LOGO_CID, logo_png
 
 log = structlog.get_logger()
 
@@ -150,6 +151,12 @@ def _message(to: str, subject: str, body: str, html: str | None) -> EmailMessage
     msg.set_content(body)
     if html is not None:
         msg.add_alternative(html, subtype="html")
+        if f"cid:{LOGO_CID}" in html:
+            # the logo travels inside the mail, tied to the HTML part
+            html_part = list(msg.iter_parts())[1]
+            html_part.add_related(
+                logo_png(), "image", "png", cid=f"<{LOGO_CID}>", disposition="inline"
+            )
     return msg
 
 

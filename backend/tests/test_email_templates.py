@@ -165,13 +165,25 @@ def test_every_notice_renders_as_an_email(event: str) -> None:
 
 
 def test_notice_emails_carry_the_badge_and_code_emails_do_not_reuse_it() -> None:
-    """The badge is inlined as a data URI (no external address a mail client could fail to
-    reach), not referenced by file name."""
+    """The badge points at the attached image (cid:), never a data: address (Gmail drops those)
+    and never an address a mail client could fail to reach."""
     html = notification_email("Booking confirmed", "See you on the court!")[2]
-    assert "data:image/png;base64," in html and 'width="40" height="40"' in html
-    assert html.index("data:image/png;base64,") < html.index("font-size:22px")  # before heading
+    assert "cid:arenahub-logo" in html and 'width="40" height="40"' in html
+    assert html.index("cid:arenahub-logo") < html.index("font-size:22px")  # before heading
+    assert "data:image" not in html
     for other in (email_changed_email("n***@x.pk", datetime(2026, 10, 15, tzinfo=UTC))[2],):
-        assert "data:image/png;base64," not in other
+        assert "cid:arenahub-logo" not in other
+
+
+def test_a_sent_mail_carries_the_logo_as_an_attached_image() -> None:
+    from app.integrations.email.smtp import _message
+
+    _, text, html = code_email("482913", "registration", 10, "Hassan")
+    msg = _message("player@example.com", "s", text, html)
+    images = [p for p in msg.walk() if p.get_content_type() == "image/png"]
+    assert len(images) == 1
+    assert images[0]["Content-ID"] == "<arenahub-logo>"
+    assert images[0].get_content().startswith(b"\x89PNG")
 
 
 def test_the_badge_image_has_a_text_fallback() -> None:

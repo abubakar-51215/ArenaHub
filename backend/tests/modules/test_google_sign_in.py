@@ -120,8 +120,7 @@ async def test_a_google_sign_in_sends_a_player_login_alert(
     assert alerts[0]["to"] == "g.alert@gmail.com"
     assert "your ArenaHub account" in alerts[0]["body"]
     assert "Dear Sana Malik," in alerts[0]["body"]
-    assert "Signed in with: Google" in alerts[0]["body"]
-    assert "Account: g.alert@gmail.com" in alerts[0]["body"]
+    assert "Signed in with" not in alerts[0]["body"]
 
 
 async def test_an_existing_player_signs_in_and_gets_linked(

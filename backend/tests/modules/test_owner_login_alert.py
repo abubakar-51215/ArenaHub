@@ -11,7 +11,6 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import messages
 from app.core.config import get_settings
 from app.integrations.email.smtp import EmailSendError
 from app.integrations.email.templates import owner_login_alert_email, player_login_alert_email
@@ -79,15 +78,10 @@ async def test_a_successful_owner_login_sends_exactly_one_alert(
     assert "(Pakistan time)" in body
     assert get_settings().support_email in body
     assert "please change your password right away" in body
-    # Layout A's new pieces: badge, title (HTML-only, decorative), details table, "Not you?" box
-    assert messages.LOGIN_ALERT_BADGE in mail["html"]
-    assert messages.LOGIN_ALERT_TITLE in mail["html"]
-    assert messages.LOGIN_ALERT_NOT_YOU_HEADING in mail["html"]
-    assert "Name: Ayesha Khan" in body
-    assert "Account: alert-owner1@example.com" in body
-    assert "Role: Owner" in body
-    assert "Signed in with: Password" in body
-    assert "Device:" in body and "IP address:" in body
+    # only the few lines: no details table (no account, device or address rows)
+    for label in ("Device", "IP address", "Signed in with", "Role:", "Account:"):
+        assert label not in body and label not in mail["html"]
+    assert "cid:arenahub-logo" in mail["html"]
     for secret in (PASSWORD, tokens["access_token"], tokens["refresh_token"]):
         assert secret not in body
         assert secret not in mail["html"]
@@ -144,8 +138,6 @@ async def test_a_successful_player_login_sends_one_role_neutral_alert(
     # role-neutral wording: "your ArenaHub account", never "owner account"
     assert "successfully logged into your ArenaHub account on " in body
     assert "owner account" not in body
-    assert "Role: Player" in body
-    assert "Signed in with: Password" in body
     # a player login raises no owner alert
     assert not _alerts(sent)
 
@@ -249,8 +241,21 @@ async def test_the_player_switch_off_stops_player_alerts_only(
 
 
 async def test_device_is_read_from_the_real_sign_in_request(
-    client: AsyncClient, db_session: AsyncSession, sent: list[dict]
+    client: AsyncClient,
+    db_session: AsyncSession,
+    sent: list[dict],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from app.modules.auth import login_alert
+
+    seen: list[tuple] = []
+    real = login_alert.owner_login_alert_email
+
+    def spy(*args: str):  # type: ignore[no-untyped-def]
+        seen.append(args)
+        return real(*args)
+
+    monkeypatch.setattr(login_alert, "owner_login_alert_email", spy)
     _, owner = await make_user(client, db_session, "alert-device@example.com", "owner")
     sent.clear()
     chrome_ua = (
@@ -259,8 +264,8 @@ async def test_device_is_read_from_the_real_sign_in_request(
     )
     res = await _login(client, owner.email, **{"User-Agent": chrome_ua})
     assert res.status_code == 200
-    body = _alerts(sent)[0]["body"]
-    assert "Device: Chrome on Windows" in body
+    assert seen and seen[0][-3] == "Chrome on Windows"  # still read, though the mail leaves it out
+    assert "Chrome" not in _alerts(sent)[0]["body"]
 
 
 def test_dispatch_skips_an_admin_or_an_account_with_no_email() -> None:
@@ -314,7 +319,7 @@ def test_the_html_escapes_the_name_and_has_one_mailto_and_nothing_remote() -> No
     assert "&lt;script&gt;" in html
     assert 'href="mailto:help@example.test"' in html
     assert html.count("href=") == 1  # the only link allowed: the support address
-    assert "src=" not in html and "<img" not in html  # Layout A's header is text, not an image
+    assert html.count("<img") == 1  # the logo only
     assert "Dear <script>" in text  # the plain text part is not HTML, so it is left as typed
 
 
@@ -335,7 +340,7 @@ def test_the_support_address_comes_from_the_setting(monkeypatch: pytest.MonkeyPa
     assert "changed@example.test" in second[1] and original not in second[1]
 
 
-def test_both_role_variants_show_the_right_role_and_account_row() -> None:
+def test_both_role_variants_say_owner_account_or_account_and_nothing_more() -> None:
     _, owner_text, _ = owner_login_alert_email(
         "Ayesha", "ayesha@example.test", "when", "Password", "Not available", "Not available",
         "help@example.test",
@@ -344,16 +349,17 @@ def test_both_role_variants_show_the_right_role_and_account_row() -> None:
         "Bilal", "bilal@example.test", "when", "Google", "Not available", "Not available",
         "help@example.test",
     )  # fmt: skip
-    assert "Role: Owner" in owner_text and "Account: ayesha@example.test" in owner_text
-    assert "Role: Player" in player_text and "Account: bilal@example.test" in player_text
-    assert "Signed in with: Google" in player_text
+    assert "your ArenaHub owner account on when" in owner_text
+    assert "your ArenaHub account on when" in player_text
+    for text in (owner_text, player_text):
+        assert "example.test" not in text.replace("help@example.test", "")  # no account address
+        assert len([p for p in text.split(chr(10) * 2) if p.strip()]) == 4  # the four lines
 
 
-def test_unavailable_device_and_ip_show_not_available() -> None:
+def test_the_device_and_the_address_are_not_shown() -> None:
     _, text, html = owner_login_alert_email(
-        "A", "a@example.test", "when", "Password", NOT_AVAILABLE, NOT_AVAILABLE,
+        "A", "a@example.test", "when", "Password", "Chrome on Windows", "203.0.113.4",
         "help@example.test",
     )  # fmt: skip
-    assert "Device: Not available" in text
-    assert "IP address: Not available" in text
-    assert "Not available" in html
+    for shown in (text, html):
+        assert "Chrome" not in shown and "203.0.113.4" not in shown

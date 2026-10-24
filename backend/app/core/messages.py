@@ -95,19 +95,6 @@ def player_login_alert_lines(
     return _login_alert_lines(name, when_text, support_email, "account")
 
 
-# Email restyle, Layout A (login alert) — new wording, listed for approval (see the work report).
-LOGIN_ALERT_BADGE = "NEW SIGN-IN"
-LOGIN_ALERT_TITLE = "New sign-in to your account"
-LOGIN_ALERT_NOT_YOU_HEADING = "Not you?"
-LOGIN_ALERT_LABEL_NAME = "Name"
-LOGIN_ALERT_LABEL_ACCOUNT = "Account"
-LOGIN_ALERT_LABEL_ROLE = "Role"
-LOGIN_ALERT_LABEL_WHEN = "Date and time"
-LOGIN_ALERT_LABEL_SIGNED_IN_WITH = "Signed in with"
-LOGIN_ALERT_LABEL_DEVICE = "Device"
-LOGIN_ALERT_LABEL_IP = "IP address"
-NOT_AVAILABLE = "Not available"
-
 # Email restyle, Layout B (every emailed code except password reset) — new wording.
 CODE_GREETING_NAMED = "Hello {name},"
 CODE_GREETING_BARE = "Hello,"
