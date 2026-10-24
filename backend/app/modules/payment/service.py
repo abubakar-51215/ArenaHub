@@ -1142,6 +1142,16 @@ async def force_refund(
     booking = await booking_repo.get_booking(db, booking_id)
     if booking is None:
         raise NotFoundError("Booking not found.")
+    # Lock the group's payment and then the booking row (the webhook locks them in the same
+    # order), so two admins clicking at once cannot both pass the "money left?" check below
+    # and each issue a full refund; the second waits, then sees nothing left.
+    group_payment = await repo.get_payment_by_group(db, booking.booking_group_id)
+    if group_payment is not None:
+        await repo.get_payment_for_update(db, group_payment.id)
+    locked = await booking_repo.get_booking_for_update(db, booking_id)
+    if locked is None:
+        raise NotFoundError("Booking not found.")
+    booking = locked
     # Block a redundant re-refund of an already fully-refunded payment, but
     # allow a force refund to top up after a partial one (e.g. a reschedule
     # overpayment refund already took part of the captured amount). Checked by the

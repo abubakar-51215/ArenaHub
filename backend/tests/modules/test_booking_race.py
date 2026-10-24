@@ -128,3 +128,39 @@ async def test_eight_parallel_payment_starts_for_one_booking_make_one_payment(
             select(func.count()).select_from(Payment).where(Payment.booking_group_id == group)
         )
     assert made == 1
+
+
+async def test_three_admins_force_refunding_at_once_make_one_refund(
+    client: AsyncClient, committed_db: AsyncSession
+) -> None:
+    """Found by the end-to-end QA run: three simultaneous force-refunds on one paid booking each
+    passed the "is money left?" check before any of them saved, and made three full refunds
+    (6000 back on a 2000 payment). The payment and booking rows are now locked first."""
+    from app.modules.payment.model import Refund
+    from tests.helpers import make_admin
+    from tests.modules.test_group_cancel import _paid_group
+
+    _, group, payment, _, _ = await _paid_group(client, committed_db, "frrace", slot_count=1)
+    admin = await make_admin(client, committed_db, "frrace-admin@example.com")
+    await _clear_address_limits()
+    booking_id = group["bookings"][0]["id"]
+
+    answers = await asyncio.gather(
+        *(
+            client.post(
+                f"/api/v1/admin/bookings/{booking_id}/force-refund",
+                headers=auth_header(admin),
+                json={"reason": "Court flooded."},
+            )
+            for _ in range(3)
+        )
+    )
+    codes = sorted(a.status_code for a in answers)
+    assert codes.count(200) == 1, codes
+    assert set(codes) <= {200, 409}, codes
+
+    async with SessionFactory() as fresh:
+        made = await fresh.scalar(
+            select(func.count()).select_from(Refund).where(Refund.payment_id == payment["id"])
+        )
+    assert made == 1
