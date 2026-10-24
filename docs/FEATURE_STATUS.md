@@ -11,10 +11,11 @@ completion (several status docs are stale — see Conflicts).
 - **Ground truth for "what routes exist":** `docs/ROUTES_AND_ROLES.md` (auto-generated from the
   running app — 178 routes). Most recent code-level audit: `docs/BACKEND_COMPLETENESS.md` (2026-10-15).
 
-Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR KEY` ·
+Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `DEFERRED` · `WAITING FOR KEY` ·
 `WAITING FOR REAL PHONE`.
 
 - `SKIPPED` — left out **by decision**; the row says why.
+- `DEFERRED` — left for a later phase **by decision**; the row says when and where it is written down.
 - `WAITING FOR KEY` — the code is done; only an account, a key or a public address is missing. The row says exactly which.
 - `WAITING FOR REAL PHONE` — the code is done and proven as far as a browser can prove it; only a real phone can finish the proof. The row says exactly what to do on the phone (`docs/DEV_BUILD_AND_GOOGLE_PUSH.md`).
 
@@ -27,9 +28,10 @@ Status values: `DONE` · `PARTIAL` · `NOT BUILT` · `SKIPPED` · `WAITING FOR K
 | Status | Count |
 |---|---|
 | DONE | 103 |
-| PARTIAL | 6 |
+| PARTIAL | 4 |
 | NOT BUILT | 0 |
-| SKIPPED | 4 |
+| SKIPPED | 5 |
+| DEFERRED | 1 |
 | WAITING FOR KEY | 5 |
 | WAITING FOR REAL PHONE | 4 |
 
@@ -107,7 +109,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Role-based authorization (player/owner/admin) | DONE | `shared/auth.py` `require_role`; `tests/modules/test_authorization_matrix.py` (every route) | FR-S-04, dev #10 | |
 | Redis rate limiting (stricter on auth) | DONE | `middleware/rate_limit.py`, `shared/abuse.py` | MASTER §S2, NFR | 100/min/IP; owner pages can hit it (WEB_COMPLETENESS §6). |
 | Google / social sign-in | WAITING FOR REAL PHONE | `/auth/google`, `/auth/google/phone`; `integrations/google.py`; mobile `one-more-step.tsx`, `lib/google-sign-in.ts` | deviation #6 (now accepts Google), `ADR-009` (was Conflict C2, resolved) | Code complete and tested; refuses with "not available yet" (one rule, one button on sign-in and sign-up) when no id is set. `GOOGLE_CLIENT_IDS` is SET on this machine (`scripts/check_integrations.py`). Needed on the phone: an EAS build with `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, an Android OAuth client with that build's SHA-1, and a phone. Steps: `docs/DEV_BUILD_AND_GOOGLE_PUSH.md`. |
-| Owner business name + business contact at signup | PARTIAL | web `register/page.tsx` collects name/email/phone only | FR-O-01 | Not collected at signup; arena carries business contact instead. |
+| Owner business name + business contact at signup | SKIPPED | web `register/page.tsx` collects name/email/phone only | FR-O-01 | Skipped by decision (2026-10-24): the arena carries the business name and contact, so signup stays name, email and phone. |
 
 ### Player Profile & Account
 
@@ -288,7 +290,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | One migration per module, reversible | DONE | `backend/alembic/versions/*` | dev §Migration policy | |
 | Cloudinary image upload (prod) | DONE | `shared/storage.py` `_configure_cloudinary()` + `_upload_to_cloudinary()` fully implemented | dev #9, FR-P-03/FR-O-02 | Code complete; `CLOUDINARY_URL` is SET on this machine. Local `/uploads/` is the by-design dev fallback when it is unset (dev #9). |
 | Camera-based receipt/photo upload | WAITING FOR REAL PHONE | mobile `lib/pick-photo.ts`, `hooks/usePhotoPicker.tsx`, `constants/photos.ts`; `app.json` camera text | FR-P-09, FR-O-02 | Built 2026-10-23: the receipt screen and the profile picture both open an "Add a photo" sheet (Take photo, Choose from gallery, Cancel); file rules unchanged (JPEG/PNG/WebP, 5 MB, the server strips EXIF); a refused camera or photo permission shows a short message and nothing crashes. Proven in the browser at four phone widths (the sheet, Cancel, the camera hint on Take photo only, the file rules). Needed on the phone: tap Take photo, allow the camera prompt, take a receipt photo and send it. |
-| CSP / security headers | PARTIAL | `frontend/web/next.config.ts`; `middleware/hardening.py` | MASTER §S5 security checklist | Headers set; `script-src` still allows `unsafe-inline/eval` (Next runtime) — nonce policy deferred. |
+| CSP / security headers | DEFERRED | `frontend/web/next.config.ts`; `middleware/hardening.py` | MASTER §S5 security checklist | Headers are set. `script-src` still allows `unsafe-inline` (the Next.js runtime needs it; `unsafe-eval` is added in development only). Deferred by decision (2026-10-24): the nonce policy is done at deploy time, see `docs/BEFORE_GOING_LIVE.md` (Deployment tasks, item 12). |
 | Docker / docker-compose | SKIPPED | `.github/workflows` only `.gitkeep`-era; no Dockerfiles | dev #1 (no Docker until Sprint 5), MASTER §S5 | Skipped by decision (dev #1): no Docker until the deployment phase. |
 | Deployment (HTTPS, monitoring, APK/AAB, DB backup automation) | SKIPPED | `docs/BEFORE_GOING_LIVE.md`, `DEV_BUILD_AND_GOOGLE_PUSH.md` | dev #1, MASTER §S5 checklists | Skipped by decision (dev #1): done in the deployment phase. The procedures are written down (`docs/BEFORE_GOING_LIVE.md`, the first-APK steps in `DEV_BUILD_AND_GOOGLE_PUSH.md`). |
 

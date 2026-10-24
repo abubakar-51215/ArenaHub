@@ -129,6 +129,7 @@ None of these chooses a deferred value; they are the work to do when a server ex
 9. Run `scripts/security-check.py` and fix what it reports; keep dependency updates flowing (`.github/dependabot.yml`).
 10. **Arrange an independent security review and penetration test before processing real payments.**
 11. Decision waiting for the owner: where web sign-in tokens live (httpOnly cookies need the final web address; see `docs/SECURITY.md`). Receipts are private since 2026-10-16 (signed links).
+12. **Content-Security-Policy: replace `'unsafe-inline'` in `script-src` with a per-request nonce policy** (`frontend/web/next.config.ts`, with a middleware that sets the nonce). Deferred by decision (2026-10-24) to deploy time, because it needs the final web address and a production build to test against. Until then `script-src` is `'self' 'unsafe-inline'` (no `unsafe-eval` in a built site).
 
 ## Go-live blockers found in review (2026-10-16)
 
