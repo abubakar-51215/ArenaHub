@@ -1,0 +1,27 @@
+[
+ {
+  "id": "E1",
+  "status": "PASS",
+  "text": "before pending_payment; after the payment and Stripe's webhook: confirmed; payment rows (1, 'completed', 'confirmed'); amount 2000.00 PKR"
+ },
+ {
+  "id": "E2",
+  "status": "PASS",
+  "text": "declined card: booking stays pending_payment; Stripe's page shows a decline message: true"
+ },
+ {
+  "id": "E3",
+  "status": "PASS",
+  "text": "release 200; booking cancelled"
+ },
+ {
+  "id": "E4",
+  "status": "PASS",
+  "text": "Stripe status: expired; booking cancelled (webhook checkout.session.expired)"
+ },
+ {
+  "id": "E5",
+  "status": "PASS",
+  "text": "cancel 200; refund row: ('processed', Decimal('2000.00'), 0, '')"
+ }
+]

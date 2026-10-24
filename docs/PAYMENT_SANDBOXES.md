@@ -52,6 +52,23 @@ and restart the backend. Leave `stripe listen` running while you test.
 - The server verifies every event with `STRIPE_WEBHOOK_SECRET`
   (`stripe.Webhook.construct_event`), so an unsigned call is rejected.
 
+### Verified end to end (24 October 2026, Stripe TEST mode, scratch database)
+`scripts/qa_stripe_e2e.mjs` drives Stripe's real hosted card page with Playwright, with the Stripe CLI
+forwarding Stripe's real signed events to the backend. All five checks passed:
+
+| Check | Result |
+|---|---|
+| Pay `4242 4242 4242 4242` on Stripe's page (amount PKR 2,000.00) | Booking confirmed by Stripe's webhook; one payment, lifecycle `confirmed` |
+| Declined card `4000 0000 0000 0002` | Stripe shows the decline; booking stays `pending_payment`, nothing confirmed |
+| Player leaves checkout (`/bookings/group/{id}/release`) | Booking cancelled, slot freed |
+| Session expired by Stripe | Webhook `checkout.session.expired` cancels the booking |
+| Cancel the paid booking (24 h or more ahead) | Refund created and **processed** by Stripe's test API (100%) |
+
+PKR is accepted by this Stripe test account. Not covered: Android/iOS app on a real phone, and
+Stripe's 3-D Secure challenge cards. To repeat: start the Stripe CLI with `--events ...` (above),
+start the scratch backend with the CLI's webhook secret, then
+`QA_TAG=<fresh prefix> node scripts/qa_stripe_e2e.mjs` (variables are listed at its top).
+
 ### 4. Before real money
 A live account needs `sk_live_` keys, a webhook endpoint registered in the Stripe
 dashboard at `{API_PUBLIC_URL}/api/v1/webhooks/stripe` sending
