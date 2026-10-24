@@ -7,6 +7,7 @@ container-ready without code changes (see docs/PROJECT_GUIDELINES.md deviation #
 from enum import StrEnum
 from functools import lru_cache
 from ipaddress import IPv4Network, IPv6Network, ip_network
+from pathlib import Path
 
 from pydantic import Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -46,7 +47,10 @@ class PaymentMode(StrEnum):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Resolve the developer env file from the backend package rather than
+        # the process working directory. This keeps `uvicorn` runnable from
+        # either the repository root or the backend directory.
+        env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,

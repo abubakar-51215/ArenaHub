@@ -13,8 +13,10 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 2. Start the app
 
    ```bash
-   npx expo start
+   npm run dev:mobile
    ```
+
+   `npm start` and `npx expo start` are also supported.
 
 In the output, you'll find options to open the app in a
 

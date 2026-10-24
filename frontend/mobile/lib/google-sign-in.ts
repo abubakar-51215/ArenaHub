@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 import { clearDevFailure, noteDevFailure } from '@/lib/dev-detail';
 import { isExpoGo } from '@/lib/expo-go';
 
 // Continue with Google (players only). The native Google sign-in library works only in a development or store
-// build: it is not in Expo Go, and not on the web build. It is loaded here, lazily, only where it can work, and only
+// build: it is not in Expo Go or the web build. Expo Go uses the browser OAuth fallback in google-button.tsx.
+// The native library is loaded here, lazily, only where it can work, and only
 // when the OAuth client ids were given to the build (EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, and on iOS also
 // EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID). No id is written in the code; see docs/BEFORE_GOING_LIVE.md.
 // The phone only passes Google's ID token to the server, which checks it with Google's own library.
@@ -14,7 +15,11 @@ const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
 
 export const googleAvailable =
-  !isExpoGo && Platform.OS !== 'web' && !!WEB_CLIENT_ID && (Platform.OS !== 'ios' || !!IOS_CLIENT_ID);
+  !isExpoGo &&
+  Platform.OS !== 'web' &&
+  !!NativeModules.RNGoogleSignin &&
+  !!WEB_CLIENT_ID &&
+  (Platform.OS !== 'ios' || !!IOS_CLIENT_ID);
 
 export const GOOGLE_NOT_AVAILABLE = 'Google sign-in is not available yet.';
 export const GOOGLE_FAILED = 'We could not sign you in with Google. Try again.';

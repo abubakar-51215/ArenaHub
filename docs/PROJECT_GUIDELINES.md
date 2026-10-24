@@ -352,14 +352,14 @@ Frontend (web):
 - Zustand v5
 
 Frontend (mobile):
-- Expo SDK 54 (React Native)
-- TypeScript 5.x
+- Expo SDK 58 (React Native)
+- TypeScript 6.x
 - Same Zustand v5 + TanStack Query v5 as web
 
 Infrastructure:
 - PostgreSQL 18 (installed 18.4)
 - Redis-compatible via Memurai (latest stable)
-- Node.js 20 LTS (installed 20.20)
+- Node.js 22.13+ LTS (required by Expo SDK 58)
 
 ### Day-1 version reconciliation (2026-07-12)
 The machine's installed toolchain differed from the original plan;
@@ -369,9 +369,8 @@ reconciled once up front rather than mid-development:
   3.14 is too new for reliable prebuilt wheels (asyncpg, bcrypt).
 - **PostgreSQL 18.4** is installed; plan originally said 17. 18 is
   fully compatible for our usage — accepted, pin updated above.
-- **Node.js 20.20 LTS** is installed; plan originally said 22. Node 20
-  is LTS and supported by Expo SDK 54 + Next.js 15 — accepted, pin
-  updated above.
+- **Node.js 22.13+ LTS** is required by Expo SDK 58. The mobile CI job and
+  root engine declaration use this minimum.
 These are the only accepted drifts. Any further version bump still
 requires a new ADR.
 

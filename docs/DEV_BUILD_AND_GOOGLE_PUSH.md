@@ -41,6 +41,7 @@ about 20 minutes for the first cloud build.
    * `EXPO_PUBLIC_API_URL` — the **https** address of the API, with no trailing slash and no
      `/api/v1` (the app adds that itself). A release build refuses a plain `http` address.
    * `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` — only when Google sign-in is set up (step 3 below).
+   * `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` — the Android OAuth client id for Expo's browser OAuth flow.
 4. Push needs Firebase's file (step 4 below). Either keep `google-services.json` in
    `frontend/mobile/` while you build (git ignores it), or store it as an EAS file secret:
    `eas env:create` with name `GOOGLE_SERVICES_JSON`, type **file**, visibility **secret**,
@@ -169,4 +170,3 @@ Left for later (hardening, not needed for a first test):
    immediate answer is read today. Add a scheduled job that fetches receipts and
    switches off those tokens.
 2. An Expo access token header, for stricter delivery security (optional).
-

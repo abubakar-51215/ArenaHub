@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 import { isExpoGo } from '@/lib/expo-go';
 import { unregisterDeviceToken } from '@/services/notifications';
@@ -15,6 +15,9 @@ let cached: NotificationsModule | null | undefined;
 
 export function loadNotifications(): NotificationsModule | null {
   if (!pushAvailable) return null;
+  // expo-notifications imports its Android topic API eagerly. Expo Go and
+  // older custom clients may not include that native module.
+  if (!NativeModules.ExpoTopicSubscriptionModule) return null;
   if (cached === undefined) {
     try {
       cached = require('expo-notifications') as NotificationsModule;

@@ -1,3 +1,4 @@
+import * as Google from 'expo-auth-session/providers/google';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Image, StyleSheet } from 'react-native';
@@ -6,7 +7,14 @@ import { DevDetail } from '@/components/dev-detail';
 import { Button } from '@/components/ui/button';
 import { showToast } from '@/components/ui/toast';
 import { ApiError } from '@/lib/api';
-import { GOOGLE_FAILED, GOOGLE_NOT_AVAILABLE, getGoogleIdToken } from '@/lib/google-sign-in';
+import { noteDevFailure } from '@/lib/dev-detail';
+import {
+  GOOGLE_FAILED,
+  GOOGLE_NOT_AVAILABLE,
+  getGoogleIdToken,
+  googleAvailable,
+} from '@/lib/google-sign-in';
+import { isExpoGo } from '@/lib/expo-go';
 import { googleSignIn } from '@/services/auth';
 import { useAuthStore } from '@/store/auth';
 
@@ -14,7 +22,8 @@ import { useAuthStore } from '@/store/auth';
 // and admins ("This account must log in with email and password.") and suspended accounts, and the screen shows those
 // words in its own error box (frames 10 and 11). Google's window closed by the person: nothing is shown. Expo Go or
 // no Google set-up: the toast "Google sign-in is not available yet." (frame 8). Anything else: "We could not sign you
-// in with Google. Try again." (frame 9). While it works the button shows a spinner and the screen's other buttons wait
+// in with Google. Try again." (frame 9). Expo Go uses Google's browser OAuth flow; while it works the button shows a
+// spinner and the screen's other buttons wait
 // (frame 2). Offline: "Google needs a connection" (frame 12).
 const LOGO = require('@/assets/brand/google-g.png');
 
@@ -22,12 +31,25 @@ const LOGO = require('@/assets/brand/google-g.png');
 export function useGoogleSignIn(onRefused: (message: string) => void) {
   const [busy, setBusy] = useState(false);
   const setSession = useAuthStore((s) => s.setSession);
+  const [, , promptGoogle] = Google.useIdTokenAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId:
+      process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId:
+      process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
+      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    selectAccount: true,
+  });
 
   const start = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const got = await getGoogleIdToken();
+      const got =
+        isExpoGo && !googleAvailable
+          ? await getExpoGoGoogleToken(promptGoogle)
+          : await getGoogleIdToken();
       if (got.kind === 'cancelled') return;
       if (got.kind === 'not-available') return showToast(GOOGLE_NOT_AVAILABLE);
       if (got.kind === 'failed') return showToast(GOOGLE_FAILED);
@@ -48,6 +70,22 @@ export function useGoogleSignIn(onRefused: (message: string) => void) {
     }
   };
   return { start, busy };
+}
+
+async function getExpoGoGoogleToken(
+  prompt: () => Promise<{ type: string; params?: Record<string, string> }>,
+): Promise<Awaited<ReturnType<typeof getGoogleIdToken>>> {
+  try {
+    const response = await prompt();
+    if (response.type === 'dismiss' || response.type === 'cancel') return { kind: 'cancelled' };
+    const idToken = response.params?.id_token;
+    // development build / Expo Go only: say how Google's browser sign-in ended (never the token)
+    if (!idToken) noteDevFailure('native:google', { code: `browser-${response.type}` });
+    return idToken ? { kind: 'token', idToken } : { kind: 'failed' };
+  } catch (err) {
+    noteDevFailure('native:google', err);
+    return { kind: 'failed' };
+  }
 }
 
 export function GoogleButton({ title, busy, disabled, onPress }: { title: string; busy: boolean; disabled?: boolean; onPress: () => void }) {
