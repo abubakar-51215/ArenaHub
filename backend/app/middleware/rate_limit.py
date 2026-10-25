@@ -12,8 +12,10 @@ guessing stay bounded while the cache is down (risk register — graceful fallba
 
 import time
 from ipaddress import IPv4Address, IPv6Address, ip_address
+from itertools import islice
 
 import structlog
+from redis.asyncio import Redis
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -32,6 +34,7 @@ _EXEMPT_PATHS = frozenset({"/api/v1/health"})
 
 # Fallback counters used only while Redis is unreachable: key -> (window start, count).
 _FALLBACK_MAX_KEYS = 10_000
+_FALLBACK_EVICT = _FALLBACK_MAX_KEYS // 10
 _fallback_counts: dict[str, tuple[float, int]] = {}
 
 
@@ -42,12 +45,28 @@ def _fallback_hit(key: str, now: float | None = None) -> tuple[int, int]:
         for k in [k for k, (start, _) in _fallback_counts.items() if now - start >= WINDOW_SECONDS]:
             del _fallback_counts[k]
         if len(_fallback_counts) >= _FALLBACK_MAX_KEYS:
-            _fallback_counts.clear()
+            # still full of live windows: drop only the oldest tenth, never everyone's counts
+            for k in list(islice(_fallback_counts, _FALLBACK_EVICT)):
+                del _fallback_counts[k]
     start, count = _fallback_counts.get(key, (now, 0))
     if now - start >= WINDOW_SECONDS:
         start, count = now, 0
     _fallback_counts[key] = (start, count + 1)
     return count + 1, max(int(WINDOW_SECONDS - (now - start)), 1)
+
+
+async def _seconds_left(client: Redis, key: str) -> int:
+    """Seconds until the Redis counter resets; repairs a counter that lost its expiry."""
+    try:
+        ttl = int(await client.ttl(key))
+        if ttl < 0:  # no expiry (the expire call failed earlier): never leave an IP blocked forever
+            await client.expire(key, WINDOW_SECONDS)
+            return WINDOW_SECONDS
+        return ttl
+    except (
+        Exception
+    ):  # noqa: BLE001 - the block still applies; only the Retry-After hint is a guess
+        return WINDOW_SECONDS
 
 
 def _parse_ip(value: str) -> IPv4Address | IPv6Address | None:
@@ -113,10 +132,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             count = await client.incr(key)
             if count == 1:
                 await client.expire(key, WINDOW_SECONDS)
-            ttl = await client.ttl(key) if count > limit else WINDOW_SECONDS
         except Exception as exc:  # noqa: BLE001 — count in memory on any cache error.
             log.warning("rate_limit_unavailable", error=str(exc))
             count, ttl = _fallback_hit(key)
+        else:
+            ttl = await _seconds_left(client, key) if count > limit else WINDOW_SECONDS
 
         if count > limit:
             return JSONResponse(

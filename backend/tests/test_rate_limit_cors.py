@@ -138,3 +138,46 @@ async def test_requests_are_still_limited_while_redis_is_down(
     rate_limit._fallback_counts.clear()
 
     assert codes == [422, 422, 429]
+
+
+def test_fallback_table_stays_bounded_and_drops_only_the_oldest_when_full(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.middleware import rate_limit
+
+    monkeypatch.setattr(rate_limit, "_FALLBACK_MAX_KEYS", 10)
+    monkeypatch.setattr(rate_limit, "_FALLBACK_EVICT", 1)
+    rate_limit._fallback_counts.clear()
+    for i in range(10):
+        rate_limit._fallback_hit(f"k{i}", now=float(i))  # all still inside their window
+    rate_limit._fallback_hit("new", now=11.0)
+
+    assert len(rate_limit._fallback_counts) == 10
+    assert "k0" not in rate_limit._fallback_counts  # the oldest went
+    assert rate_limit._fallback_counts["k9"] == (9.0, 1)  # everyone else kept their count
+    rate_limit._fallback_counts.clear()
+
+
+async def test_a_counter_that_lost_its_expiry_is_repaired_not_blocked_forever(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.middleware import rate_limit
+
+    class Broken:
+        expired: list[tuple[str, int]] = []
+
+        async def ttl(self, key: str) -> int:
+            return -1
+
+        async def expire(self, key: str, seconds: int) -> None:
+            self.expired.append((key, seconds))
+
+    c = Broken()
+    left = await rate_limit._seconds_left(c, "k")  # type: ignore[arg-type]
+    assert left == rate_limit.WINDOW_SECONDS and c.expired == [("k", rate_limit.WINDOW_SECONDS)]
+
+    class Down:
+        async def ttl(self, key: str) -> int:
+            raise ConnectionError("down")
+
+    assert await rate_limit._seconds_left(Down(), "k") == rate_limit.WINDOW_SECONDS  # type: ignore[arg-type]

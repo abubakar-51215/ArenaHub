@@ -20,6 +20,7 @@ serves its own clients.
 import asyncio
 import contextlib
 import json
+import os
 import uuid
 from datetime import date, time
 
@@ -31,7 +32,20 @@ from app.cache import redis as redis_cache
 log = structlog.get_logger()
 
 RELAY_CHANNEL = "arenahub:slot_updates"
-INSTANCE_ID = uuid.uuid4().hex  # who published a message, so a process skips its own
+PUBLISH_TIMEOUT_SECONDS = (
+    3.0  # a hung Redis must not hold up a booking; a cold localhost connect takes ~2 s
+)
+_instance: tuple[int, str] = (0, "")
+
+
+def instance_id() -> str:
+    """Who published a message, so a process skips its own. Per process id, so workers
+    forked after this module was imported (preload) still get different ids."""
+    global _instance
+    pid = os.getpid()
+    if _instance[0] != pid:
+        _instance = (pid, f"{pid}-{uuid.uuid4().hex}")
+    return _instance[1]
 
 
 class CourtChannelManager:
@@ -85,9 +99,11 @@ async def broadcast_slot_status(
     await manager.broadcast(court_id, message)
     try:
         envelope = json.dumps(
-            {"origin": INSTANCE_ID, "court_id": str(court_id), "message": message}
+            {"origin": instance_id(), "court_id": str(court_id), "message": message}
         )
-        await redis_cache.get_redis().publish(RELAY_CHANNEL, envelope)
+        await asyncio.wait_for(
+            redis_cache.get_redis().publish(RELAY_CHANNEL, envelope), PUBLISH_TIMEOUT_SECONDS
+        )
     except Exception as exc:  # noqa: BLE001 - others miss one update; clients refetch on reconnect
         log.warning("slot_relay_publish_failed", error=str(exc))
 
@@ -96,7 +112,7 @@ async def deliver_relayed(raw: str) -> None:
     """Deliver one message published by another process to this process's sockets."""
     try:
         envelope = json.loads(raw)
-        if envelope["origin"] == INSTANCE_ID:
+        if envelope["origin"] == instance_id():
             return
         await manager.broadcast(uuid.UUID(envelope["court_id"]), envelope["message"])
     except (ValueError, KeyError, TypeError):

@@ -29,7 +29,9 @@ API = "/api/v1"
 
 def _next_monday() -> date:
     today = date.today()
-    return today + timedelta(days=(7 - today.weekday()) % 7 or 7)
+    monday = today + timedelta(days=(7 - today.weekday()) % 7 or 7)
+    # at least 3 days away, so the cancellation window never depends on the time of day
+    return monday if (monday - today).days >= 3 else monday + timedelta(days=7)
 
 
 async def _fresh(db: AsyncSession, stmt: Any) -> Any:

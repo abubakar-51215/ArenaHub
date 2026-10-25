@@ -115,8 +115,40 @@ async def test_relayed_update_reaches_local_sockets_but_not_the_senders_own() ->
     await ws.deliver_relayed(other)
     assert sock.sent == [msg]
 
-    own = json.dumps({"origin": ws.INSTANCE_ID, "court_id": str(court), "message": msg})
+    own = json.dumps({"origin": ws.instance_id(), "court_id": str(court), "message": msg})
     await ws.deliver_relayed(own)
     await ws.deliver_relayed("not json")
     assert sock.sent == [msg]
+    ws.manager.disconnect(court, sock)  # type: ignore[arg-type]
+
+
+def test_each_process_gets_its_own_id_even_after_a_fork(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import os
+
+    from app.websocket import manager as ws
+
+    first = ws.instance_id()
+    assert ws.instance_id() == first
+    monkeypatch.setattr(os, "getpid", lambda: 999_999)
+    assert ws.instance_id() != first
+
+
+async def test_a_hung_redis_does_not_hold_up_the_broadcast(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import asyncio
+
+    from app.cache import redis as redis_cache
+    from app.websocket import manager as ws
+
+    class Hung:
+        async def publish(self, *_: object) -> None:
+            await asyncio.sleep(30)
+
+    monkeypatch.setattr(redis_cache, "get_redis", lambda: Hung())
+    monkeypatch.setattr(ws, "PUBLISH_TIMEOUT_SECONDS", 0.05)
+    court, sock = uuid.uuid4(), FakeWebSocket()
+    await ws.manager.connect(court, sock)  # type: ignore[arg-type]
+    await asyncio.wait_for(
+        ws.broadcast_slot_status(court, uuid.uuid4(), date(2026, 11, 1), time(18, 0), "booked"), 2
+    )
+    assert len(sock.sent) == 1  # local clients were still told
     ws.manager.disconnect(court, sock)  # type: ignore[arg-type]
