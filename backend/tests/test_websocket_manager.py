@@ -99,3 +99,24 @@ async def test_broadcast_slot_status_shapes_the_message() -> None:
         }
     ]
     manager.disconnect(court_id, ws)  # type: ignore[arg-type]
+
+
+async def test_relayed_update_reaches_local_sockets_but_not_the_senders_own() -> None:
+    import json
+
+    from app.websocket import manager as ws
+
+    court = uuid.uuid4()
+    sock = FakeWebSocket()
+    await ws.manager.connect(court, sock)  # type: ignore[arg-type]
+    msg = {"type": "slot_update", "status": "booked"}
+
+    other = json.dumps({"origin": "another-process", "court_id": str(court), "message": msg})
+    await ws.deliver_relayed(other)
+    assert sock.sent == [msg]
+
+    own = json.dumps({"origin": ws.INSTANCE_ID, "court_id": str(court), "message": msg})
+    await ws.deliver_relayed(own)
+    await ws.deliver_relayed("not json")
+    assert sock.sent == [msg]
+    ws.manager.disconnect(court, sock)  # type: ignore[arg-type]

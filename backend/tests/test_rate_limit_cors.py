@@ -105,3 +105,36 @@ def test_trusted_proxies_reads_addresses_and_ranges_and_skips_junk() -> None:
     s = Settings(TRUSTED_PROXIES="10.0.0.5, 10.1.0.0/16, ::1, nonsense")
     assert [str(n) for n in s.trusted_proxy_networks] == ["10.0.0.5/32", "10.1.0.0/16", "::1/128"]
     assert Settings.model_fields["trusted_proxies"].default == ""
+
+
+def test_fallback_counter_limits_per_key_and_resets_after_the_window() -> None:
+    from app.middleware import rate_limit
+
+    rate_limit._fallback_counts.clear()
+    assert [rate_limit._fallback_hit("a", now=0.0)[0] for _ in range(3)] == [1, 2, 3]
+    assert rate_limit._fallback_hit("b", now=1.0)[0] == 1
+    count, left = rate_limit._fallback_hit("a", now=10.0)
+    assert (count, left) == (4, 50)
+    assert rate_limit._fallback_hit("a", now=rate_limit.WINDOW_SECONDS + 1.0)[0] == 1
+    rate_limit._fallback_counts.clear()
+
+
+async def test_requests_are_still_limited_while_redis_is_down(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.cache import redis as redis_cache
+    from app.middleware import rate_limit
+
+    def broken() -> None:
+        raise ConnectionError("redis is down")
+
+    rate_limit._fallback_counts.clear()
+    monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
+    monkeypatch.setattr(redis_cache, "get_redis", broken)
+
+    codes = [
+        (await client.post("/api/v1/auth/login", json=INVALID_BODY)).status_code for _ in range(3)
+    ]
+    rate_limit._fallback_counts.clear()
+
+    assert codes == [422, 422, 429]

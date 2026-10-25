@@ -4,6 +4,7 @@ Wires logging, exception handlers, CORS, and the /api/v1 routers. Feature
 modules register their own routers here as they land.
 """
 
+import asyncio
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -67,6 +68,7 @@ from app.modules.user.api import router as user_router
 from app.shared.storage import uses_local_disk
 from app.tasks.scheduler import create_scheduler
 from app.websocket.api import router as websocket_router
+from app.websocket.manager import run_relay
 
 configure_logging()
 settings = get_settings()
@@ -79,7 +81,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log_email_mode()  # one line: real SMTP (host, port) or console only, and why
     scheduler = create_scheduler()
     scheduler.start()
+    relay = asyncio.create_task(run_relay())  # slot updates from other server processes
     yield
+    relay.cancel()
     scheduler.shutdown(wait=False)
     # Clean shutdown of pooled connections.
     await engine.dispose()

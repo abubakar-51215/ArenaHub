@@ -9,15 +9,29 @@ of polling. No per-connection state beyond the socket itself is kept, so a
 dropped connection just falls off the set — clients are expected to
 reconnect (with backoff) and re-fetch the current slot list on reconnect,
 since WebSocket delivery here is best-effort, not a message queue with replay.
+
+Several server processes: each one delivers to its own sockets and also
+publishes the update on a Redis channel; every other process listens
+(``run_relay``) and delivers it to its sockets. A process ignores its own
+messages, so nothing arrives twice. If Redis is down, each process still
+serves its own clients.
 """
 
+import asyncio
+import contextlib
+import json
 import uuid
 from datetime import date, time
 
 import structlog
 from fastapi import WebSocket
 
+from app.cache import redis as redis_cache
+
 log = structlog.get_logger()
+
+RELAY_CHANNEL = "arenahub:slot_updates"
+INSTANCE_ID = uuid.uuid4().hex  # who published a message, so a process skips its own
 
 
 class CourtChannelManager:
@@ -60,14 +74,51 @@ manager = CourtChannelManager()
 async def broadcast_slot_status(
     court_id: uuid.UUID, slot_id: uuid.UUID, slot_date: date, start_time: time, status: str
 ) -> None:
-    await manager.broadcast(
-        court_id,
-        {
-            "type": "slot_update",
-            "court_id": str(court_id),
-            "slot_id": str(slot_id),
-            "date": slot_date.isoformat(),
-            "start_time": start_time.isoformat(timespec="minutes"),
-            "status": status,
-        },
-    )
+    message = {
+        "type": "slot_update",
+        "court_id": str(court_id),
+        "slot_id": str(slot_id),
+        "date": slot_date.isoformat(),
+        "start_time": start_time.isoformat(timespec="minutes"),
+        "status": status,
+    }
+    await manager.broadcast(court_id, message)
+    try:
+        envelope = json.dumps(
+            {"origin": INSTANCE_ID, "court_id": str(court_id), "message": message}
+        )
+        await redis_cache.get_redis().publish(RELAY_CHANNEL, envelope)
+    except Exception as exc:  # noqa: BLE001 - others miss one update; clients refetch on reconnect
+        log.warning("slot_relay_publish_failed", error=str(exc))
+
+
+async def deliver_relayed(raw: str) -> None:
+    """Deliver one message published by another process to this process's sockets."""
+    try:
+        envelope = json.loads(raw)
+        if envelope["origin"] == INSTANCE_ID:
+            return
+        await manager.broadcast(uuid.UUID(envelope["court_id"]), envelope["message"])
+    except (ValueError, KeyError, TypeError):
+        log.warning("slot_relay_bad_message")
+
+
+async def run_relay(retry_seconds: float = 5.0) -> None:
+    """Listen for updates from the other processes until cancelled; reconnect if Redis drops."""
+    while True:
+        pubsub = None
+        try:
+            pubsub = redis_cache.get_redis().pubsub()
+            await pubsub.subscribe(RELAY_CHANNEL)
+            async for item in pubsub.listen():
+                if item.get("type") == "message":
+                    await deliver_relayed(item["data"])
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - keep trying; local delivery works without it
+            log.warning("slot_relay_unavailable", error=str(exc))
+        finally:
+            if pubsub is not None:
+                with contextlib.suppress(Exception):
+                    await pubsub.aclose()
+        await asyncio.sleep(retry_seconds)

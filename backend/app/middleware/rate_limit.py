@@ -5,10 +5,12 @@ Per-client-IP counters live in Redis with a rolling window TTL. Auth routes
 guessing; other ``/api/v1`` routes get a looser one. Health checks, docs, and
 CORS preflights are exempt.
 
-Fails OPEN: if Redis is unreachable the request is allowed through rather than
-taking the whole API down with the cache (risk register — graceful fallback).
+If Redis is unreachable the API stays up and the limit is counted in this
+process's memory instead (same budget, per server process), so login and OTP
+guessing stay bounded while the cache is down (risk register — graceful fallback).
 """
 
+import time
 from ipaddress import IPv4Address, IPv6Address, ip_address
 
 import structlog
@@ -27,6 +29,25 @@ WINDOW_SECONDS = 60
 _AUTH_PREFIX = "/api/v1/auth"
 _API_PREFIX = "/api/v1"
 _EXEMPT_PATHS = frozenset({"/api/v1/health"})
+
+# Fallback counters used only while Redis is unreachable: key -> (window start, count).
+_FALLBACK_MAX_KEYS = 10_000
+_fallback_counts: dict[str, tuple[float, int]] = {}
+
+
+def _fallback_hit(key: str, now: float | None = None) -> tuple[int, int]:
+    """Count one request in memory; return (count in this window, seconds left)."""
+    now = time.monotonic() if now is None else now
+    if len(_fallback_counts) >= _FALLBACK_MAX_KEYS:
+        for k in [k for k, (start, _) in _fallback_counts.items() if now - start >= WINDOW_SECONDS]:
+            del _fallback_counts[k]
+        if len(_fallback_counts) >= _FALLBACK_MAX_KEYS:
+            _fallback_counts.clear()
+    start, count = _fallback_counts.get(key, (now, 0))
+    if now - start >= WINDOW_SECONDS:
+        start, count = now, 0
+    _fallback_counts[key] = (start, count + 1)
+    return count + 1, max(int(WINDOW_SECONDS - (now - start)), 1)
 
 
 def _parse_ip(value: str) -> IPv4Address | IPv6Address | None:
@@ -92,12 +113,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             count = await client.incr(key)
             if count == 1:
                 await client.expire(key, WINDOW_SECONDS)
-        except Exception as exc:  # noqa: BLE001 — fail open on any cache error.
+            ttl = await client.ttl(key) if count > limit else WINDOW_SECONDS
+        except Exception as exc:  # noqa: BLE001 — count in memory on any cache error.
             log.warning("rate_limit_unavailable", error=str(exc))
-            return await call_next(request)
+            count, ttl = _fallback_hit(key)
 
         if count > limit:
-            ttl = await client.ttl(key)
             return JSONResponse(
                 status_code=429,
                 content=error("Too many requests. Please slow down."),
