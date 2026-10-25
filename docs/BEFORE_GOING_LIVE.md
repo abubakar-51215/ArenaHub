@@ -178,7 +178,7 @@ Either way: **do this before storage costs matter**, since nothing currently rec
 6. **Terms and Privacy** text and the support email and hours are still open ("Decide at the very end", items 2 and 3); the Profile row and the "Contact us" block stay out until then.
 7. **A balance payment nobody finishes** (a card page or wallet request left open) is closed by the scheduler after 24 hours so a new one can be started; a bank-transfer balance with a receipt waits for the owner and is never closed by it.
 8. **Android permissions were trimmed** (no storage read or write, no developer-menu overlay in preview and store builds; the camera is now allowed for Take photo). On the first real phone, check both Take photo and Choose from gallery on an older and a newer Android.
-9. **Sentry for the phone** is pinned to the version Expo SDK 54 expects (`~7.2.0`). When Expo is upgraded, run `npx expo-doctor` again.
+9. **Sentry for the phone** is pinned to the version Expo SDK 58 expects (`@sentry/react-native ~8.28.0` in `frontend/mobile/package.json`). When Expo is upgraded, run `npx expo-doctor` again.
 
 10. **The final phone test.** Do `docs/REAL_PHONE_TEST.md` on one small and one large Android phone, with the development build, before anything is shown to real people. It lists only what a browser cannot prove, with an expected result and a PASS or FAIL box for each step.
 11. **The dev-only "Backend Health" screen** (`/health` in the phone app) is a developer page with the system header. Hide it or remove it from the store build; it is not linked from any screen.

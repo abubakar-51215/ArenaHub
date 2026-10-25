@@ -270,10 +270,9 @@ header directly.
 
 ## Node version mismatch (decision: leave engines as is)
 
-`package.json` declares `"engines": { "node": ">=20 <21" }`, but the working
-machine runs Node 22.22. Installs and builds work on 22, so the mismatch is
-only a declaration problem. Left unchanged for now. Decide whether to move
-the engine range to 22 or to pin Node 20 for the team.
+`package.json` declared `"engines": { "node": ">=20 <21" }`, but the working
+machine ran Node 22.22. **Resolved later:** the root `package.json` now declares
+`">=22.13.0 <23"` (Expo SDK 58 needs 22.13+), and both CI jobs use Node 22.13.0.
 
 ## DECISION NEEDED before any push to main — remote main diverges
 

@@ -1,5 +1,7 @@
 # Integration test report — all three apps together
 
+> **Point-in-time report.** The test counts below (396, 429, 618) were true on the dates shown and are not the current number. On 25 October 2026 the backend suite had 1005 tests and all 1005 passed (`cd backend && uv run pytest`). Count it again with `uv run pytest --collect-only -q`.
+
 Date: 13 October 2026; follow-ups on 14 October 2026 (Karachi time). Branch: `prototype-screens`.
 
 ## Round 4, 14 October 2026 night: emailed codes, Google, smart search, assistant

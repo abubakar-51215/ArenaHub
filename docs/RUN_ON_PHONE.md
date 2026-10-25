@@ -5,18 +5,18 @@ Simple steps, in order. Tested from the computer as far as possible (see "What w
 ## 1. What to install on the phone
 
 - Install **Expo Go** (Android: Play Store; iPhone: App Store).
-- The app uses **Expo SDK 54** (`"expo": "~54.0.x"` in `frontend/mobile/package.json`). Expo Go must support SDK 54.
-- If Expo Go says "Project is incompatible with this version of Expo Go" (the store version is newer than SDK 54):
-  - **Android:** open https://expo.dev/go, choose SDK 54 and install that Expo Go file (an APK). Remove the store version first.
-  - **iPhone:** the App Store only gives the newest Expo Go and you cannot install an older one. Tell me and I will upgrade the project to the newer SDK, or we make a development build.
+- The app uses **Expo SDK 58** (`"expo": "~58.0.x"` in `frontend/mobile/package.json`). Expo Go must support SDK 58.
+- If Expo Go says "Project is incompatible with this version of Expo Go" (the store version does not match SDK 58):
+  - **Android:** open https://expo.dev/go, choose SDK 58 and install that Expo Go file (an APK). Remove the store version first.
+  - **iPhone:** the App Store only gives the newest Expo Go and you cannot install an older one. If it does not match SDK 58, make a development build instead (`docs/DEV_BUILD_AND_GOOGLE_PUSH.md`).
 - **Expo Go cannot receive push notifications** (Expo removed them from Expo Go in SDK 53). The app knows this: in Expo Go it never loads the push code, registers nothing and logs nothing about it. Push works only in a real build. Expo Go also shows its own splash first, not the ArenaHub one; the animated ArenaHub splash inside the app still plays.
-- Expo Go must match the project: the project now uses `expo ~54.0.37`, `expo-constants ~18.0.14` and `expo-file-system ~19.0.24` (run `npm install` in `frontend/mobile` after pulling).
+- Expo Go must match the project: the exact versions are in `frontend/mobile/package.json` (for example `expo ~58.0.19`, `expo-constants ~58.0.13`, `expo-file-system ~58.0.11`). Run `npm install` in `frontend/mobile` after pulling. The computer needs Node 22.13 or newer.
 
 ## 2. Same Wi-Fi, and the computer's address
 
 - The phone and the computer must be on the **same Wi-Fi**. A guest network or "AP isolation" blocks it.
 - On the computer open PowerShell and run: `ipconfig`
-- Find the block "Wireless LAN adapter Wi-Fi" and write down **IPv4 Address**. On this computer it is `192.168.10.11` (yours may change; check again if the router restarts). Ignore the "Local Area Connection*" blocks (hotspot).
+- Find the block "Wireless LAN adapter Wi-Fi" and write down **IPv4 Address**. It is different on every network and can change when the router restarts, so read it from `ipconfig` each time; do not reuse an address from an old note. Ignore the "Local Area Connection*" blocks (hotspot).
 - Below, `<IP>` means that address.
 
 ## 3. Tell the app where the backend is
@@ -24,7 +24,7 @@ Simple steps, in order. Tested from the computer as far as possible (see "What w
 - File: `frontend/mobile/.env`
 - Setting name: `EXPO_PUBLIC_API_URL`
 - It is now `EXPO_PUBLIC_API_URL=http://localhost:8000`. **`localhost` does not work on a phone** (on the phone it means the phone itself).
-- Change it to `EXPO_PUBLIC_API_URL=http://<IP>:8000` (for example `http://192.168.10.11:8000`). No slash at the end and no `/api/v1`.
+- Change it to `EXPO_PUBLIC_API_URL=http://<IP>:8000` (for example, if `ipconfig` shows `192.168.x.y`, write `http://192.168.x.y:8000`). No slash at the end and no `/api/v1`.
 - The app builds the live-slots WebSocket address from the same setting, so nothing else needs changing.
 - This setting is read when Expo starts. After you change it, start Expo again with `--clear` (step 5).
 - To use the scratch backend (see step 8) use `http://<IP>:8001` instead.
@@ -161,8 +161,8 @@ Do these in order on the phone. "OK" says what a correct result looks like.
 
 ## What was and was not tested
 
-- Tested from the computer: the backend starts with `--host 0.0.0.0` and `http://192.168.10.11:8002/docs`, the health route and a player sign-in all answer through the computer's Wi-Fi address; Expo's server (port 8081) answers at the same address; the test accounts and the scratch player sign in; the Windows network profile and firewall state were read (not changed).
-- **Not tested:** anything from a real phone (no phone here): the QR scan, Expo Go on SDK 54, the firewall rule, haptics, the share sheet, the photo picker, native blur, push notifications. A connection made from the computer to its own address does not go through the firewall, so step 6 is untested.
+- Tested from the computer: the backend starts with `--host 0.0.0.0` and `http://<IP>:8002/docs`, the health route and a player sign-in all answer through the computer's Wi-Fi address; Expo's server (port 8081) answers at the same address; the test accounts and the scratch player sign in; the Windows network profile and firewall state were read (not changed).
+- **Not tested:** anything from a real phone (no phone here): the QR scan, Expo Go on SDK 58, the firewall rule, haptics, the share sheet, the photo picker, native blur, push notifications. A connection made from the computer to its own address does not go through the firewall, so step 6 is untested.
 
 ## 11. Phone-only checks (the final real-phone test)
 

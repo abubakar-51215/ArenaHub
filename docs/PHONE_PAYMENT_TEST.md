@@ -7,8 +7,8 @@ The phone itself has **not** been tested yet: that is what this sheet is for.
 
 ## 1. Find this computer's address
 
-In PowerShell run `ipconfig` and take the IPv4 address of the Wi-Fi adapter (on 25 Oct 2026 it was `192.168.1.62`;
-it can change). Below it is written `<IP>`. The phone and the computer must be on the same Wi-Fi (no guest
+In PowerShell run `ipconfig` and take the IPv4 address of the Wi-Fi adapter (the block "Wireless LAN adapter Wi-Fi"; it differs on
+every network and can change, so read it fresh each time). Below it is written `<IP>`. The phone and the computer must be on the same Wi-Fi (no guest
 network, no "AP isolation").
 
 ## 2. Settings you change (you do this; the files hold secrets or are yours)

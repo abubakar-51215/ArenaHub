@@ -83,7 +83,7 @@ real-time digital system.
 
 | Layer | Technology |
 |---|---|
-| 📱 Mobile | React Native + **Expo SDK 54**, TypeScript |
+| 📱 Mobile | React Native + **Expo SDK 58**, TypeScript |
 | 💻 Web | **Next.js 15** (App Router), React 19, Tailwind CSS 4, shadcn/ui |
 | ⚙️ Backend | **FastAPI**, async SQLAlchemy 2, Pydantic 2 |
 | 🐍 Language | **Python 3.12** |
@@ -174,7 +174,7 @@ Install and have running before you start:
 - **PostgreSQL 18** — on `localhost:5432`
 - **Memurai** (Windows-native Redis) — on `localhost:6379`
 - **uv** — `winget install --id=astral-sh.uv` (manages the pinned Python 3.12; no global Python needed)
-- **Node.js 20 LTS** and npm
+- **Node.js 22.13 or newer (22.x)** and npm (Expo SDK 58 / React Native 0.88 need 22.13+; the repo declares `>=22.13.0 <23`)
 - **Git**
 
 ### 1. Clone
