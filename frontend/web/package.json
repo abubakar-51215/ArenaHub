@@ -40,5 +40,10 @@
     "shadcn": "^4.21.5",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.30"
+    }
   }
 }
