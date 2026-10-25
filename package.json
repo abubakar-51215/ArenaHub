@@ -24,7 +24,7 @@
     "prepare": "pre-commit install || echo \"pre-commit not installed; run: uv tool install pre-commit\""
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
+    "concurrently": "^9.2.5",
     "playwright": "^1.63.0"
   },
   "engines": {
