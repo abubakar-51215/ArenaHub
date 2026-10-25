@@ -84,13 +84,13 @@ here. Only ever operates on an account whose role is `admin`.
 - **Backend (pip-audit, runtime packages):** Pillow 12.3.0 had 37 advisories and certifi 1 (the fix for all of them is Pillow 13.0.0 and certifi 2026.10.23). Both were upgraded (`pillow>=13.0` in `pyproject.toml`, `uv.lock`). The full backend suite (1005 tests, including the image-upload tests) passed on Pillow 13.0.0.
 - **Web (npm audit, runtime):** `sharp` fixed with a non-breaking `npm audit fix`. Two findings remain, both `postcss` bundled inside `next`; the only fix is Next 16 (a major upgrade, left as the scheduled decision above). `npm run build` passed after the change.
 - **Root tools (npm audit):** `concurrently` / `shell-quote` fixed (dev-only task runner).
-- **Phone (npm audit, runtime):** `npm audit fix` changed the lockfile; 8 high remain (`image-size`, `node-forge`, `zod` and the packages that depend on them). Their "fixes" are breaking downgrades of Expo, so they were not applied; they are build-time tooling. `npx expo install --check` says the dependencies are up to date.
+- **Phone (npm audit, runtime):** `npm audit fix` changed the lockfile; 8 high remain (`image-size`, `node-forge`, `zod` and the packages that depend on them). Their "fixes" are breaking downgrades of Expo, so they were not applied; `image-size` and `node-forge` are build-time tooling; whether the phone app's runtime ever reaches `zod` was not checked. `npx expo install --check` says the dependencies are up to date.
 - Not done: a penetration test, and bandit was not re-run today.
 
 ## Redis down (changed 2026-10-25)
 
-- The rate limiter used to let every request through when Redis was unreachable. It now counts in the server's own memory with the same budgets, so login and code guessing stay limited (the count is per server process, and resets if the process restarts).
-- Slot updates to phones and browsers now also go through a Redis channel, so several server processes can share them. If Redis is down each process still serves its own clients; clients refetch on reconnect.
+- The rate limiter used to let every request through when Redis was unreachable. It now counts in the server's own memory with the same budgets, so login and code guessing stay limited. The count is per server process and resets if the process restarts: with N server processes the real limit is up to N times the setting while Redis is down. The table holds at most 10,000 addresses; when full of live entries the oldest tenth is dropped.
+- Slot updates to phones and browsers now also go through a Redis channel, so several server processes can share them. If Redis is down each process still serves its own clients, but updates made on other processes are lost (Redis pub/sub keeps no history), and a client is not told: it sees them only when it next reloads the slots. A publish waits at most 3 seconds so a hung Redis cannot stall a booking.
 
 
 ## Later items

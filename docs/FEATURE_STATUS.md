@@ -144,7 +144,7 @@ Evidence paths are relative to repo root. "Route table" = `docs/ROUTES_AND_ROLES
 | Arena detail: images, amenities, courts, pricing, hours | DONE | `GET /arenas/{id}`, `/courts`, `/slots-today`; mobile `arena/[id].tsx` | FR-P-06 | |
 | Average rating + reviews on detail | DONE | `/arenas/{id}/reviews`, `/reviews/summary`; mobile `arena/[id]/reviews.tsx` | FR-P-06, FR-P-14 | |
 | Embedded map + navigation | DONE | mobile `lib/directions.ts` (`openDirections`), "Get Directions" row on `arena/[id].tsx` | FR-P-06, dev #8 | Built as the deviation #8 / ADR-004 scope: a "Get Directions" deep link to Google/Apple Maps, not an interactive embedded map. An interactive map picker (Leaflet or similar) was considered and **SKIPPED by decision** (no new map library added) — `components/static-map.tsx`'s static OSM mosaic stays unwired, superseded by the deep link. |
-| Real-time slot availability (WebSocket) | DONE | `app/websocket/manager.py`; `/courts/{id}/slots`; mobile `court/[id]/slots.tsx` | FR-P-07, FR-S-02 | Updates also go through a Redis channel (`run_relay`) so several server processes share them; checked with two real processes on 2026-10-25, `tests/test_websocket_manager.py`. Peak/off-peak styling on slots. |
+| Real-time slot availability (WebSocket) | DONE | `app/websocket/manager.py`; `/courts/{id}/slots`; mobile `court/[id]/slots.tsx` | FR-P-07, FR-S-02 | Updates also go through a Redis channel (`run_relay`) so several server processes share them; two real processes checked on 2026-10-25 with `backend/scripts/check_slot_relay.py` (needs Redis); unit tests in `tests/test_websocket_manager.py`. Not tested: Redis outage and reconnect, more than two processes. Peak/off-peak styling on slots. |
 
 ### Booking Engine
 
