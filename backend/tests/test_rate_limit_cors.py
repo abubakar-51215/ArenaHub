@@ -5,6 +5,9 @@ limiter used to sit outside the CORS middleware, so its 429s had none and the
 browser reported a CORS failure instead.
 """
 
+from collections.abc import Iterator
+from types import ModuleType
+
 import pytest
 from httpx import AsyncClient
 
@@ -107,77 +110,149 @@ def test_trusted_proxies_reads_addresses_and_ranges_and_skips_junk() -> None:
     assert Settings.model_fields["trusted_proxies"].default == ""
 
 
-def test_fallback_counter_limits_per_key_and_resets_after_the_window() -> None:
+@pytest.fixture
+def fallback() -> Iterator[ModuleType]:
     from app.middleware import rate_limit
 
     rate_limit._fallback_counts.clear()
-    assert [rate_limit._fallback_hit("a", now=0.0)[0] for _ in range(3)] == [1, 2, 3]
-    assert rate_limit._fallback_hit("b", now=1.0)[0] == 1
-    count, left = rate_limit._fallback_hit("a", now=10.0)
-    assert (count, left) == (4, 50)
-    assert rate_limit._fallback_hit("a", now=rate_limit.WINDOW_SECONDS + 1.0)[0] == 1
+    yield rate_limit
     rate_limit._fallback_counts.clear()
+
+
+def test_fallback_counter_limits_per_key_and_resets_after_the_window(fallback: ModuleType) -> None:
+    hit = fallback._fallback_hit
+    assert [hit("a", 5, now=0.0)[0] for _ in range(3)] == [1, 2, 3]
+    assert hit("b", 5, now=1.0)[0] == 1
+    assert hit("a", 5, now=10.0) == (4, 50)
+    assert hit("a", 5, now=fallback.WINDOW_SECONDS + 1.0)[0] == 1
+
+
+def test_full_table_of_live_windows_refuses_new_addresses_and_keeps_every_counter(
+    fallback: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(fallback, "_FALLBACK_MAX_KEYS", 3)
+    for i in range(3):
+        fallback._fallback_hit(f"k{i}", 5, now=float(i))
+    before = dict(fallback._fallback_counts)
+
+    count, left = fallback._fallback_hit("newcomer", 5, now=10.0)
+
+    assert count > 5  # fail closed: refused, not waved through
+    assert left == fallback.WINDOW_SECONDS - 10  # until the oldest window ends
+    assert fallback._fallback_counts == before  # nobody's counter was dropped or reset
+    assert fallback._fallback_hit("k0", 5, now=11.0)[0] == 2  # known addresses still count
+
+
+def test_full_table_makes_room_by_pruning_only_expired_windows(
+    fallback: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(fallback, "_FALLBACK_MAX_KEYS", 3)
+    fallback._fallback_hit("old1", 5, now=0.0)
+    fallback._fallback_hit("old2", 5, now=1.0)
+    fallback._fallback_hit("live", 5, now=50.0)
+
+    count, _ = fallback._fallback_hit("newcomer", 5, now=61.0)  # old1 and old2 have expired
+
+    assert count == 1
+    assert set(fallback._fallback_counts) == {"live", "newcomer"}
+
+
+class _Redis:
+    """A Redis whose incr works and whose other calls can be made to fail."""
+
+    def __init__(self, count: int, ttl_fails: bool = False, expire_fails: bool = False) -> None:
+        self.count, self.ttl_fails, self.expire_fails = count, ttl_fails, expire_fails
+        self.expired: list[str] = []
+
+    async def incr(self, key: str) -> int:
+        return self.count
+
+    async def expire(self, key: str, seconds: int) -> None:
+        if self.expire_fails:
+            raise ConnectionError("expire failed")
+        self.expired.append(key)
+
+    async def ttl(self, key: str) -> int:
+        if self.ttl_fails:
+            raise ConnectionError("ttl failed")
+        return 42
+
+
+async def _login_with(client: AsyncClient, monkeypatch: pytest.MonkeyPatch, redis: _Redis) -> int:
+    from app.cache import redis as redis_cache
+
+    monkeypatch.setattr(redis_cache, "get_redis", lambda: redis)
+    monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
+    return (await client.post("/api/v1/auth/login", json=INVALID_BODY)).status_code
+
+
+async def test_over_limit_request_stays_refused_when_ttl_fails(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, fallback: ModuleType
+) -> None:
+    redis = _Redis(count=7, ttl_fails=True)
+    assert await _login_with(client, monkeypatch, redis) == 429  # not reset to a count of one
+    assert fallback._fallback_counts == {}  # and Redis, not memory, did the counting
+
+
+async def test_first_request_is_allowed_and_counted_when_expire_fails(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, fallback: ModuleType
+) -> None:
+    assert await _login_with(client, monkeypatch, _Redis(count=1, expire_fails=True)) == 422
+
+
+async def test_over_limit_request_stays_refused_when_expire_repair_fails(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, fallback: ModuleType
+) -> None:
+    class NoExpiry(_Redis):
+        async def ttl(self, key: str) -> int:
+            return -1  # the counter lost its expiry
+
+    assert await _login_with(client, monkeypatch, NoExpiry(3, expire_fails=True)) == 429
+
+
+async def test_a_counter_without_an_expiry_is_given_one(fallback: ModuleType) -> None:
+    class NoExpiry(_Redis):
+        async def ttl(self, key: str) -> int:
+            return -1
+
+    redis = NoExpiry(3)
+    left = await fallback._seconds_left(redis, "k")
+    assert left == fallback.WINDOW_SECONDS and redis.expired == ["k"]
 
 
 async def test_requests_are_still_limited_while_redis_is_down(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, fallback: ModuleType
 ) -> None:
     from app.cache import redis as redis_cache
-    from app.middleware import rate_limit
 
     def broken() -> None:
         raise ConnectionError("redis is down")
 
-    rate_limit._fallback_counts.clear()
     monkeypatch.setattr(get_settings(), "rate_limit_auth_per_minute", 2)
     monkeypatch.setattr(redis_cache, "get_redis", broken)
 
     codes = [
         (await client.post("/api/v1/auth/login", json=INVALID_BODY)).status_code for _ in range(3)
     ]
-    rate_limit._fallback_counts.clear()
 
     assert codes == [422, 422, 429]
 
 
-def test_fallback_table_stays_bounded_and_drops_only_the_oldest_when_full(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from app.middleware import rate_limit
+def test_an_outage_is_logged_once_and_its_end_is_logged_once() -> None:
+    from structlog.testing import capture_logs
 
-    monkeypatch.setattr(rate_limit, "_FALLBACK_MAX_KEYS", 10)
-    monkeypatch.setattr(rate_limit, "_FALLBACK_EVICT", 1)
-    rate_limit._fallback_counts.clear()
-    for i in range(10):
-        rate_limit._fallback_hit(f"k{i}", now=float(i))  # all still inside their window
-    rate_limit._fallback_hit("new", now=11.0)
+    from app.core.outage_log import OutageLog
 
-    assert len(rate_limit._fallback_counts) == 10
-    assert "k0" not in rate_limit._fallback_counts  # the oldest went
-    assert rate_limit._fallback_counts["k9"] == (9.0, 1)  # everyone else kept their count
-    rate_limit._fallback_counts.clear()
-
-
-async def test_a_counter_that_lost_its_expiry_is_repaired_not_blocked_forever(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from app.middleware import rate_limit
-
-    class Broken:
-        expired: list[tuple[str, int]] = []
-
-        async def ttl(self, key: str) -> int:
-            return -1
-
-        async def expire(self, key: str, seconds: int) -> None:
-            self.expired.append((key, seconds))
-
-    c = Broken()
-    left = await rate_limit._seconds_left(c, "k")  # type: ignore[arg-type]
-    assert left == rate_limit.WINDOW_SECONDS and c.expired == [("k", rate_limit.WINDOW_SECONDS)]
-
-    class Down:
-        async def ttl(self, key: str) -> int:
-            raise ConnectionError("down")
-
-    assert await rate_limit._seconds_left(Down(), "k") == rate_limit.WINDOW_SECONDS  # type: ignore[arg-type]
+    outage = OutageLog("thing")
+    with capture_logs() as logs:
+        for _ in range(50):
+            outage.failed(ConnectionError("down"))
+        outage.ok()
+        outage.ok()
+        outage.failed(TimeoutError())
+    assert [(e["event"], e["log_level"]) for e in logs] == [
+        ("thing_unavailable", "warning"),
+        ("thing_recovered", "info"),
+        ("thing_unavailable", "warning"),
+    ]
+    assert logs[2]["error"] == "TimeoutError"

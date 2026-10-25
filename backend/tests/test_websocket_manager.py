@@ -152,3 +152,36 @@ async def test_a_hung_redis_does_not_hold_up_the_broadcast(monkeypatch) -> None:
     )
     assert len(sock.sent) == 1  # local clients were still told
     ws.manager.disconnect(court, sock)  # type: ignore[arg-type]
+
+
+async def test_publish_failures_never_reach_the_caller_and_are_logged_once(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from structlog.testing import capture_logs
+
+    from app.cache import redis as redis_cache
+    from app.core.outage_log import OutageLog
+    from app.websocket import manager as ws
+
+    class Refused:
+        async def publish(self, *_: object) -> None:
+            raise ConnectionError("connection refused")
+
+    monkeypatch.setattr(redis_cache, "get_redis", lambda: Refused())
+    monkeypatch.setattr(ws, "_publish_outage", OutageLog("slot_relay_publish"))
+    court, sock = uuid.uuid4(), FakeWebSocket()
+    await ws.manager.connect(court, sock)  # type: ignore[arg-type]
+
+    with capture_logs() as logs:
+        for _ in range(20):
+            await ws.broadcast_slot_status(
+                court, uuid.uuid4(), date(2026, 11, 1), time(18, 0), "booked"
+            )
+
+    assert len(sock.sent) == 20  # every local client was told every time
+    assert [e["event"] for e in logs] == ["slot_relay_publish_unavailable"]  # not 20 warnings
+    ws.manager.disconnect(court, sock)  # type: ignore[arg-type]
+
+
+async def test_the_publish_wait_is_finite() -> None:
+    from app.websocket import manager as ws
+
+    assert 0 < ws.PUBLISH_TIMEOUT_SECONDS <= 5

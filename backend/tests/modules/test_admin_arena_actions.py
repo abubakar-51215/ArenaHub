@@ -5,6 +5,7 @@ bookings (future ones cancelled with a full refund, past ones untouched),
 gateway refund failure and the scheduled retry, notices, audit entries,
 and that a suspended or removed arena disappears for players."""
 
+import sys
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -695,3 +696,24 @@ async def test_admin_payments_show_lifecycle_status(
     [refunded] = after
     assert refunded["status"] == "refunded"
     assert refunded["lifecycle_status"] == "refunded"
+
+
+@pytest.mark.parametrize("weekday", range(7))
+def test_the_test_monday_is_always_far_enough_ahead(
+    weekday: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Refund tests book a Monday and expect a full refund, so it must stay outside the
+    24-hour free-cancellation window whatever day and hour the suite runs (it used to be
+    "tomorrow" on Sundays, which failed after the first slot's hour minus 24)."""
+    today = date(2026, 10, 19) + timedelta(days=weekday)  # a known Monday plus 0..6 days
+
+    class FixedDate(date):
+        @classmethod
+        def today(cls) -> "FixedDate":
+            return cls(today.year, today.month, today.day)
+
+    monkeypatch.setattr(sys.modules[__name__], "date", FixedDate)
+    monday = _next_monday()
+    assert monday.weekday() == 0
+    # even from 23:59 today to the earliest possible slot (00:00) there are > 48 hours
+    assert (monday - today).days >= 3

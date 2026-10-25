@@ -28,8 +28,11 @@ import structlog
 from fastapi import WebSocket
 
 from app.cache import redis as redis_cache
+from app.core.outage_log import OutageLog
 
 log = structlog.get_logger()
+_publish_outage = OutageLog("slot_relay_publish")
+_listen_outage = OutageLog("slot_relay_listen")
 
 RELAY_CHANNEL = "arenahub:slot_updates"
 PUBLISH_TIMEOUT_SECONDS = (
@@ -104,8 +107,12 @@ async def broadcast_slot_status(
         await asyncio.wait_for(
             redis_cache.get_redis().publish(RELAY_CHANNEL, envelope), PUBLISH_TIMEOUT_SECONDS
         )
-    except Exception as exc:  # noqa: BLE001 - others miss one update; clients refetch on reconnect
-        log.warning("slot_relay_publish_failed", error=str(exc))
+    except (
+        Exception
+    ) as exc:  # noqa: BLE001 - timeout, refused or reset: local clients already got it
+        _publish_outage.failed(exc)  # logged once per outage; other processes miss this update
+    else:
+        _publish_outage.ok()
 
 
 async def deliver_relayed(raw: str) -> None:
@@ -126,13 +133,14 @@ async def run_relay(retry_seconds: float = 5.0) -> None:
         try:
             pubsub = redis_cache.get_redis().pubsub()
             await pubsub.subscribe(RELAY_CHANNEL)
+            _listen_outage.ok()
             async for item in pubsub.listen():
                 if item.get("type") == "message":
                     await deliver_relayed(item["data"])
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001 - keep trying; local delivery works without it
-            log.warning("slot_relay_unavailable", error=str(exc))
+            _listen_outage.failed(exc)
         finally:
             if pubsub is not None:
                 with contextlib.suppress(Exception):
