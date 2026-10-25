@@ -93,3 +93,7 @@ design/baselines/mobile/*.png
 ArenaHub-dev.apk
 
 backend/stripe.exe
+
+# Google OAuth client downloads (contain client secrets): never commit
+client_secret_*.json
+client_*.apps.googleusercontent.com.plist

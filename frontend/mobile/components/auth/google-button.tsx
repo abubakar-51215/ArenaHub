@@ -27,18 +27,22 @@ import { useAuthStore } from '@/store/auth';
 // (frame 2). Offline: "Google needs a connection" (frame 12).
 const LOGO = require('@/assets/brand/google-g.png');
 
+// The OAuth client ids are optional (.env.example leaves them empty until the Google Cloud project exists), but
+// expo-auth-session throws while a screen renders if the web one is missing, which broke the static web export
+// (the CI build has no .env). So the hook always gets some id; with no real one the button answers
+// "Google sign-in is not available yet." instead of opening Google.
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+const GOOGLE_CONFIGURED = WEB_CLIENT_ID !== '';
+const PLACEHOLDER_CLIENT_ID = 'not-configured.apps.googleusercontent.com';
+
 /** The Google sign-in of a screen. `onRefused` gets the server's words for a refused account. */
 export function useGoogleSignIn(onRefused: (message: string) => void) {
   const [busy, setBusy] = useState(false);
   const setSession = useAuthStore((s) => s.setSession);
   const [, , promptGoogle] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId:
-      process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId:
-      process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
-      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID || PLACEHOLDER_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || WEB_CLIENT_ID || PLACEHOLDER_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || WEB_CLIENT_ID || PLACEHOLDER_CLIENT_ID,
     selectAccount: true,
   });
 
@@ -48,7 +52,9 @@ export function useGoogleSignIn(onRefused: (message: string) => void) {
     try {
       const got =
         isExpoGo && !googleAvailable
-          ? await getExpoGoGoogleToken(promptGoogle)
+          ? GOOGLE_CONFIGURED
+            ? await getExpoGoGoogleToken(promptGoogle)
+            : ({ kind: 'not-available' } as const)
           : await getGoogleIdToken();
       if (got.kind === 'cancelled') return;
       if (got.kind === 'not-available') return showToast(GOOGLE_NOT_AVAILABLE);
