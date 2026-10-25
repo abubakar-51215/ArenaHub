@@ -79,6 +79,20 @@ here. Only ever operates on an account whose role is `admin`.
 - **Phone (npm audit): 26 high, 0 critical.** All come through the Expo and React Native toolchain: `@expo/cli`, `metro*`, `jest*`, `babel-jest`, `image-size` (asset sizes at bundle time), `node-forge` (Expo code-signing certificates), `@react-native/community-cli-plugin`. `expo`, `react-native`, `react-native-reanimated` and `@react-native-google-signin/google-signin` are listed only because they depend on those tools. The fix offered is a forced downgrade to Expo 44, which is wrong; the right fix is the next Expo SDK upgrade.
 - Decision needed later (not made here): when to schedule the Next 16 and the next Expo SDK upgrades.
 
+## Dependency review (2026-10-25)
+
+- **Backend (pip-audit, runtime packages):** Pillow 12.3.0 had 37 advisories and certifi 1 (the fix for all of them is Pillow 13.0.0 and certifi 2026.10.23). Both were upgraded (`pillow>=13.0` in `pyproject.toml`, `uv.lock`). The full backend suite (1005 tests, including the image-upload tests) passed on Pillow 13.0.0.
+- **Web (npm audit, runtime):** `sharp` fixed with a non-breaking `npm audit fix`. Two findings remain, both `postcss` bundled inside `next`; the only fix is Next 16 (a major upgrade, left as the scheduled decision above). `npm run build` passed after the change.
+- **Root tools (npm audit):** `concurrently` / `shell-quote` fixed (dev-only task runner).
+- **Phone (npm audit, runtime):** `npm audit fix` changed the lockfile; 8 high remain (`image-size`, `node-forge`, `zod` and the packages that depend on them). Their "fixes" are breaking downgrades of Expo, so they were not applied; they are build-time tooling. `npx expo install --check` says the dependencies are up to date.
+- Not done: a penetration test, and bandit was not re-run today.
+
+## Redis down (changed 2026-10-25)
+
+- The rate limiter used to let every request through when Redis was unreachable. It now counts in the server's own memory with the same budgets, so login and code guessing stay limited (the count is per server process, and resets if the process restarts).
+- Slot updates to phones and browsers now also go through a Redis channel, so several server processes can share them. If Redis is down each process still serves its own clients; clients refetch on reconnect.
+
+
 ## Later items
 
 Certificate pinning (phone), biometric unlock (phone), nonce-based CSP (web), httpOnly cookie sessions (web), database CHECK constraints for amounts, a separate migration user and a least-privilege app user (see below), alerting on audit-log patterns.

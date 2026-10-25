@@ -17,6 +17,23 @@ subsequent authed check silently no-ops (page bounces back to `/login1`/
 
 ---
 
+## 2026-10-25 — Mobile CI Node version and stale documentation
+
+### Completed
+- Mobile CI job in `.github/workflows/frontend.yml` moved from Node 20 to 22.13.0 (the web job already used it). Reason: the installed `react-native 0.88.0` requires Node `^22.13.0 || ^24.3.0 || >=26` and `expo 58.0.19` requires `^22.13.0 || ...`; the root `package.json` already declared `>=22.13.0 <23`.
+- Mobile checks on Node 22.23.4: `tsc --noEmit` clean, `expo lint` clean, `expo export --platform web` succeeded. Backend suite: 1005 tests, all pass.
+- Dependency fixes: Pillow 12.3.0 to 13.0.0 and certifi (37+1 advisories); `npm audit fix` for web (`sharp`), root and phone lockfiles. After them: backend 1005 tests pass, ruff/black/mypy clean, web tsc/eslint/prettier/`next build` pass, phone tsc/lint/`expo install --check`/export pass. Migrations upgrade, downgrade to base and upgrade again on a throwaway database. Left open: `postcss` inside `next` (needs Next 16) and phone build-tool advisories (fixes are breaking Expo downgrades). See `docs/SECURITY.md`.
+- Rate limiter now counts in memory when Redis is down instead of letting everything through; slot WebSocket updates are relayed through Redis between server processes (checked with two real processes). 3 new tests (1008 total).
+- Docs corrected: README (SDK 58, Node 22.13+), RUN_ON_PHONE (SDK 58, no fixed phone IP, read it from `ipconfig`), PHONE_PAYMENT_TEST (no fixed IP), BEFORE_GOING_LIVE (Sentry `~8.28.0`), RESTYLE_FOLLOWUPS (Node note resolved), INTEGRATION_TEST_REPORT (counts marked point-in-time).
+
+### Challenges
+- The CI workflow itself cannot be run here; it is verified only by running its commands locally on Node 22.
+
+### Next
+- Real-phone Stripe test (`docs/PHONE_PAYMENT_TEST.md`), then record results in `docs/PHONE_TEST_RESULTS.md`.
+
+---
+
 ## 2026-07-24 — Demo data for every screen on all three sides
 
 ### Completed
