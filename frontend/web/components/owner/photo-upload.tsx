@@ -109,6 +109,7 @@ export function PhotoUpload({
       <div className="flex flex-wrap gap-2">
         {images.map((url, i) => (
           <div key={url} className="relative size-20 overflow-hidden rounded-lg border">
+            {/* eslint-disable-next-line @next/next/no-img-element -- uploaded (Cloudinary/local) thumbnail, not a bundled asset */}
             <img
               src={url}
               alt={i === 0 ? "Cover photo" : "Arena photo"}
@@ -131,6 +132,7 @@ export function PhotoUpload({
             title={p.error ?? undefined}
           >
             {p.previewUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- blob: preview of the file just picked; next/image cannot load it
               <img src={p.previewUrl} alt="" className="size-full object-cover opacity-60" />
             )}
             {!p.error && (

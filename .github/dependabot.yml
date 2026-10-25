@@ -1,22 +1,27 @@
-# Weekly dependency update proposals (file only; GitHub reads it once the repository is hosted there).
+# Dependabot: routine version-update pull requests are paused (open-pull-requests-limit: 0)
+# so they stop recreating branches before the demo. Security updates are NOT affected by this
+# limit: they stay on as long as "Dependabot security updates" and "Dependabot alerts" are
+# enabled in the repository's Settings > Code security (check that page; it is not in this file).
+# After the demo, raise the limits back to 5 (and consider "monthly" and grouped updates).
 version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: "npm"
     directory: "/frontend/web"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: "npm"
     directory: "/frontend/mobile"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 0

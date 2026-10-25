@@ -87,6 +87,15 @@ here. Only ever operates on an account whose role is `admin`.
 - **Phone (npm audit, runtime):** `npm audit fix` changed the lockfile; 8 high remain (`image-size`, `node-forge`, `zod` and the packages that depend on them). Their "fixes" are breaking downgrades of Expo, so they were not applied; `image-size` and `node-forge` are build-time tooling; whether the phone app's runtime ever reaches `zod` was not checked. `npx expo install --check` says the dependencies are up to date.
 - Not done: a penetration test, and bandit was not re-run today.
 
+## Open advisory: PostCSS inside Next.js (reviewed 2026-10-25, not fixed)
+
+- `npm audit` in `frontend/web` still reports 2 findings (1 moderate on `next`, 1 high on `postcss`). Cause: `next@15.5.28` pins `postcss@8.4.31` exactly; the app's own `@tailwindcss/postcss` and `shadcn` use `postcss@8.5.30`, which is not affected. The four advisories are GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849 and GHSA-fxqj-rqcc-2cmp (PostCSS 8.5.22 and older).
+- Supported remediation: Next.js 16.4.3, whose registry metadata lists `postcss 8.5.23`. No 15.x release fixes it (15.5.28 is the latest 15.x). This is a major upgrade (middleware to `proxy`, ESLint changes, image defaults), so it is **deferred until after the FYP demo** and will be done on its own branch with the full web regression. The plan is in the 2026-10-25 upgrade review.
+- Exposure (inference, not verified by a test): the findings need PostCSS to process attacker-controlled CSS or source maps; here Next only compiles the project's own CSS at build time.
+- This is **not fixed**. Do not describe it as fixed until `npm audit` shows no `postcss` or `next` finding after the upgrade.
+- Dependabot: routine version-update PRs are paused in `.github/dependabot.yml`; security updates are meant to stay on (repository setting, not checked from here).
+
+
 ## Redis down (changed 2026-10-25)
 
 - The rate limiter used to let every request through when Redis was unreachable. It now counts in the server's own memory with the same budgets, so login and code guessing stay limited. The count is per server process and resets if the process restarts: with N server processes the real limit is up to N times the setting while Redis is down. The table holds at most 10,000 addresses. When it is full of live entries a new address is refused with 429 (fail closed) and no existing counter is dropped or reset; expired entries are pruned first. If Redis answers `incr` but then fails on `expire` or `ttl`, the count Redis returned is still used (an over-limit address stays refused; a counter that lost its expiry is given one on the next request). If `incr` itself fails, Redis's count is unknown and the in-memory count starts from zero. The fallback can never give a limit shared by all workers.
